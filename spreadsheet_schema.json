@@ -1,0 +1,418 @@
+{
+  "Releases": {
+    "columns": [
+      "Release_ID",
+      "Title",
+      "Track_IDs",
+      "Artist_ID",
+      "Label_ID",
+      "Release_Date",
+      "Distributor",
+      "UPC_Code",
+      "Streaming_Link"
+    ],
+    "row_count": 999,
+    "sample_data": [
+      {
+        "Release_ID": "=\"M2KR\" & TEXT(ROW()-1, \"0000\")",
+        "Title": "Awukhu Muzi Blaq Soul",
+        "Track_IDs": "TRK001, TRK002, TRK003, TRK004, TRK005, TRK006, TRK007, TRK008, TRK009, TRK010, TRK011",
+        "Artist_ID": "ART001, ART002, ART003, ART004, ART005",
+        "Label_ID": "LBL001",
+        "Release_Date": "2022-12-17 00:00:00",
+        "Distributor": "Proton",
+        "UPC_Code": "853566280689.0",
+        "Streaming_Link": "https://go.protonrad.io/rlyC78htRbC-I"
+      },
+      {
+        "Release_ID": "=\"M2KR\" & TEXT(ROW()-1, \"0000\")",
+        "Title": null,
+        "Track_IDs": null,
+        "Artist_ID": null,
+        "Label_ID": null,
+        "Release_Date": null,
+        "Distributor": null,
+        "UPC_Code": null,
+        "Streaming_Link": null
+      },
+      {
+        "Release_ID": "=\"M2KR\" & TEXT(ROW()-1, \"0000\")",
+        "Title": null,
+        "Track_IDs": null,
+        "Artist_ID": null,
+        "Label_ID": null,
+        "Release_Date": null,
+        "Distributor": null,
+        "UPC_Code": null,
+        "Streaming_Link": null
+      }
+    ]
+  },
+  "Tracks": {
+    "columns": [
+      "Track_ID",
+      "Title",
+      "Duration",
+      "Genre",
+      "Release_Date",
+      "ISRC_Code",
+      "Streaming_Link",
+      "Artist_ID, ART001, ART002",
+      "File_Location"
+    ],
+    "row_count": 999,
+    "sample_data": [
+      {
+        "Track_ID": "=\"TRK\" & TEXT(ROW()-1, \"000\")",
+        "Title": "Goat Song (Blaq Soul Alpine Mix)",
+        "Duration": "08:51:00",
+        "Genre": "Afro House",
+        "Release_Date": "2022-12-17 00:00:00",
+        "ISRC_Code": "ZA-A99-10-05201",
+        "Streaming_Link": "https://go.protonrad.io/rlHO49HzNJBkw",
+        "Artist_ID, ART001, ART002": "ART001, ART002",
+        "File_Location": null
+      },
+      {
+        "Track_ID": "=\"TRK\" & TEXT(ROW()-1, \"000\")",
+        "Title": "Awukhu Muzi (Blaq Soul Brothers Late Mix)",
+        "Duration": "06:52:00",
+        "Genre": "Afro House",
+        "Release_Date": "2022-12-17 00:00:00",
+        "ISRC_Code": "ZA-A99-10-05202",
+        "Streaming_Link": "https://go.protonrad.io/rlHO49HzNJBkw",
+        "Artist_ID, ART001, ART002": "ART002, ART003",
+        "File_Location": null
+      },
+      {
+        "Track_ID": "=\"TRK\" & TEXT(ROW()-1, \"000\")",
+        "Title": "Webabaomncane(Blaq Soul Late Mix)",
+        "Duration": "05:36:00",
+        "Genre": "Afro House",
+        "Release_Date": "2022-12-17 00:00:00",
+        "ISRC_Code": "ZA-A99-10-05203",
+        "Streaming_Link": "https://go.protonrad.io/rlHO49HzNJBkw",
+        "Artist_ID, ART001, ART002": "ART002, ART003",
+        "File_Location": null
+      }
+    ]
+  },
+  "Artists": {
+    "columns": [
+      "Artist_ID",
+      "Name",
+      "AKA",
+      "ID_Number",
+      "IPI_Number",
+      "Contact_Email",
+      "Contact_Phone",
+      "Social_Media",
+      "Label_ID",
+      "Publisher_ID",
+      "PRO_ID"
+    ],
+    "row_count": 999,
+    "sample_data": [
+      {
+        "Artist_ID": "=\"ART\" & TEXT(ROW()-1, \"000\")",
+        "Name": "Lungiswa Plaatjies",
+        "AKA": null,
+        "ID_Number": null,
+        "IPI_Number": null,
+        "Contact_Email": null,
+        "Contact_Phone": null,
+        "Social_Media": null,
+        "Label_ID": null,
+        "Publisher_ID": null,
+        "PRO_ID": "PRO001"
+      },
+      {
+        "Artist_ID": "=\"ART\" & TEXT(ROW()-1, \"000\")",
+        "Name": "Nkanyiso Wiseman Mhlongo",
+        "AKA": "Blaq Soul",
+        "ID_Number": null,
+        "IPI_Number": null,
+        "Contact_Email": null,
+        "Contact_Phone": null,
+        "Social_Media": null,
+        "Label_ID": null,
+        "Publisher_ID": null,
+        "PRO_ID": "PRO001"
+      },
+      {
+        "Artist_ID": "=\"ART\" & TEXT(ROW()-1, \"000\")",
+        "Name": "Busi Mhlongo",
+        "AKA": null,
+        "ID_Number": null,
+        "IPI_Number": null,
+        "Contact_Email": null,
+        "Contact_Phone": null,
+        "Social_Media": null,
+        "Label_ID": null,
+        "Publisher_ID": null,
+        "PRO_ID": "PRO001"
+      }
+    ]
+  },
+  "Contracts": {
+    "columns": [
+      "Contract_ID",
+      "Artist_ID",
+      "Label_ID",
+      "Publisher_ID",
+      "Start_Date",
+      "End_Date",
+      "Royalty_Rate",
+      "Terms",
+      "Link_To_Contract"
+    ],
+    "row_count": 999,
+    "sample_data": [
+      {
+        "Contract_ID": "=\"CONT\" & TEXT(ROW()-1, \"000\")",
+        "Artist_ID": "ART002",
+        "Label_ID": "LBL001",
+        "Publisher_ID": null,
+        "Start_Date": null,
+        "End_Date": null,
+        "Royalty_Rate": null,
+        "Terms": null,
+        "Link_To_Contract": null
+      },
+      {
+        "Contract_ID": null,
+        "Artist_ID": null,
+        "Label_ID": null,
+        "Publisher_ID": null,
+        "Start_Date": null,
+        "End_Date": null,
+        "Royalty_Rate": null,
+        "Terms": null,
+        "Link_To_Contract": null
+      },
+      {
+        "Contract_ID": null,
+        "Artist_ID": null,
+        "Label_ID": null,
+        "Publisher_ID": null,
+        "Start_Date": null,
+        "End_Date": null,
+        "Royalty_Rate": null,
+        "Terms": null,
+        "Link_To_Contract": null
+      }
+    ]
+  },
+  "Works": {
+    "columns": [
+      "Work_ID",
+      "Title",
+      "Track_ID",
+      "Release_ID",
+      "Composer(s)",
+      "Arranger(s)",
+      "Publisher_ID",
+      "PRO_ID"
+    ],
+    "row_count": 999,
+    "sample_data": [
+      {
+        "Work_ID": "=\"WKS\" & TEXT(ROW()-1, \"000\")",
+        "Title": "Goat Song (Blaq Soul Alpine Mix)",
+        "Track_ID": "TRK001",
+        "Release_ID": "M2KR0001",
+        "Composer(s)": "ART001, ART002",
+        "Arranger(s)": null,
+        "Publisher_ID": null,
+        "PRO_ID": null
+      },
+      {
+        "Work_ID": "=\"WKS\" & TEXT(ROW()-1, \"000\")",
+        "Title": "Awukhu Muzi (Blaq Soul Brothers Late Mix)",
+        "Track_ID": "TRK002",
+        "Release_ID": "M2KR0001",
+        "Composer(s)": "ART002, ART003",
+        "Arranger(s)": null,
+        "Publisher_ID": null,
+        "PRO_ID": null
+      },
+      {
+        "Work_ID": "=\"WKS\" & TEXT(ROW()-1, \"000\")",
+        "Title": "Webabaomncane(Blaq Soul Late Mix)",
+        "Track_ID": "TRK003",
+        "Release_ID": "M2KR0001",
+        "Composer(s)": "ART002, ART003",
+        "Arranger(s)": null,
+        "Publisher_ID": null,
+        "PRO_ID": null
+      }
+    ]
+  },
+  "Royalties": {
+    "columns": [
+      "Royalty_ID",
+      "Artist_ID",
+      "Work_ID",
+      "Track_ID",
+      "Source",
+      "Amount",
+      "Currency",
+      "Statement_Date",
+      "Fees",
+      "Advances"
+    ],
+    "row_count": 999,
+    "sample_data": [
+      {
+        "Royalty_ID": "=\"ROY\" & TEXT(ROW()-1, \"000\")",
+        "Artist_ID": "ART001, ART002",
+        "Work_ID": "WKS001",
+        "Track_ID": "TRK002",
+        "Source": null,
+        "Amount": null,
+        "Currency": null,
+        "Statement_Date": null,
+        "Fees": null,
+        "Advances": null
+      },
+      {
+        "Royalty_ID": null,
+        "Artist_ID": null,
+        "Work_ID": null,
+        "Track_ID": null,
+        "Source": null,
+        "Amount": null,
+        "Currency": null,
+        "Statement_Date": null,
+        "Fees": null,
+        "Advances": null
+      },
+      {
+        "Royalty_ID": null,
+        "Artist_ID": null,
+        "Work_ID": null,
+        "Track_ID": null,
+        "Source": null,
+        "Amount": null,
+        "Currency": null,
+        "Statement_Date": null,
+        "Fees": null,
+        "Advances": null
+      }
+    ]
+  },
+  "Labels": {
+    "columns": [
+      "Label_ID",
+      "Name",
+      "Address",
+      "Contact_Email",
+      "Contact_Phone",
+      "Website",
+      "Artist_IDs"
+    ],
+    "row_count": 999,
+    "sample_data": [
+      {
+        "Label_ID": "=\"LBL\" & TEXT(ROW()-1, \"000\")",
+        "Name": "M2KR",
+        "Address": null,
+        "Contact_Email": null,
+        "Contact_Phone": null,
+        "Website": null,
+        "Artist_IDs": null
+      },
+      {
+        "Label_ID": null,
+        "Name": null,
+        "Address": null,
+        "Contact_Email": null,
+        "Contact_Phone": null,
+        "Website": null,
+        "Artist_IDs": null
+      },
+      {
+        "Label_ID": null,
+        "Name": null,
+        "Address": null,
+        "Contact_Email": null,
+        "Contact_Phone": null,
+        "Website": null,
+        "Artist_IDs": null
+      }
+    ]
+  },
+  "Publishers": {
+    "columns": [
+      "Publisher_ID",
+      "Name",
+      "Address",
+      "Contact_Email",
+      "Contact_Phone",
+      "Rights_Type",
+      "Artist_IDs"
+    ],
+    "row_count": 999,
+    "sample_data": [
+      {
+        "Publisher_ID": "=\"PUB\" & TEXT(ROW()-1, \"000\")",
+        "Name": "TwoTone",
+        "Address": null,
+        "Contact_Email": null,
+        "Contact_Phone": null,
+        "Rights_Type": null,
+        "Artist_IDs": null
+      },
+      {
+        "Publisher_ID": "=\"PUB\" & TEXT(ROW()-1, \"000\")",
+        "Name": null,
+        "Address": null,
+        "Contact_Email": null,
+        "Contact_Phone": null,
+        "Rights_Type": null,
+        "Artist_IDs": null
+      },
+      {
+        "Publisher_ID": null,
+        "Name": null,
+        "Address": null,
+        "Contact_Email": null,
+        "Contact_Phone": null,
+        "Rights_Type": null,
+        "Artist_IDs": null
+      }
+    ]
+  },
+  "PRO": {
+    "columns": [
+      "PRO_ID",
+      "Name",
+      "Address",
+      "Contact_Email",
+      "Contact_Phone",
+      "Website",
+      "Territory"
+    ],
+    "row_count": 2,
+    "sample_data": [
+      {
+        "PRO_ID": "=\"PRO\" & TEXT(ROW()-1, \"000\")",
+        "Name": "SAMRO",
+        "Address": null,
+        "Contact_Email": null,
+        "Contact_Phone": null,
+        "Website": null,
+        "Territory": null
+      },
+      {
+        "PRO_ID": "=\"PRO\" & TEXT(ROW()-1, \"000\")",
+        "Name": "IMRO",
+        "Address": null,
+        "Contact_Email": null,
+        "Contact_Phone": null,
+        "Website": null,
+        "Territory": null
+      }
+    ]
+  }
+}

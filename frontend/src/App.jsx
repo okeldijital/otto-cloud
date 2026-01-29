@@ -1,0 +1,267 @@
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { AuthProvider } from './contexts/AuthContext';
+import { ProtectedRoute } from './components/ProtectedRoute';
+import { queryClient } from './lib/queryClient';
+import MainLayout from './components/layout/MainLayout';
+
+// Pages
+import Login from './pages/Login';
+import Register from './pages/Register';
+import Dashboard from './pages/Dashboard';
+import Catalog from './pages/Catalog';
+import Labels from './pages/Labels';
+import Publishers from './pages/Publishers';
+import PROs from './pages/PROs'; // Add this
+import Artists from './pages/Artists';
+import ArtistDetail from './pages/ArtistDetail';
+import Releases from './pages/Releases';
+import Works from './pages/Works';
+import Tracks from './pages/Tracks';
+import Contracts from './pages/Contracts';
+import Royalties from './pages/Royalties';
+import Documents from './pages/Documents';
+import Notes from './pages/Notes';
+import Tasks from './pages/Tasks';
+import Events from './pages/Events';
+import Playlists from './pages/Playlists';
+import Settings from './pages/Settings';
+import Analytics from './pages/Analytics';
+import Admin from './pages/Admin';
+import CRM from './pages/CRM';
+
+import './App.css';
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <BrowserRouter>
+          <Routes>
+            {/* Public routes */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+
+            {/* Protected routes */}
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <Dashboard />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/catalog"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <Catalog />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/catalog/labels"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <Labels />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/catalog/publishers"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <Publishers />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/catalog/pros"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <PROs />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/catalog/artists"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <Artists />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/catalog/artists/:id"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <ArtistDetail />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/catalog/releases"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <Releases />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/catalog/works"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <Works />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/contracts"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <Contracts />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/catalog/tracks"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <Tracks />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/royalties"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <Royalties />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/documents"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <Documents />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/notes"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <Notes />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tasks"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <Tasks />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/events"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <Events />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/playlists"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <Playlists />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <Settings />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/analytics"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <Analytics />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute adminOnly={true}>
+                  <MainLayout>
+                    <Admin />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/crm"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <CRM />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Default redirect */}
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
+    </QueryClientProvider>
+  );
+}
+
+export default App;

@@ -1,0 +1,43 @@
+"""
+Database models for OTTO platform
+"""
+from models.user import User
+from models.pro import PRO
+from models.label import Label
+from models.publisher import Publisher
+from models.artist import Artist
+from models.release import Release
+from models.track import Track
+from models.work import Work
+from models.contract import Contract
+from models.royalty import Royalty
+from models.document import Document
+from models.note import Note
+from models.event import Event
+from models.playlist import Playlist
+from models.audit_log import AuditLog
+from models.activity import Activity
+from models.crm import Company, Contact
+from models.task import Task
+
+__all__ = [
+    "User",
+    "PRO",
+    "Label",
+    "Publisher",
+    "Artist",
+    "Release",
+    "Track",
+    "Work",
+    "Contract",
+    "Royalty",
+    "Document",
+    "Note",
+    "Event",
+    "Playlist",
+    "AuditLog",
+    "Activity",
+    "Company",
+    "Contact",
+    "Task",
+]

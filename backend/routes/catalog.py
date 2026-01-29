@@ -1,0 +1,581 @@
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+from typing import List, Annotated
+
+from database import get_db
+from models.user import User
+from models.artist import Artist as ArtistModel
+from models.release import Release as ReleaseModel
+from models.track import Track as TrackModel
+from models.work import Work as WorkModel
+from models.label import Label as LabelModel
+from models.publisher import Publisher as PublisherModel
+from models.pro import PRO as PROModel
+from schemas.artist import Artist, ArtistCreate, ArtistUpdate
+from schemas.release import Release, ReleaseCreate, ReleaseUpdate
+from schemas.track import Track, TrackCreate, TrackUpdate
+from schemas.work import Work, WorkCreate, WorkUpdate
+from schemas.label import Label, LabelCreate, LabelUpdate
+from schemas.publisher import Publisher, PublisherCreate, PublisherUpdate
+from schemas.pro import PRO, PROCreate, PROUpdate
+from routes.auth import get_current_active_user
+
+router = APIRouter()
+
+
+# ==================== ARTISTS ====================
+
+@router.get("/artists", response_model=List[Artist])
+def list_artists(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """List all artists"""
+    artists = db.query(ArtistModel).offset(skip).limit(limit).all()
+    return artists
+
+
+@router.post("/artists", response_model=Artist, status_code=status.HTTP_201_CREATED)
+def create_artist(
+    artist: ArtistCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Create a new artist"""
+    db_artist = ArtistModel(**artist.model_dump())
+    db.add(db_artist)
+    db.commit()
+    db.refresh(db_artist)
+    return db_artist
+
+
+@router.get("/artists/{artist_id}", response_model=Artist)
+def get_artist(
+    artist_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Get a specific artist by ID"""
+    artist = db.query(ArtistModel).filter(ArtistModel.id == artist_id).first()
+    if not artist:
+        raise HTTPException(status_code=404, detail="Artist not found")
+    return artist
+
+
+@router.put("/artists/{artist_id}", response_model=Artist)
+def update_artist(
+    artist_id: int,
+    artist_update: ArtistUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Update an artist"""
+    db_artist = db.query(ArtistModel).filter(ArtistModel.id == artist_id).first()
+    if not db_artist:
+        raise HTTPException(status_code=404, detail="Artist not found")
+    
+    update_data = artist_update.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(db_artist, field, value)
+    
+    db.commit()
+    db.refresh(db_artist)
+    return db_artist
+
+
+@router.delete("/artists/{artist_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_artist(
+    artist_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Delete an artist"""
+    db_artist = db.query(ArtistModel).filter(ArtistModel.id == artist_id).first()
+    if not db_artist:
+        raise HTTPException(status_code=404, detail="Artist not found")
+    
+    db.delete(db_artist)
+    db.delete(db_artist)
+    db.commit()
+    return None
+
+
+@router.get("/artists/{artist_id}/releases", response_model=List[Release])
+def get_artist_releases(
+    artist_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Get all releases for a specific artist"""
+    releases = db.query(ReleaseModel).filter(ReleaseModel.artist_id == artist_id).all()
+    return releases
+
+
+# ==================== RELEASES ====================
+
+@router.get("/releases", response_model=List[Release])
+def list_releases(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """List all releases"""
+    releases = db.query(ReleaseModel).offset(skip).limit(limit).all()
+    return releases
+
+
+@router.post("/releases", response_model=Release, status_code=status.HTTP_201_CREATED)
+def create_release(
+    release: ReleaseCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Create a new release"""
+    db_release = ReleaseModel(**release.model_dump())
+    db.add(db_release)
+    db.commit()
+    db.refresh(db_release)
+    return db_release
+
+
+@router.get("/releases/{release_id}", response_model=Release)
+def get_release(
+    release_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Get a specific release by ID"""
+    release = db.query(ReleaseModel).filter(ReleaseModel.id == release_id).first()
+    if not release:
+        raise HTTPException(status_code=404, detail="Release not found")
+    return release
+
+
+@router.put("/releases/{release_id}", response_model=Release)
+def update_release(
+    release_id: int,
+    release_update: ReleaseUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Update a release"""
+    db_release = db.query(ReleaseModel).filter(ReleaseModel.id == release_id).first()
+    if not db_release:
+        raise HTTPException(status_code=404, detail="Release not found")
+    
+    update_data = release_update.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(db_release, field, value)
+    
+    db.commit()
+    db.refresh(db_release)
+    return db_release
+
+
+@router.delete("/releases/{release_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_release(
+    release_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Delete a release"""
+    db_release = db.query(ReleaseModel).filter(ReleaseModel.id == release_id).first()
+    if not db_release:
+        raise HTTPException(status_code=404, detail="Release not found")
+    
+    db.delete(db_release)
+    db.commit()
+    return None
+
+
+# ==================== TRACKS ====================
+
+@router.get("/tracks", response_model=List[Track])
+def list_tracks(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """List all tracks"""
+    tracks = db.query(TrackModel).offset(skip).limit(limit).all()
+    return tracks
+
+
+@router.post("/tracks", response_model=Track, status_code=status.HTTP_201_CREATED)
+def create_track(
+    track: TrackCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Create a new track"""
+    db_track = TrackModel(**track.model_dump())
+    db.add(db_track)
+    db.commit()
+    db.refresh(db_track)
+    return db_track
+
+
+@router.get("/tracks/{track_id}", response_model=Track)
+def get_track(
+    track_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Get a specific track by ID"""
+    track = db.query(TrackModel).filter(TrackModel.id == track_id).first()
+    if not track:
+        raise HTTPException(status_code=404, detail="Track not found")
+    return track
+
+
+@router.put("/tracks/{track_id}", response_model=Track)
+def update_track(
+    track_id: int,
+    track_update: TrackUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Update a track"""
+    db_track = db.query(TrackModel).filter(TrackModel.id == track_id).first()
+    if not db_track:
+        raise HTTPException(status_code=404, detail="Track not found")
+    
+    update_data = track_update.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(db_track, field, value)
+    
+    db.commit()
+    db.refresh(db_track)
+    return db_track
+
+
+@router.delete("/tracks/{track_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_track(
+    track_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Delete a track"""
+    db_track = db.query(TrackModel).filter(TrackModel.id == track_id).first()
+    if not db_track:
+        raise HTTPException(status_code=404, detail="Track not found")
+    
+    db.delete(db_track)
+    db.commit()
+    return None
+
+
+# ==================== WORKS ====================
+
+@router.get("/works", response_model=List[Work])
+def list_works(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """List all works"""
+    works = db.query(WorkModel).offset(skip).limit(limit).all()
+    return works
+
+
+@router.post("/works", response_model=Work, status_code=status.HTTP_201_CREATED)
+def create_work(
+    work: WorkCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Create a new work"""
+    db_work = WorkModel(**work.model_dump())
+    db.add(db_work)
+    db.commit()
+    db.refresh(db_work)
+    return db_work
+
+
+@router.get("/works/{work_id}", response_model=Work)
+def get_work(
+    work_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Get a specific work by ID"""
+    work = db.query(WorkModel).filter(WorkModel.id == work_id).first()
+    if not work:
+        raise HTTPException(status_code=404, detail="Work not found")
+    return work
+
+
+@router.put("/works/{work_id}", response_model=Work)
+def update_work(
+    work_id: int,
+    work_update: WorkUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Update a work"""
+    db_work = db.query(WorkModel).filter(WorkModel.id == work_id).first()
+    if not db_work:
+        raise HTTPException(status_code=404, detail="Work not found")
+    
+    update_data = work_update.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(db_work, field, value)
+    
+    db.commit()
+    db.refresh(db_work)
+    return db_work
+
+
+@router.delete("/works/{work_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_work(
+    work_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Delete a work"""
+    db_work = db.query(WorkModel).filter(WorkModel.id == work_id).first()
+    if not db_work:
+        raise HTTPException(status_code=404, detail="Work not found")
+    
+    db.delete(db_work)
+    db.commit()
+    return None
+
+
+# ==================== LABELS ====================
+
+@router.get("/labels", response_model=List[Label])
+def list_labels(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """List all labels"""
+    labels = db.query(LabelModel).offset(skip).limit(limit).all()
+    return labels
+
+
+@router.post("/labels", response_model=Label, status_code=status.HTTP_201_CREATED)
+def create_label(
+    label: LabelCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Create a new label"""
+    db_label = LabelModel(**label.model_dump())
+    db.add(db_label)
+    db.commit()
+    db.refresh(db_label)
+    return db_label
+
+
+@router.get("/labels/{label_id}", response_model=Label)
+def get_label(
+    label_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Get a specific label by ID"""
+    label = db.query(LabelModel).filter(LabelModel.id == label_id).first()
+    if not label:
+        raise HTTPException(status_code=404, detail="Label not found")
+    return label
+
+
+@router.put("/labels/{label_id}", response_model=Label)
+def update_label(
+    label_id: int,
+    label_update: LabelUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Update a label"""
+    db_label = db.query(LabelModel).filter(LabelModel.id == label_id).first()
+    if not db_label:
+        raise HTTPException(status_code=404, detail="Label not found")
+    
+    update_data = label_update.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(db_label, field, value)
+    
+    db.commit()
+    db.refresh(db_label)
+    return db_label
+
+
+@router.delete("/labels/{label_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_label(
+    label_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Delete a label"""
+    db_label = db.query(LabelModel).filter(LabelModel.id == label_id).first()
+    if not db_label:
+        raise HTTPException(status_code=404, detail="Label not found")
+    
+    db.delete(db_label)
+    db.commit()
+    return None
+
+
+# ==================== PUBLISHERS ====================
+
+@router.get("/publishers", response_model=List[Publisher])
+def list_publishers(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """List all publishers"""
+    publishers = db.query(PublisherModel).offset(skip).limit(limit).all()
+    return publishers
+
+
+@router.post("/publishers", response_model=Publisher, status_code=status.HTTP_201_CREATED)
+def create_publisher(
+    publisher: PublisherCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Create a new publisher"""
+    db_publisher = PublisherModel(**publisher.model_dump())
+    db.add(db_publisher)
+    db.commit()
+    db.refresh(db_publisher)
+    return db_publisher
+
+
+@router.get("/publishers/{publisher_id}", response_model=Publisher)
+def get_publisher(
+    publisher_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Get a specific publisher by ID"""
+    publisher = db.query(PublisherModel).filter(PublisherModel.id == publisher_id).first()
+    if not publisher:
+        raise HTTPException(status_code=404, detail="Publisher not found")
+    return publisher
+
+
+@router.put("/publishers/{publisher_id}", response_model=Publisher)
+def update_publisher(
+    publisher_id: int,
+    publisher_update: PublisherUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Update a publisher"""
+    db_publisher = db.query(PublisherModel).filter(PublisherModel.id == publisher_id).first()
+    if not db_publisher:
+        raise HTTPException(status_code=404, detail="Publisher not found")
+    
+    update_data = publisher_update.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(db_publisher, field, value)
+    
+    db.commit()
+    db.refresh(db_publisher)
+    return db_publisher
+
+
+@router.delete("/publishers/{publisher_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_publisher(
+    publisher_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Delete a publisher"""
+    db_publisher = db.query(PublisherModel).filter(PublisherModel.id == publisher_id).first()
+    if not db_publisher:
+        raise HTTPException(status_code=404, detail="Publisher not found")
+    
+    db.delete(db_publisher)
+    db.commit()
+    return None
+
+
+# ==================== PROs ====================
+
+@router.get("/pros", response_model=List[PRO])
+def list_pros(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """List all PROs"""
+    pros = db.query(PROModel).offset(skip).limit(limit).all()
+    return pros
+
+
+@router.post("/pros", response_model=PRO, status_code=status.HTTP_201_CREATED)
+def create_pro(
+    pro: PROCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Create a new PRO"""
+    db_pro = PROModel(**pro.model_dump())
+    db.add(db_pro)
+    db.commit()
+    db.refresh(db_pro)
+    return db_pro
+
+
+@router.get("/pros/{pro_id}", response_model=PRO)
+def get_pro(
+    pro_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Get a specific PRO by ID"""
+    pro = db.query(PROModel).filter(PROModel.id == pro_id).first()
+    if not pro:
+        raise HTTPException(status_code=404, detail="PRO not found")
+    return pro
+
+
+@router.put("/pros/{pro_id}", response_model=PRO)
+def update_pro(
+    pro_id: int,
+    pro_update: PROUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Update a PRO"""
+    db_pro = db.query(PROModel).filter(PROModel.id == pro_id).first()
+    if not db_pro:
+        raise HTTPException(status_code=404, detail="PRO not found")
+    
+    update_data = pro_update.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(db_pro, field, value)
+    
+    db.commit()
+    db.refresh(db_pro)
+    return db_pro
+
+
+@router.delete("/pros/{pro_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_pro(
+    pro_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Delete a PRO"""
+    db_pro = db.query(PROModel).filter(PROModel.id == pro_id).first()
+    if not db_pro:
+        raise HTTPException(status_code=404, detail="PRO not found")
+    
+    db.delete(db_pro)
+    db.commit()
+    return None

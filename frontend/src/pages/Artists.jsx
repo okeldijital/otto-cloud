@@ -1,0 +1,415 @@
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { CatalogService } from '../services/catalog';
+import DataTable from '../components/DataTable';
+import EntityForm from '../components/EntityForm';
+
+const API_URL = 'http://localhost:8000';
+
+const Artists = () => {
+    const [artists, setArtists] = useState([]);
+    const [labels, setLabels] = useState([]);
+    const [publishers, setPublishers] = useState([]);
+    const [pros, setPros] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [editingArtist, setEditingArtist] = useState(null);
+    const [formData, setFormData] = useState({
+        name: '',
+        aka: '',
+        contact_email: '',
+        contact_phone: '',
+        physical_address: '',
+        ipi_number: '',
+        label_id: '',
+        publisher_id: '',
+        pro_id: '',
+        instagram: '',
+        twitter: '',
+        // Banking
+        bank_name: '',
+        account_number: '',
+        branch_code: '',
+        // Streaming
+        spotify_url: '',
+        apple_music_url: '',
+        youtube_url: ''
+    });
+
+    const fetchData = async () => {
+        setIsLoading(true);
+        try {
+            const [artistsData, labelsData, publishersData, prosData] = await Promise.all([
+                CatalogService.getAll('artists'),
+                CatalogService.getAll('labels'),
+                CatalogService.getAll('publishers'),
+                CatalogService.getAll('pros')
+            ]);
+            setArtists(artistsData);
+            setLabels(labelsData);
+            setPublishers(publishersData);
+            setPros(prosData);
+        } catch (error) {
+            console.error('Failed to fetch data:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    const handleCreate = () => {
+        setEditingArtist(null);
+        setFormData({
+            name: '',
+            aka: '',
+            contact_email: '',
+            contact_phone: '',
+            physical_address: '',
+            ipi_number: '',
+            label_id: '',
+            publisher_id: '',
+            pro_id: '',
+            instagram: '',
+            twitter: '',
+            bank_name: '',
+            account_number: '',
+            branch_code: '',
+            spotify_url: '',
+            apple_music_url: '',
+            youtube_url: ''
+        });
+        setIsModalOpen(true);
+    };
+
+    const handleEdit = (artist) => {
+        setEditingArtist(artist);
+        const social = artist.social_media || {};
+        const banking = artist.banking_details || {};
+        const streaming = artist.streaming_links || {};
+        setFormData({
+            name: artist.name,
+            aka: artist.aka || '',
+            contact_email: artist.contact_email || '',
+            contact_phone: artist.contact_phone || '',
+            physical_address: artist.physical_address || '',
+            ipi_number: artist.ipi_number || '',
+            label_id: artist.label_id || '',
+            publisher_id: artist.publisher_id || '',
+            pro_id: artist.pro_id || '',
+            instagram: social.instagram || '',
+            twitter: social.twitter || '',
+            bank_name: banking.bank_name || '',
+            account_number: banking.account_number || '',
+            branch_code: banking.branch_code || '',
+            spotify_url: streaming.spotify || '',
+            apple_music_url: streaming.apple_music || '',
+            youtube_url: streaming.youtube || ''
+        });
+        setIsModalOpen(true);
+    };
+
+    const handleDelete = async (artist) => {
+        if (window.confirm(`Are you sure you want to delete "${artist.name}"?`)) {
+            try {
+                await CatalogService.delete('artists', artist.id);
+                fetchData();
+            } catch (error) {
+                console.error('Failed to delete artist:', error);
+                alert('Failed to delete artist');
+            }
+        }
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setIsSubmitting(true);
+
+        // Prepare data
+        const submissionData = {
+            name: formData.name,
+            aka: formData.aka,
+            contact_email: formData.contact_email,
+            contact_phone: formData.contact_phone,
+            physical_address: formData.physical_address,
+            ipi_number: formData.ipi_number,
+            label_id: formData.label_id || null,
+            publisher_id: formData.publisher_id || null,
+            pro_id: formData.pro_id || null,
+            social_media: {
+                instagram: formData.instagram,
+                twitter: formData.twitter
+            },
+            banking_details: {
+                bank_name: formData.bank_name,
+                account_number: formData.account_number,
+                branch_code: formData.branch_code
+            },
+            streaming_links: {
+                spotify: formData.spotify_url,
+                apple_music: formData.apple_music_url,
+                youtube: formData.youtube_url
+            }
+        };
+
+        try {
+            if (editingArtist) {
+                await CatalogService.update('artists', editingArtist.id, submissionData);
+            } else {
+                await CatalogService.create('artists', submissionData);
+            }
+            setIsModalOpen(false);
+            fetchData();
+        } catch (error) {
+            console.error('Failed to save artist:', error);
+            alert('Failed to save artist');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const columns = [
+        {
+            key: 'name',
+            label: 'Artist Name',
+            render: (row) => (
+                <Link to={`/catalog/artists/${row.id}`} style={{ fontWeight: 600, color: 'var(--primary-color)', textDecoration: 'none' }}>
+                    {row.name}
+                </Link>
+            )
+        },
+        { key: 'aka', label: 'AKA' },
+        { key: 'contact_email', label: 'Email' },
+        {
+            key: 'label_id',
+            label: 'Label',
+            render: (row) => {
+                const label = labels.find(l => l.id === row.label_id);
+                return label ? label.name : '-';
+            }
+        },
+    ];
+
+    return (
+        <div className="entity-page">
+            <div className="page-header">
+                <h1 className="page-title">Artists</h1>
+                <div style={{ display: 'flex', gap: '1rem' }}>
+                    <button
+                        className="btn-secondary"
+                        onClick={() => window.open(`${API_URL}/api/reports/export/artists?format=excel`, '_blank')}
+                    >
+                        Export Excel
+                    </button>
+                    <button className="btn-primary" onClick={handleCreate}>
+                        + Add Artist
+                    </button>
+                </div>
+            </div>
+
+            <DataTable
+                columns={columns}
+                data={artists}
+                isLoading={isLoading}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+            />
+
+            <EntityForm
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                title={editingArtist ? 'Edit Artist' : 'New Artist'}
+                onSubmit={handleSubmit}
+                isSubmitting={isSubmitting}
+            >
+                <h3 className="form-section-title">Basic Information</h3>
+                <div className="form-row">
+                    <div className="form-group">
+                        <label htmlFor="name">Artist Name</label>
+                        <input
+                            type="text"
+                            id="name"
+                            value={formData.name}
+                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                            required
+                            autoFocus
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label htmlFor="aka">AKA (Stage Name)</label>
+                        <input
+                            type="text"
+                            id="aka"
+                            value={formData.aka}
+                            onChange={(e) => setFormData({ ...formData, aka: e.target.value })}
+                        />
+                    </div>
+                </div>
+
+                <div className="form-row">
+                    <div className="form-group">
+                        <label htmlFor="contact_email">Email</label>
+                        <input
+                            type="email"
+                            id="contact_email"
+                            value={formData.contact_email}
+                            onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label htmlFor="contact_phone">Phone</label>
+                        <input
+                            type="text"
+                            id="contact_phone"
+                            value={formData.contact_phone}
+                            onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
+                        />
+                    </div>
+                </div>
+
+                <div className="form-group">
+                    <label htmlFor="physical_address">Physical Address</label>
+                    <textarea
+                        id="physical_address"
+                        value={formData.physical_address}
+                        onChange={(e) => setFormData({ ...formData, physical_address: e.target.value })}
+                        rows={2}
+                    />
+                </div>
+
+                <div className="form-group">
+                    <label htmlFor="ipi_number">IPI Number</label>
+                    <input
+                        type="text"
+                        id="ipi_number"
+                        value={formData.ipi_number}
+                        onChange={(e) => setFormData({ ...formData, ipi_number: e.target.value })}
+                    />
+                </div>
+
+                <h3 className="form-section-title">Relationships</h3>
+                <div className="form-row">
+                    <div className="form-group">
+                        <label htmlFor="label_id">Label</label>
+                        <select
+                            id="label_id"
+                            value={formData.label_id}
+                            onChange={(e) => setFormData({ ...formData, label_id: e.target.value })}
+                        >
+                            <option value="">Select Label...</option>
+                            {labels.map(label => (
+                                <option key={label.id} value={label.id}>{label.name}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="form-group">
+                        <label htmlFor="publisher_id">Publisher</label>
+                        <select
+                            id="publisher_id"
+                            value={formData.publisher_id}
+                            onChange={(e) => setFormData({ ...formData, publisher_id: e.target.value })}
+                        >
+                            <option value="">Select Publisher...</option>
+                            {publishers.map(pub => (
+                                <option key={pub.id} value={pub.id}>{pub.name}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="form-group">
+                        <label htmlFor="pro_id">PRO</label>
+                        <select
+                            id="pro_id"
+                            value={formData.pro_id}
+                            onChange={(e) => setFormData({ ...formData, pro_id: e.target.value })}
+                        >
+                            <option value="">Select PRO...</option>
+                            {pros.map(pro => (
+                                <option key={pro.id} value={pro.id}>{pro.name} ({pro.country})</option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+
+                <h3 className="form-section-title">Social & Streaming</h3>
+                <div className="form-row">
+                    <div className="form-group">
+                        <label htmlFor="instagram">Instagram</label>
+                        <input
+                            type="text"
+                            id="instagram"
+                            value={formData.instagram}
+                            onChange={(e) => setFormData({ ...formData, instagram: e.target.value })}
+                            placeholder="@artist"
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label htmlFor="twitter">Twitter</label>
+                        <input
+                            type="text"
+                            id="twitter"
+                            value={formData.twitter}
+                            onChange={(e) => setFormData({ ...formData, twitter: e.target.value })}
+                            placeholder="@artist"
+                        />
+                    </div>
+                </div>
+                <div className="form-group">
+                    <label htmlFor="spotify">Spotify URL</label>
+                    <input
+                        type="url"
+                        id="spotify"
+                        value={formData.spotify_url}
+                        onChange={(e) => setFormData({ ...formData, spotify_url: e.target.value })}
+                        placeholder="https://open.spotify.com/artist/..."
+                    />
+                </div>
+                <div className="form-group">
+                    <label htmlFor="apple_music">Apple Music URL</label>
+                    <input
+                        type="url"
+                        id="apple_music"
+                        value={formData.apple_music_url}
+                        onChange={(e) => setFormData({ ...formData, apple_music_url: e.target.value })}
+                        placeholder="https://music.apple.com/..."
+                    />
+                </div>
+
+                <h3 className="form-section-title">Banking Details</h3>
+                <div className="form-row">
+                    <div className="form-group">
+                        <label htmlFor="bank_name">Bank Name</label>
+                        <input
+                            type="text"
+                            id="bank_name"
+                            value={formData.bank_name}
+                            onChange={(e) => setFormData({ ...formData, bank_name: e.target.value })}
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label htmlFor="branch_code">Branch Code</label>
+                        <input
+                            type="text"
+                            id="branch_code"
+                            value={formData.branch_code}
+                            onChange={(e) => setFormData({ ...formData, branch_code: e.target.value })}
+                        />
+                    </div>
+                </div>
+                <div className="form-group">
+                    <label htmlFor="account_number">Account Number</label>
+                    <input
+                        type="text"
+                        id="account_number"
+                        value={formData.account_number}
+                        onChange={(e) => setFormData({ ...formData, account_number: e.target.value })}
+                    />
+                </div>
+            </EntityForm>
+        </div>
+    );
+};
+
+export default Artists;
