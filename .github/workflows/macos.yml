@@ -1,4 +1,4 @@
-name: Build macOS Installer (Otto)
+name: Build macOS Otto (zip)
 
 on:
   workflow_dispatch:
@@ -7,10 +7,8 @@ on:
       - "v*"
 
 jobs:
-  build-macos:
-    name: Build on ${{ matrix.os }} (${{ matrix.arch }})
+  build:
     runs-on: ${{ matrix.os }}
-
     strategy:
       fail-fast: false
       matrix:
@@ -28,10 +26,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "npm"
-          cache-dependency-path: frontend/package-lock.json
 
-      - name: Build Frontend (Vite)
+      - name: Build Frontend
         working-directory: frontend
         run: |
           npm ci
@@ -46,31 +42,30 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pyinstaller
+          pip install pyinstaller uvicorn
 
-      - name: Create backend entrypoint (if missing)
-        shell: bash
+      - name: Create Backend Entrypoint
         run: |
-          if [ ! -f run_server.py ]; then
-            cat > run_server.py <<'PY'
-import os
-import uvicorn
-
-if __name__ == "__main__":
-    host = os.getenv("OTTO_HOST", "127.0.0.1")
-    port = int(os.getenv("OTTO_PORT", "8000"))
-    uvicorn.run("app.main:app", host=host, port=port)
-PY
-          fi
+          python - <<'PY'
+          from pathlib import Path
+          p = Path("run_server.py")
+          if not p.exists():
+              p.write_text(
+                  "import os\n"
+                  "import uvicorn\n\n"
+                  "if __name__ == '__main__':\n"
+                  "    host = os.getenv('OTTO_HOST', '127.0.0.1')\n"
+                  "    port = int(os.getenv('OTTO_PORT', '8000'))\n"
+                  "    uvicorn.run('app.main:app', host=host, port=port)\n"
+              )
+          print("run_server.py ready")
+          PY
 
       - name: Package Backend (PyInstaller)
         run: |
-          pyinstaller --clean --noconfirm --onefile \
-            --name otto-backend \
-            run_server.py
+          PYTHONPATH="$(pwd)" pyinstaller --clean --noconfirm --onefile --name otto-backend run_server.py
 
-      - name: Assemble Distribution Folder
-        shell: bash
+      - name: Assemble Bundle
         run: |
           rm -rf dist_bundle
           mkdir -p dist_bundle/backend
@@ -79,50 +74,39 @@ PY
           cp -R frontend/dist/* dist_bundle/frontend/
           cp dist/otto-backend dist_bundle/backend/
 
-          # Launcher script for macOS
           cat > dist_bundle/run_otto.command <<'SH'
-#!/bin/bash
-set -e
-DIR="$(cd "$(dirname "$0")" && pwd)"
-echo "Starting Otto backend..."
-"$DIR/backend/otto-backend" &
-BACK_PID=$!
-echo "Backend PID: $BACK_PID"
-
-echo "Open Otto UI at: http://127.0.0.1:8000"
-echo "Press Ctrl+C in this window to stop."
-
-wait $BACK_PID
-SH
+          #!/bin/bash
+          set -e
+          DIR="$(cd "$(dirname "$0")" && pwd)"
+          echo "Starting Otto backend..."
+          "$DIR/backend/otto-backend" &
+          echo "Open Otto UI at: http://127.0.0.1:8000"
+          wait
+          SH
           chmod +x dist_bundle/run_otto.command
 
-          # .env example (no secrets)
           cat > dist_bundle/.env.example <<'ENV'
-APP_ENV=prod
-AUTH_DISABLED=true
-COOKIE_SECURE=false
-DATABASE_URL=sqlite:///./storage/app.db
-STORAGE_ROOT=./storage/contracts
-ENV
+          APP_ENV=prod
+          AUTH_DISABLED=true
+          COOKIE_SECURE=false
+          DATABASE_URL=sqlite:///./storage/app.db
+          STORAGE_ROOT=./storage/contracts
+          ENV
 
-          # Basic run instructions
           cat > dist_bundle/README_RUN_LOCAL.md <<'MD'
-# Otto macOS Package
+          # Otto macOS Package
 
-## Run
-1. Unzip the package.
-2. Double-click `run_otto.command`.
-3. Open: http://127.0.0.1:8000
+          ## Run
+          1) Unzip
+          2) Double-click `run_otto.command`
+          3) Open http://127.0.0.1:8000
 
-## Data safety
-This package does not include your database by default.
-If you want persistence:
-- create a `storage/` folder next to `run_otto.command`
-- the SQLite DB will live at `storage/app.db`
-MD
+          ## Database safety
+          Create a `storage/` folder next to `run_otto.command`.
+          Your DB will live at `storage/app.db` and persists across updates.
+          MD
 
-      - name: Create Zip Artifact
-        shell: bash
+      - name: Zip Artifact
         run: |
           cd dist_bundle
           zip -r "../otto-macos-${{ matrix.arch }}.zip" .
