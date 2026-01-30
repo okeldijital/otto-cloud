@@ -4,6 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from config import settings
 from database import init_db
 import os
+import sys
 
 # Import all models to ensure they're registered with SQLAlchemy
 from models import *
@@ -60,6 +61,45 @@ async def root():
 async def health_check():
     """Health check endpoint"""
     return {"status": "healthy"}
+
+# Standardize frontend serving
+from fastapi.responses import FileResponse
+
+# Check for build directory
+build_dir = None
+
+# 1. Check if running as PyInstaller bundle (PRIORITY)
+if getattr(sys, 'frozen', False):
+    base_path = sys._MEIPASS
+    frozen_path = os.path.join(base_path, "dist")
+    if os.path.exists(frozen_path):
+        build_dir = frozen_path
+
+# 2. Key fallback: Local development directories
+if not build_dir:
+    possible_dirs = ["dist", "../frontend/dist"]
+    for d in possible_dirs:
+        # We need to make sure it actually looks like a frontend build (has index.html)
+        if os.path.exists(d) and os.path.exists(os.path.join(d, "index.html")):
+            build_dir = d
+            break
+
+if build_dir:
+    print(f"📦 Serving frontend from: {build_dir}")
+    app.mount("/assets", StaticFiles(directory=os.path.join(build_dir, "assets")), name="assets")
+    
+    @app.get("/{full_path:path}")
+    async def serve_frontend(full_path: str):
+        # Exclude API routes
+        if full_path.startswith("api") or full_path.startswith("uploads"):
+            return None # 404 handled by FastAPI
+            
+        file_path = os.path.join(build_dir, full_path)
+        if os.path.exists(file_path) and os.path.isfile(file_path):
+             return FileResponse(file_path)
+             
+        # Fallback to index.html
+        return FileResponse(os.path.join(build_dir, "index.html"))
 
 
 # TODO: Import and mount route modules
