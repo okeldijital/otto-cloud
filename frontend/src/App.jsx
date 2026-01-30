@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -16,6 +16,7 @@ import PROs from './pages/PROs'; // Add this
 import Artists from './pages/Artists';
 import ArtistDetail from './pages/ArtistDetail';
 import Releases from './pages/Releases';
+import ReleaseDetail from './pages/ReleaseDetail';
 import Works from './pages/Works';
 import Tracks from './pages/Tracks';
 import Contracts from './pages/Contracts';
@@ -36,7 +37,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <BrowserRouter>
+        <HashRouter>
           <Routes>
             {/* Public routes */}
             <Route path="/login" element={<Login />} />
@@ -119,6 +120,16 @@ function App() {
                 <ProtectedRoute>
                   <MainLayout>
                     <Releases />
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/catalog/releases/:id"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <ReleaseDetail />
                   </MainLayout>
                 </ProtectedRoute>
               }
@@ -258,7 +269,7 @@ function App() {
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
-        </BrowserRouter>
+        </HashRouter>
       </AuthProvider>
     </QueryClientProvider>
   );

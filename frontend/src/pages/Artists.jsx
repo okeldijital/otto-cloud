@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { CatalogService } from '../services/catalog';
+import { DocumentsService } from '../services/operations';
+import { BASE_URL } from '../lib/api';
 import DataTable from '../components/DataTable';
 import EntityForm from '../components/EntityForm';
+import { Camera, User } from 'lucide-react';
 
-const API_URL = 'http://localhost:8000';
+const API_URL = BASE_URL;
 
 const Artists = () => {
     const [artists, setArtists] = useState([]);
@@ -18,6 +21,8 @@ const Artists = () => {
     const [formData, setFormData] = useState({
         name: '',
         aka: '',
+        id_number: '',
+        profile_image_url: '',
         contact_email: '',
         contact_phone: '',
         physical_address: '',
@@ -36,6 +41,17 @@ const Artists = () => {
         apple_music_url: '',
         youtube_url: ''
     });
+
+    const [selectedImage, setSelectedImage] = useState(null);
+    const [imagePreview, setImagePreview] = useState(null);
+
+    const handleImageChange = (e) => {
+        if (e.target.files && e.target.files.length > 0) {
+            const file = e.target.files[0];
+            setSelectedImage(file);
+            setImagePreview(URL.createObjectURL(file));
+        }
+    };
 
     const fetchData = async () => {
         setIsLoading(true);
@@ -63,9 +79,14 @@ const Artists = () => {
 
     const handleCreate = () => {
         setEditingArtist(null);
+        setEditingArtist(null);
+        setSelectedImage(null);
+        setImagePreview(null);
         setFormData({
             name: '',
             aka: '',
+            id_number: '',
+            profile_image_url: '',
             contact_email: '',
             contact_phone: '',
             physical_address: '',
@@ -87,12 +108,17 @@ const Artists = () => {
 
     const handleEdit = (artist) => {
         setEditingArtist(artist);
+        setSelectedImage(null);
+        setImagePreview(artist.profile_image_url ? (artist.profile_image_url.startsWith('http') ? artist.profile_image_url : `${API_URL}${artist.profile_image_url}`) : null);
+
         const social = artist.social_media || {};
         const banking = artist.banking_details || {};
         const streaming = artist.streaming_links || {};
         setFormData({
             name: artist.name,
             aka: artist.aka || '',
+            id_number: artist.id_number || '',
+            profile_image_url: artist.profile_image_url || '',
             contact_email: artist.contact_email || '',
             contact_phone: artist.contact_phone || '',
             physical_address: artist.physical_address || '',
@@ -129,9 +155,24 @@ const Artists = () => {
         setIsSubmitting(true);
 
         // Prepare data
+        let profileImageUrl = formData.profile_image_url;
+
+        if (selectedImage) {
+            try {
+                const uploaded = await DocumentsService.upload(selectedImage);
+                profileImageUrl = uploaded.file_path;
+            } catch (err) {
+                console.error('Failed to upload image:', err);
+                alert('Failed to upload image');
+                return;
+            }
+        }
+
         const submissionData = {
             name: formData.name,
             aka: formData.aka,
+            id_number: formData.id_number,
+            profile_image_url: profileImageUrl,
             contact_email: formData.contact_email,
             contact_phone: formData.contact_phone,
             physical_address: formData.physical_address,
@@ -176,7 +217,20 @@ const Artists = () => {
             key: 'name',
             label: 'Artist Name',
             render: (row) => (
-                <Link to={`/catalog/artists/${row.id}`} style={{ fontWeight: 600, color: 'var(--primary-color)', textDecoration: 'none' }}>
+                <Link to={`/catalog/artists/${row.id}`} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontWeight: 600, color: 'var(--primary-color)', textDecoration: 'none' }}>
+                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#f1f5f9', overflow: 'hidden', flexShrink: 0 }}>
+                        {row.profile_image_url ? (
+                            <img
+                                src={row.profile_image_url.startsWith('http') ? row.profile_image_url : `${API_URL}${row.profile_image_url}`}
+                                alt={row.name}
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            />
+                        ) : (
+                            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <User size={16} color="#94a3b8" />
+                            </div>
+                        )}
+                    </div>
                     {row.name}
                 </Link>
             )
@@ -226,6 +280,29 @@ const Artists = () => {
                 isSubmitting={isSubmitting}
             >
                 <h3 className="form-section-title">Basic Information</h3>
+
+                <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+                    <div style={{ position: 'relative', width: '80px', height: '80px', borderRadius: '50%', overflow: 'hidden', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #e2e8f0' }}>
+                        {imagePreview ? (
+                            <img src={imagePreview} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                            <User size={32} color="#94a3b8" />
+                        )}
+                    </div>
+                    <div>
+                        <label htmlFor="image-upload" className="btn-secondary" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <Camera size={16} /> Upload Photo
+                        </label>
+                        <input
+                            type="file"
+                            id="image-upload"
+                            accept="image/*"
+                            onChange={handleImageChange}
+                            style={{ display: 'none' }}
+                        />
+                    </div>
+                </div>
+
                 <div className="form-row">
                     <div className="form-group">
                         <label htmlFor="name">Artist Name</label>
@@ -247,6 +324,17 @@ const Artists = () => {
                             onChange={(e) => setFormData({ ...formData, aka: e.target.value })}
                         />
                     </div>
+                </div>
+
+                <div className="form-group">
+                    <label htmlFor="id_number">ID Number</label>
+                    <input
+                        type="text"
+                        id="id_number"
+                        value={formData.id_number}
+                        onChange={(e) => setFormData({ ...formData, id_number: e.target.value })}
+                        placeholder="National ID / Passport Number"
+                    />
                 </div>
 
                 <div className="form-row">

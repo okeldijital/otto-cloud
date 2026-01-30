@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { NotesService } from '../services/operations';
+import { ContractsService } from '../services/contracts';
 import DataTable from '../components/DataTable';
 import EntityForm from '../components/EntityForm';
 import { CatalogService } from '../services/catalog';
@@ -13,6 +14,9 @@ const Notes = () => {
     const [editingNote, setEditingNote] = useState(null);
     const [artists, setArtists] = useState([]);
     const [releases, setReleases] = useState([]);
+    const [contracts, setContracts] = useState([]);
+    const [tracks, setTracks] = useState([]);
+    const [works, setWorks] = useState([]);
 
     const initialFormState = {
         title: '',
@@ -47,12 +51,18 @@ const Notes = () => {
         fetchNotes();
         const fetchEntities = async () => {
             try {
-                const [artistsData, releasesData] = await Promise.all([
+                const [artistsData, releasesData, contractsData, tracksData, worksData] = await Promise.all([
                     CatalogService.getAll('artists'),
-                    CatalogService.getAll('releases')
+                    CatalogService.getAll('releases'),
+                    ContractsService.getAll(),
+                    CatalogService.getAll('tracks'),
+                    CatalogService.getAll('works'),
                 ]);
                 setArtists(artistsData);
                 setReleases(releasesData);
+                setContracts(contractsData);
+                setTracks(tracksData);
+                setWorks(worksData);
             } catch (err) {
                 console.error("Failed to fetch entities:", err);
             }
@@ -247,19 +257,33 @@ const Notes = () => {
                             <option value="">None</option>
                             <option value="artist">Artist</option>
                             <option value="release">Release</option>
+                            <option value="contract">Contract</option>
+                            <option value="track">Track</option>
+                            <option value="work">Work</option>
                         </select>
                     </div>
                     {formData.related_entity_type && (
                         <div style={{ flex: 1 }}>
-                            <label>{formData.related_entity_type === 'artist' ? 'Select Artist' : 'Select Release'}</label>
+                            <label>Select {formData.related_entity_type.charAt(0).toUpperCase() + formData.related_entity_type.slice(1)}</label>
                             <select
                                 value={formData.related_entity_id || ''}
                                 onChange={(e) => setFormData({ ...formData, related_entity_id: e.target.value })}
                             >
                                 <option value="">Select...</option>
-                                {(formData.related_entity_type === 'artist' ? artists : releases).map(item => (
-                                    <option key={item.id} value={item.id}>{item.name || item.title}</option>
-                                ))}
+                                {(() => {
+                                    let items = [];
+                                    switch (formData.related_entity_type) {
+                                        case 'artist': items = artists; break;
+                                        case 'release': items = releases; break;
+                                        case 'contract': items = contracts; break;
+                                        case 'track': items = tracks; break;
+                                        case 'work': items = works; break;
+                                        default: items = [];
+                                    }
+                                    return items.map(item => (
+                                        <option key={item.id} value={item.id}>{item.name || item.title}</option>
+                                    ));
+                                })()}
                             </select>
                         </div>
                     )}

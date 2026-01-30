@@ -8,6 +8,7 @@ class ContactBase(BaseModel):
     email: Optional[str] = None
     phone: Optional[str] = None
     role: Optional[str] = None
+    image_url: Optional[str] = None
     company_id: Optional[int] = None
 
 class ContactCreate(ContactBase):

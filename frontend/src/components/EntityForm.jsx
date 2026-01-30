@@ -1,21 +1,13 @@
 import React, { useEffect } from 'react';
 
 const EntityForm = ({ isOpen, onClose, title, children, onSubmit, isSubmitting, error }) => {
-    // Close on Escape key
-    useEffect(() => {
-        const handleEsc = (e) => {
-            if (e.key === 'Escape') onClose();
-        };
-        if (isOpen) {
-            window.addEventListener('keydown', handleEsc);
-        }
-        return () => window.removeEventListener('keydown', handleEsc);
-    }, [isOpen, onClose]);
+    // Locked modal: No Escape key listener
+    // useEffect(() => { ... }, []);
 
     if (!isOpen) return null;
 
     return (
-        <div className="modal-overlay" onClick={onClose}>
+        <div className="modal-overlay">
             <div className="modal-content" onClick={e => e.stopPropagation()}>
                 <div className="modal-header">
                     <h2>{title}</h2>

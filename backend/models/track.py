@@ -17,6 +17,7 @@ class Track(Base):
     isrc_code = Column(String(50), unique=True)  # International Standard Recording Code
     streaming_link = Column(String(500))
     artist_ids = Column(JSON)  # Array of artist IDs (can have multiple artists)
+    credits = Column(JSON)  # Array of {contact_id, role}
     file_location = Column(String(500))  # Path to audio file
     
     # Foreign Keys
@@ -30,7 +31,7 @@ class Track(Base):
     # Relationships
     release = relationship("Release", back_populates="tracks")
     work = relationship("Work", back_populates="tracks")
-    royalties = relationship("Royalty", back_populates="track")
+    royalties = relationship("Royalty", back_populates="track", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<Track {self.title}>"

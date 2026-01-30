@@ -1,16 +1,51 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 import api from '../lib/api';
 import { storage } from '../utils/storage';
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-    const [user, setUser] = useState(() => {
-        const storedUser = storage.getUser();
-        const token = storage.getToken();
-        return (storedUser && token) ? storedUser : null;
-    });
-    const loading = false;
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [statusMessage, setStatusMessage] = useState('Starting local services...');
+
+    const checkAuth = async () => {
+        let retries = 0;
+        const maxRetries = 20;
+
+        const tryCheck = async () => {
+            try {
+                setStatusMessage(`Connecting to workspace (Attempt ${retries + 1})...`);
+                const response = await api.get('/auth/me');
+                console.log('✅ Connected:', response.data);
+                storage.setUser(response.data);
+                setUser(response.data);
+                setLoading(false);
+            } catch (err) {
+                if (err.code === 'ERR_NETWORK' || !err.response) {
+                    console.warn(`📡 Backend wake up pending...`);
+                } else {
+                    console.error('❌ Connectivity issue:', err);
+                }
+
+                if (retries < maxRetries) {
+                    retries++;
+                    setTimeout(tryCheck, 1000);
+                } else {
+                    setStatusMessage('Limited connectivity detected.');
+                    const storedUser = storage.getUser();
+                    if (storedUser) setUser(storedUser);
+                    setLoading(false);
+                }
+            }
+        };
+
+        tryCheck();
+    };
+
+    useEffect(() => {
+        checkAuth();
+    }, []);
 
     const login = async (email, password) => {
         const formData = new URLSearchParams();
@@ -24,7 +59,6 @@ export const AuthProvider = ({ children }) => {
         const { access_token } = response.data;
         storage.setToken(access_token);
 
-        // Fetch user details
         const userResponse = await api.get('/auth/me');
         const userData = userResponse.data;
 
@@ -42,11 +76,14 @@ export const AuthProvider = ({ children }) => {
     const logout = () => {
         storage.clear();
         setUser(null);
+        // Force re-check to bypass login if in desktop mode
+        checkAuth();
     };
 
     const value = {
         user,
         loading,
+        statusMessage,
         login,
         register,
         logout,
@@ -56,7 +93,6 @@ export const AuthProvider = ({ children }) => {
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => {
     const context = useContext(AuthContext);
     if (!context) {

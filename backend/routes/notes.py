@@ -6,7 +6,7 @@ from database import get_db
 from models.user import User
 from models.note import Note as NoteModel
 from schemas.note import Note, NoteCreate, NoteUpdate
-from routes.auth import get_current_active_user
+from dependencies import get_current_active_user
 from utils.activity import log_activity
 
 router = APIRouter()
@@ -91,8 +91,12 @@ def delete_note(
         raise HTTPException(status_code=404, detail="Note not found")
     
     note_title = db_note.title
-    db.delete(db_note)
-    db.commit()
+    try:
+        db.delete(db_note)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=f"Could not delete note: {str(e)}")
     
     log_activity(db, current_user.id, "deleted", "note", note_id, note_title)
     

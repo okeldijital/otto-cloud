@@ -37,5 +37,10 @@ export const CatalogService = {
     getArtistReleases: async (artistId) => {
         const response = await api.get(`/catalog/artists/${artistId}/releases`);
         return response.data;
+    },
+
+    getReleaseTracks: async (releaseId) => {
+        const response = await api.get(`/catalog/releases/${releaseId}/tracks`);
+        return response.data;
     }
 };

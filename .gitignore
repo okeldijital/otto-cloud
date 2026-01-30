@@ -52,3 +52,5 @@ scheduler_config.json
 .vscode/
 *.swp
 .DS_Store
+dist-desktop/
+frontend/src-tauri/target/

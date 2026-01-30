@@ -1,18 +1,24 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { CatalogService } from '../services/catalog';
 import { DocumentsService } from '../services/operations';
 import { CRMService } from '../services/crm';
+import { BASE_URL } from '../lib/api';
 import DataTable from '../components/DataTable';
 import EntityForm from '../components/EntityForm';
 import Autocomplete from '../components/Autocomplete';
 
-const API_URL = 'http://localhost:8000';
+const API_URL = BASE_URL;
 
 const Releases = () => {
     const [releases, setReleases] = useState([]);
     const [labels, setLabels] = useState([]);
     const [artists, setArtists] = useState([]);
     const [distributors, setDistributors] = useState([]);
+    const [contacts, setContacts] = useState([]);
+    // State for new credit input
+    const [newCreditContactId, setNewCreditContactId] = useState('');
+    const [newCreditRole, setNewCreditRole] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -21,13 +27,16 @@ const Releases = () => {
 
     const [formData, setFormData] = useState({
         title: '',
+        catalog_number: '',
         upc_code: '',
         release_date: '',
         release_type: 'Album',
         label_id: '',
         artist_id: '',
+        artist_ids: [],
         distributor_id: '',
-        cover_art_url: ''
+        cover_art_url: '',
+        credits: []
     });
     const [similarReleases, setSimilarReleases] = useState([]);
 
@@ -51,12 +60,15 @@ const Releases = () => {
                 CatalogService.getAll('releases'),
                 CatalogService.getAll('labels'),
                 CatalogService.getAll('artists'),
-                CRMService.getAllDistributors()
+                CatalogService.getAll('artists'),
+                CRMService.getAllDistributors(),
+                CRMService.getContacts()
             ]);
             setReleases(releasesData);
             setLabels(labelsData);
             setArtists(artistsData);
             setDistributors(distributorsData);
+            setContacts(contactsData);
         } catch (error) {
             console.error('Failed to fetch data:', error);
         } finally {
@@ -73,11 +85,13 @@ const Releases = () => {
         setSelectedFile(null);
         setFormData({
             title: '',
+            catalog_number: '',
             upc_code: '',
             release_date: '',
             release_type: 'Album',
             label_id: '',
             artist_id: '',
+            artist_ids: [],
             distributor_id: '',
             cover_art_url: ''
         });
@@ -89,13 +103,16 @@ const Releases = () => {
         setSelectedFile(null);
         setFormData({
             title: release.title,
+            catalog_number: release.catalog_number || '',
             upc_code: release.upc_code || '',
             release_date: release.release_date ? release.release_date.split('T')[0] : '',
             release_type: release.release_type || 'Album',
             label_id: release.label_id || '',
             artist_id: release.artist_id || '',
+            artist_ids: release.artist_ids || (release.artist_id ? [release.artist_id] : []),
             distributor_id: release.distributor_id || '',
-            cover_art_url: release.cover_art_url || ''
+            cover_art_url: release.cover_art_url || '',
+            credits: release.credits || []
         });
         setIsModalOpen(true);
     };
@@ -129,6 +146,7 @@ const Releases = () => {
         if (submissionData.distributor_id === '') submissionData.distributor_id = null;
         if (submissionData.release_date === '') submissionData.release_date = null;
         if (submissionData.upc_code === '') submissionData.upc_code = null;
+        if (submissionData.catalog_number === '') submissionData.catalog_number = null;
 
         try {
             // Upload cover art if selected
@@ -158,19 +176,32 @@ const Releases = () => {
             label: 'Art',
             render: (row) => row.cover_art_url ? (
                 <img
-                    src={`${API_URL}${row.cover_art_url}`}
+                    src={row.cover_art_url.startsWith('http') ? row.cover_art_url : `${API_URL}${row.cover_art_url}`}
                     alt="Cover"
                     style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px' }}
                 />
             ) : <div style={{ width: '40px', height: '40px', background: '#ccc', borderRadius: '4px' }} />
         },
-        { key: 'title', label: 'Release Title' },
         {
-            key: 'artist_id',
-            label: 'Artist',
+            key: 'title',
+            label: 'Release Title',
+            render: (row) => (
+                <Link to={`/catalog/releases/${row.id}`} style={{ fontWeight: 600, color: 'var(--primary-color)', textDecoration: 'none' }}>
+                    {row.title}
+                </Link>
+            )
+        },
+        {
+            key: 'artist_ids',
+            label: 'Artist(s)',
             render: (row) => {
-                const artist = artists.find(a => a.id === row.artist_id);
-                return artist ? artist.name : 'Various';
+                const ids = row.artist_ids || (row.artist_id ? [row.artist_id] : []);
+                if (ids.length === 0) return 'Various';
+                if (ids.length === 1) {
+                    const artist = artists.find(a => a.id === ids[0]);
+                    return artist ? artist.name : 'Unknown';
+                }
+                return `${ids.length} Artists`;
             }
         },
         {
@@ -183,6 +214,7 @@ const Releases = () => {
         },
         { key: 'release_type', label: 'Type' },
         { key: 'release_date', label: 'Date' },
+        { key: 'catalog_number', label: 'Catalog #' },
         { key: 'upc_code', label: 'UPC' },
     ];
 
@@ -258,7 +290,7 @@ const Releases = () => {
                     {editingRelease && formData.cover_art_url && !selectedFile && (
                         <div style={{ marginTop: '0.5rem' }}>
                             <img
-                                src={`${API_URL}${formData.cover_art_url}`}
+                                src={formData.cover_art_url.startsWith('http') ? formData.cover_art_url : `${API_URL}${formData.cover_art_url}`}
                                 alt="Current Cover"
                                 style={{ width: '100px', height: '100px', objectFit: 'cover', borderRadius: '4px' }}
                             />
@@ -281,12 +313,13 @@ const Releases = () => {
                     />
                 </div>
                 <div className="form-group">
-                    <label>Artist</label>
+                    <label>Artist(s)</label>
                     <Autocomplete
                         options={artists}
-                        value={formData.artist_id}
-                        onChange={(val) => setFormData({ ...formData, artist_id: val })}
-                        placeholder="Select Artist..."
+                        value={formData.artist_ids}
+                        onChange={(val) => setFormData({ ...formData, artist_ids: val })}
+                        placeholder="Select Artist(s)..."
+                        multiple={true}
                     />
                 </div>
                 <div className="form-group">
@@ -297,6 +330,68 @@ const Releases = () => {
                         onChange={(val) => setFormData({ ...formData, distributor_id: val })}
                         placeholder="Select Distributor..."
                     />
+                </div>
+
+                <div className="form-group">
+                    <label>Credits (Engineers, Producers, etc.)</label>
+                    <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                        {formData.credits.map((credit, index) => (
+                            <div key={index} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'center' }}>
+                                <div style={{ flex: 1, padding: '0.5rem', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '0.875rem' }}>
+                                    {contacts.find(c => c.id == credit.contact_id)?.first_name} {contacts.find(c => c.id == credit.contact_id)?.last_name}
+                                </div>
+                                <div style={{ flex: 1, padding: '0.5rem', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '0.875rem' }}>
+                                    {credit.role}
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const newCredits = [...formData.credits];
+                                        newCredits.splice(index, 1);
+                                        setFormData({ ...formData, credits: newCredits });
+                                    }}
+                                    style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem' }}
+                                >
+                                    &times;
+                                </button>
+                            </div>
+                        ))}
+
+                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                            <select
+                                value={newCreditContactId}
+                                onChange={(e) => setNewCreditContactId(e.target.value)}
+                                style={{ flex: 1 }}
+                            >
+                                <option value="">Select Contact...</option>
+                                {contacts.map(c => <option key={c.id} value={c.id}>{c.first_name} {c.last_name}</option>)}
+                            </select>
+                            <input
+                                type="text"
+                                placeholder="Role (e.g. Mixer)"
+                                value={newCreditRole}
+                                onChange={(e) => setNewCreditRole(e.target.value)}
+                                style={{ flex: 1 }}
+                            />
+                            <button
+                                type="button"
+                                className="btn-secondary"
+                                disabled={!newCreditContactId || !newCreditRole}
+                                onClick={() => {
+                                    if (newCreditContactId && newCreditRole) {
+                                        setFormData({
+                                            ...formData,
+                                            credits: [...formData.credits, { contact_id: parseInt(newCreditContactId), role: newCreditRole }]
+                                        });
+                                        setNewCreditContactId('');
+                                        setNewCreditRole('');
+                                    }
+                                }}
+                            >
+                                Add
+                            </button>
+                        </div>
+                    </div>
                 </div>
                 <div className="form-group">
                     <label htmlFor="release_type">Type</label>
@@ -317,6 +412,16 @@ const Releases = () => {
                         id="release_date"
                         value={formData.release_date}
                         onChange={(e) => setFormData({ ...formData, release_date: e.target.value })}
+                    />
+                </div>
+                <div className="form-group">
+                    <label htmlFor="catalog_number">Catalog Number</label>
+                    <input
+                        type="text"
+                        id="catalog_number"
+                        value={formData.catalog_number}
+                        onChange={(e) => setFormData({ ...formData, catalog_number: e.target.value })}
+                        placeholder="M2KR0001"
                     />
                 </div>
                 <div className="form-group">

@@ -38,6 +38,14 @@ npm run dev
 
 Frontend will start on **http://localhost:5173**
 
+### 📦 Building MacOS App
+To create a standalone `.app` bundle:
+```bash
+./build.sh
+```
+This will output `OTTO-Installer-v1.0.0.zip`.
+Unzip and drag `OTTO.app` to your Applications folder.
+
 ### First Time Setup
 1. Navigate to http://localhost:5173
 2. Click "Sign up" to create an account

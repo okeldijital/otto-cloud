@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import logo from '../assets/logo.png';
+import Logo from '../components/layout/Logo';
 
 export default function Login() {
     const [email, setEmail] = useState('');
@@ -34,8 +34,8 @@ export default function Login() {
 
             <div className="auth-content">
                 <div className="auth-card">
-                    <div className="auth-logo">
-                        <img src={logo} alt="OTTO" />
+                    <div className="auth-logo" style={{ justifyContent: 'center', marginBottom: '1.5rem' }}>
+                        <Logo size="md" />
                     </div>
 
                     <h1 className="auth-title">Welcome Back</h1>

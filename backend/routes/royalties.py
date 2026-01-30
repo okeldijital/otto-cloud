@@ -6,7 +6,7 @@ from database import get_db
 from models.user import User
 from models.royalty import Royalty as RoyaltyModel
 from schemas.royalty import Royalty, RoyaltyCreate, RoyaltyUpdate
-from routes.auth import get_current_active_user
+from dependencies import get_current_active_user
 
 router = APIRouter()
 

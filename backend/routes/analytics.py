@@ -12,7 +12,7 @@ from models.work import Work
 from models.contract import Contract
 from models.royalty import Royalty
 from models.event import Event
-from routes.auth import get_current_active_user
+from dependencies import get_current_active_user
 
 router = APIRouter()
 

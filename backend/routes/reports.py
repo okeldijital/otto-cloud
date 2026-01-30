@@ -13,7 +13,7 @@ from models.release import Release
 from models.work import Work
 from models.task import Task
 from models.event import Event
-from routes.auth import get_current_active_user
+from dependencies import get_current_active_user
 
 router = APIRouter()
 

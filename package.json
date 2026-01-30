@@ -1,0 +1,16 @@
+{
+    "name": "otto-root",
+    "version": "1.0.1",
+    "private": true,
+    "scripts": {
+        "postinstall": "cd frontend && npm install && cd ../backend && pip install -r requirements.txt",
+        "tauri": "cd frontend && npm run tauri",
+        "tauri:dev": "cd frontend && npm run tauri dev",
+        "tauri:build": "cd frontend && npm run tauri build",
+        "build:backend": "./backend/build_sidecar.sh",
+        "run-otto": "npm run tauri:dev"
+    },
+    "devDependencies": {
+        "@tauri-apps/cli": "^2.0.0"
+    }
+}

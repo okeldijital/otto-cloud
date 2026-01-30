@@ -1,21 +1,32 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, X, ChevronDown } from 'lucide-react';
+import { Search, X, ChevronDown, Check } from 'lucide-react';
 
 const Autocomplete = ({
     options = [],
-    value,
+    value, // id or array of ids
     onChange,
     placeholder = 'Select...',
     labelKey = 'name',
     valueKey = 'id',
     disabled = false,
+    multiple = false,
     className = ''
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [search, setSearch] = useState('');
     const containerRef = useRef(null);
 
-    const selectedOption = options.find(opt => opt[valueKey] === value);
+    // Helper to get selected options
+    const getSelectedOptions = () => {
+        if (multiple) {
+            return Array.isArray(value)
+                ? options.filter(opt => value.includes(opt[valueKey]))
+                : [];
+        }
+        return options.find(opt => opt[valueKey] === value);
+    };
+
+    const selectedOptions = getSelectedOptions();
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -32,24 +43,73 @@ const Autocomplete = ({
     );
 
     const handleSelect = (opt) => {
-        onChange(opt[valueKey]);
-        setIsOpen(false);
+        const optValue = opt[valueKey];
+        if (multiple) {
+            const currentValues = Array.isArray(value) ? value : [];
+            if (currentValues.includes(optValue)) {
+                onChange(currentValues.filter(v => v !== optValue));
+            } else {
+                onChange([...currentValues, optValue]);
+            }
+            // Keep open for multiple selection
+        } else {
+            onChange(optValue);
+            setIsOpen(false);
+        }
         setSearch('');
     };
 
+    const handleRemove = (e, optValue) => {
+        e.stopPropagation();
+        if (multiple) {
+            onChange(value.filter(v => v !== optValue));
+        } else {
+            onChange('');
+        }
+    };
+
+    const isSelected = (optValue) => {
+        if (multiple) {
+            return Array.isArray(value) && value.includes(optValue);
+        }
+        return value === optValue;
+    };
+
     return (
-        <div className={`autocomplete-container ${className}`} ref={containerRef}>
+        <div className={`autocomplete-container ${className} ${multiple ? 'is-multiple' : ''}`} ref={containerRef}>
             <div
-                className={`autocomplete-trigger ${disabled ? 'disabled' : ''} ${isOpen ? 'active' : ''}`}
+                className={`autocomplete-trigger ${disabled ? 'disabled' : ''} ${isOpen ? 'active' : ''} ${multiple && selectedOptions.length > 0 ? 'has-chips' : ''}`}
                 onClick={() => !disabled && setIsOpen(!isOpen)}
             >
-                {selectedOption ? (
-                    <span className="selected-text">{selectedOption[labelKey]}</span>
-                ) : (
-                    <span className="placeholder">{placeholder}</span>
-                )}
+                <div className="trigger-main">
+                    {multiple ? (
+                        <div className="chips-container">
+                            {selectedOptions.length > 0 ? (
+                                selectedOptions.map(opt => (
+                                    <span key={opt[valueKey]} className="chip">
+                                        {opt[labelKey]}
+                                        {!disabled && (
+                                            <button className="chip-remove" onClick={(e) => handleRemove(e, opt[valueKey])}>
+                                                <X size={12} />
+                                            </button>
+                                        )}
+                                    </span>
+                                ))
+                            ) : (
+                                <span className="placeholder">{placeholder}</span>
+                            )}
+                        </div>
+                    ) : (
+                        selectedOptions ? (
+                            <span className="selected-text">{selectedOptions[labelKey]}</span>
+                        ) : (
+                            <span className="placeholder">{placeholder}</span>
+                        )
+                    )}
+                </div>
+
                 <div className="trigger-icons">
-                    {selectedOption && !disabled && (
+                    {!multiple && selectedOptions && !disabled && (
                         <button
                             className="clear-btn"
                             onClick={(e) => {
@@ -81,10 +141,13 @@ const Autocomplete = ({
                             filteredOptions.map(opt => (
                                 <div
                                     key={opt[valueKey]}
-                                    className={`option-item ${opt[valueKey] === value ? 'selected' : ''}`}
+                                    className={`option-item ${isSelected(opt[valueKey]) ? 'selected' : ''}`}
                                     onClick={() => handleSelect(opt)}
                                 >
-                                    {opt[labelKey]}
+                                    <div className="option-content">
+                                        {opt[labelKey]}
+                                        {multiple && isSelected(opt[valueKey]) && <Check size={14} className="check-icon" />}
+                                    </div>
                                 </div>
                             ))
                         ) : (
@@ -108,9 +171,46 @@ const Autocomplete = ({
                     border-radius: 0.375rem;
                     background: white;
                     cursor: pointer;
-                    min-height: 40px;
+                    min-height: 42px;
                     transition: all 0.2s;
                 }
+                .autocomplete-trigger.has-chips {
+                    padding: 0.375rem;
+                }
+                .trigger-main {
+                    flex: 1;
+                    display: flex;
+                    align-items: center;
+                    overflow: hidden;
+                }
+                .chips-container {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 0.375rem;
+                }
+                .chip {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 0.25rem;
+                    background: #eff6ff;
+                    color: var(--accent-color);
+                    border: 1px solid #dbeafe;
+                    padding: 0.125rem 0.5rem;
+                    border-radius: 0.25rem;
+                    font-size: 0.8125rem;
+                    font-weight: 500;
+                }
+                .chip-remove {
+                    border: none;
+                    background: none;
+                    padding: 0;
+                    display: flex;
+                    align-items: center;
+                    cursor: pointer;
+                    color: #60a5fa;
+                }
+                .chip-remove:hover { color: var(--accent-color); }
+                
                 .autocomplete-trigger:hover:not(.disabled) {
                     border-color: var(--accent-color);
                 }
@@ -126,7 +226,7 @@ const Autocomplete = ({
                 .selected-text { color: var(--text-color); font-weight: 500; }
                 .placeholder { color: var(--text-muted); font-size: 0.875rem; }
                 
-                .trigger-icons { display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted); }
+                .trigger-icons { display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted); padding-left: 0.5rem; }
                 .clear-btn {
                     border: none;
                     background: none;
@@ -158,7 +258,7 @@ const Autocomplete = ({
                     display: flex;
                     align-items: center;
                     gap: 0.5rem;
-                    padding: 0.5rem 0.75rem;
+                    padding: 0.55rem 0.75rem;
                     border-bottom: 1px solid var(--border-color);
                     background: #f8fafc;
                 }
@@ -184,8 +284,14 @@ const Autocomplete = ({
                 .option-item.selected { 
                     background: #eff6ff; 
                     color: var(--accent-color); 
-                    font-weight: 600; 
                 }
+                .option-content {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                }
+                .check-icon { color: var(--accent-color); }
+                
                 .no-options {
                     padding: 1.5rem;
                     text-align: center;

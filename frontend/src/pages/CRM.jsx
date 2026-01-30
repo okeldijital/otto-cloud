@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { CRMService } from '../services/crm';
+import { DocumentsService } from '../services/operations';
+import { BASE_URL } from '../lib/api';
 import DataTable from '../components/DataTable';
 import EntityForm from '../components/EntityForm';
-import { Building2, UserCircle2, Mail, Phone, Globe, Plus, Search } from 'lucide-react';
+import { Building2, UserCircle2, Mail, Phone, Globe, Plus, Search, Camera, User } from 'lucide-react';
+
+const API_URL = BASE_URL;
 
 const CRM = () => {
     const [activeTab, setActiveTab] = useState('companies');
@@ -14,9 +18,19 @@ const CRM = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const initialCompanyState = { name: '', type: 'Distributor', website: '', address: '' };
-    const initialContactState = { first_name: '', last_name: '', email: '', phone: '', role: '', company_id: '' };
+    const initialContactState = { first_name: '', last_name: '', email: '', phone: '', role: '', company_id: '', image_url: '' };
 
     const [formData, setFormData] = useState(initialCompanyState);
+    const [selectedImage, setSelectedImage] = useState(null);
+    const [imagePreview, setImagePreview] = useState(null);
+
+    const handleImageChange = (e) => {
+        if (e.target.files && e.target.files.length > 0) {
+            const file = e.target.files[0];
+            setSelectedImage(file);
+            setImagePreview(URL.createObjectURL(file));
+        }
+    };
 
     const fetchData = async () => {
         setIsLoading(true);
@@ -40,12 +54,18 @@ const CRM = () => {
 
     const handleCreate = () => {
         setEditingItem(null);
+        setSelectedImage(null);
+        setImagePreview(null);
         setFormData(activeTab === 'companies' ? initialCompanyState : initialContactState);
         setIsModalOpen(true);
     };
 
     const handleEdit = (item) => {
         setEditingItem(item);
+        if (activeTab === 'contacts') {
+            setSelectedImage(null);
+            setImagePreview(item.image_url ? (item.image_url.startsWith('http') ? item.image_url : `${API_URL}${item.image_url}`) : null);
+        }
         setFormData(item);
         setIsModalOpen(true);
     };
@@ -71,7 +91,20 @@ const CRM = () => {
                 if (editingItem) await CRMService.updateCompany(editingItem.id, formData);
                 else await CRMService.createCompany(formData);
             } else {
-                const submitData = { ...formData };
+                let imageUrl = formData.image_url;
+
+                if (selectedImage) {
+                    try {
+                        const uploaded = await DocumentsService.upload(selectedImage);
+                        imageUrl = uploaded.file_path;
+                    } catch (err) {
+                        console.error('Failed to upload image:', err);
+                        alert('Failed to upload image');
+                        return;
+                    }
+                }
+
+                const submitData = { ...formData, image_url: imageUrl };
                 if (submitData.company_id === '') submitData.company_id = null;
                 if (editingItem) await CRMService.updateContact(editingItem.id, submitData);
                 else await CRMService.createContact(submitData);
@@ -115,9 +148,19 @@ const CRM = () => {
             label: 'Contact',
             render: (row) => (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <div className="crm-icon contact"><UserCircle2 size={16} /></div>
+                    <div className="crm-icon contact" style={{ overflow: 'hidden', padding: 0 }}>
+                        {row.image_url ? (
+                            <img
+                                src={row.image_url.startsWith('http') ? row.image_url : `${API_URL}${row.image_url}`}
+                                alt={row.first_name}
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            />
+                        ) : (
+                            <UserCircle2 size={16} />
+                        )}
+                    </div>
                     <span style={{ fontWeight: 600 }}>{row.first_name} {row.last_name}</span>
-                </div>
+                </div >
             )
         },
         { key: 'role', label: 'Role' },
@@ -222,6 +265,28 @@ const CRM = () => {
                     </>
                 ) : (
                     <>
+                        <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+                            <div style={{ position: 'relative', width: '80px', height: '80px', borderRadius: '50%', overflow: 'hidden', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #e2e8f0' }}>
+                                {imagePreview ? (
+                                    <img src={imagePreview} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                ) : (
+                                    <User size={32} color="#94a3b8" />
+                                )}
+                            </div>
+                            <div>
+                                <label htmlFor="contact-image-upload" className="btn-secondary" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <Camera size={16} /> Upload Photo
+                                </label>
+                                <input
+                                    type="file"
+                                    id="contact-image-upload"
+                                    accept="image/*"
+                                    onChange={handleImageChange}
+                                    style={{ display: 'none' }}
+                                />
+                            </div>
+                        </div>
+
                         <div className="form-row">
                             <div className="form-group flex-1">
                                 <label>First Name</label>

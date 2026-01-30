@@ -18,7 +18,7 @@ from schemas.work import Work, WorkCreate, WorkUpdate
 from schemas.label import Label, LabelCreate, LabelUpdate
 from schemas.publisher import Publisher, PublisherCreate, PublisherUpdate
 from schemas.pro import PRO, PROCreate, PROUpdate
-from routes.auth import get_current_active_user
+from dependencies import get_current_active_user
 
 router = APIRouter()
 
@@ -96,9 +96,16 @@ def delete_artist(
     if not db_artist:
         raise HTTPException(status_code=404, detail="Artist not found")
     
-    db.delete(db_artist)
-    db.delete(db_artist)
-    db.commit()
+    from sqlalchemy.exc import IntegrityError
+    try:
+        db.delete(db_artist)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cannot delete artist because they are linked to releases, tracks, or contracts."
+        )
     return None
 
 
@@ -109,7 +116,21 @@ def get_artist_releases(
     current_user: User = Depends(get_current_active_user)
 ):
     """Get all releases for a specific artist"""
-    releases = db.query(ReleaseModel).filter(ReleaseModel.artist_id == artist_id).all()
+    # Check both primary artist_id and the artist_ids JSON list
+    from sqlalchemy import or_, func
+    releases = db.query(ReleaseModel).filter(
+        or_(
+            ReleaseModel.artist_id == artist_id,
+            # This is a bit tricky with SQLite JSON, but we can use JSON_EACH or similar if available
+            # For simplicity and portability across typical setups:
+            func.json_extract(func.coalesce(ReleaseModel.artist_ids, '[]'), '$').contains(artist_id)
+        )
+    ).all()
+    # Fallback for simpler search if json_extract is not happy with the above
+    if not releases:
+        all_releases = db.query(ReleaseModel).all()
+        releases = [r for r in all_releases if (r.artist_id == artist_id or (r.artist_ids and artist_id in r.artist_ids))]
+    
     return releases
 
 
@@ -175,6 +196,17 @@ def update_release(
     return db_release
 
 
+@router.get("/releases/{release_id}/tracks", response_model=List[Track])
+def get_release_tracks(
+    release_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Get all tracks for a specific release"""
+    tracks = db.query(TrackModel).filter(TrackModel.release_id == release_id).all()
+    return tracks
+
+
 @router.delete("/releases/{release_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_release(
     release_id: int,
@@ -185,9 +217,22 @@ def delete_release(
     db_release = db.query(ReleaseModel).filter(ReleaseModel.id == release_id).first()
     if not db_release:
         raise HTTPException(status_code=404, detail="Release not found")
-    
-    db.delete(db_release)
-    db.commit()
+    from sqlalchemy.exc import IntegrityError
+    try:
+        db.delete(db_release)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cannot delete release because it is linked to other records (e.g. tracks, contracts)."
+        )
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Could not delete release: {str(e)}"
+        )
     return None
 
 
@@ -264,8 +309,19 @@ def delete_track(
     if not db_track:
         raise HTTPException(status_code=404, detail="Track not found")
     
-    db.delete(db_track)
-    db.commit()
+    from sqlalchemy.exc import IntegrityError
+    try:
+        db.delete(db_track)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cannot delete track because it is linked to other records (e.g. contracts, playlists)."
+        )
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=f"Could not delete track: {str(e)}")
     return None
 
 
@@ -342,8 +398,16 @@ def delete_work(
     if not db_work:
         raise HTTPException(status_code=404, detail="Work not found")
     
-    db.delete(db_work)
-    db.commit()
+    from sqlalchemy.exc import IntegrityError
+    try:
+        db.delete(db_work)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cannot delete work because it is linked to other records."
+        )
     return None
 
 
@@ -420,8 +484,16 @@ def delete_label(
     if not db_label:
         raise HTTPException(status_code=404, detail="Label not found")
     
-    db.delete(db_label)
-    db.commit()
+    from sqlalchemy.exc import IntegrityError
+    try:
+        db.delete(db_label)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cannot delete label because it is associated with artists or releases."
+        )
     return None
 
 
@@ -498,8 +570,16 @@ def delete_publisher(
     if not db_publisher:
         raise HTTPException(status_code=404, detail="Publisher not found")
     
-    db.delete(db_publisher)
-    db.commit()
+    from sqlalchemy.exc import IntegrityError
+    try:
+        db.delete(db_publisher)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cannot delete publisher because it is associated with artists or works."
+        )
     return None
 
 
@@ -576,6 +656,14 @@ def delete_pro(
     if not db_pro:
         raise HTTPException(status_code=404, detail="PRO not found")
     
-    db.delete(db_pro)
-    db.commit()
+    from sqlalchemy.exc import IntegrityError
+    try:
+        db.delete(db_pro)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cannot delete PRO because it is linked to artists."
+        )
     return None

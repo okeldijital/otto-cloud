@@ -6,7 +6,7 @@ from database import get_db
 from models.user import User
 from models.contract import Contract as ContractModel
 from schemas.contract import Contract, ContractCreate, ContractUpdate
-from routes.auth import get_current_active_user
+from dependencies import get_current_active_user
 
 router = APIRouter()
 
@@ -82,6 +82,17 @@ def delete_contract(
     if not db_contract:
         raise HTTPException(status_code=404, detail="Contract not found")
     
-    db.delete(db_contract)
-    db.commit()
+    from sqlalchemy.exc import IntegrityError
+    try:
+        db.delete(db_contract)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cannot delete contract because it is linked to other records."
+        )
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=f"Could not delete contract: {str(e)}")
     return None

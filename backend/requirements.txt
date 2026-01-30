@@ -18,3 +18,5 @@ aiofiles==23.2.1
 httpx==0.26.0
 email-validator
 bcrypt==4.0.1
+APScheduler
+pywebview

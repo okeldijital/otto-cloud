@@ -1,43 +1,77 @@
+import os
+import sys
+import platform
+import logging
+from pathlib import Path
 from pydantic_settings import BaseSettings
 from typing import Optional
-import os
 
+# PACKAGED DETECTION
+IS_PACKAGED = getattr(sys, 'frozen', False)
 
 class Settings(BaseSettings):
     """Application configuration settings"""
     
-    # App
-    APP_NAME: str = "OTTO - Record Label Operating System"
+    APP_NAME: str = "OTTO"
     APP_VERSION: str = "1.0.0"
-    DEBUG: bool = True
+    APP_ENV: str = "development"
     
-    # Database
-    DATABASE_URL: str = f"sqlite:///{os.path.abspath(os.path.join(os.path.dirname(__file__), 'otto.db'))}"
-    # For PostgreSQL, use: postgresql://user:password@localhost/otto
+    # Paths (initialized in __init__)
+    DATABASE_URL: str = ""
+    UPLOAD_DIR: str = ""
+    LOG_FILE: str = ""
     
-    # JWT Authentication
-    SECRET_KEY: str = "your-secret-key-change-in-production"
+    # Desktop Settings
+    AUTH_DISABLED: bool = False
+    DEBUG: bool = False
+    PORT: int = 18000 # Use high port to avoid conflicts
+    
+    # Security
+    SECRET_KEY: str = "otto-internal-secret-key-development"
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 
     
-    # File Storage
-    UPLOAD_DIR: str = "./uploads"
-    MAX_UPLOAD_SIZE: int = 100 * 1024 * 1024  # 100MB
-    ALLOWED_EXTENSIONS: list = [
-        "pdf", "doc", "docx", "xls", "xlsx", 
-        "png", "jpg", "jpeg", "svg", "gif",
-        "mp3", "wav", "flac", "m4a",
-        "txt", "md", "csv", "json"
-    ]
-    
-    # CORS
-    CORS_ORIGINS: list = ["http://localhost:5173", "http://localhost:3000"]
-    
-    # External APIs (for metadata enrichment)
-    SPOTIFY_CLIENT_ID: Optional[str] = None
-    SPOTIFY_CLIENT_SECRET: Optional[str] = None
-    MUSICBRAINZ_USER_AGENT: str = "OTTO/1.0.0"
-    
+    CORS_ORIGINS: list = ["*"]
+
+    # Storage
+    MAX_UPLOAD_SIZE: int = 100 * 1024 * 1024 
+    ALLOWED_EXTENSIONS: list = ["pdf", "png", "jpg", "mp3", "wav", "docx", "xlsx"]
+
+    def __init__(self, **values):
+        super().__init__(**values)
+        
+        # Determine Environment
+        env_from_os = os.getenv("APP_ENV", "").lower()
+        if IS_PACKAGED or env_from_os == "desktop":
+            self.APP_ENV = "desktop"
+            self.AUTH_DISABLED = True
+            self.DEBUG = False
+        else:
+            self.APP_ENV = env_from_os if env_from_os else "development"
+            self.DEBUG = True
+
+        # Resolve Data Directory
+        if self.APP_ENV == "desktop":
+            if platform.system() == "Darwin":
+                data_parent = Path.home() / "Library/Application Support/OTTO"
+            elif platform.system() == "Windows":
+                data_parent = Path.home() / "AppData/Local/OTTO"
+            else:
+                data_parent = Path.home() / ".local/share/OTTO"
+        else:
+            # Dev local folder
+            data_parent = Path(os.path.abspath(os.path.dirname(__file__))) / "otto_data"
+
+        data_parent.mkdir(parents=True, exist_ok=True)
+        db_dir = data_parent / "db"
+        storage_dir = data_parent / "storage"
+        db_dir.mkdir(exist_ok=True)
+        storage_dir.mkdir(exist_ok=True)
+        
+        self.DATABASE_URL = f"sqlite:///{db_dir}/app.db"
+        self.UPLOAD_DIR = str(storage_dir)
+        self.LOG_FILE = str(data_parent / "otto_backend.log")
+
     class Config:
         env_file = ".env"
         case_sensitive = True

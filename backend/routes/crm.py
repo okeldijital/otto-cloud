@@ -6,7 +6,7 @@ from database import get_db
 from models.user import User
 from models.crm import Company as CompanyModel, Contact as ContactModel
 from schemas.crm import Company, CompanyCreate, CompanyUpdate, Contact, ContactCreate, ContactUpdate
-from routes.auth import get_current_active_user
+from dependencies import get_current_active_user
 
 router = APIRouter()
 
@@ -78,8 +78,19 @@ def delete_company(
     if not db_company:
         raise HTTPException(status_code=404, detail="Company not found")
     
-    db.delete(db_company)
-    db.commit()
+    from sqlalchemy.exc import IntegrityError
+    try:
+        db.delete(db_company)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cannot delete company because it has associated contacts or releases."
+        )
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=f"Could not delete company: {str(e)}")
     return None
 
 # ==================== CONTACTS ====================
@@ -150,6 +161,10 @@ def delete_contact(
     if not db_contact:
         raise HTTPException(status_code=404, detail="Contact not found")
     
-    db.delete(db_contact)
-    db.commit()
+    try:
+        db.delete(db_contact)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=f"Could not delete contact: {str(e)}")
     return None

@@ -6,7 +6,7 @@ from typing import Annotated
 
 from database import get_db
 from models.user import User
-from schemas.user import UserCreate, User as UserSchema
+from schemas.user import UserCreate, User as UserSchema, UserUpdate
 from schemas.auth import Token
 from utils.security import verify_password, get_password_hash, create_access_token
 from config import settings
@@ -14,34 +14,8 @@ from jose import JWTError, jwt
 
 router = APIRouter()
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/token")
-
-
-async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], db: Session = Depends(get_db)):
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        email: str = payload.get("sub")
-        if email is None:
-            raise credentials_exception
-    except JWTError:
-        raise credentials_exception
-    
-    user = db.query(User).filter(User.email == email).first()
-    if user is None:
-        raise credentials_exception
-    return user
-
-
-async def get_current_active_user(current_user: Annotated[User, Depends(get_current_user)]):
-    if not current_user.is_active:
-        raise HTTPException(status_code=400, detail="Inactive user")
-    return current_user
-
+from dependencies import get_current_user, get_current_active_user
+from database import init_db
 
 async def get_current_admin_user(current_user: Annotated[User, Depends(get_current_active_user)]):
     if current_user.role != "admin" and not current_user.is_superuser:
@@ -93,4 +67,26 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
 
 @router.get("/me", response_model=UserSchema)
 async def read_users_me(current_user: Annotated[User, Depends(get_current_active_user)]):
+    return current_user
+
+
+@router.put("/me", response_model=UserSchema)
+async def update_user_me(
+    user_update: UserUpdate,
+    db: Session = Depends(get_db),
+    current_user: Annotated[User, Depends(get_current_active_user)]
+):
+    """Update current user profile"""
+    update_data = user_update.model_dump(exclude_unset=True)
+    
+    if "password" in update_data and update_data["password"]:
+        update_data["hashed_password"] = get_password_hash(update_data.pop("password"))
+    elif "password" in update_data:
+        update_data.pop("password")
+        
+    for field, value in update_data.items():
+        setattr(current_user, field, value)
+    
+    db.commit()
+    db.refresh(current_user)
     return current_user

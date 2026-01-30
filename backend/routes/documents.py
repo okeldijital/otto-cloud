@@ -6,7 +6,7 @@ from database import get_db
 from models.user import User
 from models.document import Document as DocumentModel
 from schemas.document import Document, DocumentCreate, DocumentUpdate
-from routes.auth import get_current_active_user
+from dependencies import get_current_active_user
 from fastapi import File, UploadFile
 import shutil
 import os

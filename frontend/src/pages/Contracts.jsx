@@ -12,6 +12,8 @@ const Contracts = () => {
     const [artists, setArtists] = useState([]);
     const [labels, setLabels] = useState([]);
     const [publishers, setPublishers] = useState([]);
+    const [releases, setReleases] = useState([]);
+    const [works, setWorks] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -22,17 +24,15 @@ const Contracts = () => {
     // Initial State
     const initialFormState = {
         title: '',
-        contract_id: '',
         status: 'Active',
-        artist_id: '',
         label_id: '',
         publisher_id: '',
+        artist_ids: [],
+        work_ids: [],
+        release_ids: [],
         start_date: '',
         end_date: '',
-        royalty_rate: '',
-        terms: '',
-        file_path: '',
-        is_template: false
+        file_path: ''
     };
     const [formData, setFormData] = useState(initialFormState);
 
@@ -43,12 +43,17 @@ const Contracts = () => {
                 ContractsService.getAll(),
                 CatalogService.getAll('artists'),
                 CatalogService.getAll('labels'),
-                CatalogService.getAll('publishers')
+                CatalogService.getAll('labels'),
+                CatalogService.getAll('publishers'),
+                CatalogService.getAll('releases'),
+                CatalogService.getAll('works')
             ]);
             setContracts(contractsData);
             setArtists(artistsData);
             setLabels(labelsData);
             setPublishers(publishersData);
+            setReleases(releasesData);
+            setWorks(worksData);
         } catch (error) {
             console.error('Failed to fetch data:', error);
         } finally {
@@ -75,17 +80,15 @@ const Contracts = () => {
         setSelectedFile(null);
         setFormData({
             title: contract.title || '',
-            contract_id: contract.contract_id || '',
             status: contract.status || 'Active',
-            artist_id: contract.artist_id || '',
             label_id: contract.label_id || '',
             publisher_id: contract.publisher_id || '',
+            artist_ids: contract.artist_ids || [],
+            work_ids: contract.work_ids || [],
+            release_ids: contract.release_ids || [],
             start_date: contract.start_date ? contract.start_date.split('T')[0] : '',
             end_date: contract.end_date ? contract.end_date.split('T')[0] : '',
-            royalty_rate: contract.royalty_rate || '',
-            terms: contract.terms || '',
-            file_path: contract.file_path || '',
-            is_template: contract.is_template || false
+            file_path: contract.file_path || ''
         });
         setIsModalOpen(true);
     };
@@ -114,10 +117,8 @@ const Contracts = () => {
 
         // Clean up data before sending
         const submitData = { ...formData };
-        if (submitData.royalty_rate === '') submitData.royalty_rate = null;
         if (submitData.start_date === '') submitData.start_date = null;
         if (submitData.end_date === '') submitData.end_date = null;
-        if (submitData.artist_id === '') submitData.artist_id = null;
         if (submitData.label_id === '') submitData.label_id = null;
         if (submitData.publisher_id === '') submitData.publisher_id = null;
 
@@ -144,7 +145,6 @@ const Contracts = () => {
     };
 
     const columns = [
-        { key: 'contract_id', label: 'Ref ID' },
         { key: 'title', label: 'Title' },
         {
             key: 'status',
@@ -155,22 +155,20 @@ const Contracts = () => {
                     borderRadius: '999px',
                     fontSize: '12px',
                     fontWeight: '600',
-                    backgroundColor: row.status === 'Active' ? '#dcfce7' : row.status === 'Expired' ? '#fee2e2' : '#f3f4f6',
-                    color: row.status === 'Active' ? '#166534' : row.status === 'Expired' ? '#991b1b' : '#374151'
+                    backgroundColor: row.status === 'Active' ? '#dcfce7' : row.status === 'Expired' ? '#fee2e2' : row.status === 'Partially Signed' ? '#fef3c7' : '#f3f4f6',
+                    color: row.status === 'Active' ? '#166534' : row.status === 'Expired' ? '#991b1b' : row.status === 'Partially Signed' ? '#92400e' : '#374151'
                 }}>
                     {row.status || 'Draft'}
                 </span>
             )
         },
         {
-            key: 'party',
-            label: 'Party',
-            render: (row) => {
-                if (row.artist_id) return artists.find(a => a.id === row.artist_id)?.name || '-';
-                if (row.publisher_id) return publishers.find(p => p.id === row.publisher_id)?.name || '-';
-                if (row.label_id) return labels.find(l => l.id === row.label_id)?.name || '-';
-                return '-';
-            }
+            key: 'artists',
+            label: 'Artists',
+            render: (row) => Array.isArray(row.artist_ids) && row.artist_ids.length > 0 ?
+                <span title={row.artist_ids.map(id => artists.find(a => a.id === id)?.name).join(', ')}>
+                    {row.artist_ids.length} Artist{row.artist_ids.length > 1 ? 's' : ''}
+                </span> : '-'
         },
         { key: 'start_date', label: 'Start Date' },
         { key: 'end_date', label: 'End Date' },
@@ -191,39 +189,28 @@ const Contracts = () => {
         }
     ];
 
-    const filteredContracts = contracts.filter(c =>
-        activeTab === 'contracts' ? !c.is_template : c.is_template
-    );
-
     return (
         <div className="entity-page">
             <div className="page-header">
                 <h1 className="page-title">Contracts Registry</h1>
                 <button className="btn-primary" onClick={handleCreate}>
-                    + Add {activeTab === 'templates' ? 'Template' : 'Contract'}
+                    + Add Contract
                 </button>
             </div>
 
             <div className="detail-tabs" style={{ marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', gap: '2rem' }}>
                 <button
-                    className={`tab-btn ${activeTab === 'contracts' ? 'active' : ''}`}
+                    className="tab-btn active"
                     onClick={() => setActiveTab('contracts')}
-                    style={{ background: 'none', border: 'none', padding: '0.75rem 0', cursor: 'pointer', borderBottom: activeTab === 'contracts' ? '2px solid var(--primary-color)' : 'none', color: activeTab === 'contracts' ? 'var(--primary-color)' : 'var(--text-muted)', fontWeight: 600 }}
+                    style={{ background: 'none', border: 'none', padding: '0.75rem 0', cursor: 'pointer', borderBottom: '2px solid var(--primary-color)', color: 'var(--primary-color)', fontWeight: 600 }}
                 >
-                    Contracts
-                </button>
-                <button
-                    className={`tab-btn ${activeTab === 'templates' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('templates')}
-                    style={{ background: 'none', border: 'none', padding: '0.75rem 0', cursor: 'pointer', borderBottom: activeTab === 'templates' ? '2px solid var(--primary-color)' : 'none', color: activeTab === 'templates' ? 'var(--primary-color)' : 'var(--text-muted)', fontWeight: 600 }}
-                >
-                    Templates
+                    All Contracts
                 </button>
             </div>
 
             <DataTable
                 columns={columns}
-                data={filteredContracts}
+                data={contracts}
                 isLoading={isLoading}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
@@ -232,37 +219,20 @@ const Contracts = () => {
             <EntityForm
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
-                title={
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        {editingContract ? 'Edit' : 'New'} {formData.is_template ? 'Template' : 'Contract'}
-                        {formData.is_template && <span style={{ fontSize: '0.75rem', padding: '2px 6px', background: '#fef3c7', color: '#92400e', borderRadius: '4px', fontWeight: 600 }}>TEMPLATE</span>}
-                    </div>
-                }
+                title={editingContract ? 'Edit Contract' : 'New Contract'}
                 onSubmit={handleSubmit}
                 isSubmitting={isSubmitting}
             >
-                <div className="form-row">
-                    <div className="form-group">
-                        <label htmlFor="title">Contract Title</label>
-                        <input
-                            type="text"
-                            id="title"
-                            value={formData.title}
-                            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                            placeholder="e.g. 360 Deal 2024"
-                            autoFocus
-                        />
-                    </div>
-                    <div className="form-group">
-                        <label htmlFor="contract_id">Ref ID</label>
-                        <input
-                            type="text"
-                            id="contract_id"
-                            value={formData.contract_id}
-                            onChange={(e) => setFormData({ ...formData, contract_id: e.target.value })}
-                            required
-                        />
-                    </div>
+                <div className="form-group">
+                    <label htmlFor="title">Contract Title</label>
+                    <input
+                        type="text"
+                        id="title"
+                        value={formData.title}
+                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                        placeholder="e.g. 360 Deal 2024"
+                        autoFocus
+                    />
                 </div>
 
                 <div className="form-row">
@@ -274,54 +244,71 @@ const Contracts = () => {
                             onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                         >
                             <option value="Draft">Draft</option>
+                            <option value="Partially Signed">Partially Signed</option>
                             <option value="Active">Active</option>
                             <option value="Expired">Expired</option>
                             <option value="Terminated">Terminated</option>
                         </select>
                     </div>
+                </div>
+
+                <div className="form-group">
+                    <label>Involved Artists (hold Cmd/Ctrl to select multiple)</label>
+                    <select
+                        multiple
+                        value={formData.artist_ids}
+                        onChange={(e) => setFormData({ ...formData, artist_ids: Array.from(e.target.selectedOptions, option => parseInt(option.value)) })}
+                        style={{ height: '100px' }}
+                    >
+                        {artists.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                    </select>
+                </div>
+
+                <div className="form-row">
                     <div className="form-group">
-                        <label htmlFor="royalty_rate">Royalty Rate (%)</label>
-                        <input
-                            type="number"
-                            step="0.01"
-                            id="royalty_rate"
-                            value={formData.royalty_rate}
-                            onChange={(e) => setFormData({ ...formData, royalty_rate: e.target.value })}
-                        />
+                        <label>Label (Optional)</label>
+                        <select
+                            value={formData.label_id}
+                            onChange={(e) => setFormData({ ...formData, label_id: e.target.value })}
+                        >
+                            <option value="">Select Label...</option>
+                            {labels.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                        </select>
+                    </div>
+                    <div className="form-group">
+                        <label>Publisher (Optional)</label>
+                        <select
+                            value={formData.publisher_id}
+                            onChange={(e) => setFormData({ ...formData, publisher_id: e.target.value })}
+                        >
+                            <option value="">Select Publisher...</option>
+                            {publishers.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                        </select>
                     </div>
                 </div>
 
                 <div className="form-group">
-                    <label>Party (Select One)</label>
-                    <div className="form-row">
-                        <select
-                            value={formData.artist_id}
-                            onChange={(e) => setFormData({ ...formData, artist_id: e.target.value, label_id: '', publisher_id: '' })}
-                            disabled={formData.label_id || formData.publisher_id}
-                            className={formData.label_id || formData.publisher_id ? 'disabled-select' : ''}
-                        >
-                            <option value="">Artist...</option>
-                            {artists.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                        </select>
-                        <select
-                            value={formData.label_id}
-                            onChange={(e) => setFormData({ ...formData, label_id: e.target.value, artist_id: '', publisher_id: '' })}
-                            disabled={formData.artist_id || formData.publisher_id}
-                            className={formData.artist_id || formData.publisher_id ? 'disabled-select' : ''}
-                        >
-                            <option value="">Label...</option>
-                            {labels.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-                        </select>
-                        <select
-                            value={formData.publisher_id}
-                            onChange={(e) => setFormData({ ...formData, publisher_id: e.target.value, artist_id: '', label_id: '' })}
-                            disabled={formData.artist_id || formData.label_id}
-                            className={formData.artist_id || formData.label_id ? 'disabled-select' : ''}
-                        >
-                            <option value="">Publisher...</option>
-                            {publishers.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                        </select>
-                    </div>
+                    <label>Related Works (hold Cmd/Ctrl to select multiple)</label>
+                    <select
+                        multiple
+                        value={formData.work_ids}
+                        onChange={(e) => setFormData({ ...formData, work_ids: Array.from(e.target.selectedOptions, option => parseInt(option.value)) })}
+                        style={{ height: '80px' }}
+                    >
+                        {works.map(w => <option key={w.id} value={w.id}>{w.title}</option>)}
+                    </select>
+                </div>
+
+                <div className="form-group">
+                    <label>Related Releases (hold Cmd/Ctrl to select multiple)</label>
+                    <select
+                        multiple
+                        value={formData.release_ids}
+                        onChange={(e) => setFormData({ ...formData, release_ids: Array.from(e.target.selectedOptions, option => parseInt(option.value)) })}
+                        style={{ height: '80px' }}
+                    >
+                        {releases.map(r => <option key={r.id} value={r.id}>{r.title}</option>)}
+                    </select>
                 </div>
 
                 <div className="form-row">
@@ -360,32 +347,8 @@ const Contracts = () => {
                         </div>
                     )}
                 </div>
-
-                <div className="form-group">
-                    <label htmlFor="terms">Terms & Conditions</label>
-                    <textarea
-                        id="terms"
-                        rows="4"
-                        value={formData.terms}
-                        onChange={(e) => setFormData({ ...formData, terms: e.target.value })}
-                    />
-                </div>
-                <div className="form-group" style={{ marginTop: '1rem', padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', margin: 0 }}>
-                        <input
-                            type="checkbox"
-                            checked={formData.is_template}
-                            onChange={(e) => setFormData({ ...formData, is_template: e.target.checked })}
-                            style={{ width: '18px', height: '18px' }}
-                        />
-                        <div>
-                            <div style={{ fontWeight: 600, fontSize: '0.9375rem' }}>Save as Contract Template</div>
-                            <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Templates won't appear in the main registry until used.</div>
-                        </div>
-                    </label>
-                </div>
             </EntityForm>
-        </div>
+        </div >
     );
 };
 

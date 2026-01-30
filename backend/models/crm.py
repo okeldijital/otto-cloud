@@ -33,6 +33,7 @@ class Contact(Base):
     email = Column(String(255), index=True)
     phone = Column(String(50))
     role = Column(String(100)) # e.g. "Distribution Manager"
+    image_url = Column(String(500))  # URL to stored image
     
     company_id = Column(Integer, ForeignKey("companies.id"))
     

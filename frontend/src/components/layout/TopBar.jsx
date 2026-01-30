@@ -9,6 +9,12 @@ const TopBar = () => {
     const navigate = useNavigate();
     const dropdownRef = useRef(null);
     const [showNotifications, setShowNotifications] = useState(false);
+
+    // Notifications State
+    const [notifications, setNotifications] = useState([
+        { id: 1, message: 'Welcome to OTTO v1.0.1', time: 'Just now', unread: true }
+    ]);
+
     const [showUserMenu, setShowUserMenu] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState(null);
@@ -19,6 +25,24 @@ const TopBar = () => {
         logout();
         navigate('/login');
     };
+
+    useEffect(() => {
+        // Weekly Backup Check
+        const checkBackup = () => {
+            const lastBackup = localStorage.getItem('last_backup_check');
+            const now = new Date().getTime();
+            const oneWeek = 7 * 24 * 60 * 60 * 1000;
+
+            if (!lastBackup || now - parseInt(lastBackup) > oneWeek) {
+                setNotifications(prev => [
+                    { id: Date.now(), message: 'Reminder: Weekly Backup Recommended', time: 'Now', unread: true },
+                    ...prev
+                ]);
+                localStorage.setItem('last_backup_check', now.toString()); // Reset to avoid spamming
+            }
+        };
+        checkBackup();
+    }, []);
 
     useEffect(() => {
         const timer = setTimeout(async () => {
@@ -62,10 +86,14 @@ const TopBar = () => {
                 navigate(`/catalog/artists/${result.id}`);
                 break;
             case 'release':
-                navigate(`/catalog/releases`); // Add direct ID navigation if implementing ReleaseDetail
+                navigate(`/catalog/releases/${result.id}`);
                 break;
             case 'track':
-                navigate(`/catalog/releases`);
+                if (result.release_id) {
+                    navigate(`/catalog/releases/${result.release_id}`);
+                } else {
+                    navigate(`/catalog/tracks`);
+                }
                 break;
             case 'work':
                 navigate(`/catalog/works`);
@@ -78,14 +106,16 @@ const TopBar = () => {
         }
     };
 
-    // Mock notifications
-    const notifications = [
-        { id: 1, message: 'New release added', time: '2 hours ago', unread: true },
-        { id: 2, message: 'Contract expiring soon', time: '1 day ago', unread: true },
-        { id: 3, message: 'Artist profile updated', time: '2 days ago', unread: false },
-    ];
+    const handleMarkAllRead = () => {
+        setNotifications(prev => prev.map(n => ({ ...n, unread: false })));
+    };
+
+    const handleClearNotifications = () => {
+        setNotifications([]);
+    };
 
     const unreadCount = notifications.filter(n => n.unread).length;
+    const API_URL = 'http://localhost:8000'; // Or import from config
 
     const hasResults = searchResults && Object.values(searchResults).some(arr => arr.length > 0);
 
@@ -187,18 +217,25 @@ const TopBar = () => {
                             <div className="dropdown-menu notifications-dropdown">
                                 <div className="dropdown-header">
                                     <h3>Notifications</h3>
-                                    <button className="mark-read-btn">Mark all as read</button>
+                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                        <button className="mark-read-btn" onClick={handleMarkAllRead}>Read</button>
+                                        <button className="mark-read-btn" onClick={handleClearNotifications}>Clear</button>
+                                    </div>
                                 </div>
                                 <div className="notifications-list">
-                                    {notifications.map(notification => (
-                                        <div
-                                            key={notification.id}
-                                            className={`notification-item ${notification.unread ? 'unread' : ''}`}
-                                        >
-                                            <div className="notification-message">{notification.message}</div>
-                                            <div className="notification-time">{notification.time}</div>
-                                        </div>
-                                    ))}
+                                    {notifications.length === 0 ? (
+                                        <div style={{ padding: '1rem', textAlign: 'center', color: '#64748b' }}>No notifications</div>
+                                    ) : (
+                                        notifications.map(notification => (
+                                            <div
+                                                key={notification.id}
+                                                className={`notification-item ${notification.unread ? 'unread' : ''}`}
+                                            >
+                                                <div className="notification-message">{notification.message}</div>
+                                                <div className="notification-time">{notification.time}</div>
+                                            </div>
+                                        ))
+                                    )}
                                 </div>
                             </div>
                         </>
@@ -208,7 +245,15 @@ const TopBar = () => {
                 <div className="dropdown-container">
                     <div className="topbar-user" onClick={() => setShowUserMenu(!showUserMenu)}>
                         <div className="user-avatar">
-                            <User size={20} />
+                            {user?.avatar_url ? (
+                                <img
+                                    src={user.avatar_url.startsWith('http') ? user.avatar_url : `${API_URL}${user.avatar_url}`}
+                                    alt="Profile"
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
+                                />
+                            ) : (
+                                <User size={20} />
+                            )}
                         </div>
                         <span className="user-name">{user?.full_name || user?.email || 'User'}</span>
                     </div>
@@ -219,7 +264,15 @@ const TopBar = () => {
                             <div className="dropdown-menu user-dropdown">
                                 <div className="dropdown-user-info">
                                     <div className="dropdown-user-avatar">
-                                        <User size={24} />
+                                        {user?.avatar_url ? (
+                                            <img
+                                                src={user.avatar_url.startsWith('http') ? user.avatar_url : `${API_URL}${user.avatar_url}`}
+                                                alt="User"
+                                                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
+                                            />
+                                        ) : (
+                                            <User size={24} />
+                                        )}
                                     </div>
                                     <div>
                                         <div className="dropdown-user-name">{user?.full_name || 'User'}</div>

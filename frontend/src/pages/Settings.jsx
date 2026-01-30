@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { User, Mail, Building, Save } from 'lucide-react';
+import { User, Mail, Building, Save, Camera } from 'lucide-react';
+import { DocumentsService } from '../services/operations';
+import api from '../lib/api';
+
+const API_URL = 'http://localhost:8000'; // Or import from config
 
 export default function Settings() {
     const { user } = useAuth();
@@ -13,17 +17,49 @@ export default function Settings() {
     const [isSaving, setIsSaving] = useState(false);
     const [saveMessage, setSaveMessage] = useState('');
 
+    const [selectedAvatar, setSelectedAvatar] = useState(null);
+    const [previewUrl, setPreviewUrl] = useState(user?.avatar_url ? (user.avatar_url.startsWith('http') ? user.avatar_url : `${API_URL}${user.avatar_url}`) : null);
+
+    const handleAvatarChange = (e) => {
+        if (e.target.files && e.target.files.length > 0) {
+            const file = e.target.files[0];
+            setSelectedAvatar(file);
+            setPreviewUrl(URL.createObjectURL(file));
+        }
+    };
+
     const handleSave = async (e) => {
         e.preventDefault();
         setIsSaving(true);
         setSaveMessage('');
 
-        // Simulate save
-        setTimeout(() => {
+        try {
+            let avatarUrl = user?.avatar_url;
+
+            if (selectedAvatar) {
+                const uploaded = await DocumentsService.upload(selectedAvatar);
+                avatarUrl = uploaded.file_path;
+            }
+
+            const updateData = {
+                full_name: user?.full_name, // Maintain existing if not in form
+                avatar_url: avatarUrl,
+                // Add other fields if editable
+            };
+
+            // Also update organization/preferences if backend supports it (mocked here or handled via separate endpoint)
+            // For now, only persisting avatar via /auth/me
+
+            await api.put('/auth/me', updateData);
+
+            setSaveMessage('Settings saved successfully! Reloading...');
+            setTimeout(() => window.location.reload(), 1500); // Reload to reflect changes in TopBar
+        } catch (error) {
+            console.error('Failed to save settings:', error);
+            setSaveMessage('Failed to save settings.');
+        } finally {
             setIsSaving(false);
-            setSaveMessage('Settings saved successfully!');
-            setTimeout(() => setSaveMessage(''), 3000);
-        }, 1000);
+        }
     };
 
     return (
@@ -40,6 +76,28 @@ export default function Settings() {
                             <User size={20} />
                             Profile Information
                         </h2>
+
+                        <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
+                            <div style={{ position: 'relative', width: '80px', height: '80px', borderRadius: '50%', overflow: 'hidden', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                {previewUrl ? (
+                                    <img src={previewUrl} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                ) : (
+                                    <User size={40} className="text-muted" />
+                                )}
+                            </div>
+                            <div>
+                                <label htmlFor="avatar-upload" className="btn-secondary" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <Camera size={16} /> Change Photo
+                                </label>
+                                <input
+                                    type="file"
+                                    id="avatar-upload"
+                                    accept="image/*"
+                                    onChange={handleAvatarChange}
+                                    style={{ display: 'none' }}
+                                />
+                            </div>
+                        </div>
 
                         <form onSubmit={handleSave}>
                             <div className="form-group">

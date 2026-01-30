@@ -10,7 +10,7 @@ export default function Register() {
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const navigate = useNavigate();
-    const { register } = useAuth();
+    const { register, login } = useAuth();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -18,7 +18,8 @@ export default function Register() {
         setIsLoading(true);
 
         try {
-            await register(email, password, fullName);
+            await register({ email, password, full_name: fullName });
+            await login(email, password);
             navigate('/dashboard');
         } catch (err) {
             setError(err.response?.data?.detail || 'Failed to create account');

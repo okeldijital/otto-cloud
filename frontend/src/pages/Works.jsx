@@ -1,38 +1,48 @@
 import React, { useState, useEffect } from 'react';
 import { CatalogService } from '../services/catalog';
+import { BASE_URL } from '../lib/api';
 import DataTable from '../components/DataTable';
 import EntityForm from '../components/EntityForm';
+import Autocomplete from '../components/Autocomplete';
+import { Music2, User, Users, Landmark } from 'lucide-react';
 
-const API_URL = 'http://localhost:8000';
+const API_URL = BASE_URL;
 
 const Works = () => {
     const [works, setWorks] = useState([]);
+    const [artists, setArtists] = useState([]);
     const [publishers, setPublishers] = useState([]);
     const [pros, setPros] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [editingWork, setEditingWork] = useState(null);
-    const [formData, setFormData] = useState({
+
+    const initialFormState = {
         title: '',
-        iswc: '',
+        iswc_code: '',
+        composers: [],
+        arrangers: [],
         composers_text: '',
         arrangers_text: '',
         publisher_id: '',
         pro_id: ''
-    });
+    };
+    const [formData, setFormData] = useState(initialFormState);
 
     const fetchData = async () => {
         setIsLoading(true);
         try {
-            const [worksData, publishersData, prosData] = await Promise.all([
+            const [worksData, publishersData, prosData, artistsData] = await Promise.all([
                 CatalogService.getAll('works'),
                 CatalogService.getAll('publishers'),
-                CatalogService.getAll('pros')
+                CatalogService.getAll('pros'),
+                CatalogService.getAll('artists')
             ]);
             setWorks(worksData);
             setPublishers(publishersData);
             setPros(prosData);
+            setArtists(artistsData);
         } catch (error) {
             console.error('Failed to fetch data:', error);
         } finally {
@@ -46,14 +56,7 @@ const Works = () => {
 
     const handleCreate = () => {
         setEditingWork(null);
-        setFormData({
-            title: '',
-            iswc: '',
-            composers_text: '',
-            arrangers_text: '',
-            publisher_id: '',
-            pro_id: ''
-        });
+        setFormData(initialFormState);
         setIsModalOpen(true);
     };
 
@@ -61,7 +64,9 @@ const Works = () => {
         setEditingWork(work);
         setFormData({
             title: work.title,
-            iswc: work.iswc || '',
+            iswc_code: work.iswc_code || '',
+            composers: work.composers || [],
+            arrangers: work.arrangers || [],
             composers_text: work.composers_text || '',
             arrangers_text: work.arrangers_text || '',
             publisher_id: work.publisher_id || '',
@@ -89,7 +94,7 @@ const Works = () => {
         const submissionData = { ...formData };
         if (submissionData.publisher_id === '') submissionData.publisher_id = null;
         if (submissionData.pro_id === '') submissionData.pro_id = null;
-        if (submissionData.iswc === '') submissionData.iswc = null;
+        if (submissionData.iswc_code === '') submissionData.iswc_code = null;
 
         try {
             if (editingWork) {
@@ -108,23 +113,51 @@ const Works = () => {
     };
 
     const columns = [
-        { key: 'title', label: 'Work Title' },
-        { key: 'composers_text', label: 'Composers' },
+        {
+            key: 'title',
+            label: 'Work Title',
+            render: (row) => (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div style={{ padding: '6px', background: '#ecfdf5', borderRadius: '6px', color: '#059669' }}>
+                        <Music2 size={16} />
+                    </div>
+                    <span style={{ fontWeight: 600 }}>{row.title}</span>
+                </div>
+            )
+        },
+        {
+            key: 'composers',
+            label: 'Composers',
+            render: (row) => (
+                <div style={{ fontSize: '0.8125rem' }}>
+                    {row.composers?.length > 0 ? (
+                        row.composers.length === 1 ? (
+                            artists.find(a => a.id === row.composers[0])?.name || row.composers_text || 'Unknown'
+                        ) : `${row.composers.length} Composers`
+                    ) : (row.composers_text || '-')}
+                </div>
+            )
+        },
         {
             key: 'publisher_id',
             label: 'Publisher',
             render: (row) => {
                 const pub = publishers.find(p => p.id === row.publisher_id);
-                return pub ? pub.name : '-';
+                return pub ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8125rem' }}>
+                        <Landmark size={14} className="text-muted" />
+                        {pub.name}
+                    </div>
+                ) : '-';
             }
         },
-        { key: 'iswc', label: 'ISWC' },
+        { key: 'iswc_code', label: 'ISWC' },
     ];
 
     return (
         <div className="entity-page">
             <div className="page-header">
-                <h1 className="page-title">Works</h1>
+                <h1 className="page-title">Musical Works</h1>
                 <div style={{ display: 'flex', gap: '1rem' }}>
                     <button
                         className="btn-secondary"
@@ -154,69 +187,88 @@ const Works = () => {
                 isSubmitting={isSubmitting}
             >
                 <div className="form-group">
-                    <label htmlFor="title">Title</label>
+                    <label>Title</label>
                     <input
                         type="text"
-                        id="title"
                         value={formData.title}
                         onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                         required
                         autoFocus
                     />
                 </div>
+
+                <div className="form-row">
+                    <div className="form-group flex-1">
+                        <label>Composers (Search Artists)</label>
+                        <Autocomplete
+                            options={artists}
+                            value={formData.composers}
+                            onChange={(val) => setFormData({ ...formData, composers: val })}
+                            placeholder="Select Composers..."
+                            multiple={true}
+                        />
+                    </div>
+                    <div className="form-group flex-1">
+                        <label>ISWC Code</label>
+                        <input
+                            type="text"
+                            value={formData.iswc_code}
+                            onChange={(e) => setFormData({ ...formData, iswc_code: e.target.value })}
+                            placeholder="T-123.456.789-C"
+                        />
+                    </div>
+                </div>
+
                 <div className="form-group">
-                    <label htmlFor="composers_text">Composers</label>
-                    <input
-                        type="text"
-                        id="composers_text"
-                        value={formData.composers_text}
-                        onChange={(e) => setFormData({ ...formData, composers_text: e.target.value })}
-                        placeholder="e.g. John Doe, Jane Smith"
+                    <label>Arrangers</label>
+                    <Autocomplete
+                        options={artists}
+                        value={formData.arrangers}
+                        onChange={(val) => setFormData({ ...formData, arrangers: val })}
+                        placeholder="Select Arrangers..."
+                        multiple={true}
                     />
                 </div>
-                <div className="form-group">
-                    <label htmlFor="arrangers_text">Arrangers</label>
-                    <input
-                        type="text"
-                        id="arrangers_text"
-                        value={formData.arrangers_text}
-                        onChange={(e) => setFormData({ ...formData, arrangers_text: e.target.value })}
-                    />
+
+                <div className="form-row">
+                    <div className="form-group flex-1">
+                        <label>Publisher</label>
+                        <Autocomplete
+                            options={publishers}
+                            value={formData.publisher_id}
+                            onChange={(val) => setFormData({ ...formData, publisher_id: val })}
+                            placeholder="Select Publisher..."
+                        />
+                    </div>
+                    <div className="form-group flex-1">
+                        <label>Performance Rights Org (PRO)</label>
+                        <Autocomplete
+                            options={pros}
+                            value={formData.pro_id}
+                            onChange={(val) => setFormData({ ...formData, pro_id: val })}
+                            placeholder="Select PRO..."
+                        />
+                    </div>
                 </div>
-                <div className="form-group">
-                    <label htmlFor="publisher_id">Publisher</label>
-                    <select
-                        id="publisher_id"
-                        value={formData.publisher_id}
-                        onChange={(e) => setFormData({ ...formData, publisher_id: e.target.value })}
-                    >
-                        <option value="">Select Publisher...</option>
-                        {publishers.map(pub => (
-                            <option key={pub.id} value={pub.id}>{pub.name}</option>
-                        ))}
-                    </select>
-                </div>
-                <div className="form-group">
-                    <label htmlFor="pro_id">PRO</label>
-                    <select
-                        id="pro_id"
-                        value={formData.pro_id}
-                        onChange={(e) => setFormData({ ...formData, pro_id: e.target.value })}
-                    >
-                        <option value="">Select PRO...</option>
-                        {pros.map(pro => (
-                            <option key={pro.id} value={pro.id}>{pro.name} ({pro.country})</option>
-                        ))}
-                    </select>
-                </div>
-                <div className="form-group">
-                    <label htmlFor="iswc">ISWC</label>
-                    <input
-                        type="text"
-                        id="iswc"
-                        value={formData.iswc}
-                        onChange={(e) => setFormData({ ...formData, iswc: e.target.value })}
-                    />
+
+                <div className="form-section-title">Manual Entries (Optional)</div>
+                <div className="form-row">
+                    <div className="form-group flex-1">
+                        <label>Composer Text (Legacy)</label>
+                        <input
+                            type="text"
+                            value={formData.composers_text}
+                            onChange={(e) => setFormData({ ...formData, composers_text: e.target.value })}
+                        />
+                    </div>
+                    <div className="form-group flex-1">
+                        <label>Arranger Text (Legacy)</label>
+                        <input
+                            type="text"
+                            value={formData.arrangers_text}
+                            onChange={(e) => setFormData({ ...formData, arrangers_text: e.target.value })}
+                        />
+                    </div>
                 </div>
             </EntityForm>
         </div>

@@ -6,7 +6,7 @@ from database import get_db
 from models.user import User
 from models.event import Event as EventModel
 from schemas.event import Event, EventCreate, EventUpdate
-from routes.auth import get_current_active_user
+from dependencies import get_current_active_user
 from utils.activity import log_activity
 
 router = APIRouter()

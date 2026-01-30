@@ -24,6 +24,12 @@ a = Analysis(
         'uvicorn.lifespan.on',
         'sqlalchemy.ext.declarative',
         'passlib.handlers.bcrypt',
+        'webview',
+        'requests',
+        'Foundation',
+        'AppKit',
+        'WebKit',
+        'objc',
     ],
     hookspath=[],
     hooksconfig={},
@@ -56,4 +62,11 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+)
+
+app = BUNDLE(
+    exe,
+    name='OTTO.app',
+    icon='otto.icns',
+    bundle_identifier='com.otto.app',
 )

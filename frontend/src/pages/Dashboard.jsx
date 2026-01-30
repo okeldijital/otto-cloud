@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Responsive } from 'react-grid-layout';
 import { WidthProvider } from '../components/WidthProvider';
 import { AnalyticsService } from '../services/analytics';
+import { BASE_URL } from '../lib/api';
 import { TrendingUp, Music, FileText, Calendar, Activity as ActivityIcon, Image, GripVertical } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -182,7 +183,7 @@ const Dashboard = () => {
                         {latestRelease ? (
                             <div className="release-widget">
                                 {latestRelease.cover_art_url ? (
-                                    <img src={`http://localhost:8000${latestRelease.cover_art_url}`} alt="" className="release-thumb" />
+                                    <img src={latestRelease.cover_art_url.startsWith('http') ? latestRelease.cover_art_url : `${BASE_URL}${latestRelease.cover_art_url}`} alt="" className="release-thumb" />
                                 ) : (
                                     <div className="release-thumb placeholder"><Music size={32} /></div>
                                 )}
