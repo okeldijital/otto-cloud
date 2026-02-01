@@ -22,6 +22,16 @@ export const AuthProvider = ({ children }) => {
                 setUser(response.data);
                 setLoading(false);
             } catch (err) {
+                // If unauthorized, stop retrying and show login
+                if (err.response?.status === 401) {
+                    console.log('🔓 Unauthenticated session');
+                    // Ensure local state matches
+                    storage.clear();
+                    setUser(null);
+                    setLoading(false);
+                    return;
+                }
+
                 if (err.code === 'ERR_NETWORK' || !err.response) {
                     console.warn(`📡 Backend wake up pending...`);
                 } else {
