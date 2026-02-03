@@ -1,6 +1,7 @@
 from pydantic import BaseModel, ConfigDict
 from typing import Optional
 from datetime import datetime
+from uuid import UUID
 
 
 class NoteBase(BaseModel):
@@ -14,6 +15,7 @@ class NoteBase(BaseModel):
     attachments: Optional[list] = None
     related_entity_type: Optional[str] = None
     related_entity_id: Optional[int] = None
+    organization_id: Optional[UUID] = None
     created_by: Optional[int] = None
 
 

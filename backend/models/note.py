@@ -1,8 +1,7 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Boolean, JSON
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Boolean, JSON, Uuid
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
-
 
 class Note(Base):
     """Note-taking model"""
@@ -14,6 +13,8 @@ class Note(Base):
     content_markdown = Column(Text)  # Markdown version
     
     # Organization
+    organization_id = Column(Uuid(as_uuid=True), nullable=False, index=True)
+    is_deleted = Column(Boolean, nullable=False, default=False)
     tags = Column(JSON)  # Array of tags
     category = Column(String(100), index=True)
     color = Column(String(20))  # For color-coding

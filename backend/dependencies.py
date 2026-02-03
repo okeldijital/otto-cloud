@@ -4,6 +4,7 @@ from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 from typing import Optional
 from config import settings
+from uuid import UUID
 from database import get_db
 from models.user import User
 from schemas.token import TokenData
@@ -27,7 +28,8 @@ async def get_current_user(
                 full_name="System Admin",
                 is_active=True,
                 is_superuser=True,
-                role="admin"
+                role="admin",
+                organization_id=UUID("00000000-0000-0000-0000-000000000001"),
             )
             db.add(user)
             db.commit()

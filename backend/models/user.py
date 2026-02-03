@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text, Uuid
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
@@ -16,6 +16,7 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     is_superuser = Column(Boolean, default=False)
     role = Column(String(50), default="member")
+    organization_id = Column(Uuid(as_uuid=True), nullable=False, index=True)
         
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
@@ -23,7 +24,7 @@ class User(Base):
     
     # Relationships
     activities = relationship("Activity", back_populates="user", cascade="all, delete-orphan")
-    tasks = relationship("Task", back_populates="assigned_to")
+    tasks = relationship("Task", back_populates="assigned_to", foreign_keys="Task.assigned_to_user_id")
     
     def __repr__(self):
         return f"<User {self.email}>"

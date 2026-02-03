@@ -12,6 +12,9 @@ class DocumentBase(BaseModel):
     file_size: Optional[int] = None
     version: Optional[int] = 1
     parent_document_id: Optional[int] = None
+    organization_id: Optional[str] = None
+    checksum: Optional[str] = None
+    is_deleted: Optional[bool] = False
     title: Optional[str] = None
     description: Optional[str] = None
     tags: Optional[list] = None
@@ -34,6 +37,9 @@ class DocumentUpdate(BaseModel):
     file_size: Optional[int] = None
     version: Optional[int] = None
     parent_document_id: Optional[int] = None
+    organization_id: Optional[str] = None
+    checksum: Optional[str] = None
+    is_deleted: Optional[bool] = None
     title: Optional[str] = None
     description: Optional[str] = None
     tags: Optional[list] = None

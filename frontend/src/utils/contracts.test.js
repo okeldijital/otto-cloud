@@ -9,10 +9,10 @@ describe('formatCreateError', () => {
 
     it('falls back to status/url', () => {
         const err = { response: { status: 500, config: { url: '/contracts' }, data: {} } };
-        expect(formatCreateError(err)).toBe('Create failed (HTTP 500) at /contracts');
+        expect(formatCreateError(err)).toBe('Create failed (HTTP 500): {}');
     });
 
     it('handles network error', () => {
-        expect(formatCreateError({})).toBe('Create failed: network error');
+        expect(formatCreateError({})).toBe('Create failed: network error or backend unreachable');
     });
 });

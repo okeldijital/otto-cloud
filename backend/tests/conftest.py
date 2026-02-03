@@ -60,12 +60,16 @@ def override_dependencies(db_session):
             pass
 
     def override_get_current_user():
-        return User(id=1, email="test@example.com", is_active=True, role="admin")
+        return User(id=1, email="test@example.com", is_active=True, role="admin", organization_id=fixed_org, hashed_password="test")
 
     def override_get_current_active_user():
-        return User(id=1, email="test@example.com", is_active=True, role="admin")
+        return User(id=1, email="test@example.com", is_active=True, role="admin", organization_id=fixed_org, hashed_password="test")
 
     fixed_org = uuid4()
+
+    if not db_session.query(User).filter(User.id == 1).first():
+        db_session.add(User(id=1, email="test@example.com", is_active=True, role="admin", organization_id=fixed_org, hashed_password="test"))
+        db_session.commit()
 
     def override_org(request: Request = None):
         if request:

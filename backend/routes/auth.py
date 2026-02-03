@@ -46,6 +46,8 @@ async def login_for_access_token(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
+from uuid import UUID
+
 @router.post("/register", response_model=UserSchema)
 def register_user(user: UserCreate, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.email == user.email).first()
@@ -57,7 +59,8 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
         email=user.email,
         hashed_password=hashed_password,
         full_name=user.full_name,
-        is_active=user.is_active
+        is_active=user.is_active,
+        organization_id=UUID("00000000-0000-0000-0000-000000000001")
     )
     db.add(db_user)
     db.commit()

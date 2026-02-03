@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, JSON
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, JSON, Uuid, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
@@ -9,6 +9,8 @@ class Work(Base):
     __tablename__ = "works"
     
     id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(Uuid(as_uuid=True), nullable=False, index=True)
+    is_deleted = Column(Boolean, nullable=False, default=False)
     work_id = Column(String(50), unique=True, index=True)  # WKS001, WKS002, etc.
     title = Column(String(255), nullable=False, index=True)
     iswc_code = Column(String(50))  # International Standard Musical Work Code

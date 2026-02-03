@@ -1,12 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
+from uuid import UUID
 
 from database import get_db
 from models.user import User
 from models.event import Event as EventModel
 from schemas.event import Event, EventCreate, EventUpdate
-from dependencies import get_current_active_user
+from dependencies import get_current_active_user, get_current_organization_id
 from utils.activity import log_activity
 
 router = APIRouter()
@@ -17,10 +18,14 @@ def list_events(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
+    org_id: UUID = Depends(get_current_organization_id),
     current_user: User = Depends(get_current_active_user)
 ):
     """List all events"""
-    events = db.query(EventModel).offset(skip).limit(limit).all()
+    events = db.query(EventModel).filter(
+        EventModel.organization_id == org_id,
+        EventModel.is_deleted == False,  # noqa: E712
+    ).offset(skip).limit(limit).all()
     return events
 
 
@@ -28,10 +33,11 @@ def list_events(
 def create_event(
     event: EventCreate,
     db: Session = Depends(get_db),
+    org_id: UUID = Depends(get_current_organization_id),
     current_user: User = Depends(get_current_active_user)
 ):
     """Create a new event"""
-    db_event = EventModel(**event.model_dump())
+    db_event = EventModel(**event.model_dump(), organization_id=org_id, created_by=current_user.id)
     db.add(db_event)
     db.commit()
     db.refresh(db_event)
@@ -45,10 +51,15 @@ def create_event(
 def get_event(
     event_id: int,
     db: Session = Depends(get_db),
+    org_id: UUID = Depends(get_current_organization_id),
     current_user: User = Depends(get_current_active_user)
 ):
     """Get a specific event by ID"""
-    event = db.query(EventModel).filter(EventModel.id == event_id).first()
+    event = db.query(EventModel).filter(
+        EventModel.id == event_id,
+        EventModel.organization_id == org_id,
+        EventModel.is_deleted == False,  # noqa: E712
+    ).first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
     return event
@@ -59,10 +70,15 @@ def update_event(
     event_id: int,
     event_update: EventUpdate,
     db: Session = Depends(get_db),
+    org_id: UUID = Depends(get_current_organization_id),
     current_user: User = Depends(get_current_active_user)
 ):
     """Update an event"""
-    db_event = db.query(EventModel).filter(EventModel.id == event_id).first()
+    db_event = db.query(EventModel).filter(
+        EventModel.id == event_id,
+        EventModel.organization_id == org_id,
+        EventModel.is_deleted == False,  # noqa: E712
+    ).first()
     if not db_event:
         raise HTTPException(status_code=404, detail="Event not found")
     
@@ -82,15 +98,20 @@ def update_event(
 def delete_event(
     event_id: int,
     db: Session = Depends(get_db),
+    org_id: UUID = Depends(get_current_organization_id),
     current_user: User = Depends(get_current_active_user)
 ):
     """Delete an event"""
-    db_event = db.query(EventModel).filter(EventModel.id == event_id).first()
+    db_event = db.query(EventModel).filter(
+        EventModel.id == event_id,
+        EventModel.organization_id == org_id,
+        EventModel.is_deleted == False,  # noqa: E712
+    ).first()
     if not db_event:
         raise HTTPException(status_code=404, detail="Event not found")
     
     event_title = db_event.title
-    db.delete(db_event)
+    db_event.is_deleted = True
     db.commit()
     
     log_activity(db, current_user.id, "deleted", "event", event_id, event_title)

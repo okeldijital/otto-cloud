@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { CatalogService } from '../services/catalog';
-import { CRMService } from '../services/crm';
+import { NetworkService } from '../services/network';
 import { ReportsService } from '../services/reports';
 import { BASE_URL } from '../lib/api';
 import { Disc, Music, User, Calendar, Tag, FileText, ChevronRight, Play, ChevronLeft } from 'lucide-react';
@@ -25,7 +25,7 @@ const ReleaseDetail = () => {
                     CatalogService.getReleaseTracks(id),
                     CatalogService.getAll('labels'),
                     CatalogService.getAll('artists'),
-                    CRMService.getContacts()
+                    NetworkService.getIndividuals()
                 ]);
 
                 setRelease(releaseData);
@@ -229,7 +229,7 @@ const ReleaseDetail = () => {
                                     return (
                                         <div key={idx} style={{ display: 'flex', flexDirection: 'column' }}>
                                             <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-main)' }}>
-                                                {contact ? `${contact.first_name} ${contact.last_name}` : `Contact #${credit.contact_id}`}
+                                                {contact ? `${contact.first_name} ${contact.last_name}` : `Individual #${credit.contact_id}`}
                                             </span>
                                             <span style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.025em' }}>
                                                 {credit.role}

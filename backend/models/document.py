@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, BigInteger, JSON
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, BigInteger, JSON, Boolean, Uuid
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
@@ -17,6 +17,10 @@ class Document(Base):
     file_size = Column(BigInteger)  # Size in bytes
     version = Column(Integer, default=1)
     parent_document_id = Column(Integer, ForeignKey("documents.id"))  # For versioning
+
+    organization_id = Column(Uuid(as_uuid=True), nullable=False, index=True)
+    checksum = Column(String(64))
+    is_deleted = Column(Boolean, nullable=False, default=False)
     
     # Metadata
     title = Column(String(255))

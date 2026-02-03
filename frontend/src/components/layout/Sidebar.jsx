@@ -21,6 +21,10 @@ import {
     BookOpen,
     HardDrive,
     CreditCard,
+    Inbox,
+    Globe,
+    Share2,
+    Users,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import Logo from './Logo';
@@ -82,9 +86,14 @@ const Sidebar = () => {
             ]
         },
         {
-            label: 'CRM',
+            label: 'Network',
             items: [
-                { icon: Truck, label: 'Contacts', path: '/crm' },
+                { icon: Inbox, label: 'Overview', path: '/network' },
+                { icon: Users, label: 'All Contacts', path: '/network/contacts' },
+                { icon: Building2, label: 'Organizations', path: '/network/organizations' },
+                { icon: UserCircle, label: 'Individuals', path: '/network/individuals' },
+                { icon: Globe, label: 'Platforms', path: '/network/platforms' },
+                { icon: Share2, label: 'Relationships', path: '/network/relationships' },
             ]
         },
         {
@@ -98,13 +107,12 @@ const Sidebar = () => {
         {
             label: 'Office',
             items: [
-                { icon: FolderOpen, label: 'Documents', path: '/documents' },
-                { icon: Calendar, label: 'Events', path: '/events' },
-                { icon: ListTodo, label: 'Tasks', path: '/tasks' },
-                { icon: StickyNote, label: 'Notes', path: '/notes' },
-                { icon: ListMusic, label: 'Playlists', path: '/playlists' },
-                { icon: BarChart3, label: 'Analytics', path: '/analytics' },
-                { icon: CreditCard, label: 'Royalties', path: '/royalties' },
+                { icon: ShieldCheck, label: 'Status Quo', path: '/office/status-quo' },
+                { icon: FolderOpen, label: 'Documents', path: '/office/documents' },
+                { icon: Calendar, label: 'Events', path: '/office/events' },
+                { icon: ListTodo, label: 'Tasks', path: '/office/tasks' },
+                { icon: StickyNote, label: 'Notes', path: '/office/notes' },
+                { icon: BarChart3, label: 'Reports', path: '/office/reports' },
             ]
         }
     ], []);

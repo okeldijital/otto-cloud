@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { CatalogService } from '../services/catalog';
-import { CRMService } from '../services/crm';
+import { NetworkService } from '../services/network';
 import DataTable from '../components/DataTable';
 import EntityForm from '../components/EntityForm';
 import Autocomplete from '../components/Autocomplete';
@@ -48,7 +48,7 @@ const Tracks = () => {
                 CatalogService.getAll('works'),
                 CatalogService.getAll('releases'),
                 CatalogService.getAll('artists'),
-                CRMService.getContacts()
+                NetworkService.getIndividuals()
             ]);
 
             // Create dictionaries for lookup
@@ -378,9 +378,9 @@ const Tracks = () => {
                                     options={(contacts || []).map(c => ({ id: c.id, name: `${c.first_name} ${c.last_name}` }))}
                                     value={newCreditContactId}
                                     onChange={(val) => setNewCreditContactId(val)}
-                                    placeholder="Select Contact..."
+                                    labelKey="name"
                                     allowQuickAdd={true}
-                                    quickAddType="contact"
+                                    quickAddType="individual"
                                 />
                             </div>
                             <input

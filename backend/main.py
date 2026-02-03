@@ -71,7 +71,6 @@ from routes import (  # noqa: E402
     events,
     playlists,
     analytics,
-    crm,
     reports,
     tasks,
     users,
@@ -80,6 +79,13 @@ from routes import (  # noqa: E402
     contracts,
     works_admin,
     admin_of_works,
+    network,
+    office_documents,
+    office_events,
+    office_tasks,
+    office_notes,
+    office_reports,
+    office_status_quo,
 )
 
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
@@ -88,7 +94,7 @@ app.include_router(catalog.router, prefix="/api/catalog", tags=["Catalog"])
 # You had contracts mounted at /api (router defines its own prefixes)
 app.include_router(contracts.router, prefix="/api", tags=["Contracts"])
 
-app.include_router(crm.router, prefix="/api/crm", tags=["CRM"])
+app.include_router(network.router, prefix="/api", tags=["Network"])
 app.include_router(royalties.router, prefix="/api/royalties", tags=["Royalties"])
 app.include_router(documents.router, prefix="/api/documents", tags=["Documents"])
 app.include_router(notes.router, prefix="/api/notes", tags=["Notes"])
@@ -102,6 +108,12 @@ app.include_router(analytics.router, prefix="/api/analytics", tags=["Analytics"]
 app.include_router(reports.router, prefix="/api/reports", tags=["Reports"])
 app.include_router(works_admin.router, prefix="/api", tags=["Works Administration"])
 app.include_router(admin_of_works.router, prefix="/api", tags=["Status Quo"])
+app.include_router(office_documents.router, prefix="/api", tags=["Office Documents"])
+app.include_router(office_events.router, prefix="/api", tags=["Office Events"])
+app.include_router(office_tasks.router, prefix="/api", tags=["Office Tasks"])
+app.include_router(office_notes.router, prefix="/api", tags=["Office Notes"])
+app.include_router(office_reports.router, prefix="/api", tags=["Office Reports"])
+app.include_router(office_status_quo.router, prefix="/api", tags=["Office Status Quo"])
 
 # -----------------------------
 # Static files (uploads)

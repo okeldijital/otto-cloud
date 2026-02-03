@@ -6,6 +6,8 @@ from database import get_db
 from models.user import User as UserModel
 from schemas.user import User, UserCreate, UserUpdate
 from routes.auth import get_current_admin_user, get_password_hash
+from dependencies import get_current_organization_id
+from uuid import UUID
 from utils.activity import log_activity
 
 router = APIRouter()
@@ -25,6 +27,7 @@ def list_users(
 def create_user(
     user_in: UserCreate,
     db: Session = Depends(get_db),
+    org_id: UUID = Depends(get_current_organization_id),
     current_user: UserModel = Depends(get_current_admin_user)
 ):
     """Create a new user (Admin only)"""
@@ -38,7 +41,8 @@ def create_user(
         hashed_password=hashed_password,
         full_name=user_in.full_name,
         is_active=user_in.is_active,
-        role=user_in.role
+        role=user_in.role,
+        organization_id=org_id,
     )
     db.add(db_user)
     db.commit()

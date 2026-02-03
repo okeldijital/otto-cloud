@@ -16,8 +16,17 @@ from models.event import Event
 from models.playlist import Playlist
 from models.audit_log import AuditLog
 from models.activity import Activity
-from models.crm import Company, Contact
+from models.network import Organization, Individual, Platform, NetworkRelationship
 from models.task import Task
+from models.office_note import OfficeNote, OfficeNoteLink
+from models.office_document import OfficeDocument, OfficeDocumentLink
+from models.reporting import ReportDefinition, ReportRun, ReportArtifact
+from models.governance import StatusQuoItem
+
+# Aliases for backward compatibility
+Company = Organization
+Contact = Individual
+
 from models.contract import Contract, ContractParty, ContractAsset, ContractDocument, ContractSplitGroup, ContractSplit
 from models.works_admin import WorksAdmin, WorksAdminDocument
 
@@ -37,9 +46,21 @@ __all__ = [
     "Playlist",
     "AuditLog",
     "Activity",
+    "Organization",
+    "Individual",
+    "Platform",
+    "NetworkRelationship",
     "Company",
     "Contact",
     "Task",
+    "OfficeNote",
+    "OfficeNoteLink",
+    "OfficeDocument",
+    "OfficeDocumentLink",
+    "ReportDefinition",
+    "ReportRun",
+    "ReportArtifact",
+    "StatusQuoItem",
     "Contract",
     "ContractParty",
     "ContractAsset",

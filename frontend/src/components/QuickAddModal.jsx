@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, X, Search, Loader2 } from 'lucide-react';
 import { CatalogService } from '../services/catalog';
-import { CRMService } from '../services/crm';
+import { NetworkService } from '../services/network';
 import { DocumentsService } from '../services/operations';
 
 const QuickAddModal = ({ isOpen, onClose, entityType, onAdd, initialName = '' }) => {
@@ -18,18 +18,18 @@ const QuickAddModal = ({ isOpen, onClose, entityType, onAdd, initialName = '' })
 
         try {
             let result;
-            if (entityType === 'contact') {
+            if (entityType === 'individual') {
                 const [firstName, ...lastNames] = name.split(' ');
-                result = await CRMService.createContact({
+                result = await NetworkService.createIndividual({
                     first_name: firstName,
                     last_name: lastNames.join(' ') || '.',
                     email: ''
                 });
                 onAdd({ id: result.id, name: `${result.first_name} ${result.last_name}` });
-            } else if (entityType === 'distributor') {
-                result = await CRMService.createCompany({
+            } else if (entityType === 'organization') {
+                result = await NetworkService.createOrganization({
                     name: name,
-                    type: 'Distributor'
+                    org_type: 'Other'
                 });
                 onAdd({ id: result.id, name: result.name });
             } else {
@@ -60,8 +60,8 @@ const QuickAddModal = ({ isOpen, onClose, entityType, onAdd, initialName = '' })
             'publishers': 'Publisher',
             'pros': 'PRO',
             'works': 'Musical Work',
-            'contact': 'Contact',
-            'distributor': 'Distributor'
+            'individual': 'Individual',
+            'organization': 'Organization'
         };
         return labels[entityType] || entityType;
     };

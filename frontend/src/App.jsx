@@ -30,16 +30,30 @@ import WorksAdminList from './pages/admin-of-works/WorksAdminList';
 import WorksAdminDetail from './pages/admin-of-works/WorksAdminDetail';
 import StatusQuoDashboard from './pages/admin-of-works/StatusQuoDashboard';
 
+import Admin from './pages/Admin';
 import Royalties from './pages/Royalties';
-import Documents from './pages/Documents';
-import Notes from './pages/Notes';
-import Tasks from './pages/Tasks';
-import Events from './pages/Events';
 import Playlists from './pages/Playlists';
 import Settings from './pages/Settings';
 import Analytics from './pages/Analytics';
-import Admin from './pages/Admin';
-import CRM from './pages/CRM';
+
+// Office Placeholder Pages
+import OfficeDocuments from './pages/office/Documents';
+import OfficeEvents from './pages/office/Events';
+import OfficeTasks from './pages/office/Tasks';
+import OfficeNotes from './pages/office/Notes';
+import OfficeReports from './pages/office/Reports';
+import OfficeStatusQuo from './pages/office/StatusQuo';
+
+// Network
+import NetworkDashboard from './pages/network/NetworkDashboard';
+import AllContacts from './pages/network/AllContacts';
+import Organizations from './pages/network/Organizations';
+import Individuals from './pages/network/Individuals';
+import Platforms from './pages/network/Platforms';
+import Relationships from './pages/network/Relationships';
+import OrganizationDetail from './pages/network/OrganizationDetail';
+import IndividualDetail from './pages/network/IndividualDetail';
+import PlatformDetail from './pages/network/PlatformDetail';
 
 import './App.css';
 
@@ -260,6 +274,16 @@ function App() {
                 }
               />
               <Route
+                path="/office/status-quo"
+                element={
+                  <ProtectedRoute>
+                    <MainLayout>
+                      <OfficeStatusQuo />
+                    </MainLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/royalties"
                 element={
                   <ProtectedRoute>
@@ -270,41 +294,51 @@ function App() {
                 }
               />
               <Route
-                path="/documents"
+                path="/office/documents"
                 element={
                   <ProtectedRoute>
                     <MainLayout>
-                      <Documents />
+                      <OfficeDocuments />
                     </MainLayout>
                   </ProtectedRoute>
                 }
               />
               <Route
-                path="/notes"
+                path="/office/notes"
                 element={
                   <ProtectedRoute>
                     <MainLayout>
-                      <Notes />
+                      <OfficeNotes />
                     </MainLayout>
                   </ProtectedRoute>
                 }
               />
               <Route
-                path="/tasks"
+                path="/office/reports"
                 element={
                   <ProtectedRoute>
                     <MainLayout>
-                      <Tasks />
+                      <OfficeReports />
                     </MainLayout>
                   </ProtectedRoute>
                 }
               />
               <Route
-                path="/events"
+                path="/office/tasks"
                 element={
                   <ProtectedRoute>
                     <MainLayout>
-                      <Events />
+                      <OfficeTasks />
+                    </MainLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/office/events"
+                element={
+                  <ProtectedRoute>
+                    <MainLayout>
+                      <OfficeEvents />
                     </MainLayout>
                   </ProtectedRoute>
                 }
@@ -349,16 +383,16 @@ function App() {
                   </ProtectedRoute>
                 }
               />
-              <Route
-                path="/crm"
-                element={
-                  <ProtectedRoute>
-                    <MainLayout>
-                      <CRM />
-                    </MainLayout>
-                  </ProtectedRoute>
-                }
-              />
+              {/* Network Routes */}
+              <Route path="/network" element={<ProtectedRoute><MainLayout><NetworkDashboard /></MainLayout></ProtectedRoute>} />
+              <Route path="/network/contacts" element={<ProtectedRoute><MainLayout><AllContacts /></MainLayout></ProtectedRoute>} />
+              <Route path="/network/organizations" element={<ProtectedRoute><MainLayout><Organizations /></MainLayout></ProtectedRoute>} />
+              <Route path="/network/organizations/:id" element={<ProtectedRoute><MainLayout><OrganizationDetail /></MainLayout></ProtectedRoute>} />
+              <Route path="/network/individuals" element={<ProtectedRoute><MainLayout><Individuals /></MainLayout></ProtectedRoute>} />
+              <Route path="/network/individuals/:id" element={<ProtectedRoute><MainLayout><IndividualDetail /></MainLayout></ProtectedRoute>} />
+              <Route path="/network/platforms" element={<ProtectedRoute><MainLayout><Platforms /></MainLayout></ProtectedRoute>} />
+              <Route path="/network/platforms/:id" element={<ProtectedRoute><MainLayout><PlatformDetail /></MainLayout></ProtectedRoute>} />
+              <Route path="/network/relationships" element={<ProtectedRoute><MainLayout><Relationships /></MainLayout></ProtectedRoute>} />
 
               {/* Default redirect */}
               <Route path="/" element={<Navigate to="/dashboard" replace />} />

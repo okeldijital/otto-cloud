@@ -1,12 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
+from uuid import UUID
 
 from database import get_db
 from models.user import User
 from models.document import Document as DocumentModel
 from schemas.document import Document, DocumentCreate, DocumentUpdate
-from dependencies import get_current_active_user
+from dependencies import get_current_active_user, get_current_organization_id
 from fastapi import File, UploadFile
 import shutil
 import os
@@ -60,10 +61,11 @@ def list_documents(
     entity_type: str = None,
     entity_id: int = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    org_id: UUID = Depends(get_current_organization_id),
 ):
     """List all documents with optional filtering"""
-    query = db.query(DocumentModel)
+    query = db.query(DocumentModel).filter(DocumentModel.organization_id == org_id, DocumentModel.is_deleted == False)  # noqa: E712
     
     if category:
         query = query.filter(DocumentModel.category == category)
@@ -80,10 +82,14 @@ def list_documents(
 def create_document(
     document: DocumentCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    org_id: UUID = Depends(get_current_organization_id),
 ):
     """Create a new document"""
-    db_document = DocumentModel(**document.model_dump())
+    payload = document.model_dump()
+    payload["organization_id"] = org_id
+    payload.setdefault("is_deleted", False)
+    db_document = DocumentModel(**payload)
     db.add(db_document)
     db.commit()
     db.refresh(db_document)
@@ -97,10 +103,15 @@ def create_document(
 def get_document(
     document_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    org_id: UUID = Depends(get_current_organization_id),
 ):
     """Get a specific document by ID"""
-    document = db.query(DocumentModel).filter(DocumentModel.id == document_id).first()
+    document = db.query(DocumentModel).filter(
+        DocumentModel.id == document_id,
+        DocumentModel.organization_id == org_id,
+        DocumentModel.is_deleted == False,  # noqa: E712
+    ).first()
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
     return document
@@ -111,10 +122,15 @@ def update_document(
     document_id: int,
     document_update: DocumentUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    org_id: UUID = Depends(get_current_organization_id),
 ):
     """Update a document"""
-    db_document = db.query(DocumentModel).filter(DocumentModel.id == document_id).first()
+    db_document = db.query(DocumentModel).filter(
+        DocumentModel.id == document_id,
+        DocumentModel.organization_id == org_id,
+        DocumentModel.is_deleted == False,  # noqa: E712
+    ).first()
     if not db_document:
         raise HTTPException(status_code=404, detail="Document not found")
     
@@ -134,15 +150,20 @@ def update_document(
 def delete_document(
     document_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    org_id: UUID = Depends(get_current_organization_id),
 ):
     """Delete a document"""
-    db_document = db.query(DocumentModel).filter(DocumentModel.id == document_id).first()
+    db_document = db.query(DocumentModel).filter(
+        DocumentModel.id == document_id,
+        DocumentModel.organization_id == org_id,
+        DocumentModel.is_deleted == False,  # noqa: E712
+    ).first()
     if not db_document:
         raise HTTPException(status_code=404, detail="Document not found")
     
     doc_title = db_document.title
-    db.delete(db_document)
+    db_document.is_deleted = True
     db.commit()
     
     log_activity(db, current_user.id, "deleted", "document", document_id, doc_title)

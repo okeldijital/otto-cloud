@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { CatalogService } from '../services/catalog';
 import { DocumentsService } from '../services/operations';
-import { CRMService } from '../services/crm';
+import { NetworkService } from '../services/network';
 import { ReportsService } from '../services/reports';
 import { BASE_URL } from '../lib/api';
 import DataTable from '../components/DataTable';
@@ -65,8 +65,8 @@ const Releases = () => {
                 CatalogService.getAll('releases'),
                 CatalogService.getAll('labels'),
                 CatalogService.getAll('artists'),
-                CRMService.getAllDistributors(),
-                CRMService.getContacts(),
+                NetworkService.getOrganizations(),
+                NetworkService.getIndividuals(),
                 CatalogService.getAll('tracks')
             ]);
             setReleases(releasesData);
@@ -399,7 +399,7 @@ const Releases = () => {
                         onChange={(val) => setFormData({ ...formData, distributor_id: val })}
                         placeholder="Select Distributor..."
                         allowQuickAdd={true}
-                        quickAddType="distributor"
+                        quickAddType="organization"
                     />
                 </div>
 
@@ -440,7 +440,7 @@ const Releases = () => {
                                     onChange={(val) => setNewCreditContactId(val)}
                                     placeholder="Select Contact..."
                                     allowQuickAdd={true}
-                                    quickAddType="contact"
+                                    quickAddType="individual"
                                 />
                             </div>
                             <input

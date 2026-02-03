@@ -8,7 +8,9 @@ class TaskBase(BaseModel):
     status: str = "todo"
     priority: str = "medium"
     due_date: Optional[datetime] = None
-    assigned_to_id: Optional[int] = None
+    assigned_to_user_id: Optional[int] = None
+    linked_entity_type: Optional[str] = None
+    linked_entity_id: Optional[int] = None
 
 class TaskCreate(TaskBase):
     pass
@@ -19,10 +21,15 @@ class TaskUpdate(BaseModel):
     status: Optional[str] = None
     priority: Optional[str] = None
     due_date: Optional[datetime] = None
-    assigned_to_id: Optional[int] = None
+    assigned_to_user_id: Optional[int] = None
+    linked_entity_type: Optional[str] = None
+    linked_entity_id: Optional[int] = None
 
 class Task(TaskBase):
     id: int
+    organization_id: str
+    created_by_user_id: int
+    is_deleted: bool
     created_at: datetime
     updated_at: Optional[datetime] = None
 

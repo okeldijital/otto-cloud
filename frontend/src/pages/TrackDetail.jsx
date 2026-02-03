@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { CatalogService } from '../services/catalog';
-import { CRMService } from '../services/crm';
+import { NetworkService } from '../services/network';
 import { ReportsService } from '../services/reports';
 import { BASE_URL } from '../lib/api';
 import { Music, User, Calendar, Tag, FileAudio, ChevronRight, Play, ChevronLeft, Disc, Clock, Hash, ExternalLink } from 'lucide-react';
@@ -25,7 +25,7 @@ const TrackDetail = () => {
 
                 // Fetch related data
                 const promises = [
-                    CRMService.getContacts()
+                    NetworkService.getIndividuals()
                 ];
 
                 if (trackData.release_id) {

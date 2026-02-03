@@ -9,8 +9,8 @@ def test_phase_2_catalog_workflow(client: TestClient, override_dependencies):
     - Work/Track relationships
     """
     # 1. Create Distributor
-    dist_payload = {"name": "DistroKid", "website": "https://distrokid.com"}
-    response = client.post("/api/crm/distributors/", json=dist_payload)
+    dist_payload = {"name": "DistroKid", "website": "https://distrokid.com", "org_type": "Distributor"}
+    response = client.post("/api/network/organizations", json=dist_payload)
     assert response.status_code == 201
     distributor = response.json()
     assert distributor["name"] == "DistroKid"
@@ -77,5 +77,4 @@ def test_phase_2_catalog_workflow(client: TestClient, override_dependencies):
     track = response.json()
     assert track["work_id"] == work_id
     assert track["release_id"] == release_id
-
 
