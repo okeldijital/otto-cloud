@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
 from datetime import datetime, date
 
@@ -18,7 +18,7 @@ class ReleaseBase(BaseModel):
 
 
 class ReleaseCreate(ReleaseBase):
-    pass
+    track_ids: Optional[List[int]] = None
 
 
 class ReleaseUpdate(BaseModel):
@@ -32,6 +32,7 @@ class ReleaseUpdate(BaseModel):
     artist_id: Optional[int] = None
     artist_ids: Optional[list[int]] = None
     distributor_id: Optional[int] = None
+    track_ids: Optional[List[int]] = None
 
 
 class Release(ReleaseBase):
@@ -39,5 +40,4 @@ class Release(ReleaseBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

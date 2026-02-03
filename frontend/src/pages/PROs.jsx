@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { CatalogService } from '../services/catalog';
 import DataTable from '../components/DataTable';
 import EntityForm from '../components/EntityForm';
+import { ChevronLeft } from 'lucide-react';
 
 const PROs = () => {
     const [pros, setPros] = useState([]);
@@ -99,6 +101,9 @@ const PROs = () => {
 
     return (
         <div className="entity-page">
+            <Link to="/catalog" className="back-link">
+                <ChevronLeft size={16} /> Back to Catalog
+            </Link>
             <div className="page-header">
                 <h1 className="page-title">Performance Rights Orgs</h1>
                 <button className="btn-primary" onClick={handleCreate}>

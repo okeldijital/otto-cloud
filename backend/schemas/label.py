@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 from datetime import datetime
 
@@ -10,6 +10,8 @@ class LabelBase(BaseModel):
     contact_email: Optional[str] = None
     contact_phone: Optional[str] = None
     website: Optional[str] = None
+    logo_url: Optional[str] = None
+    contact_person: Optional[str] = None
     artist_ids: Optional[list] = None
 
 
@@ -23,6 +25,8 @@ class LabelUpdate(BaseModel):
     contact_email: Optional[str] = None
     contact_phone: Optional[str] = None
     website: Optional[str] = None
+    logo_url: Optional[str] = None
+    contact_person: Optional[str] = None
     artist_ids: Optional[list] = None
 
 
@@ -31,5 +35,4 @@ class Label(LabelBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

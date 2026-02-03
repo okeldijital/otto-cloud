@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { CatalogService } from '../services/catalog';
 import { DocumentsService } from '../services/operations';
+import { ReportsService } from '../services/reports';
 import { BASE_URL } from '../lib/api';
 import DataTable from '../components/DataTable';
 import EntityForm from '../components/EntityForm';
-import { Camera, User } from 'lucide-react';
+import Autocomplete from '../components/Autocomplete';
+import { Camera, User, ChevronLeft } from 'lucide-react';
 
 const API_URL = BASE_URL;
 
@@ -21,6 +23,7 @@ const Artists = () => {
     const [formData, setFormData] = useState({
         name: '',
         aka: '',
+        nationality: '',
         id_number: '',
         profile_image_url: '',
         contact_email: '',
@@ -62,10 +65,10 @@ const Artists = () => {
                 CatalogService.getAll('publishers'),
                 CatalogService.getAll('pros')
             ]);
-            setArtists(artistsData);
-            setLabels(labelsData);
-            setPublishers(publishersData);
-            setPros(prosData);
+            setArtists(artistsData || []);
+            setLabels(labelsData || []);
+            setPublishers(publishersData || []);
+            setPros(prosData || []);
         } catch (error) {
             console.error('Failed to fetch data:', error);
         } finally {
@@ -85,6 +88,7 @@ const Artists = () => {
         setFormData({
             name: '',
             aka: '',
+            nationality: '',
             id_number: '',
             profile_image_url: '',
             contact_email: '',
@@ -117,6 +121,7 @@ const Artists = () => {
         setFormData({
             name: artist.name,
             aka: artist.aka || '',
+            nationality: artist.nationality || '',
             id_number: artist.id_number || '',
             profile_image_url: artist.profile_image_url || '',
             contact_email: artist.contact_email || '',
@@ -171,6 +176,7 @@ const Artists = () => {
         const submissionData = {
             name: formData.name,
             aka: formData.aka,
+            nationality: formData.nationality,
             id_number: formData.id_number,
             profile_image_url: profileImageUrl,
             contact_email: formData.contact_email,
@@ -241,7 +247,7 @@ const Artists = () => {
             key: 'label_id',
             label: 'Label',
             render: (row) => {
-                const label = labels.find(l => l.id === row.label_id);
+                const label = (labels || []).find(l => l.id === row.label_id);
                 return label ? label.name : '-';
             }
         },
@@ -249,12 +255,15 @@ const Artists = () => {
 
     return (
         <div className="entity-page">
+            <Link to="/catalog" className="back-link">
+                <ChevronLeft size={16} /> Back to Catalog
+            </Link>
             <div className="page-header">
                 <h1 className="page-title">Artists</h1>
                 <div style={{ display: 'flex', gap: '1rem' }}>
                     <button
                         className="btn-secondary"
-                        onClick={() => window.open(`${API_URL}/api/reports/export/artists?format=excel`, '_blank')}
+                        onClick={() => ReportsService.exportData('artists', 'excel')}
                     >
                         Export Excel
                     </button>
@@ -266,7 +275,7 @@ const Artists = () => {
 
             <DataTable
                 columns={columns}
-                data={artists}
+                data={artists || []}
                 isLoading={isLoading}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
@@ -326,15 +335,27 @@ const Artists = () => {
                     </div>
                 </div>
 
-                <div className="form-group">
-                    <label htmlFor="id_number">ID Number</label>
-                    <input
-                        type="text"
-                        id="id_number"
-                        value={formData.id_number}
-                        onChange={(e) => setFormData({ ...formData, id_number: e.target.value })}
-                        placeholder="National ID / Passport Number"
-                    />
+                <div className="form-row">
+                    <div className="form-group">
+                        <label htmlFor="id_number">ID Number</label>
+                        <input
+                            type="text"
+                            id="id_number"
+                            value={formData.id_number}
+                            onChange={(e) => setFormData({ ...formData, id_number: e.target.value })}
+                            placeholder="National ID / Passport Number"
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label htmlFor="nationality">Nationality</label>
+                        <input
+                            type="text"
+                            id="nationality"
+                            value={formData.nationality}
+                            onChange={(e) => setFormData({ ...formData, nationality: e.target.value })}
+                            placeholder="e.g. South African"
+                        />
+                    </div>
                 </div>
 
                 <div className="form-row">
@@ -382,42 +403,36 @@ const Artists = () => {
                 <div className="form-row">
                     <div className="form-group">
                         <label htmlFor="label_id">Label</label>
-                        <select
-                            id="label_id"
+                        <Autocomplete
+                            options={labels || []}
                             value={formData.label_id}
-                            onChange={(e) => setFormData({ ...formData, label_id: e.target.value })}
-                        >
-                            <option value="">Select Label...</option>
-                            {labels.map(label => (
-                                <option key={label.id} value={label.id}>{label.name}</option>
-                            ))}
-                        </select>
+                            onChange={(val) => setFormData({ ...formData, label_id: val })}
+                            placeholder="Select Label..."
+                            allowQuickAdd={true}
+                            quickAddType="labels"
+                        />
                     </div>
                     <div className="form-group">
                         <label htmlFor="publisher_id">Publisher</label>
-                        <select
-                            id="publisher_id"
+                        <Autocomplete
+                            options={publishers || []}
                             value={formData.publisher_id}
-                            onChange={(e) => setFormData({ ...formData, publisher_id: e.target.value })}
-                        >
-                            <option value="">Select Publisher...</option>
-                            {publishers.map(pub => (
-                                <option key={pub.id} value={pub.id}>{pub.name}</option>
-                            ))}
-                        </select>
+                            onChange={(val) => setFormData({ ...formData, publisher_id: val })}
+                            placeholder="Select Publisher..."
+                            allowQuickAdd={true}
+                            quickAddType="publishers"
+                        />
                     </div>
                     <div className="form-group">
                         <label htmlFor="pro_id">PRO</label>
-                        <select
-                            id="pro_id"
+                        <Autocomplete
+                            options={pros || []}
                             value={formData.pro_id}
-                            onChange={(e) => setFormData({ ...formData, pro_id: e.target.value })}
-                        >
-                            <option value="">Select PRO...</option>
-                            {pros.map(pro => (
-                                <option key={pro.id} value={pro.id}>{pro.name} ({pro.country})</option>
-                            ))}
-                        </select>
+                            onChange={(val) => setFormData({ ...formData, pro_id: val })}
+                            placeholder="Select PRO..."
+                            allowQuickAdd={true}
+                            quickAddType="pros"
+                        />
                     </div>
                 </div>
 

@@ -54,3 +54,4 @@ scheduler_config.json
 .DS_Store
 dist-desktop/
 frontend/src-tauri/target/
+backend/otto_data/

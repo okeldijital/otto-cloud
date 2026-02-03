@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { CatalogService } from '../services/catalog';
+import { ReportsService } from '../services/reports';
 import { BASE_URL } from '../lib/api';
 import DataTable from '../components/DataTable';
 import EntityForm from '../components/EntityForm';
 import Autocomplete from '../components/Autocomplete';
-import { Music2, User, Users, Landmark } from 'lucide-react';
+import { Music2, User, Users, Landmark, ChevronLeft } from 'lucide-react';
 
 const API_URL = BASE_URL;
 
@@ -121,7 +123,9 @@ const Works = () => {
                     <div style={{ padding: '6px', background: '#ecfdf5', borderRadius: '6px', color: '#059669' }}>
                         <Music2 size={16} />
                     </div>
-                    <span style={{ fontWeight: 600 }}>{row.title}</span>
+                    <Link to={`/catalog/works/${row.id}`} style={{ fontWeight: 600, color: 'var(--primary-color)', textDecoration: 'none' }}>
+                        {row.title}
+                    </Link>
                 </div>
             )
         },
@@ -156,12 +160,15 @@ const Works = () => {
 
     return (
         <div className="entity-page">
+            <Link to="/catalog" className="back-link">
+                <ChevronLeft size={16} /> Back to Catalog
+            </Link>
             <div className="page-header">
                 <h1 className="page-title">Musical Works</h1>
                 <div style={{ display: 'flex', gap: '1rem' }}>
                     <button
                         className="btn-secondary"
-                        onClick={() => window.open(`${API_URL}/api/reports/export/works?format=excel`, '_blank')}
+                        onClick={() => ReportsService.exportData('works', 'excel')}
                     >
                         Export Excel
                     </button>
@@ -206,6 +213,8 @@ const Works = () => {
                             onChange={(val) => setFormData({ ...formData, composers: val })}
                             placeholder="Select Composers..."
                             multiple={true}
+                            allowQuickAdd={true}
+                            quickAddType="artists"
                         />
                     </div>
                     <div className="form-group flex-1">
@@ -227,6 +236,8 @@ const Works = () => {
                         onChange={(val) => setFormData({ ...formData, arrangers: val })}
                         placeholder="Select Arrangers..."
                         multiple={true}
+                        allowQuickAdd={true}
+                        quickAddType="artists"
                     />
                 </div>
 
@@ -238,6 +249,8 @@ const Works = () => {
                             value={formData.publisher_id}
                             onChange={(val) => setFormData({ ...formData, publisher_id: val })}
                             placeholder="Select Publisher..."
+                            allowQuickAdd={true}
+                            quickAddType="publishers"
                         />
                     </div>
                     <div className="form-group flex-1">
@@ -247,6 +260,8 @@ const Works = () => {
                             value={formData.pro_id}
                             onChange={(val) => setFormData({ ...formData, pro_id: val })}
                             placeholder="Select PRO..."
+                            allowQuickAdd={true}
+                            quickAddType="pros"
                         />
                     </div>
                 </div>

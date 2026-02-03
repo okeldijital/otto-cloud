@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { CatalogService } from '../services/catalog';
 import { CRMService } from '../services/crm';
 import DataTable from '../components/DataTable';
 import EntityForm from '../components/EntityForm';
 import Autocomplete from '../components/Autocomplete';
-import { Music2, Disc, FileAudio, ExternalLink, Users } from 'lucide-react';
+import { Music2, Disc, FileAudio, ExternalLink, Users, ChevronLeft } from 'lucide-react';
 
 const Tracks = () => {
     const [tracks, setTracks] = useState([]);
@@ -42,10 +43,9 @@ const Tracks = () => {
     const fetchData = async () => {
         setIsLoading(true);
         try {
-            const [tracksData, worksData, releasesData, artistsData] = await Promise.all([
+            const [tracksData, worksData, releasesData, artistsData, contactsData] = await Promise.all([
                 CatalogService.getAll('tracks'),
                 CatalogService.getAll('works'),
-                CatalogService.getAll('releases'),
                 CatalogService.getAll('releases'),
                 CatalogService.getAll('artists'),
                 CRMService.getContacts()
@@ -53,18 +53,18 @@ const Tracks = () => {
 
             // Create dictionaries for lookup
             const workDict = {};
-            worksData.forEach(w => workDict[w.id] = w.title);
+            (worksData || []).forEach(w => workDict[w.id] = w.title);
             setWorkDictionary(workDict);
 
             const releaseDict = {};
-            releasesData.forEach(r => releaseDict[r.id] = r.title);
+            (releasesData || []).forEach(r => releaseDict[r.id] = r.title);
             setReleaseDictionary(releaseDict);
 
-            setTracks(tracksData);
-            setWorks(worksData);
-            setReleases(releasesData);
-            setArtists(artistsData);
-            setContacts(contactsData);
+            setTracks(tracksData || []);
+            setWorks(worksData || []);
+            setReleases(releasesData || []);
+            setArtists(artistsData || []);
+            setContacts(contactsData || []);
         } catch (error) {
             console.error('Failed to fetch tracks data:', error);
         } finally {
@@ -157,7 +157,9 @@ const Tracks = () => {
                         <FileAudio size={16} />
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ fontWeight: 600 }}>{row.title}</span>
+                        <Link to={`/catalog/tracks/${row.id}`} style={{ fontWeight: 600, color: 'var(--primary-color)', textDecoration: 'none' }}>
+                            {row.title}
+                        </Link>
                         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{row.genre || '-'}</span>
                     </div>
                 </div>
@@ -173,7 +175,7 @@ const Tracks = () => {
                     <Users size={14} className="text-muted" />
                     {row.artist_ids?.length > 0 ? (
                         row.artist_ids.length === 1 ? (
-                            artists.find(a => a.id === row.artist_ids[0])?.name || 'Unknown'
+                            (artists || []).find(a => a.id === row.artist_ids[0])?.name || 'Unknown'
                         ) : `${row.artist_ids.length} Artists`
                     ) : 'Various'}
                 </div>
@@ -198,7 +200,9 @@ const Tracks = () => {
                 row.work_id ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8125rem' }}>
                         <Music2 size={14} className="text-muted" />
-                        {workDictionary[row.work_id] || 'Unknown Work'}
+                        <Link to={`/catalog/works/${row.work_id}`} style={{ fontWeight: 500, color: 'var(--primary-color)', textDecoration: 'none' }}>
+                            {workDictionary[row.work_id] || 'Unknown Work'}
+                        </Link>
                     </div>
                 ) : <span className="text-muted">-</span>
             )
@@ -207,6 +211,9 @@ const Tracks = () => {
 
     return (
         <div className="entity-page">
+            <Link to="/catalog" className="back-link">
+                <ChevronLeft size={16} /> Back to Catalog
+            </Link>
             <div className="page-header">
                 <div>
                     <h1 className="page-title">Tracks</h1>
@@ -219,7 +226,7 @@ const Tracks = () => {
 
             <DataTable
                 columns={columns}
-                data={tracks}
+                data={tracks || []}
                 isLoading={isLoading}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
@@ -245,11 +252,13 @@ const Tracks = () => {
                 <div className="form-group">
                     <label>Artist(s)</label>
                     <Autocomplete
-                        options={artists}
+                        options={artists || []}
                         value={formData.artist_ids}
                         onChange={(val) => setFormData({ ...formData, artist_ids: val })}
                         placeholder="Select Artist(s)..."
                         multiple={true}
+                        allowQuickAdd={true}
+                        quickAddType="artists"
                     />
                 </div>
 
@@ -315,19 +324,25 @@ const Tracks = () => {
                     <div className="form-group flex-1">
                         <label>Linked Release</label>
                         <Autocomplete
-                            options={releases}
+                            options={releases || []}
                             value={formData.release_id}
                             onChange={(val) => setFormData({ ...formData, release_id: val })}
                             placeholder="Select Release..."
+                            labelKey="title"
+                            allowQuickAdd={true}
+                            quickAddType="releases"
                         />
                     </div>
                     <div className="form-group flex-1">
                         <label>Underlying Work</label>
                         <Autocomplete
-                            options={works}
+                            options={works || []}
                             value={formData.work_id}
                             onChange={(val) => setFormData({ ...formData, work_id: val })}
                             placeholder="Select Work..."
+                            labelKey="title"
+                            allowQuickAdd={true}
+                            quickAddType="works"
                         />
                     </div>
                 </div>
@@ -335,10 +350,10 @@ const Tracks = () => {
                 <div className="form-group">
                     <label>Credits (Musicians, Engineers)</label>
                     <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                        {formData.credits.map((credit, index) => (
+                        {(formData.credits || []).map((credit, index) => (
                             <div key={index} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'center' }}>
                                 <div style={{ flex: 1, padding: '0.5rem', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '0.875rem' }}>
-                                    {contacts.find(c => c.id == credit.contact_id)?.first_name} {contacts.find(c => c.id == credit.contact_id)?.last_name}
+                                    {(contacts || []).find(c => c.id == credit.contact_id)?.first_name} {(contacts || []).find(c => c.id == credit.contact_id)?.last_name}
                                 </div>
                                 <div style={{ flex: 1, padding: '0.5rem', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '0.875rem' }}>
                                     {credit.role}
@@ -358,20 +373,22 @@ const Tracks = () => {
                         ))}
 
                         <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                            <select
-                                value={newCreditContactId}
-                                onChange={(e) => setNewCreditContactId(e.target.value)}
-                                style={{ flex: 1 }}
-                            >
-                                <option value="">Select Contact...</option>
-                                {contacts.map(c => <option key={c.id} value={c.id}>{c.first_name} {c.last_name}</option>)}
-                            </select>
+                            <div style={{ flex: 1 }}>
+                                <Autocomplete
+                                    options={(contacts || []).map(c => ({ id: c.id, name: `${c.first_name} ${c.last_name}` }))}
+                                    value={newCreditContactId}
+                                    onChange={(val) => setNewCreditContactId(val)}
+                                    placeholder="Select Contact..."
+                                    allowQuickAdd={true}
+                                    quickAddType="contact"
+                                />
+                            </div>
                             <input
                                 type="text"
                                 placeholder="Role (e.g. Guitar)"
                                 value={newCreditRole}
                                 onChange={(e) => setNewCreditRole(e.target.value)}
-                                style={{ flex: 1 }}
+                                style={{ flex: 1, padding: '0.5rem 0.75rem', borderRadius: '0.375rem', border: '1px solid #e2e8f0' }}
                             />
                             <button
                                 type="button"

@@ -12,6 +12,7 @@ class Artist(Base):
     artist_id = Column(String(50), unique=True, index=True)  # ART001, ART002, etc.
     name = Column(String(255), nullable=False, index=True)
     aka = Column(String(255))  # Stage name / alias
+    nationality = Column(String(100))
     id_number = Column(String(100))  # National ID
     ipi_number = Column(String(50))  # Interested Parties Information number
     contact_email = Column(String(255))
@@ -34,7 +35,6 @@ class Artist(Base):
     label = relationship("Label", back_populates="artists")
     publisher = relationship("Publisher", back_populates="artists")
     pro = relationship("PRO", back_populates="artists")
-    contracts = relationship("Contract", back_populates="artist")
     royalties = relationship("Royalty", back_populates="artist")
     releases = relationship("Release", back_populates="artist")
     

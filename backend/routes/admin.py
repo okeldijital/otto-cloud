@@ -144,4 +144,3 @@ def get_system_logs(
 ):
     """Get latest audit logs"""
     return db.query(AuditLog).order_by(AuditLog.created_at.desc()).limit(limit).all()
-

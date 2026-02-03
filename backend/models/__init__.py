@@ -9,7 +9,6 @@ from models.artist import Artist
 from models.release import Release
 from models.track import Track
 from models.work import Work
-from models.contract import Contract
 from models.royalty import Royalty
 from models.document import Document
 from models.note import Note
@@ -19,6 +18,7 @@ from models.audit_log import AuditLog
 from models.activity import Activity
 from models.crm import Company, Contact
 from models.task import Task
+from models.contract import Contract, ContractParty, ContractAsset, ContractDocument, ContractSplitGroup, ContractSplit
 
 __all__ = [
     "User",
@@ -29,7 +29,6 @@ __all__ = [
     "Release",
     "Track",
     "Work",
-    "Contract",
     "Royalty",
     "Document",
     "Note",
@@ -40,4 +39,10 @@ __all__ = [
     "Company",
     "Contact",
     "Task",
+    "Contract",
+    "ContractParty",
+    "ContractAsset",
+    "ContractDocument",
+    "ContractSplitGroup",
+    "ContractSplit",
 ]

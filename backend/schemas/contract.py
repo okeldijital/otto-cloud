@@ -1,22 +1,20 @@
-from pydantic import BaseModel
-from typing import Optional
-from datetime import datetime, date
-from decimal import Decimal
+from pydantic import BaseModel, ConfigDict
+from typing import Optional, List
+from uuid import UUID
+from datetime import date, datetime
 
 
 class ContractBase(BaseModel):
-    contract_id: Optional[str] = None
-    artist_id: Optional[int] = None
-    label_id: Optional[int] = None
-    publisher_id: Optional[int] = None
+    title: str
+    contract_number: str
+    status: str = "Draft"
+    contract_type: Optional[str] = None
+    territory: Optional[str] = None
     start_date: Optional[date] = None
     end_date: Optional[date] = None
-    royalty_rate: Optional[Decimal] = None
-    terms: Optional[str] = None
-    file_path: Optional[str] = None
-    title: Optional[str] = None
-    status: Optional[str] = None
-    is_template: Optional[bool] = False
+    signed_date: Optional[date] = None
+    exclusivity: Optional[bool] = False
+    notes: Optional[str] = None
 
 
 class ContractCreate(ContractBase):
@@ -24,23 +22,130 @@ class ContractCreate(ContractBase):
 
 
 class ContractUpdate(BaseModel):
-    artist_id: Optional[int] = None
-    label_id: Optional[int] = None
-    publisher_id: Optional[int] = None
-    start_date: Optional[date] = None
-    end_date: Optional[date] = None
-    royalty_rate: Optional[Decimal] = None
-    terms: Optional[str] = None
-    file_path: Optional[str] = None
     title: Optional[str] = None
     status: Optional[str] = None
-    is_template: Optional[bool] = None
+    territory: Optional[str] = None
+    contract_type: Optional[str] = None
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    signed_date: Optional[date] = None
+    exclusivity: Optional[bool] = None
+    notes: Optional[str] = None
+    royalty_description: Optional[str] = None
+    advances_amount: Optional[float] = None
+    advances_currency: Optional[str] = None
+    recoupment_notes: Optional[str] = None
 
 
-class Contract(ContractBase):
-    id: int
-    created_at: datetime
+class ContractPartyBase(BaseModel):
+    entity_type: str
+    entity_id: Optional[int] = None
+    external_name: Optional[str] = None
+    role: str
+    split_percent: Optional[float] = None
+    notes: Optional[str] = None
+
+
+class ContractPartyCreate(ContractPartyBase):
+    pass
+
+
+class ContractPartyResponse(ContractPartyBase):
+    id: UUID
+    contract_id: UUID
+    organization_id: UUID
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ContractAssetBase(BaseModel):
+    asset_type: str
+    asset_id: int
+    scope_type: str = "INCLUSION"
+    notes: Optional[str] = None
+
+
+class ContractAssetCreate(ContractAssetBase):
+    pass
+
+
+class ContractAssetResponse(ContractAssetBase):
+    id: UUID
+    contract_id: UUID
+    organization_id: UUID
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ContractDocumentBase(BaseModel):
+    file_path: str
+    file_name: str
+    version: int = 1
+    uploaded_by: Optional[int] = None
+    uploaded_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ContractDocumentResponse(ContractDocumentBase):
+    id: UUID
+    contract_id: UUID
+    organization_id: UUID
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ContractSplitBase(BaseModel):
+    party_id: Optional[UUID] = None
+    external_party_name: Optional[str] = None
+    percent: float
+    notes: Optional[str] = None
+
+
+class ContractSplitCreate(ContractSplitBase):
+    pass
+
+
+class ContractSplitResponse(ContractSplitBase):
+    id: UUID
+    group_id: UUID
+    organization_id: UUID
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ContractSplitGroupBase(BaseModel):
+    group_name: str
+    group_type: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class ContractSplitGroupCreate(ContractSplitGroupBase):
+    pass
+
+
+class ContractSplitGroupResponse(ContractSplitGroupBase):
+    id: UUID
+    contract_id: UUID
+    organization_id: UUID
+    splits: List[ContractSplitResponse] = []
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ContractResponse(ContractBase):
+    id: UUID
+    organization_id: UUID
+    created_by: Optional[int] = None
+    created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    royalty_description: Optional[str] = None
+    advances_amount: Optional[float] = None
+    advances_currency: str = "USD"
+    recoupment_notes: Optional[str] = None
+
+    parties: List[ContractPartyResponse] = []
+    assets: List[ContractAssetResponse] = []
+    documents: List[ContractDocumentResponse] = []
+    split_groups: List[ContractSplitGroupResponse] = []
+
+    model_config = ConfigDict(from_attributes=True)

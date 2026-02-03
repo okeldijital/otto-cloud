@@ -11,7 +11,7 @@ from utils.activity import log_activity
 
 router = APIRouter()
 
-@router.get("/", response_model=List[Task])
+@router.get("", response_model=List[Task])
 def list_tasks(
     skip: int = 0,
     limit: int = 100,
@@ -31,7 +31,7 @@ def list_tasks(
     tasks = query.offset(skip).limit(limit).all()
     return tasks
 
-@router.post("/", response_model=Task, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=Task, status_code=status.HTTP_201_CREATED)
 def create_task(
     task: TaskCreate,
     db: Session = Depends(get_db),

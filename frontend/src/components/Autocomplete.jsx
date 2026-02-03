@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, X, ChevronDown, Check } from 'lucide-react';
+import { Search, X, ChevronDown, Check, Plus } from 'lucide-react';
+import QuickAddModal from './QuickAddModal';
 
 const Autocomplete = ({
     options = [],
@@ -10,20 +11,29 @@ const Autocomplete = ({
     valueKey = 'id',
     disabled = false,
     multiple = false,
+    allowQuickAdd = false,
+    quickAddType = '',
     className = ''
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [search, setSearch] = useState('');
+    const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
+    const [localOptions, setLocalOptions] = useState([]);
     const containerRef = useRef(null);
+
+    // Merge prop options with locally added ones
+    // Safeguard: Ensure options is always an array and filter out nulls/undefined from the merge source
+    const safeOptions = Array.isArray(options) ? options : [];
+    const allOptions = [...safeOptions, ...localOptions];
 
     // Helper to get selected options
     const getSelectedOptions = () => {
         if (multiple) {
             return Array.isArray(value)
-                ? options.filter(opt => value.includes(opt[valueKey]))
+                ? allOptions.filter(opt => opt && value.includes(opt[valueKey]))
                 : [];
         }
-        return options.find(opt => opt[valueKey] === value);
+        return allOptions.find(opt => opt && opt[valueKey] == value) || null; // Return null if not found
     };
 
     const selectedOptions = getSelectedOptions();
@@ -38,11 +48,13 @@ const Autocomplete = ({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const filteredOptions = options.filter(opt =>
-        String(opt[labelKey]).toLowerCase().includes(search.toLowerCase())
+    // Safeguard: Filter out invalid options securely
+    const filteredOptions = allOptions.filter(opt =>
+        opt && opt[labelKey] && String(opt[labelKey]).toLowerCase().includes(search.toLowerCase())
     );
 
     const handleSelect = (opt) => {
+        if (!opt) return;
         const optValue = opt[valueKey];
         if (multiple) {
             const currentValues = Array.isArray(value) ? value : [];
@@ -151,11 +163,68 @@ const Autocomplete = ({
                                 </div>
                             ))
                         ) : (
-                            <div className="no-options">No matches found</div>
+                            <div className="no-options">
+                                <p>No matches found</p>
+                                {allowQuickAdd && (
+                                    <button
+                                        type="button"
+                                        className="quick-add-btn"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setIsQuickAddOpen(true);
+                                        }}
+                                    >
+                                        <Plus size={14} /> Quick Add "{search}"
+                                    </button>
+                                )}
+                            </div>
+                        )}
+                        {allowQuickAdd && filteredOptions.length > 0 && (
+                            <div className="dropdown-footer">
+                                <button
+                                    type="button"
+                                    className="quick-add-btn secondary"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setIsQuickAddOpen(true);
+                                    }}
+                                >
+                                    <Plus size={14} /> Add New Entry
+                                </button>
+                            </div>
                         )}
                     </div>
                 </div>
             )}
+
+            <QuickAddModal
+                isOpen={isQuickAddOpen}
+                onClose={() => setIsQuickAddOpen(false)}
+                entityType={quickAddType}
+                initialName={search}
+                onAdd={(newEntity) => {
+                    if (!newEntity) return;
+
+                    // Ensure the object has both name and title to satisfy different labelKeys
+                    // and ensure it has an ID
+                    const normalizedEntity = {
+                        ...newEntity,
+                        id: newEntity.id || Date.now(), // Fallback ID if missing
+                        name: newEntity.name || newEntity.title || 'Unknown',
+                        title: newEntity.title || newEntity.name || 'Unknown'
+                    };
+
+                    setLocalOptions(prev => [...prev, normalizedEntity]);
+
+                    if (multiple) {
+                        onChange([...(value || []), normalizedEntity.id]);
+                    } else {
+                        onChange(normalizedEntity.id);
+                    }
+                    setIsOpen(false);
+                    setSearch('');
+                }}
+            />
 
             <style>{`
                 .autocomplete-container {
@@ -293,11 +362,42 @@ const Autocomplete = ({
                 .check-icon { color: var(--accent-color); }
                 
                 .no-options {
-                    padding: 1.5rem;
+                    padding: 1rem;
                     text-align: center;
                     color: var(--text-muted);
                     font-size: 0.875rem;
                 }
+                .no-options p { margin-bottom: 0.75rem; }
+                
+                .dropdown-footer {
+                    padding: 0.5rem;
+                    border-top: 1px solid var(--border-color);
+                    background: #f8fafc;
+                }
+                
+                .quick-add-btn {
+                    width: 100%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 0.5rem;
+                    padding: 0.625rem;
+                    background: var(--primary-color);
+                    color: white;
+                    border: none;
+                    border-radius: 6px;
+                    font-size: 0.8125rem;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                }
+                .quick-add-btn:hover { filter: brightness(1.1); }
+                .quick-add-btn.secondary {
+                    background: white;
+                    color: var(--primary-color);
+                    border: 1px dashed var(--primary-color);
+                }
+                .quick-add-btn.secondary:hover { background: #f5f3ff; }
             `}</style>
         </div>
     );

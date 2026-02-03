@@ -15,6 +15,8 @@ class Label(Base):
     contact_email = Column(String(255))
     contact_phone = Column(String(50))
     website = Column(String(255))
+    logo_url = Column(String(255))
+    contact_person = Column(String(255))
     artist_ids = Column(JSON)  # Array of artist IDs
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -23,7 +25,6 @@ class Label(Base):
     # Relationships
     artists = relationship("Artist", back_populates="label")
     releases = relationship("Release", back_populates="label")
-    contracts = relationship("Contract", back_populates="label")
     
     def __repr__(self):
         return f"<Label {self.name}>"

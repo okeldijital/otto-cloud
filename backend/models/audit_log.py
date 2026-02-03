@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, JSON
+from sqlalchemy import Uuid
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
@@ -14,7 +15,9 @@ class AuditLog(Base):
     action = Column(String(50), index=True)  # CREATE, UPDATE, DELETE, VIEW
     entity_type = Column(String(50), index=True)  # artist, track, contract, etc.
     entity_id = Column(Integer)
+    entity_uuid = Column(Uuid(as_uuid=True), index=True) # UUID entities
     entity_name = Column(String(255))  # For quick reference
+    organization_id = Column(Uuid(as_uuid=True), index=True)
     
     # Changes
     changes = Column(JSON)  # Before/after values for updates

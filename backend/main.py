@@ -1,37 +1,91 @@
 import os
 import sys
 import logging
-import threading
-import time
+from typing import List
+
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
 
-# Core Configuration
-from config import settings
-from database import init_db, SessionLocal
-from models import * # Ensure all models register
+# -----------------------------
+# Optional: load .env early
+# -----------------------------
+try:
+    from dotenv import load_dotenv  # type: ignore
+    load_dotenv()
+except Exception:
+    # dotenv is optional; environment may already be set via shell
+    pass
 
-# Initialize App
-app = FastAPI(title=settings.APP_NAME, version=settings.APP_VERSION)
+# -----------------------------
+# Core Configuration Imports
+# -----------------------------
+# NOTE: These imports reflect YOUR current structure shown in the snippet.
+# If your project uses app.core.config, etc., adjust accordingly.
+from config import settings  # noqa: E402
+from database import init_db, SessionLocal  # noqa: E402
+from models import *  # noqa: F401,F403,E402  # Ensure all models register
 
-# Robust CORS
+# -----------------------------
+# App Init
+# -----------------------------
+app = FastAPI(title=getattr(settings, "APP_NAME", "OTTO"), version=getattr(settings, "APP_VERSION", "0.1.0"))
+
+# -----------------------------
+# CORS (FIXED)
+# -----------------------------
+# IMPORTANT:
+# If allow_credentials=True, allow_origins cannot be ["*"].
+# We explicitly allow your Vite dev origin(s).
+DEFAULT_DEV_ORIGINS: List[str] = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+
+# Allow override via env: CORS_ORIGINS="http://localhost:5173,http://example.com"
+cors_env = os.getenv("CORS_ORIGINS", "").strip()
+if cors_env:
+    allow_origins = [o.strip() for o in cors_env.split(",") if o.strip()]
+else:
+    allow_origins = DEFAULT_DEV_ORIGINS
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Routes
-from routes import auth, catalog, contracts, royalties, documents, notes, events, playlists, analytics, crm, reports, tasks, users, admin, search
+# -----------------------------
+# Routers
+# -----------------------------
+# Your snippet: from routes import auth, catalog, royalties, documents, notes, events, playlists, analytics, crm, reports, tasks, users, admin, search, contracts
+from routes import (  # noqa: E402
+    auth,
+    catalog,
+    royalties,
+    documents,
+    notes,
+    events,
+    playlists,
+    analytics,
+    crm,
+    reports,
+    tasks,
+    users,
+    admin,
+    search,
+    contracts,
+)
 
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(catalog.router, prefix="/api/catalog", tags=["Catalog"])
-app.include_router(contracts.router, prefix="/api/contracts", tags=["Contracts"])
+
+# You had contracts mounted at /api (router defines its own prefixes)
+app.include_router(contracts.router, prefix="/api", tags=["Contracts"])
+
 app.include_router(crm.router, prefix="/api/crm", tags=["CRM"])
 app.include_router(royalties.router, prefix="/api/royalties", tags=["Royalties"])
 app.include_router(documents.router, prefix="/api/documents", tags=["Documents"])
@@ -43,54 +97,108 @@ app.include_router(users.router, prefix="/api/users", tags=["Users"])
 app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
 app.include_router(search.router, prefix="/api/search", tags=["Search"])
 app.include_router(analytics.router, prefix="/api/analytics", tags=["Analytics"])
+app.include_router(reports.router, prefix="/api/reports", tags=["Reports"])
 
-# Serve static files (uploads)
-app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
+# -----------------------------
+# Static files (uploads)
+# -----------------------------
+upload_dir = getattr(settings, "UPLOAD_DIR", None) or os.getenv("UPLOAD_DIR", "./uploads")
+os.makedirs(upload_dir, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=upload_dir), name="uploads")
 
+# -----------------------------
+# Health endpoint
+# -----------------------------
 @app.get("/health")
 async def health():
-    return {"status": "ok", "env": settings.APP_ENV}
+    return {"status": "ok", "env": getattr(settings, "APP_ENV", os.getenv("APP_ENV", "dev"))}
 
-# Desktop Entry Point Logic
-def start_backend():
-    # Setup Logging to file
+
+# -----------------------------
+# Startup helpers
+# -----------------------------
+def _configure_logging() -> None:
+    log_file = getattr(settings, "LOG_FILE", None) or os.getenv("LOG_FILE", "./storage/logs/otto.log")
+    os.makedirs(os.path.dirname(log_file), exist_ok=True)
+
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.FileHandler(settings.LOG_FILE),
-            logging.StreamHandler(sys.stdout)
-        ]
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        handlers=[logging.FileHandler(log_file), logging.StreamHandler(sys.stdout)],
     )
-    logging.info(f"🚀 OTTO Backend starting on port {settings.PORT}")
-    
-    # Initialize DB and Seed Admin
+
+
+def _seed_admin_user() -> None:
+    """
+    Seeds an admin user if your project has:
+      - models.user.User
+      - passlib installed
+    This function is safe: if dependencies aren't present, it logs and exits cleanly.
+    """
     try:
-        init_db()
-        db = SessionLocal()
-        from models.user import User
-        from passlib.context import CryptContext
-        pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-        
-        admin = db.query(User).filter(User.email == "admin@otto.com").first()
+        from models.user import User  # type: ignore
+    except Exception as e:
+        logging.warning(f"Admin seed skipped (User model import failed): {e}")
+        return
+
+    try:
+        from passlib.context import CryptContext  # type: ignore
+    except Exception as e:
+        logging.warning(f"Admin seed skipped (passlib missing): {e}")
+        return
+
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+    admin_email = os.getenv("OTTO_ADMIN_EMAIL", "admin@otto.com")
+    admin_password = os.getenv("OTTO_ADMIN_PASSWORD", "admin")
+
+    db = SessionLocal()
+    try:
+        admin = db.query(User).filter(User.email == admin_email).first()
         if not admin:
             admin = User(
-                email="admin@otto.com",
-                hashed_password=pwd_context.hash("admin"),
+                email=admin_email,
+                hashed_password=pwd_context.hash(admin_password),
                 full_name="System Admin",
                 is_active=True,
                 is_superuser=True,
-                role="admin"
+                role="admin",  # keep if your model expects it
             )
             db.add(admin)
             db.commit()
             logging.info("👤 Admin user seeded")
-        db.close()
+        else:
+            logging.info("👤 Admin user already exists")
     except Exception as e:
-        logging.error(f"❌ Startup error: {e}")
+        logging.error(f"❌ Admin seed error: {e}")
+        db.rollback()
+    finally:
+        db.close()
 
-    # Run Server
-    uvicorn.run(app, host="0.0.0.0", port=settings.PORT, log_level="info")
+
+# -----------------------------
+# Desktop/CLI entry point
+# -----------------------------
+def start_backend():
+    _configure_logging()
+    port = int(getattr(settings, "PORT", None) or os.getenv("PORT", "8000"))
+    env = getattr(settings, "APP_ENV", os.getenv("APP_ENV", "dev"))
+
+    logging.info(f"🚀 OTTO Backend starting on port {port} (env={env})")
+    logging.info(f"🌐 CORS allow_origins={allow_origins}")
+
+    # Init DB
+    try:
+        init_db()
+    except Exception as e:
+        logging.error(f"❌ DB init failed: {e}")
+
+    # Seed admin (best-effort)
+    _seed_admin_user()
+
+    # Run server
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
+
 
 if __name__ == "__main__":
     start_backend()

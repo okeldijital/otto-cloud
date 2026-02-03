@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { NotesService } from '../services/operations';
-import { ContractsService } from '../services/contracts';
+import contractService from '../services/contractService';
 import DataTable from '../components/DataTable';
 import EntityForm from '../components/EntityForm';
 import { CatalogService } from '../services/catalog';
@@ -54,7 +54,7 @@ const Notes = () => {
                 const [artistsData, releasesData, contractsData, tracksData, worksData] = await Promise.all([
                     CatalogService.getAll('artists'),
                     CatalogService.getAll('releases'),
-                    ContractsService.getAll(),
+                    contractService.getAll().then((res) => res.data || res),
                     CatalogService.getAll('tracks'),
                     CatalogService.getAll('works'),
                 ]);

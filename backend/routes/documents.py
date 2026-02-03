@@ -52,7 +52,7 @@ def upload_file(
     }
 
 
-@router.get("/", response_model=List[Document])
+@router.get("", response_model=List[Document])
 def list_documents(
     skip: int = 0,
     limit: int = 100,
@@ -76,7 +76,7 @@ def list_documents(
     return documents
 
 
-@router.post("/", response_model=Document, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=Document, status_code=status.HTTP_201_CREATED)
 def create_document(
     document: DocumentCreate,
     db: Session = Depends(get_db),

@@ -63,3 +63,22 @@ async def get_current_active_user(current_user: User = Depends(get_current_user)
     if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
+
+from fastapi import Header
+from uuid import UUID
+
+async def get_current_organization_id(
+    x_organization_id: Optional[str] = Header(None, alias="X-Organization-ID")
+) -> UUID:
+    """
+    Extracts Organization ID from Header.
+    In V1 Strict Mode, this is mandatory for scoped operations.
+    Fallback to a default UUID for development if header is missing.
+    """
+    if not x_organization_id:
+        # Default UUID for development fallback
+        return UUID("00000000-0000-0000-0000-000000000001")
+    try:
+        return UUID(x_organization_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid Organization ID format")

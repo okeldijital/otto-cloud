@@ -79,30 +79,141 @@ def export_artists(
             headers={"Content-Disposition": f"attachment; filename={filename}.csv"}
         )
 
+@router.get("/export/artist/{artist_id}")
+def export_single_artist(
+    artist_id: int,
+    format: str = "excel",
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    a = db.query(Artist).filter(Artist.id == artist_id).first()
+    if not a:
+        raise HTTPException(status_code=404, detail="Artist not found")
+    
+    data = [{
+        "ID": a.id,
+        "Name": a.name,
+        "AKA": a.aka or "",
+        "Nationality": a.nationality or "",
+        "Email": a.contact_email or "",
+        "Phone": a.contact_phone or "",
+        "IPI": a.ipi_number or "",
+        "Created At": a.created_at.strftime("%Y-%m-%d") if a.created_at else ""
+    }]
+    
+    fieldnames = ["ID", "Name", "AKA", "Nationality", "Email", "Phone", "IPI", "Created At"]
+    filename = f"artist_{artist_id}_{datetime.now().strftime('%Y%m%d')}"
+    
+    if format.lower() == "excel":
+        content = generate_excel(data, fieldnames, "Artist Details")
+        return Response(
+            content=content,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f"attachment; filename={filename}.xlsx"}
+        )
+    else:
+        content = generate_csv(data, fieldnames)
+        return Response(
+            content=content,
+            media_type="text/csv",
+            headers={"Content-Disposition": f"attachment; filename={filename}.csv"}
+        )
+
 @router.get("/export/releases")
 def export_releases(
     format: str = "csv",
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    releases = db.query(Release).all()
-    data = []
-    for r in releases:
-        data.append({
-            "ID": r.id,
-            "Title": r.title,
-            "UPC": r.upc_code,
-            "Release Date": r.release_date.strftime("%Y-%m-%d") if r.release_date else "",
-            "Type": r.release_type,
-            "Label": r.label.name if r.label else "N/A",
-            "Artist": r.artist.name if r.artist else "N/A"
-        })
+    try:
+        releases = db.query(Release).all()
+        data = []
+        for r in releases:
+            # Get artist names
+            artist_names = "Various Artists"
+            ids = r.artist_ids or ([r.artist_id] if r.artist_id else [])
+            if ids:
+                # Ensure ids are integers to prevent SQL injection or type errors
+                try:
+                    clean_ids = [int(i) for i in ids if i is not None]
+                    if clean_ids:
+                        artists = db.query(Artist).filter(Artist.id.in_(clean_ids)).all()
+                        artist_names = ", ".join([a.name for a in artists])
+                except (ValueError, TypeError):
+                    print(f"Error processing artist IDs for release {r.id}: {ids}")
+                    pass
+            elif r.artist:
+                artist_names = r.artist.name
+
+            data.append({
+                "ID": r.id,
+                "Title": r.title,
+                "UPC": r.upc_code,
+                "Release Date": r.release_date.strftime("%Y-%m-%d") if r.release_date else "",
+                "Type": r.release_type,
+                "Label": r.label.name if r.label else "N/A",
+                "Artist": artist_names
+            })
+        
+        fieldnames = ["ID", "Title", "UPC", "Release Date", "Type", "Label", "Artist"]
+        filename = f"releases_export_{datetime.now().strftime('%Y%m%d')}"
+        
+        if format.lower() == "excel":
+            content = generate_excel(data, fieldnames, "Releases")
+            return Response(
+                content=content,
+                media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                headers={"Content-Disposition": f"attachment; filename={filename}.xlsx"}
+            )
+        else:
+            content = generate_csv(data, fieldnames)
+            return Response(
+                content=content,
+                media_type="text/csv",
+                headers={"Content-Disposition": f"attachment; filename={filename}.csv"}
+            )
+    except Exception as e:
+        print(f"Export Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
+
+@router.get("/export/release/{release_id}")
+def export_single_release(
+    release_id: int,
+    format: str = "excel",
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    r = db.query(Release).filter(Release.id == release_id).first()
+    if not r:
+        raise HTTPException(status_code=404, detail="Release not found")
     
-    fieldnames = ["ID", "Title", "UPC", "Release Date", "Type", "Label", "Artist"]
-    filename = f"releases_export_{datetime.now().strftime('%Y%m%d')}"
+    # Get artist names
+    artist_names = "Various Artists"
+    ids = r.artist_ids or ([r.artist_id] if r.artist_id else [])
+    if ids:
+        artists = db.query(Artist).filter(Artist.id.in_(ids)).all()
+        artist_names = ", ".join([a.name for a in artists])
+    elif r.artist:
+        artist_names = r.artist.name
+
+    data = [{
+        "ID": r.id,
+        "Title": r.title,
+        "UPC": r.upc_code,
+        "Release Date": r.release_date.strftime("%Y-%m-%d") if r.release_date else "",
+        "Type": r.release_type,
+        "Label": r.label.name if r.label else "N/A",
+        "Artist": artist_names,
+        "Catalog #": r.catalog_number or "N/A"
+    }]
+    
+    fieldnames = ["ID", "Title", "UPC", "Release Date", "Type", "Label", "Artist", "Catalog #"]
+    filename = f"release_{release_id}_{datetime.now().strftime('%Y%m%d')}"
     
     if format.lower() == "excel":
-        content = generate_excel(data, fieldnames, "Releases")
+        content = generate_excel(data, fieldnames, "Release Details")
         return Response(
             content=content,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

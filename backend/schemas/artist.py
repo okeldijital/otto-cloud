@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 from datetime import datetime
 
@@ -7,6 +7,7 @@ class ArtistBase(BaseModel):
     artist_id: Optional[str] = None
     name: str
     aka: Optional[str] = None  # Stage name / alias
+    nationality: Optional[str] = None
     id_number: Optional[str] = None
     ipi_number: Optional[str] = None
     contact_email: Optional[str] = None
@@ -28,6 +29,7 @@ class ArtistCreate(ArtistBase):
 class ArtistUpdate(BaseModel):
     name: Optional[str] = None
     aka: Optional[str] = None
+    nationality: Optional[str] = None
     id_number: Optional[str] = None
     ipi_number: Optional[str] = None
     contact_email: Optional[str] = None
@@ -47,6 +49,5 @@ class Artist(ArtistBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 

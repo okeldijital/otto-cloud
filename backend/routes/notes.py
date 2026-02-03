@@ -12,7 +12,7 @@ from utils.activity import log_activity
 router = APIRouter()
 
 
-@router.get("/", response_model=List[Note])
+@router.get("", response_model=List[Note])
 def list_notes(
     skip: int = 0,
     limit: int = 100,
@@ -24,7 +24,7 @@ def list_notes(
     return notes
 
 
-@router.post("/", response_model=Note, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=Note, status_code=status.HTTP_201_CREATED)
 def create_note(
     note: NoteCreate,
     db: Session = Depends(get_db),

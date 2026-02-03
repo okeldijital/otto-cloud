@@ -11,7 +11,7 @@ from dependencies import get_current_active_user
 router = APIRouter()
 
 
-@router.get("/", response_model=List[Royalty])
+@router.get("", response_model=List[Royalty])
 def list_royalties(
     skip: int = 0,
     limit: int = 100,
@@ -23,7 +23,7 @@ def list_royalties(
     return royalties
 
 
-@router.post("/", response_model=Royalty, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=Royalty, status_code=status.HTTP_201_CREATED)
 def create_royalty(
     royalty: RoyaltyCreate,
     db: Session = Depends(get_db),

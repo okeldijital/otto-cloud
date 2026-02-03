@@ -3,7 +3,7 @@ import sys
 import platform
 import logging
 from pathlib import Path
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Optional
 
 # PACKAGED DETECTION
@@ -11,6 +11,8 @@ IS_PACKAGED = getattr(sys, 'frozen', False)
 
 class Settings(BaseSettings):
     """Application configuration settings"""
+    
+    model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
     
     APP_NAME: str = "OTTO"
     APP_VERSION: str = "1.0.0"
@@ -24,7 +26,7 @@ class Settings(BaseSettings):
     # Desktop Settings
     AUTH_DISABLED: bool = False
     DEBUG: bool = False
-    PORT: int = 18000 # Use high port to avoid conflicts
+    PORT: int = 8000 # Default FastAPI port
     
     # Security
     SECRET_KEY: str = "otto-internal-secret-key-development"
@@ -68,13 +70,13 @@ class Settings(BaseSettings):
         db_dir.mkdir(exist_ok=True)
         storage_dir.mkdir(exist_ok=True)
         
-        self.DATABASE_URL = f"sqlite:///{db_dir}/app.db"
+        if not self.DATABASE_URL:
+            self.DATABASE_URL = f"sqlite:///{db_dir}/app.db"
+            
         self.UPLOAD_DIR = str(storage_dir)
         self.LOG_FILE = str(data_parent / "otto_backend.log")
 
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
+
 
 
 settings = Settings()

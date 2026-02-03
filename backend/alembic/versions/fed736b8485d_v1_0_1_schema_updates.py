@@ -25,10 +25,11 @@ def upgrade() -> None:
                existing_type=sa.INTEGER(),
                nullable=False,
                autoincrement=True)
+        batch_op.add_column(sa.Column('catalog_number', sa.String(length=50), nullable=True))
         batch_op.create_index(batch_op.f('ix_releases_catalog_number'), ['catalog_number'], unique=True)
-        batch_op.create_index(batch_op.f('ix_releases_id'), ['id'], unique=False)
-        batch_op.create_index(batch_op.f('ix_releases_release_id'), ['release_id'], unique=True)
-        batch_op.create_index(batch_op.f('ix_releases_title'), ['title'], unique=False)
+        # batch_op.create_index(batch_op.f('ix_releases_id'), ['id'], unique=False)
+        # batch_op.create_index(batch_op.f('ix_releases_release_id'), ['release_id'], unique=True)
+        # batch_op.create_index(batch_op.f('ix_releases_title'), ['title'], unique=False)
 
     with op.batch_alter_table('tracks', schema=None) as batch_op:
         batch_op.add_column(sa.Column('credits', sa.JSON(), nullable=True))

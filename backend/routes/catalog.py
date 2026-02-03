@@ -134,6 +134,32 @@ def get_artist_releases(
     return releases
 
 
+@router.get("/artists/{artist_id}/works", response_model=List[Work])
+def get_artist_works(
+    artist_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Get all works associated with a specific artist/composer/arranger"""
+    from sqlalchemy import func
+    works = db.query(WorkModel).filter(
+        # Check if artist_id is in composers or arrangers JSON array
+        (func.json_extract(func.coalesce(WorkModel.composers, '[]'), '$').contains(artist_id)) |
+        (func.json_extract(func.coalesce(WorkModel.arrangers, '[]'), '$').contains(artist_id))
+    ).all()
+    
+    # Fallback for SQLite if json_extract doesn't behave as expected in all environments
+    if not works:
+        all_works = db.query(WorkModel).all()
+        works = [w for w in all_works if (
+            (w.composers and artist_id in w.composers) or 
+            (w.arrangers and artist_id in w.arrangers)
+        )]
+    return works
+
+
+
+
 # ==================== RELEASES ====================
 
 @router.get("/releases", response_model=List[Release])
@@ -155,10 +181,18 @@ def create_release(
     current_user: User = Depends(get_current_active_user)
 ):
     """Create a new release"""
-    db_release = ReleaseModel(**release.model_dump())
+    track_ids = release.track_ids
+    release_data = release.model_dump(exclude={"track_ids"})
+    db_release = ReleaseModel(**release_data)
     db.add(db_release)
     db.commit()
     db.refresh(db_release)
+    
+    if track_ids:
+        db.query(TrackModel).filter(TrackModel.id.in_(track_ids)).update({"release_id": db_release.id}, synchronize_session=False)
+        db.commit()
+        db.refresh(db_release)
+        
     return db_release
 
 
@@ -188,8 +222,17 @@ def update_release(
         raise HTTPException(status_code=404, detail="Release not found")
     
     update_data = release_update.model_dump(exclude_unset=True)
+    track_ids = update_data.pop("track_ids", None)
+    
     for field, value in update_data.items():
         setattr(db_release, field, value)
+    
+    if track_ids is not None:
+        # Clear existing tracks for this release
+        db.query(TrackModel).filter(TrackModel.release_id == release_id).update({"release_id": None}, synchronize_session=False)
+        # Link new tracks
+        if track_ids:
+            db.query(TrackModel).filter(TrackModel.id.in_(track_ids)).update({"release_id": release_id}, synchronize_session=False)
     
     db.commit()
     db.refresh(db_release)
@@ -452,6 +495,28 @@ def get_label(
     return label
 
 
+@router.get("/labels/{label_id}/artists", response_model=List[Artist])
+def get_label_artists(
+    label_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Get all artists for a specific label"""
+    artists = db.query(ArtistModel).filter(ArtistModel.label_id == label_id).all()
+    return artists
+
+
+@router.get("/labels/{label_id}/releases", response_model=List[Release])
+def get_label_releases(
+    label_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Get all releases for a specific label"""
+    releases = db.query(ReleaseModel).filter(ReleaseModel.label_id == label_id).all()
+    return releases
+
+
 @router.put("/labels/{label_id}", response_model=Label)
 def update_label(
     label_id: int,
@@ -536,6 +601,28 @@ def get_publisher(
     if not publisher:
         raise HTTPException(status_code=404, detail="Publisher not found")
     return publisher
+
+
+@router.get("/publishers/{publisher_id}/artists", response_model=List[Artist])
+def get_publisher_artists(
+    publisher_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Get all artists for a specific publisher"""
+    artists = db.query(ArtistModel).filter(ArtistModel.publisher_id == publisher_id).all()
+    return artists
+
+
+@router.get("/publishers/{publisher_id}/works", response_model=List[Work])
+def get_publisher_works(
+    publisher_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Get all works for a specific publisher"""
+    works = db.query(WorkModel).filter(WorkModel.publisher_id == publisher_id).all()
+    return works
 
 
 @router.put("/publishers/{publisher_id}", response_model=Publisher)

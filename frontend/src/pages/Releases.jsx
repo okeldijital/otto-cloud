@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { CatalogService } from '../services/catalog';
 import { DocumentsService } from '../services/operations';
 import { CRMService } from '../services/crm';
+import { ReportsService } from '../services/reports';
 import { BASE_URL } from '../lib/api';
 import DataTable from '../components/DataTable';
 import EntityForm from '../components/EntityForm';
 import Autocomplete from '../components/Autocomplete';
+import { ChevronLeft } from 'lucide-react';
 
 const API_URL = BASE_URL;
 
@@ -16,8 +18,10 @@ const Releases = () => {
     const [artists, setArtists] = useState([]);
     const [distributors, setDistributors] = useState([]);
     const [contacts, setContacts] = useState([]);
+    const [tracks, setTracks] = useState([]);
     // State for new credit input
     const [newCreditContactId, setNewCreditContactId] = useState('');
+    const [quickAddContactSearch, setQuickAddContactSearch] = useState('');
     const [newCreditRole, setNewCreditRole] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -36,7 +40,8 @@ const Releases = () => {
         artist_ids: [],
         distributor_id: '',
         cover_art_url: '',
-        credits: []
+        credits: [],
+        track_ids: []
     });
     const [similarReleases, setSimilarReleases] = useState([]);
 
@@ -46,7 +51,7 @@ const Releases = () => {
             return;
         }
 
-        const matches = releases.filter(r =>
+        const matches = (releases || []).filter(r =>
             r.title.toLowerCase().includes(formData.title.toLowerCase()) &&
             r.id !== editingRelease?.id
         );
@@ -56,19 +61,20 @@ const Releases = () => {
     const fetchData = async () => {
         setIsLoading(true);
         try {
-            const [releasesData, labelsData, artistsData, distributorsData] = await Promise.all([
+            const [releasesData, labelsData, artistsData, distributorsData, contactsData, tracksData] = await Promise.all([
                 CatalogService.getAll('releases'),
                 CatalogService.getAll('labels'),
                 CatalogService.getAll('artists'),
-                CatalogService.getAll('artists'),
                 CRMService.getAllDistributors(),
-                CRMService.getContacts()
+                CRMService.getContacts(),
+                CatalogService.getAll('tracks')
             ]);
             setReleases(releasesData);
             setLabels(labelsData);
             setArtists(artistsData);
             setDistributors(distributorsData);
             setContacts(contactsData);
+            setTracks(tracksData);
         } catch (error) {
             console.error('Failed to fetch data:', error);
         } finally {
@@ -76,9 +82,25 @@ const Releases = () => {
         }
     };
 
+    const location = useLocation();
+
     useEffect(() => {
         fetchData();
-    }, []);
+
+        // Handle direct "new" action if coming from another page (like Artist Detail)
+        const params = new URLSearchParams(location.search);
+        if (params.get('action') === 'new') {
+            const artistId = params.get('artist_id');
+            handleCreate();
+            if (artistId) {
+                setFormData(prev => ({
+                    ...prev,
+                    artist_ids: [parseInt(artistId)]
+                }));
+            }
+        }
+    }, [location.search]);
+    // Note: handleCreate is called, which sets isModalOpen(true)
 
     const handleCreate = () => {
         setEditingRelease(null);
@@ -93,26 +115,39 @@ const Releases = () => {
             artist_id: '',
             artist_ids: [],
             distributor_id: '',
-            cover_art_url: ''
+            cover_art_url: '',
+            credits: [],
+            track_ids: []
         });
         setIsModalOpen(true);
     };
 
-    const handleEdit = (release) => {
+    const handleEdit = async (release) => {
         setEditingRelease(release);
         setSelectedFile(null);
+
+        // Fetch tracks for this release specifically to get the list
+        let releaseTrackIds = [];
+        try {
+            const releaseTracks = await CatalogService.getReleaseTracks(release.id);
+            releaseTrackIds = Array.isArray(releaseTracks) ? releaseTracks.map(t => t.id) : [];
+        } catch (e) {
+            console.error("Failed to fetch tracks for release:", e);
+        }
+
         setFormData({
             title: release.title,
             catalog_number: release.catalog_number || '',
             upc_code: release.upc_code || '',
-            release_date: release.release_date ? release.release_date.split('T')[0] : '',
+            release_date: release.release_date ? String(release.release_date).split('T')[0] : '',
             release_type: release.release_type || 'Album',
             label_id: release.label_id || '',
             artist_id: release.artist_id || '',
             artist_ids: release.artist_ids || (release.artist_id ? [release.artist_id] : []),
             distributor_id: release.distributor_id || '',
             cover_art_url: release.cover_art_url || '',
-            credits: release.credits || []
+            credits: release.credits || [],
+            track_ids: releaseTrackIds
         });
         setIsModalOpen(true);
     };
@@ -220,12 +255,26 @@ const Releases = () => {
 
     return (
         <div className="entity-page">
+            <Link to="/catalog" className="back-link">
+                <ChevronLeft size={16} /> Back to Catalog
+            </Link>
             <div className="page-header">
                 <h1 className="page-title">Releases</h1>
                 <div style={{ display: 'flex', gap: '1rem' }}>
                     <button
                         className="btn-secondary"
-                        onClick={() => window.open(`${API_URL}/api/reports/export/releases?format=excel`, '_blank')}
+                        onClick={async () => {
+                            try {
+                                await ReportsService.exportData('releases', 'excel');
+                            } catch (err) {
+                                console.error(err);
+                                if (err.response?.status === 401) {
+                                    alert("Session expired. Please log in again.");
+                                } else {
+                                    alert("Export failed: " + (err.response?.data?.detail || err.message));
+                                }
+                            }
+                        }}
                     >
                         Export Excel
                     </button>
@@ -306,72 +355,100 @@ const Releases = () => {
                 <div className="form-group">
                     <label>Label</label>
                     <Autocomplete
-                        options={labels}
+                        options={labels || []}
                         value={formData.label_id}
                         onChange={(val) => setFormData({ ...formData, label_id: val })}
                         placeholder="Select Label..."
+                        allowQuickAdd={true}
+                        quickAddType="labels"
                     />
                 </div>
                 <div className="form-group">
                     <label>Artist(s)</label>
                     <Autocomplete
-                        options={artists}
+                        options={artists || []}
                         value={formData.artist_ids}
                         onChange={(val) => setFormData({ ...formData, artist_ids: val })}
                         placeholder="Select Artist(s)..."
                         multiple={true}
+                        allowQuickAdd={true}
+                        quickAddType="artists"
                     />
+                </div>
+                <div className="form-group">
+                    <label>Tracks</label>
+                    <Autocomplete
+                        options={(tracks || []).map(t => ({
+                            id: t.id,
+                            name: `${t.title} ${t.isrc_code ? `(${t.isrc_code})` : ''}`
+                        }))}
+                        value={formData.track_ids}
+                        onChange={(val) => setFormData({ ...formData, track_ids: val })}
+                        placeholder="Select Track(s)..."
+                        multiple={true}
+                    />
+                    <small style={{ color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
+                        Only existing tracks can be linked. To create new tracks, use the Tracks page.
+                    </small>
                 </div>
                 <div className="form-group">
                     <label>Distributor</label>
                     <Autocomplete
-                        options={distributors}
+                        options={distributors || []}
                         value={formData.distributor_id}
                         onChange={(val) => setFormData({ ...formData, distributor_id: val })}
                         placeholder="Select Distributor..."
+                        allowQuickAdd={true}
+                        quickAddType="distributor"
                     />
                 </div>
 
                 <div className="form-group">
                     <label>Credits (Engineers, Producers, etc.)</label>
                     <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                        {formData.credits.map((credit, index) => (
-                            <div key={index} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'center' }}>
-                                <div style={{ flex: 1, padding: '0.5rem', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '0.875rem' }}>
-                                    {contacts.find(c => c.id == credit.contact_id)?.first_name} {contacts.find(c => c.id == credit.contact_id)?.last_name}
+                        {formData.credits.map((credit, index) => {
+                            if (!credit || !credit.contact_id) return null;
+                            const contact = (contacts || []).find(c => c.id == credit.contact_id);
+                            return (
+                                <div key={index} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'center' }}>
+                                    <div style={{ flex: 1, padding: '0.5rem', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '0.875rem' }}>
+                                        {contact ? `${contact.first_name} ${contact.last_name}` : 'Unknown Contact'}
+                                    </div>
+                                    <div style={{ flex: 1, padding: '0.5rem', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '0.875rem' }}>
+                                        {credit.role}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const newCredits = [...formData.credits];
+                                            newCredits.splice(index, 1);
+                                            setFormData({ ...formData, credits: newCredits });
+                                        }}
+                                        style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem' }}
+                                    >
+                                        &times;
+                                    </button>
                                 </div>
-                                <div style={{ flex: 1, padding: '0.5rem', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '0.875rem' }}>
-                                    {credit.role}
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        const newCredits = [...formData.credits];
-                                        newCredits.splice(index, 1);
-                                        setFormData({ ...formData, credits: newCredits });
-                                    }}
-                                    style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem' }}
-                                >
-                                    &times;
-                                </button>
-                            </div>
-                        ))}
+                            );
+                        })}
 
                         <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                            <select
-                                value={newCreditContactId}
-                                onChange={(e) => setNewCreditContactId(e.target.value)}
-                                style={{ flex: 1 }}
-                            >
-                                <option value="">Select Contact...</option>
-                                {contacts.map(c => <option key={c.id} value={c.id}>{c.first_name} {c.last_name}</option>)}
-                            </select>
+                            <div style={{ flex: 1 }}>
+                                <Autocomplete
+                                    options={(contacts || []).map(c => ({ id: c.id, name: `${c.first_name} ${c.last_name}` }))}
+                                    value={newCreditContactId}
+                                    onChange={(val) => setNewCreditContactId(val)}
+                                    placeholder="Select Contact..."
+                                    allowQuickAdd={true}
+                                    quickAddType="contact"
+                                />
+                            </div>
                             <input
                                 type="text"
                                 placeholder="Role (e.g. Mixer)"
                                 value={newCreditRole}
                                 onChange={(e) => setNewCreditRole(e.target.value)}
-                                style={{ flex: 1 }}
+                                style={{ flex: 1, padding: '0.5rem 0.75rem', borderRadius: '0.375rem', border: '1px solid #e2e8f0' }}
                             />
                             <button
                                 type="button"

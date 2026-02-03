@@ -1,38 +1,147 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Date, Numeric, Text, Boolean, JSON
+import uuid
+from sqlalchemy import Column, String, Boolean, Date, DateTime, Numeric, Text, ForeignKey, CheckConstraint, Index, Integer, Uuid
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
 
 
 class Contract(Base):
-    """Contract model"""
     __tablename__ = "contracts"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    # Foreign Keys
-    artist_id = Column(Integer, ForeignKey("artists.id"))
-    label_id = Column(Integer, ForeignKey("labels.id"))
-    publisher_id = Column(Integer, ForeignKey("publishers.id"))
-    
-    # JSON Arrays for Multiple Relationships
-    artist_ids = Column(JSON)
-    work_ids = Column(JSON)
-    release_ids = Column(JSON)
-    contact_ids = Column(JSON)  # External contacts included in contract
-    
+
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    contract_number = Column(String(50), nullable=False)
+    organization_id = Column(Uuid(as_uuid=True), nullable=False, index=True)
+
+    title = Column(String(255), nullable=False)
+    status = Column(String(50), default="Draft", nullable=False)
+    contract_type = Column(String(50))
     start_date = Column(Date)
-    end_date = Column(Date, index=True)  # For expiration alerts
-    file_path = Column(String(500))  # URL or file path to contract document
-    status = Column(String(50), default="Active") # Draft, Partially Signed, Active, Expired, Terminated
-    title = Column(String(255)) # Friendly name e.g. "360 Deal 2024"
-    
+    end_date = Column(Date)
+    signed_date = Column(Date)
+    territory = Column(String(255))
+    exclusivity = Column(Boolean, default=False)
+    notes = Column(Text)
+
+    royalty_description = Column(Text)
+    advances_amount = Column(Numeric(10, 2))
+    advances_currency = Column(String(3), default="USD")
+    recoupment_notes = Column(Text)
+
+    created_by = Column(Integer, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-    
-    # Relationships
-    artist = relationship("Artist", back_populates="contracts")
-    label = relationship("Label", back_populates="contracts")
-    publisher = relationship("Publisher", back_populates="contracts")
-    
-    def __repr__(self):
-        return f"<Contract {self.contract_id}>"
+
+    parties = relationship("ContractParty", back_populates="contract", cascade="all, delete-orphan")
+    assets = relationship("ContractAsset", back_populates="contract", cascade="all, delete-orphan")
+    documents = relationship("ContractDocument", back_populates="contract", cascade="all, delete-orphan")
+    split_groups = relationship("ContractSplitGroup", back_populates="contract", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index('ix_contracts_org_number', 'organization_id', 'contract_number', unique=True),
+    )
+
+
+class ContractParty(Base):
+    __tablename__ = "contract_parties"
+
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    contract_id = Column(Uuid(as_uuid=True), ForeignKey("contracts.id"), nullable=False)
+    organization_id = Column(Uuid(as_uuid=True), nullable=False, index=True)
+
+    entity_type = Column(String(50), nullable=False)  # Artist, Label, Publisher, External
+    entity_id = Column(Integer, nullable=True)
+    external_name = Column(String(255), nullable=True)
+
+    role = Column(String(100), nullable=False)
+    split_percent = Column(Numeric(6, 3))
+    notes = Column(Text)
+
+    contract = relationship("Contract", back_populates="parties")
+    splits = relationship("ContractSplit", back_populates="party", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        CheckConstraint('(entity_id IS NOT NULL) OR (external_name IS NOT NULL)', name='check_party_entity_or_name'),
+        Index('ix_contract_parties_org_contract', 'organization_id', 'contract_id'),
+    )
+
+
+class ContractAsset(Base):
+    __tablename__ = "contract_assets"
+
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    contract_id = Column(Uuid(as_uuid=True), ForeignKey("contracts.id"), nullable=False)
+    organization_id = Column(Uuid(as_uuid=True), nullable=False, index=True)
+
+    asset_type = Column(String(50), nullable=False)  # Work, Track, Release
+    asset_id = Column(Integer, nullable=False)
+    scope_type = Column(String(50), default="INCLUSION")
+    notes = Column(Text)
+
+    contract = relationship("Contract", back_populates="assets")
+
+    __table_args__ = (
+        Index('ix_contract_assets_org_contract', 'organization_id', 'contract_id'),
+    )
+
+
+class ContractDocument(Base):
+    __tablename__ = "contract_documents"
+
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    contract_id = Column(Uuid(as_uuid=True), ForeignKey("contracts.id"), nullable=False)
+    organization_id = Column(Uuid(as_uuid=True), nullable=False, index=True)
+
+    file_path = Column(String(500), nullable=False)
+    file_name = Column(String(255), nullable=False)
+    version = Column(Integer, nullable=False, default=1)
+
+    uploaded_by = Column(Integer)
+    uploaded_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    contract = relationship("Contract", back_populates="documents")
+
+    __table_args__ = (
+        Index('ix_contract_documents_org_contract', 'organization_id', 'contract_id'),
+        Index('ix_contract_documents_unique_version', 'contract_id', 'version', unique=True),
+    )
+
+
+class ContractSplitGroup(Base):
+    __tablename__ = "contract_split_groups"
+
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    contract_id = Column(Uuid(as_uuid=True), ForeignKey("contracts.id"), nullable=False)
+    organization_id = Column(Uuid(as_uuid=True), nullable=False, index=True)
+
+    group_name = Column(String(100), nullable=False)
+    group_type = Column(String(50))
+    notes = Column(Text)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    contract = relationship("Contract", back_populates="split_groups")
+    splits = relationship("ContractSplit", back_populates="group", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index('ix_contract_split_groups_org_contract', 'organization_id', 'contract_id'),
+    )
+
+
+class ContractSplit(Base):
+    __tablename__ = "contract_splits"
+
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    group_id = Column(Uuid(as_uuid=True), ForeignKey("contract_split_groups.id"), nullable=False)
+    organization_id = Column(Uuid(as_uuid=True), nullable=False, index=True)
+    party_id = Column(Uuid(as_uuid=True), ForeignKey("contract_parties.id"), nullable=True)
+    external_party_name = Column(String(255))
+    percent = Column(Numeric(6, 3), nullable=False)
+    notes = Column(Text)
+
+    group = relationship("ContractSplitGroup", back_populates="splits")
+    party = relationship("ContractParty", back_populates="splits")
+
+    __table_args__ = (
+        CheckConstraint('(party_id IS NOT NULL) OR (external_party_name IS NOT NULL)', name='check_split_party_or_name'),
+        Index('ix_contract_splits_org_group', 'organization_id', 'group_id'),
+    )

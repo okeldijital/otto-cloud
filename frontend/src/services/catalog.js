@@ -42,5 +42,32 @@ export const CatalogService = {
     getReleaseTracks: async (releaseId) => {
         const response = await api.get(`/catalog/releases/${releaseId}/tracks`);
         return response.data;
+    },
+
+    getLabelArtists: async (labelId) => {
+        const response = await api.get(`/catalog/labels/${labelId}/artists`);
+        return response.data;
+    },
+
+    getLabelReleases: async (labelId) => {
+        const response = await api.get(`/catalog/labels/${labelId}/releases`);
+        return response.data;
+    },
+
+    getPublisherArtists: async (publisherId) => {
+        const response = await api.get(`/catalog/publishers/${publisherId}/artists`);
+        return response.data;
+    },
+
+    getPublisherWorks: async (publisherId) => {
+        const response = await api.get(`/catalog/publishers/${publisherId}/works`);
+        return response.data;
+    },
+
+    getArtistContracts: async (artistId) => {
+        const response = await api.get(`/contracts`, {
+            params: { entity_type: 'Artist', entity_id: artistId }
+        });
+        return response.data;
     }
 };

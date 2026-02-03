@@ -93,6 +93,35 @@ def delete_company(
         raise HTTPException(status_code=400, detail=f"Could not delete company: {str(e)}")
     return None
 
+# ==================== DISTRIBUTORS (Alias for Companies) ====================
+
+@router.get("/distributors", response_model=List[Company])
+def list_distributors(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """List all distributors (Companies with type='Distributor')"""
+    return db.query(CompanyModel).filter(CompanyModel.type == "Distributor").offset(skip).limit(limit).all()
+
+@router.post("/distributors", response_model=Company, status_code=status.HTTP_201_CREATED)
+def create_distributor(
+    company: CompanyCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Create a new distributor"""
+    company_data = company.model_dump()
+    if not company_data.get("type"):
+        company_data["type"] = "Distributor"
+        
+    db_company = CompanyModel(**company_data)
+    db.add(db_company)
+    db.commit()
+    db.refresh(db_company)
+    return db_company
+
 # ==================== CONTACTS ====================
 
 @router.get("/contacts", response_model=List[Contact])

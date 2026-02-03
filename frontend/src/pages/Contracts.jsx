@@ -1,356 +1,418 @@
-import React, { useState, useEffect } from 'react';
-import { ContractsService } from '../services/contracts';
-import { CatalogService } from '../services/catalog';
-import { DocumentsService } from '../services/operations';
-import DataTable from '../components/DataTable';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, Search, Filter, FileText, Download } from 'lucide-react';
+import contractService from '../services/contractService';
+import { formatCreateError } from '../utils/contracts';
 import EntityForm from '../components/EntityForm';
 
-const API_URL = 'http://localhost:8000';
+const STATUS_COLORS = {
+    Draft: 'neutral',
+    Active: 'success',
+    Expired: 'muted',
+    Terminated: 'danger',
+};
+
+const CONTRACT_TYPES = ['Recording', 'Publishing', 'Remix', 'License'];
+const EXPIRING_BUCKETS = [
+    { label: 'Any time', value: 0 },
+    { label: 'Expiring ≤30 days', value: 30 },
+    { label: 'Expiring ≤60 days', value: 60 },
+    { label: 'Expiring ≤90 days', value: 90 },
+];
 
 const Contracts = () => {
+    const navigate = useNavigate();
     const [contracts, setContracts] = useState([]);
-    const [artists, setArtists] = useState([]);
-    const [labels, setLabels] = useState([]);
-    const [publishers, setPublishers] = useState([]);
-    const [releases, setReleases] = useState([]);
-    const [works, setWorks] = useState([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [editingContract, setEditingContract] = useState(null);
-    const [selectedFile, setSelectedFile] = useState(null);
-    const [activeTab, setActiveTab] = useState('contracts');
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
 
-    // Initial State
-    const initialFormState = {
+    const [search, setSearch] = useState('');
+    const [statusFilter, setStatusFilter] = useState('All');
+    const [typeFilter, setTypeFilter] = useState('All');
+    const [expiring, setExpiring] = useState(0);
+
+    const [showCreate, setShowCreate] = useState(false);
+    const [createError, setCreateError] = useState('');
+    const [createForm, setCreateForm] = useState({
         title: '',
-        status: 'Active',
-        label_id: '',
-        publisher_id: '',
-        artist_ids: [],
-        work_ids: [],
-        release_ids: [],
+        contract_number: '',
+        contract_type: 'Recording',
+        status: 'Draft',
         start_date: '',
         end_date: '',
-        file_path: ''
-    };
-    const [formData, setFormData] = useState(initialFormState);
-
-    const fetchData = async () => {
-        setIsLoading(true);
-        try {
-            const [contractsData, artistsData, labelsData, publishersData] = await Promise.all([
-                ContractsService.getAll(),
-                CatalogService.getAll('artists'),
-                CatalogService.getAll('labels'),
-                CatalogService.getAll('labels'),
-                CatalogService.getAll('publishers'),
-                CatalogService.getAll('releases'),
-                CatalogService.getAll('works')
-            ]);
-            setContracts(contractsData);
-            setArtists(artistsData);
-            setLabels(labelsData);
-            setPublishers(publishersData);
-            setReleases(releasesData);
-            setWorks(worksData);
-        } catch (error) {
-            console.error('Failed to fetch data:', error);
-        } finally {
-            setIsLoading(false);
-        }
-    };
+        signed_date: '',
+        territory: 'World',
+        exclusivity: false,
+        notes: '',
+        file: null,
+    });
 
     useEffect(() => {
-        fetchData();
+        const load = async () => {
+            try {
+                const res = await contractService.getAll();
+                setContracts(res.data || res || []);
+            } catch (e) {
+                console.error(e);
+                setError('Unable to load contracts. Please check network or auth.');
+            } finally {
+                setLoading(false);
+            }
+        };
+        load();
     }, []);
 
-    const handleCreate = () => {
-        setEditingContract(null);
-        setSelectedFile(null);
-        setFormData({
-            ...initialFormState,
-            is_template: activeTab === 'templates'
-        });
-        setIsModalOpen(true);
-    };
-
-    const handleEdit = (contract) => {
-        setEditingContract(contract);
-        setSelectedFile(null);
-        setFormData({
-            title: contract.title || '',
-            status: contract.status || 'Active',
-            label_id: contract.label_id || '',
-            publisher_id: contract.publisher_id || '',
-            artist_ids: contract.artist_ids || [],
-            work_ids: contract.work_ids || [],
-            release_ids: contract.release_ids || [],
-            start_date: contract.start_date ? contract.start_date.split('T')[0] : '',
-            end_date: contract.end_date ? contract.end_date.split('T')[0] : '',
-            file_path: contract.file_path || ''
-        });
-        setIsModalOpen(true);
-    };
-
-    const handleFileSelect = (e) => {
-        if (e.target.files && e.target.files.length > 0) {
-            setSelectedFile(e.target.files[0]);
-        }
-    };
-
-    const handleDelete = async (contract) => {
-        if (window.confirm(`Are you sure you want to delete contract "${contract.contract_id}"?`)) {
-            try {
-                await ContractsService.delete(contract.id);
-                fetchData();
-            } catch (error) {
-                console.error('Failed to delete contract:', error);
-                alert('Failed to delete contract');
-            }
-        }
-    };
-
-    const handleSubmit = async (e) => {
+    const handleCreate = async (e) => {
         e.preventDefault();
-        setIsSubmitting(true);
-
-        // Clean up data before sending
-        const submitData = { ...formData };
-        if (submitData.start_date === '') submitData.start_date = null;
-        if (submitData.end_date === '') submitData.end_date = null;
-        if (submitData.label_id === '') submitData.label_id = null;
-        if (submitData.publisher_id === '') submitData.publisher_id = null;
-
+        setCreateError('');
         try {
-            // Upload PDF if selected
-            if (selectedFile) {
-                const uploadedFile = await DocumentsService.upload(selectedFile);
-                submitData.file_path = uploadedFile.file_path;
+            // Requirement: Block setting ACTIVE unless at least one document exists (or is being uploaded now)
+            if (createForm.status === 'Active' && !createForm.file) {
+                setCreateError('A PDF document is required before activating a contract.');
+                return;
             }
 
-            if (editingContract) {
-                await ContractsService.update(editingContract.id, submitData);
-            } else {
-                await ContractsService.create(submitData);
+            const payload = new FormData();
+            payload.append('title', createForm.title);
+            payload.append('contract_number', createForm.contract_number || `CTR-${Math.floor(100000 + Math.random() * 900000)}`);
+            payload.append('status_value', createForm.status || 'Draft');
+            if (createForm.contract_type) payload.append('contract_type', createForm.contract_type);
+            if (createForm.start_date) payload.append('start_date', createForm.start_date);
+            if (createForm.end_date) payload.append('end_date', createForm.end_date);
+            if (createForm.signed_date) payload.append('signed_date', createForm.signed_date);
+            if (createForm.territory) payload.append('territory', createForm.territory);
+            payload.append('exclusivity', createForm.exclusivity);
+            if (createForm.notes) payload.append('notes', createForm.notes);
+
+            if (createForm.file) {
+                payload.append('file', createForm.file);
             }
-            setIsModalOpen(false);
-            fetchData();
-        } catch (error) {
-            console.error('Failed to save contract:', error);
-            alert('Failed to save contract');
-        } finally {
-            setIsSubmitting(false);
+
+            const res = await contractService.create(payload);
+
+            // Log truth as per Requirement Step 1
+            console.log('Contract Created Success:', {
+                status: res.status,
+                url: res.config?.url,
+                data: res.data
+            });
+
+            setShowCreate(false);
+            setCreateForm({
+                title: '',
+                contract_number: '',
+                contract_type: 'Recording',
+                status: 'Draft',
+                start_date: '',
+                end_date: '',
+                signed_date: '',
+                territory: 'World',
+                exclusivity: false,
+                notes: '',
+                file: null,
+            });
+            const newContract = res.data || res;
+            setContracts((prev) => [newContract, ...prev]);
+            navigate(`/contracts/${newContract.id}`);
+        } catch (err) {
+            // Logging handles by formatCreateError utility but let's be explicit here too
+            console.error('Contract create failed', {
+                status: err?.response?.status,
+                url: err?.response?.config?.url || err?.config?.url,
+                body: err?.response?.data,
+            });
+            setCreateError(formatCreateError(err));
         }
     };
 
-    const columns = [
-        { key: 'title', label: 'Title' },
-        {
-            key: 'status',
-            label: 'Status',
-            render: (row) => (
-                <span style={{
-                    padding: '2px 8px',
-                    borderRadius: '999px',
-                    fontSize: '12px',
-                    fontWeight: '600',
-                    backgroundColor: row.status === 'Active' ? '#dcfce7' : row.status === 'Expired' ? '#fee2e2' : row.status === 'Partially Signed' ? '#fef3c7' : '#f3f4f6',
-                    color: row.status === 'Active' ? '#166534' : row.status === 'Expired' ? '#991b1b' : row.status === 'Partially Signed' ? '#92400e' : '#374151'
-                }}>
-                    {row.status || 'Draft'}
-                </span>
-            )
-        },
-        {
-            key: 'artists',
-            label: 'Artists',
-            render: (row) => Array.isArray(row.artist_ids) && row.artist_ids.length > 0 ?
-                <span title={row.artist_ids.map(id => artists.find(a => a.id === id)?.name).join(', ')}>
-                    {row.artist_ids.length} Artist{row.artist_ids.length > 1 ? 's' : ''}
-                </span> : '-'
-        },
-        { key: 'start_date', label: 'Start Date' },
-        { key: 'end_date', label: 'End Date' },
-        {
-            key: 'file_path',
-            label: 'Document',
-            render: (row) => row.file_path ? (
-                <a
-                    href={`${API_URL}${row.file_path}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-primary hover:underline"
-                    onClick={(e) => e.stopPropagation()}
-                >
-                    View PDF
-                </a>
-            ) : <span className="text-muted">No File</span>
+    const filtered = useMemo(() => {
+        const now = new Date();
+        return contracts
+            .filter((c) => {
+                const matchesSearch =
+                    `${c.title || ''} ${c.contract_number || ''}`
+                        .toLowerCase()
+                        .includes(search.toLowerCase());
+                const matchesStatus =
+                    statusFilter === 'All' || c.status === statusFilter;
+                const matchesType =
+                    typeFilter === 'All' ||
+                    (c.contract_type || '').toLowerCase() ===
+                    typeFilter.toLowerCase();
+                const matchesExpiring =
+                    expiring === 0 ||
+                    (c.end_date &&
+                        new Date(c.end_date) - now <= expiring * 24 * 60 * 60 * 1000 &&
+                        new Date(c.end_date) >= now);
+                return matchesSearch && matchesStatus && matchesType && matchesExpiring;
+            })
+            .sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+    }, [contracts, search, statusFilter, typeFilter, expiring]);
+
+    const partyTooltip = (contract) => {
+        if (!contract.parties || contract.parties.length === 0) return '';
+        return contract.parties
+            .map((p) => p.display_name || p.external_name || p.name || `${p.entity_type || 'Party'} ${p.entity_id || ''}`.trim())
+            .join(', ');
+    };
+
+    const isExpired = (endDate) => {
+        if (!endDate) return false;
+        const now = new Date();
+        return new Date(endDate) < now;
+    };
+
+    const handleDownload = (e, contract) => {
+        e.stopPropagation();
+        const docId = contract.primary_document_id || contract.documents?.[0]?.id;
+        if (!docId) {
+            alert('No document available to download.');
+            return;
         }
-    ];
+        const url = contractService.buildDownloadUrl(contract.id, docId);
+        window.open(url, '_blank');
+    };
 
     return (
-        <div className="entity-page">
-            <div className="page-header">
-                <h1 className="page-title">Contracts Registry</h1>
-                <button className="btn-primary" onClick={handleCreate}>
-                    + Add Contract
-                </button>
+        <div className="contracts-shell">
+            <header className="contracts-header">
+                <div>
+                    <p className="breadcrumb">Legal ▸ Contracts</p>
+                    <h1>Contracts</h1>
+                    <p className="muted">Upload signed PDFs, then capture parties, assets, and terms.</p>
+                </div>
+                <div className="header-actions">
+                    <button className="btn orange" onClick={() => setShowCreate(true)}>
+                        <Plus size={16} /> Upload Contract (PDF)
+                    </button>
+                </div>
+            </header>
+
+            <div className="panel filters-row">
+                <div className="filter-group">
+                    <Filter size={16} />
+                    <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                        <option value="All">Status: All</option>
+                        <option value="Draft">Draft</option>
+                        <option value="Active">Active</option>
+                        <option value="Expired">Expired</option>
+                        <option value="Terminated">Terminated</option>
+                    </select>
+                    <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+                        <option value="All">Type: All</option>
+                        {CONTRACT_TYPES.map((t) => (
+                            <option key={t} value={t}>{t}</option>
+                        ))}
+                    </select>
+                    <select value={expiring} onChange={(e) => setExpiring(Number(e.target.value))}>
+                        {EXPIRING_BUCKETS.map((b) => (
+                            <option key={b.value} value={b.value}>{b.label}</option>
+                        ))}
+                    </select>
+                </div>
+                <div className="search-box-inline">
+                    <Search size={16} />
+                    <input
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        placeholder="Search contracts or CTR number"
+                    />
+                </div>
             </div>
 
-            <div className="detail-tabs" style={{ marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', gap: '2rem' }}>
-                <button
-                    className="tab-btn active"
-                    onClick={() => setActiveTab('contracts')}
-                    style={{ background: 'none', border: 'none', padding: '0.75rem 0', cursor: 'pointer', borderBottom: '2px solid var(--primary-color)', color: 'var(--primary-color)', fontWeight: 600 }}
-                >
-                    All Contracts
-                </button>
+            <div className="panel">
+                {loading ? (
+                    <div className="placeholder">Loading contracts…</div>
+                ) : error ? (
+                    <div className="error-banner">{error}</div>
+                ) : filtered.length === 0 ? (
+                    contracts.length === 0 ? (
+                        <div className="empty-state">
+                            <div>
+                                <h3>Upload a signed contract PDF to begin.</h3>
+                                <p className="muted">OTTO does not create contracts — it organizes them.</p>
+                                <button className="btn orange" onClick={() => setShowCreate(true)}>
+                                    <Plus size={16} /> Upload Contract (PDF)
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="empty-state">
+                            <div>
+                                <h3>No contracts match your filters.</h3>
+                                <p className="muted">Adjust filters or clear search.</p>
+                            </div>
+                        </div>
+                    )
+                ) : (
+                    <table className="contracts-table">
+                        <thead>
+                            <tr>
+                                <th>Status</th>
+                                <th>Title</th>
+                                <th>Parties</th>
+                                <th>Assets</th>
+                                <th>Document</th>
+                                <th>Term</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {filtered.map((c) => (
+                                <tr key={c.id} onClick={() => navigate(`/contracts/${c.id}`)}>
+                                    <td>
+                                        <span className={`status-badge ${STATUS_COLORS[c.status] || 'neutral'}`}>
+                                            {c.status || '—'}
+                                        </span>
+                                    </td>
+                                    <td className="strong">
+                                        <button className="link-btn" onClick={(e) => { e.stopPropagation(); navigate(`/contracts/${c.id}`); }}>
+                                            {c.title || 'Untitled contract'}
+                                        </button>
+                                        <div className="muted mono small">{c.contract_number || '—'}</div>
+                                    </td>
+                                    <td title={partyTooltip(c)}>
+                                        {c.parties?.length ?? c.party_count ?? 0} parties
+                                    </td>
+                                    <td>{c.assets?.length ?? c.asset_count ?? 0} assets</td>
+                                    <td>
+                                        <span className="doc-chip">
+                                            <FileText size={14} /> {c.documents?.length ? `v${c.documents.length}` : c.primary_document_id ? 'PDF' : '—'}
+                                        </span>
+                                    </td>
+                                    <td className={isExpired(c.end_date) ? 'danger-text' : ''}>
+                                        {(c.start_date || '—')} → {(c.end_date || '—')}
+                                    </td>
+                                    <td className="actions">
+                                        <button className="ghost-btn" onClick={(e) => { e.stopPropagation(); navigate(`/contracts/${c.id}`); }}>View</button>
+                                        <button className="ghost-btn" onClick={(e) => handleDownload(e, c)}>
+                                            <Download size={14} /> Download
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                )}
             </div>
-
-            <DataTable
-                columns={columns}
-                data={contracts}
-                isLoading={isLoading}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
-            />
 
             <EntityForm
-                isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
-                title={editingContract ? 'Edit Contract' : 'New Contract'}
-                onSubmit={handleSubmit}
-                isSubmitting={isSubmitting}
+                isOpen={showCreate}
+                onClose={() => setShowCreate(false)}
+                title="Upload Contract (PDF)"
+                onSubmit={handleCreate}
             >
+                {createError && <div className="error-banner">{createError}</div>}
                 <div className="form-group">
-                    <label htmlFor="title">Contract Title</label>
+                    <label>Contract ID</label>
                     <input
-                        type="text"
-                        id="title"
-                        value={formData.title}
-                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                        placeholder="e.g. 360 Deal 2024"
-                        autoFocus
+                        className="input mono"
+                        value={createForm.contract_number}
+                        onChange={(e) => setCreateForm({ ...createForm, contract_number: e.target.value })}
+                        placeholder="CTR-XXXXX"
                     />
                 </div>
-
-                <div className="form-row">
-                    <div className="form-group">
-                        <label htmlFor="status">Status</label>
-                        <select
-                            id="status"
-                            value={formData.status}
-                            onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                        >
-                            <option value="Draft">Draft</option>
-                            <option value="Partially Signed">Partially Signed</option>
-                            <option value="Active">Active</option>
-                            <option value="Expired">Expired</option>
-                            <option value="Terminated">Terminated</option>
-                        </select>
-                    </div>
-                </div>
-
                 <div className="form-group">
-                    <label>Involved Artists (hold Cmd/Ctrl to select multiple)</label>
-                    <select
-                        multiple
-                        value={formData.artist_ids}
-                        onChange={(e) => setFormData({ ...formData, artist_ids: Array.from(e.target.selectedOptions, option => parseInt(option.value)) })}
-                        style={{ height: '100px' }}
-                    >
-                        {artists.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                    </select>
+                    <label>Title</label>
+                    <input
+                        className="input"
+                        value={createForm.title}
+                        required
+                        onChange={(e) => setCreateForm({ ...createForm, title: e.target.value })}
+                    />
                 </div>
-
                 <div className="form-row">
                     <div className="form-group">
-                        <label>Label (Optional)</label>
+                        <label>Type</label>
                         <select
-                            value={formData.label_id}
-                            onChange={(e) => setFormData({ ...formData, label_id: e.target.value })}
+                            className="input"
+                            value={createForm.contract_type}
+                            onChange={(e) => setCreateForm({ ...createForm, contract_type: e.target.value })}
                         >
-                            <option value="">Select Label...</option>
-                            {labels.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                            {CONTRACT_TYPES.map((t) => (
+                                <option key={t}>{t}</option>
+                            ))}
                         </select>
                     </div>
                     <div className="form-group">
-                        <label>Publisher (Optional)</label>
+                        <label>Status</label>
                         <select
-                            value={formData.publisher_id}
-                            onChange={(e) => setFormData({ ...formData, publisher_id: e.target.value })}
+                            className="input"
+                            value={createForm.status}
+                            onChange={(e) => setCreateForm({ ...createForm, status: e.target.value })}
                         >
-                            <option value="">Select Publisher...</option>
-                            {publishers.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                            <option>Draft</option>
+                            <option>Active</option>
+                            <option>Expired</option>
+                            <option>Terminated</option>
                         </select>
                     </div>
                 </div>
-
-                <div className="form-group">
-                    <label>Related Works (hold Cmd/Ctrl to select multiple)</label>
-                    <select
-                        multiple
-                        value={formData.work_ids}
-                        onChange={(e) => setFormData({ ...formData, work_ids: Array.from(e.target.selectedOptions, option => parseInt(option.value)) })}
-                        style={{ height: '80px' }}
-                    >
-                        {works.map(w => <option key={w.id} value={w.id}>{w.title}</option>)}
-                    </select>
-                </div>
-
-                <div className="form-group">
-                    <label>Related Releases (hold Cmd/Ctrl to select multiple)</label>
-                    <select
-                        multiple
-                        value={formData.release_ids}
-                        onChange={(e) => setFormData({ ...formData, release_ids: Array.from(e.target.selectedOptions, option => parseInt(option.value)) })}
-                        style={{ height: '80px' }}
-                    >
-                        {releases.map(r => <option key={r.id} value={r.id}>{r.title}</option>)}
-                    </select>
-                </div>
-
                 <div className="form-row">
                     <div className="form-group">
-                        <label htmlFor="start_date">Start Date</label>
+                        <label>Start Date</label>
                         <input
                             type="date"
-                            id="start_date"
-                            value={formData.start_date}
-                            onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                            className="input"
+                            value={createForm.start_date}
+                            onChange={(e) => setCreateForm({ ...createForm, start_date: e.target.value })}
                         />
                     </div>
                     <div className="form-group">
-                        <label htmlFor="end_date">End Date</label>
+                        <label>End Date</label>
                         <input
                             type="date"
-                            id="end_date"
-                            value={formData.end_date}
-                            onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                            className="input"
+                            value={createForm.end_date}
+                            onChange={(e) => setCreateForm({ ...createForm, end_date: e.target.value })}
                         />
                     </div>
                 </div>
-
                 <div className="form-group">
-                    <label htmlFor="contract_file">Contract Document (PDF)</label>
+                    <label>Territory</label>
+                    <input
+                        className="input"
+                        value={createForm.territory}
+                        onChange={(e) => setCreateForm({ ...createForm, territory: e.target.value })}
+                        placeholder="e.g. World, North America"
+                    />
+                </div>
+                <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <input
+                        type="checkbox"
+                        id="exclusivity"
+                        checked={createForm.exclusivity}
+                        onChange={(e) => setCreateForm({ ...createForm, exclusivity: e.target.checked })}
+                    />
+                    <label htmlFor="exclusivity" style={{ marginBottom: 0 }}>Exclusive Contract</label>
+                </div>
+                <div className="form-group">
+                    <label>Notes</label>
+                    <textarea
+                        className="input"
+                        rows={3}
+                        value={createForm.notes}
+                        onChange={(e) => setCreateForm({ ...createForm, notes: e.target.value })}
+                        placeholder="Optional internal notes..."
+                    />
+                </div>
+                <div className="form-group">
+                    <label>Attach PDF {createForm.status === 'Active' ? '(required)' : '(optional for Draft)'}</label>
                     <input
                         type="file"
-                        id="contract_file"
-                        accept=".pdf,.doc,.docx"
-                        onChange={handleFileSelect}
-                        className="file-input"
+                        accept="application/pdf"
+                        onChange={(e) => setCreateForm({ ...createForm, file: e.target.files?.[0] || null })}
+                        required={createForm.status === 'Active'}
                     />
-                    {formData.file_path && !selectedFile && (
-                        <div className="current-file">
-                            <small>Current: <a href={`${API_URL}${formData.file_path}`} target="_blank" rel="noreferrer">View Document</a></small>
-                        </div>
+                    {createForm.status === 'Draft' && !createForm.file && (
+                        <p className="hint-text blue-text mt-1">
+                            💡 Upload a PDF to activate this contract later.
+                        </p>
                     )}
                 </div>
             </EntityForm>
-        </div >
+        </div>
     );
 };
 
 export default Contracts;
-

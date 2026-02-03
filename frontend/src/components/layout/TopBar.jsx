@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Bell, User, Settings as SettingsIcon, LogOut, Music, Users, FileText, Layout, X } from 'lucide-react';
+import { Search, Bell, User, Settings as SettingsIcon, LogOut, Music, Users, FileText, Layout, X, Building2, BookOpen, Globe, File, StickyNote, ListMusic } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
@@ -101,6 +102,24 @@ const TopBar = () => {
             case 'contract':
                 navigate(`/contracts`);
                 break;
+            case 'label':
+                navigate(`/catalog/labels`);
+                break;
+            case 'publisher':
+                navigate(`/catalog/publishers`);
+                break;
+            case 'pro':
+                navigate(`/catalog/pros`);
+                break;
+            case 'document':
+                navigate(`/documents`);
+                break;
+            case 'note':
+                navigate(`/notes`);
+                break;
+            case 'playlist':
+                navigate(`/playlists`);
+                break;
             default:
                 break;
         }
@@ -123,7 +142,9 @@ const TopBar = () => {
         <div className="topbar">
             <div className="topbar-search-container" ref={dropdownRef}>
                 <form className="topbar-search" onSubmit={(e) => e.preventDefault()}>
-                    <Search size={20} className="search-icon" />
+                    <div className="search-icon-wrapper">
+                        <Search size={20} className="search-icon" />
+                    </div>
                     <input
                         type="text"
                         placeholder="Start searching here..."
@@ -148,7 +169,7 @@ const TopBar = () => {
                     <div className="search-dropdown">
                         {hasResults ? (
                             <div className="search-results">
-                                {searchResults.artists.length > 0 && (
+                                {searchResults.artists?.length > 0 && (
                                     <div className="search-group">
                                         <h4><Users size={14} /> Artists</h4>
                                         {searchResults.artists.map(a => (
@@ -158,7 +179,7 @@ const TopBar = () => {
                                         ))}
                                     </div>
                                 )}
-                                {searchResults.releases.length > 0 && (
+                                {searchResults.releases?.length > 0 && (
                                     <div className="search-group">
                                         <h4><Layout size={14} /> Releases</h4>
                                         {searchResults.releases.map(r => (
@@ -168,7 +189,7 @@ const TopBar = () => {
                                         ))}
                                     </div>
                                 )}
-                                {searchResults.tracks.length > 0 && (
+                                {searchResults.tracks?.length > 0 && (
                                     <div className="search-group">
                                         <h4><Music size={14} /> Tracks</h4>
                                         {searchResults.tracks.map(t => (
@@ -178,12 +199,82 @@ const TopBar = () => {
                                         ))}
                                     </div>
                                 )}
-                                {searchResults.contracts.length > 0 && (
+                                {searchResults.works?.length > 0 && (
+                                    <div className="search-group">
+                                        <h4><FileText size={14} /> Works</h4>
+                                        {searchResults.works.map(w => (
+                                            <div key={w.id} className="search-item" onClick={() => handleResultClick(w)}>
+                                                {w.title}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                {searchResults.contracts?.length > 0 && (
                                     <div className="search-group">
                                         <h4><FileText size={14} /> Contracts</h4>
                                         {searchResults.contracts.map(c => (
                                             <div key={c.id} className="search-item" onClick={() => handleResultClick(c)}>
                                                 {c.title}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                {searchResults.labels?.length > 0 && (
+                                    <div className="search-group">
+                                        <h4><Building2 size={14} /> Labels</h4>
+                                        {searchResults.labels.map(l => (
+                                            <div key={l.id} className="search-item" onClick={() => handleResultClick(l)}>
+                                                {l.name}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                {searchResults.publishers?.length > 0 && (
+                                    <div className="search-group">
+                                        <h4><BookOpen size={14} /> Publishers</h4>
+                                        {searchResults.publishers.map(p => (
+                                            <div key={p.id} className="search-item" onClick={() => handleResultClick(p)}>
+                                                {p.name}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                {searchResults.pros?.length > 0 && (
+                                    <div className="search-group">
+                                        <h4><Globe size={14} /> PROs</h4>
+                                        {searchResults.pros.map(p => (
+                                            <div key={p.id} className="search-item" onClick={() => handleResultClick(p)}>
+                                                {p.name}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                {searchResults.documents?.length > 0 && (
+                                    <div className="search-group">
+                                        <h4><File size={14} /> Documents</h4>
+                                        {searchResults.documents.map(d => (
+                                            <div key={d.id} className="search-item" onClick={() => handleResultClick(d)}>
+                                                {d.title}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                {searchResults.notes?.length > 0 && (
+                                    <div className="search-group">
+                                        <h4><StickyNote size={14} /> Notes</h4>
+                                        {searchResults.notes.map(n => (
+                                            <div key={n.id} className="search-item" onClick={() => handleResultClick(n)}>
+                                                {n.title}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                {searchResults.playlists?.length > 0 && (
+                                    <div className="search-group">
+                                        <h4><ListMusic size={14} /> Playlists</h4>
+                                        {searchResults.playlists.map(p => (
+                                            <div key={p.id} className="search-item" onClick={() => handleResultClick(p)}>
+                                                {p.title}
                                             </div>
                                         ))}
                                     </div>
@@ -313,7 +404,7 @@ const TopBar = () => {
                     background: #f1f5f9;
                     border: 1px solid transparent;
                     border-radius: 12px;
-                    padding: 0.25rem 0.75rem;
+                    padding: 0.25rem 0.5rem;
                     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
                     height: 44px;
                 }
@@ -322,6 +413,17 @@ const TopBar = () => {
                     border-color: var(--accent-color);
                     box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
                     max-width: 650px;
+                }
+                .search-icon-wrapper {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding-right: 0.75rem;
+                    margin-right: 0.5rem;
+                    border-right: 1px solid #cbd5e1;
+                    height: 60%;
+                    color: #64748b;
+                    padding-left: 0.5rem;
                 }
                 .search-input {
                     background: transparent;
@@ -351,7 +453,6 @@ const TopBar = () => {
                     color: #1e293b;
                 }
                 .search-icon {
-                    margin-right: 0.75rem;
                     color: #64748b;
                     flex-shrink: 0;
                 }

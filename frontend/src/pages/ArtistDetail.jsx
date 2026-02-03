@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { CatalogService } from '../services/catalog';
 import { DocumentsService } from '../services/operations';
+import { ReportsService } from '../services/reports';
 import { BASE_URL } from '../lib/api';
-import { User, Disc, FileText, Music, Link as LinkIcon, Instagram, Twitter, DollarSign, Edit, Camera } from 'lucide-react';
+import { User, Disc, FileText, Music, Link as LinkIcon, Instagram, Twitter, DollarSign, Edit, Camera, ChevronLeft } from 'lucide-react';
 import EntityForm from '../components/EntityForm';
 
 const API_URL = BASE_URL;
@@ -13,6 +14,8 @@ const ArtistDetail = () => {
     const navigate = useNavigate();
     const [artist, setArtist] = useState(null);
     const [releases, setReleases] = useState([]);
+    const [works, setWorks] = useState([]);
+    const [contracts, setContracts] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('overview');
 
@@ -27,6 +30,7 @@ const ArtistDetail = () => {
     const [formData, setFormData] = useState({
         name: '',
         aka: '',
+        nationality: '',
         id_number: '',
         profile_image_url: '',
         contact_email: '',
@@ -50,15 +54,19 @@ const ArtistDetail = () => {
         const fetchArtistData = async () => {
             setIsLoading(true);
             try {
-                const [artistData, releasesData, labelsData, publishersData, prosData] = await Promise.all([
+                const [artistData, releasesData, worksData, contractsData, labelsData, publishersData, prosData] = await Promise.all([
                     CatalogService.getById('artists', id),
                     CatalogService.getArtistReleases(id),
+                    CatalogService.getArtistWorks(id),
+                    CatalogService.getArtistContracts(id),
                     CatalogService.getAll('labels'),
                     CatalogService.getAll('publishers'),
                     CatalogService.getAll('pros')
                 ]);
                 setArtist(artistData);
                 setReleases(releasesData);
+                setWorks(worksData);
+                setContracts(contractsData);
                 setLabels(labelsData);
                 setPublishers(publishersData);
                 setPros(prosData);
@@ -87,6 +95,7 @@ const ArtistDetail = () => {
         setFormData({
             name: artist.name,
             aka: artist.aka || '',
+            nationality: artist.nationality || '',
             id_number: artist.id_number || '',
             profile_image_url: artist.profile_image_url || '',
             contact_email: artist.contact_email || '',
@@ -137,6 +146,7 @@ const ArtistDetail = () => {
             const submissionData = {
                 name: formData.name,
                 aka: formData.aka,
+                nationality: formData.nationality,
                 id_number: formData.id_number,
                 profile_image_url: profileImageUrl,
                 contact_email: formData.contact_email,
@@ -182,6 +192,9 @@ const ArtistDetail = () => {
 
     return (
         <div className="artist-detail-page">
+            <Link to="/catalog/artists" className="back-link">
+                <ChevronLeft size={16} /> Back to Artists
+            </Link>
             {/* Header / Hero Section */}
             <div className="artist-header">
                 <div className="artist-profile-image">
@@ -233,138 +246,245 @@ const ArtistDetail = () => {
                         <span className="stat-label">Releases</span>
                     </div>
                     <div className="stat-card">
-                        <span className="stat-value">{/* TODO: Fetch works count */} -</span>
+                        <span className="stat-value">{works.length}</span>
                         <span className="stat-label">Works</span>
                     </div>
                     <div className="stat-card">
-                        <span className="stat-value">{/* TODO: Fetch contracts count */} -</span>
+                        <span className="stat-value">{contracts.length}</span>
                         <span className="stat-label">Contracts</span>
                     </div>
                 </div>
             </div>
 
-            {/* Navigation Tabs */}
-            <div className="detail-tabs">
-                <button
-                    className={`tab-btn ${activeTab === 'overview' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('overview')}
-                >
-                    Overview
-                </button>
-                <button
-                    className={`tab-btn ${activeTab === 'discography' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('discography')}
-                >
-                    Discography
-                </button>
-                <button
-                    className={`tab-btn ${activeTab === 'banking' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('banking')}
-                >
-                    Banking & Legal
-                </button>
-            </div>
-
-            {/* Tab Content */}
-            <div className="tab-content">
-                {activeTab === 'overview' && (
-                    <div className="overview-tab">
-                        <div className="info-section">
-                            <h3>Contact Information</h3>
-                            <div className="info-grid">
-                                <div className="info-item">
-                                    <label>Email</label>
-                                    <p>{artist.contact_email || '-'}</p>
-                                </div>
-                                <div className="info-item">
-                                    <label>Phone</label>
-                                    <p>{artist.contact_phone || '-'}</p>
-                                </div>
-                                <div className="info-item full-width">
-                                    <label>Physical Address</label>
-                                    <p>{artist.physical_address || '-'}</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="info-section">
-                            <h3>Identifiers</h3>
-                            <div className="info-grid">
-                                <div className="info-item">
-                                    <label>IPI Number</label>
-                                    <p>{artist.ipi_number || '-'}</p>
-                                </div>
-                                <div className="info-item">
-                                    <label>National ID</label>
-                                    <p>{artist.id_number || '-'}</p>
-                                </div>
-                                <div className="info-item">
-                                    <label>Label</label>
-                                    <p>{artist.label_id ? `Label #${artist.label_id}` : 'Independent'}</p>
-                                </div>
-                            </div>
-                        </div>
+            <div className="artist-content-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '2rem', alignItems: 'start' }}>
+                <div className="main-content-column">
+                    {/* Navigation Tabs */}
+                    <div className="detail-tabs">
+                        <button
+                            className={`tab-btn ${activeTab === 'overview' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('overview')}
+                        >
+                            Overview
+                        </button>
+                        <button
+                            className={`tab-btn ${activeTab === 'discography' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('discography')}
+                        >
+                            Discography
+                        </button>
+                        <button
+                            className={`tab-btn ${activeTab === 'works' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('works')}
+                        >
+                            Works
+                        </button>
+                        <button
+                            className={`tab-btn ${activeTab === 'contracts' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('contracts')}
+                        >
+                            Contracts
+                        </button>
+                        <button
+                            className={`tab-btn ${activeTab === 'banking' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('banking')}
+                        >
+                            Banking
+                        </button>
                     </div>
-                )}
 
-                {activeTab === 'discography' && (
-                    <div className="discography-tab">
-                        <div className="section-header">
-                            <h3>Releases</h3>
-                            <button className="btn-primary btn-sm" onClick={() => navigate('/catalog/releases')}>+ Add Release</button>
-                        </div>
-                        {releases.length === 0 ? (
-                            <div className="empty-state">No releases linked to this artist.</div>
-                        ) : (
-                            <div className="releases-grid">
-                                {releases.map(release => (
-                                    <Link key={release.id} to={`/catalog/releases/${release.id}`} className="release-card-mini" style={{ textDecoration: 'none', color: 'inherit' }}>
-                                        <div className="release-cover">
-                                            {release.cover_art_url ? (
-                                                <img src={release.cover_art_url.startsWith('http') ? release.cover_art_url : `${BASE_URL}${release.cover_art_url}`} alt={release.title} />
-                                            ) : (
-                                                <Disc size={32} />
-                                            )}
+                    {/* Tab Content */}
+                    <div className="tab-content">
+                        {activeTab === 'overview' && (
+                            <div className="overview-tab">
+                                <div className="info-section">
+                                    <h3>Contact Information</h3>
+                                    <div className="info-grid">
+                                        <div className="info-item">
+                                            <label>Email</label>
+                                            <p>{artist.contact_email || '-'}</p>
                                         </div>
-                                        <div className="release-mini-info">
-                                            <h4>{release.title}</h4>
-                                            <p>{release.release_date}</p>
-                                            <span className="release-type-badge">{release.release_type}</span>
+                                        <div className="info-item">
+                                            <label>Phone</label>
+                                            <p>{artist.contact_phone || '-'}</p>
                                         </div>
-                                    </Link>
-                                ))}
+                                        <div className="info-item full-width">
+                                            <label>Physical Address</label>
+                                            <p>{artist.physical_address || '-'}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="info-section">
+                                    <h3>Identifiers</h3>
+                                    <div className="info-grid">
+                                        <div className="info-item">
+                                            <label>IPI Number</label>
+                                            <p>{artist.ipi_number || '-'}</p>
+                                        </div>
+                                        <div className="info-item">
+                                            <label>National ID</label>
+                                            <p>{artist.id_number || '-'}</p>
+                                        </div>
+                                        <div className="info-item">
+                                            <label>Nationality</label>
+                                            <p>{artist.nationality || '-'}</p>
+                                        </div>
+                                        <div className="info-item">
+                                            <label>Label</label>
+                                            <p>{artist.label_id ? labels.find(l => l.id === artist.label_id)?.name || `Label #${artist.label_id}` : 'Independent'}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'discography' && (
+                            <div className="discography-tab">
+                                <div className="section-header">
+                                    <h3>Releases</h3>
+                                    <button className="btn-primary btn-sm" onClick={() => navigate(`/catalog/releases?action=new&artist_id=${artist.id}`)}>+ Add Release</button>
+                                </div>
+                                {releases.length === 0 ? (
+                                    <div className="empty-state">No releases linked to this artist.</div>
+                                ) : (
+                                    <div className="releases-grid">
+                                        {releases.map(release => (
+                                            <Link key={release.id} to={`/catalog/releases/${release.id}`} className="release-card-mini" style={{ textDecoration: 'none', color: 'inherit' }}>
+                                                <div className="release-cover">
+                                                    {release.cover_art_url ? (
+                                                        <img src={release.cover_art_url.startsWith('http') ? release.cover_art_url : `${BASE_URL}${release.cover_art_url}`} alt={release.title} />
+                                                    ) : (
+                                                        <Disc size={32} />
+                                                    )}
+                                                </div>
+                                                <div className="release-mini-info">
+                                                    <h4>{release.title}</h4>
+                                                    <p>{release.release_date}</p>
+                                                    <span className="release-type-badge">{release.release_type}</span>
+                                                </div>
+                                            </Link>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {activeTab === 'works' && (
+                            <div className="works-tab">
+                                <div className="section-header">
+                                    <h3>Musical Works</h3>
+                                    <button className="btn-primary btn-sm" onClick={() => navigate('/catalog/works')}>+ New Work</button>
+                                </div>
+                                {works.length === 0 ? (
+                                    <div className="empty-state">No musical works found for this artist.</div>
+                                ) : (
+                                    <div className="entity-list">
+                                        {works.map(work => (
+                                            <div key={work.id} className="entity-card-mini" style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', border: '1px solid var(--border-color)', borderRadius: '8px', marginBottom: '0.75rem', background: 'white' }}>
+                                                <div className="entity-icon" style={{ background: '#ecfdf5', color: '#059669', padding: '10px', borderRadius: '8px' }}>
+                                                    <Music size={20} />
+                                                </div>
+                                                <div className="entity-details" style={{ flex: 1 }}>
+                                                    <h4 style={{ margin: 0 }}>{work.title}</h4>
+                                                    <p style={{ margin: '4px 0', fontSize: '0.8125rem', color: '#64748b' }}>ISWC: {work.iswc_code || 'N/A'}</p>
+                                                </div>
+                                                <Link to="/catalog/works" className="btn-secondary btn-sm" style={{ textDecoration: 'none' }}>View All</Link>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {activeTab === 'contracts' && (
+                            <div className="contracts-tab animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                <div className="section-header" style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800 }}>Linked Contracts</h3>
+                                    <button className="bg-indigo-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold shadow-lg shadow-indigo-100" onClick={() => navigate('/contracts')}>+ New Agreement</button>
+                                </div>
+                                {contracts.length === 0 ? (
+                                    <div className="empty-state py-12 text-center bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-100">
+                                        <p className="text-slate-400 font-bold italic">No active agreements found for this artist.</p>
+                                    </div>
+                                ) : (
+                                    <div className="entity-list grid grid-cols-1 gap-3">
+                                        {contracts.map(contract => (
+                                            <Link key={contract.id} to={`/contracts/${contract.id}`} className="entity-card-mini group" style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', border: '1px solid #f1f5f9', borderRadius: '12px', background: 'white', textDecoration: 'none', color: 'inherit', transition: 'all 0.2s' }}>
+                                                <div className="entity-icon" style={{ background: '#e0e7ff', color: '#4f46e5', padding: '10px', borderRadius: '10px' }}>
+                                                    <FileText size={20} />
+                                                </div>
+                                                <div className="entity-details" style={{ flex: 1 }}>
+                                                    <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#1e293b' }} className="group-hover:text-indigo-600 transition-colors">{contract.title || `Contract #${contract.id}`}</h4>
+                                                    <p style={{ margin: '4px 0', fontSize: '0.75rem', color: '#64748b' }} className="font-mono">
+                                                        {contract.contract_number} • <span style={{ color: contract.status === 'Active' ? '#059669' : '#94a3b8', fontWeight: 800, textTransform: 'uppercase' }}>{contract.status}</span>
+                                                    </p>
+                                                </div>
+                                                <div className="text-indigo-400 text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity">View Details →</div>
+                                            </Link>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {activeTab === 'banking' && (
+                            <div className="banking-tab">
+                                <div className="info-section">
+                                    <h3><DollarSign size={18} /> Banking Details</h3>
+                                    {banking.bank_name ? (
+                                        <div className="banking-card" style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                                            <div className="bank-row" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                                                <label style={{ fontWeight: 600, color: '#64748b' }}>Bank Name:</label>
+                                                <span style={{ fontWeight: 600 }}>{banking.bank_name}</span>
+                                            </div>
+                                            <div className="bank-row" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                                                <label style={{ fontWeight: 600, color: '#64748b' }}>Account Number:</label>
+                                                <span className="blur-text">{banking.account_number ? '•••• •••• •••• ' + banking.account_number.slice(-4) : '-'}</span>
+                                            </div>
+                                            <div className="bank-row" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                <label style={{ fontWeight: 600, color: '#64748b' }}>Branch Code:</label>
+                                                <span>{banking.branch_code}</span>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <p className="empty-text">No banking details provided.</p>
+                                    )}
+                                </div>
                             </div>
                         )}
                     </div>
-                )}
+                </div>
 
-                {activeTab === 'banking' && (
-                    <div className="banking-tab">
-                        <div className="info-section">
-                            <h3><DollarSign size={18} /> Banking Details</h3>
-                            {banking.bank_name ? (
-                                <div className="banking-card">
-                                    <div className="bank-row">
-                                        <label>Bank Name:</label>
-                                        <span>{banking.bank_name}</span>
-                                    </div>
-                                    <div className="bank-row">
-                                        <label>Account Number:</label>
-                                        <span className="blur-text">{banking.account_number ? '•••• •••• •••• ' + banking.account_number.slice(-4) : '-'}</span>
-                                    </div>
-                                    <div className="bank-row">
-                                        <label>Branch Code:</label>
-                                        <span>{banking.branch_code}</span>
-                                    </div>
-                                </div>
-                            ) : (
-                                <p className="empty-text">No banking details provided.</p>
-                            )}
+                {/* Sidebar: Quick Actions */}
+                <div className="artist-sidebar" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                    <div className="quick-actions-sidebar" style={{ background: 'var(--primary-color)', borderRadius: '16px', padding: '1.5rem', color: 'white', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}>
+                        <h4 style={{ margin: '0 0 1rem 0', fontSize: '1rem', fontWeight: 800 }}>Quick Actions</h4>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                            <button
+                                className="btn-secondary btn-sm"
+                                style={{ width: '100%', background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', cursor: 'pointer' }}
+                                onClick={() => window.print()}
+                            >
+                                Generate One-Sheet
+                            </button>
+                            <button
+                                className="btn-secondary btn-sm"
+                                style={{ width: '100%', background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', cursor: 'pointer' }}
+                                onClick={() => ReportsService.exportSingle('artist', id, 'excel')}
+                            >
+                                Export Profile (Excel)
+                            </button>
+                            <button
+                                className="btn-secondary btn-sm"
+                                style={{ width: '100%', background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', cursor: 'pointer' }}
+                                onClick={() => ReportsService.exportSingle('artist', id, 'csv')}
+                            >
+                                Export Profile (CSV)
+                            </button>
                         </div>
                     </div>
-                )}
+                </div>
             </div>
-
 
             {/* Edit Modal */}
             <EntityForm
@@ -420,15 +540,27 @@ const ArtistDetail = () => {
                     </div>
                 </div>
 
-                <div className="form-group">
-                    <label htmlFor="id_number">ID Number</label>
-                    <input
-                        type="text"
-                        id="id_number"
-                        value={formData.id_number}
-                        onChange={(e) => setFormData({ ...formData, id_number: e.target.value })}
-                        placeholder="National ID / Passport Number"
-                    />
+                <div className="form-row">
+                    <div className="form-group">
+                        <label htmlFor="id_number">ID Number</label>
+                        <input
+                            type="text"
+                            id="id_number"
+                            value={formData.id_number}
+                            onChange={(e) => setFormData({ ...formData, id_number: e.target.value })}
+                            placeholder="National ID / Passport Number"
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label htmlFor="nationality">Nationality</label>
+                        <input
+                            type="text"
+                            id="nationality"
+                            value={formData.nationality}
+                            onChange={(e) => setFormData({ ...formData, nationality: e.target.value })}
+                            placeholder="e.g. South African"
+                        />
+                    </div>
                 </div>
 
                 <div className="form-row">
@@ -590,7 +722,25 @@ const ArtistDetail = () => {
                     />
                 </div>
             </EntityForm>
-        </div >
+            <style>{`
+                .back-link { margin-bottom: 2rem; display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none; color: var(--text-muted); font-weight: 500; }
+                .back-link:hover { color: var(--primary-color); }
+                .meta-tag { background: #f1f5f9; color: #475569; padding: 4px 12px; borderRadius: 16px; fontSize: 0.75rem; fontWeight: 600; textTransform: uppercase; letterSpacing: 0.05em; }
+                .blur-text { filter: blur(4px); transition: filter 0.3s; cursor: pointer; }
+                .blur-text:hover { filter: blur(0); }
+                
+                @media print {
+                    .back-link, .artist-sidebar, .detail-tabs, .btn-secondary, .btn-primary { display: none !important; }
+                    .artist-detail-page { padding: 0 !important; width: 100% !important; }
+                    .artist-content-grid { display: block !important; }
+                    .blur-text { filter: none !important; }
+                }
+                
+                @media (max-width: 1024px) {
+                    .artist-content-grid { grid-template-columns: 1fr !important; }
+                }
+            `}</style>
+        </div>
     );
 };
 

@@ -12,7 +12,7 @@ from utils.activity import log_activity
 router = APIRouter()
 
 
-@router.get("/", response_model=List[Event])
+@router.get("", response_model=List[Event])
 def list_events(
     skip: int = 0,
     limit: int = 100,
@@ -24,7 +24,7 @@ def list_events(
     return events
 
 
-@router.post("/", response_model=Event, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=Event, status_code=status.HTTP_201_CREATED)
 def create_event(
     event: EventCreate,
     db: Session = Depends(get_db),
