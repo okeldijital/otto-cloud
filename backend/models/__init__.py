@@ -19,6 +19,7 @@ from models.activity import Activity
 from models.crm import Company, Contact
 from models.task import Task
 from models.contract import Contract, ContractParty, ContractAsset, ContractDocument, ContractSplitGroup, ContractSplit
+from models.works_admin import WorksAdmin, WorksAdminDocument
 
 __all__ = [
     "User",
@@ -45,4 +46,6 @@ __all__ = [
     "ContractDocument",
     "ContractSplitGroup",
     "ContractSplit",
+    "WorksAdmin",
+    "WorksAdminDocument",
 ]

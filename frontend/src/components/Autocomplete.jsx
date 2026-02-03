@@ -6,6 +6,7 @@ const Autocomplete = ({
     options = [],
     value, // id or array of ids
     onChange,
+    onSearchChange,
     placeholder = 'Select...',
     labelKey = 'name',
     valueKey = 'id',
@@ -48,10 +49,13 @@ const Autocomplete = ({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    // Safeguard: Filter out invalid options securely
-    const filteredOptions = allOptions.filter(opt =>
-        opt && opt[labelKey] && String(opt[labelKey]).toLowerCase().includes(search.toLowerCase())
-    );
+    // For async search (onSearchChange present), we trust the parent's options.
+    // Otherwise, we filter the local allOptions.
+    const filteredOptions = onSearchChange
+        ? allOptions
+        : allOptions.filter(opt =>
+            opt && opt[labelKey] && String(opt[labelKey]).toLowerCase().includes(search.toLowerCase())
+        );
 
     const handleSelect = (opt) => {
         if (!opt) return;
@@ -144,7 +148,11 @@ const Autocomplete = ({
                             autoFocus
                             placeholder="Type to filter..."
                             value={search}
-                            onChange={(e) => setSearch(e.target.value)}
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                setSearch(val);
+                                onSearchChange?.(val);
+                            }}
                             onClick={(e) => e.stopPropagation()}
                         />
                     </div>

@@ -10,11 +10,11 @@ class Contract(Base):
 
     id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     contract_number = Column(String(50), nullable=False)
-    organization_id = Column(Uuid(as_uuid=True), nullable=False, index=True)
+    organization_id = Column(Uuid(as_uuid=True), nullable=False)
 
     title = Column(String(255), nullable=False)
-    status = Column(String(50), default="Draft", nullable=False)
-    contract_type = Column(String(50))
+    status = Column(String(50), default="Draft", nullable=False) # Draft, Active, Expired, Terminated
+    type = Column(String(50)) # Recording, Publishing, etc.
     start_date = Column(Date)
     end_date = Column(Date)
     signed_date = Column(Date)
@@ -27,7 +27,7 @@ class Contract(Base):
     advances_currency = Column(String(3), default="USD")
     recoupment_notes = Column(Text)
 
-    created_by = Column(Integer, index=True)
+    created_by = Column(Integer)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -38,6 +38,7 @@ class Contract(Base):
 
     __table_args__ = (
         Index('ix_contracts_org_number', 'organization_id', 'contract_number', unique=True),
+        Index('ix_contracts_organization_id', 'organization_id'),
     )
 
 
@@ -46,7 +47,7 @@ class ContractParty(Base):
 
     id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     contract_id = Column(Uuid(as_uuid=True), ForeignKey("contracts.id"), nullable=False)
-    organization_id = Column(Uuid(as_uuid=True), nullable=False, index=True)
+    organization_id = Column(Uuid(as_uuid=True), nullable=False)
 
     entity_type = Column(String(50), nullable=False)  # Artist, Label, Publisher, External
     entity_id = Column(Integer, nullable=True)
@@ -70,7 +71,7 @@ class ContractAsset(Base):
 
     id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     contract_id = Column(Uuid(as_uuid=True), ForeignKey("contracts.id"), nullable=False)
-    organization_id = Column(Uuid(as_uuid=True), nullable=False, index=True)
+    organization_id = Column(Uuid(as_uuid=True), nullable=False)
 
     asset_type = Column(String(50), nullable=False)  # Work, Track, Release
     asset_id = Column(Integer, nullable=False)
@@ -89,7 +90,7 @@ class ContractDocument(Base):
 
     id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     contract_id = Column(Uuid(as_uuid=True), ForeignKey("contracts.id"), nullable=False)
-    organization_id = Column(Uuid(as_uuid=True), nullable=False, index=True)
+    organization_id = Column(Uuid(as_uuid=True), nullable=False)
 
     file_path = Column(String(500), nullable=False)
     file_name = Column(String(255), nullable=False)
@@ -97,6 +98,9 @@ class ContractDocument(Base):
 
     uploaded_by = Column(Integer)
     uploaded_at = Column(DateTime(timezone=True), server_default=func.now())
+    checksum = Column(String(64), nullable=True)
+    mime_type = Column(String(100), default="application/pdf")
+    size_bytes = Column(Integer, nullable=True)
 
     contract = relationship("Contract", back_populates="documents")
 
@@ -111,7 +115,7 @@ class ContractSplitGroup(Base):
 
     id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     contract_id = Column(Uuid(as_uuid=True), ForeignKey("contracts.id"), nullable=False)
-    organization_id = Column(Uuid(as_uuid=True), nullable=False, index=True)
+    organization_id = Column(Uuid(as_uuid=True), nullable=False)
 
     group_name = Column(String(100), nullable=False)
     group_type = Column(String(50))
@@ -132,7 +136,7 @@ class ContractSplit(Base):
 
     id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     group_id = Column(Uuid(as_uuid=True), ForeignKey("contract_split_groups.id"), nullable=False)
-    organization_id = Column(Uuid(as_uuid=True), nullable=False, index=True)
+    organization_id = Column(Uuid(as_uuid=True), nullable=False)
     party_id = Column(Uuid(as_uuid=True), ForeignKey("contract_parties.id"), nullable=True)
     external_party_name = Column(String(255))
     percent = Column(Numeric(6, 3), nullable=False)

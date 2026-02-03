@@ -78,6 +78,8 @@ from routes import (  # noqa: E402
     admin,
     search,
     contracts,
+    works_admin,
+    admin_of_works,
 )
 
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
@@ -98,6 +100,8 @@ app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
 app.include_router(search.router, prefix="/api/search", tags=["Search"])
 app.include_router(analytics.router, prefix="/api/analytics", tags=["Analytics"])
 app.include_router(reports.router, prefix="/api/reports", tags=["Reports"])
+app.include_router(works_admin.router, prefix="/api", tags=["Works Administration"])
+app.include_router(admin_of_works.router, prefix="/api", tags=["Status Quo"])
 
 # -----------------------------
 # Static files (uploads)

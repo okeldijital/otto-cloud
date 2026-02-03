@@ -4,11 +4,15 @@ from uuid import UUID
 from datetime import date, datetime
 
 
+class StatusQuoResponse(BaseModel):
+    status: str
+    reasons: List[str] = []
+
 class ContractBase(BaseModel):
     title: str
     contract_number: str
     status: str = "Draft"
-    contract_type: Optional[str] = None
+    type: Optional[str] = None
     territory: Optional[str] = None
     start_date: Optional[date] = None
     end_date: Optional[date] = None
@@ -25,7 +29,7 @@ class ContractUpdate(BaseModel):
     title: Optional[str] = None
     status: Optional[str] = None
     territory: Optional[str] = None
-    contract_type: Optional[str] = None
+    type: Optional[str] = None
     start_date: Optional[date] = None
     end_date: Optional[date] = None
     signed_date: Optional[date] = None
@@ -147,5 +151,6 @@ class ContractResponse(ContractBase):
     assets: List[ContractAssetResponse] = []
     documents: List[ContractDocumentResponse] = []
     split_groups: List[ContractSplitGroupResponse] = []
+    status_quo: Optional[StatusQuoResponse] = None
 
     model_config = ConfigDict(from_attributes=True)

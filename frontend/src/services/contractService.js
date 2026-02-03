@@ -34,9 +34,7 @@ const contractService = {
     uploadDocumentFile: (file) => {
         const formData = new FormData();
         formData.append('file', file);
-        return api.post('/documents/upload', formData, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-        });
+        return api.post('/documents/upload', formData);
     },
     buildFileUrl: (filePath) => `${BASE_URL}${filePath}`,
     buildDownloadUrl: (contractId, docId) => `${BASE_URL}${ENDPOINT}/${contractId}/documents/${docId}/download`,

@@ -17,7 +17,7 @@ class ContractRepository(BaseRepository[Contract]):
     def __init__(self):
         super().__init__(Contract)
 
-    def get_all_filtered(self, db: Session, organization_id: UUID, status: Optional[str] = None, contract_type: Optional[str] = None) -> List[Contract]:
+    def get_all_filtered(self, db: Session, organization_id: UUID, status: Optional[str] = None, type: Optional[str] = None) -> List[Contract]:
         query = db.query(Contract).options(
             selectinload(Contract.parties),
             selectinload(Contract.assets),
@@ -26,8 +26,8 @@ class ContractRepository(BaseRepository[Contract]):
         ).filter(Contract.organization_id == organization_id)
         if status:
             query = query.filter(Contract.status == status)
-        if contract_type:
-            query = query.filter(Contract.contract_type == contract_type)
+        if type:
+            query = query.filter(Contract.type == type)
         return query.order_by(Contract.created_at.desc().nullslast()).all()
 
     def get_with_details(self, db: Session, contract_id: UUID, organization_id: UUID) -> Optional[Contract]:

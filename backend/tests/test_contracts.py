@@ -15,7 +15,7 @@ def test_create_contract_requires_pdf_or_stays_draft(client: TestClient, db_sess
         "title": "Test Contract",
         "contract_number": "CTR-TEST-001",
         "status_value": "Draft",
-        "contract_type": "Recording",
+        "type": "Recording",
     }
     res = client.post("/api/contracts", data=data, files=files, headers=headers)
     assert res.status_code == 201, res.text

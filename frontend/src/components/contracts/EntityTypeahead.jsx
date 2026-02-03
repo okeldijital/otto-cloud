@@ -19,11 +19,13 @@ const EntityTypeahead = ({
 
     useEffect(() => {
         const timer = setTimeout(async () => {
-            if (!query || query.length < 2) {
+            if (!query || query.length < 1) {
                 setOptions([]);
                 return;
             }
             try {
+                // Optional: show a loading state in the results
+                // setOptions([{ id: 'loading', name: 'Searching...', loading: true }]);
                 const res = await api.get(`/search?q=${encodeURIComponent(query)}`);
                 const data = res.data || {};
                 const aggregated = [
@@ -49,26 +51,40 @@ const EntityTypeahead = ({
         return () => clearTimeout(timer);
     }, [query, assetType]);
 
-    const optionProps = useMemo(
-        () =>
-            options.map((o) => ({
-                ...o,
-                id: o.id,
-                name: `${o.label} • ${o.entity_type}`,
-            })),
-        [options]
-    );
+    const optionProps = useMemo(() => {
+        const base = options.map((o) => ({
+            ...o,
+            id: o.id,
+            name: `${o.label || o.name || o.title} • ${o.entity_type}`,
+        }));
+
+        // Ensure selected items are in the options list so the Autocomplete can display them
+        const selectedList = multiple ? (selected || []) : (selected ? [selected] : []);
+        const selectedProps = selectedList.map(s => ({
+            ...s,
+            id: s.id,
+            name: `${s.label || s.name || s.title} • ${s.entity_type}`
+        }));
+
+        // Merge and unique by ID
+        const merged = [...selectedProps, ...base];
+        return Array.from(new Map(merged.map(m => [m.id, m])).values());
+    }, [options, selected, multiple]);
 
     return (
         <div className="typeahead">
             <Autocomplete
                 options={optionProps}
                 value={multiple ? selected?.map((s) => s.id) : selected?.id}
+                onSearchChange={setQuery}
                 onChange={(val) => {
                     if (multiple) {
-                        const mapped = optionProps.filter((o) => val.includes(o.id));
-                        setSelected(mapped);
-                        onChange?.(mapped);
+                        // In multiple mode, val is an array of IDs
+                        const mapped = [...(selected || []), ...optionProps].filter((o) => val.includes(o.id));
+                        // Remove duplicates by ID
+                        const unique = Array.from(new Map(mapped.map(m => [m.id, m])).values());
+                        setSelected(unique);
+                        onChange?.(unique);
                     } else {
                         const match = optionProps.find((o) => o.id === val) || null;
                         setSelected(match);
@@ -82,21 +98,17 @@ const EntityTypeahead = ({
                 labelKey="name"
                 valueKey="id"
             />
-            <input
-                className="input"
-                style={{ marginTop: '0.5rem' }}
-                placeholder="Type to search…"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-            />
-            <div className="options-inline">
+            {/* Horizontal chips for quick selection of search results */}
+            <div className="options-inline" style={{ marginTop: '0.5rem' }}>
                 {optionProps.slice(0, 6).map((opt) => (
                     <button
                         key={opt.id}
+                        type="button"
                         className="chip-button"
                         onClick={() => {
                             if (multiple) {
-                                const next = selected.some((s) => s.id === opt.id)
+                                const isAlreadySelected = selected.some((s) => s.id === opt.id);
+                                const next = isAlreadySelected
                                     ? selected.filter((s) => s.id !== opt.id)
                                     : [...selected, opt];
                                 setSelected(next);

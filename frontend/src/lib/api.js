@@ -7,9 +7,6 @@ export const API_URL = `${BASE_URL}/api`;
 // Create axios instance
 const api = axios.create({
     baseURL: API_URL,
-    headers: {
-        'Content-Type': 'application/json',
-    },
 });
 
 // Request interceptor to add auth token

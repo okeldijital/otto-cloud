@@ -23,8 +23,12 @@ import Works from './pages/Works';
 import WorkDetail from './pages/WorkDetail';
 import Tracks from './pages/Tracks';
 import TrackDetail from './pages/TrackDetail';
-import Contracts from './pages/Contracts'; // List
-import ContractDetail from './pages/ContractDetail'; // Detail
+// Administration of Works
+import ContractsList from './pages/admin-of-works/ContractsList';
+import ContractDetailAdmin from './pages/admin-of-works/ContractDetail';
+import WorksAdminList from './pages/admin-of-works/WorksAdminList';
+import WorksAdminDetail from './pages/admin-of-works/WorksAdminDetail';
+import StatusQuoDashboard from './pages/admin-of-works/StatusQuoDashboard';
 
 import Royalties from './pages/Royalties';
 import Documents from './pages/Documents';
@@ -184,23 +188,53 @@ function App() {
                 }
               />
 
-              {/* Contract Routes */}
+              {/* Administration of Works Routes */}
               <Route
-                path="/contracts"
+                path="/admin-of-works/contracts"
                 element={
                   <ProtectedRoute>
                     <MainLayout>
-                      <Contracts />
+                      <ContractsList />
                     </MainLayout>
                   </ProtectedRoute>
                 }
               />
               <Route
-                path="/contracts/:id"
+                path="/admin-of-works/contracts/:id"
                 element={
                   <ProtectedRoute>
                     <MainLayout>
-                      <ContractDetail />
+                      <ContractDetailAdmin />
+                    </MainLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin-of-works/works"
+                element={
+                  <ProtectedRoute>
+                    <MainLayout>
+                      <WorksAdminList />
+                    </MainLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin-of-works/works/:work_id"
+                element={
+                  <ProtectedRoute>
+                    <MainLayout>
+                      <WorksAdminDetail />
+                    </MainLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin-of-works/status-quo"
+                element={
+                  <ProtectedRoute>
+                    <MainLayout>
+                      <StatusQuoDashboard />
                     </MainLayout>
                   </ProtectedRoute>
                 }
