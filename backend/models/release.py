@@ -9,7 +9,7 @@ class Release(Base):
     __tablename__ = "releases"
     
     id = Column(Integer, primary_key=True, index=True)
-    organization_id = Column(Uuid(as_uuid=True), nullable=False, index=True)
+    organization_id = Column(Uuid(as_uuid=True), nullable=True, index=True)
     is_deleted = Column(Boolean, nullable=False, default=False)
     release_id = Column(String(50), unique=True, index=True)  # M2KR0001, etc.
     title = Column(String(255), nullable=False, index=True)

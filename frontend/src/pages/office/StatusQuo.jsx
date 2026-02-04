@@ -11,11 +11,16 @@ import {
     Search
 } from 'lucide-react';
 import officeStatusQuoService from '../../services/officeStatusQuoService';
+import Button from '../../components/ui/Button';
+import Card from '../../components/ui/Card';
+import Badge from '../../components/ui/Badge';
+import PageHeader from '../../components/ui/PageHeader';
+import Input from '../../components/ui/Input';
 
-const SEVERITY_STYLES = {
-    critical: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
-    warn: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-    info: 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+const SEVERITY_VARIANTS = {
+    critical: 'critical',
+    warn: 'warn',
+    info: 'primary'
 };
 
 const SEVERITY_ICONS = {
@@ -79,55 +84,55 @@ const StatusQuo = () => {
 
     return (
         <div className="page-container p-8">
-            <div className="flex items-center justify-between mb-8">
-                <div>
-                    <h1 className="text-3xl font-bold flex items-center gap-3">
-                        <ShieldCheck className="text-primary" size={32} />
-                        Office — Status Quo
-                    </h1>
-                    <p className="text-gray-400">Compliance & Governance Gap Analysis</p>
-                </div>
-                <button
-                    className={`btn-primary flex items-center gap-2 ${isRecomputing ? 'opacity-70 animate-pulse' : ''}`}
-                    onClick={handleRecompute}
-                    disabled={isRecomputing || isLoading}
-                >
-                    <RefreshCcw size={18} className={isRecomputing ? 'animate-spin' : ''} />
-                    {isRecomputing ? 'Recomputing...' : 'Recompute Gaps'}
-                </button>
-            </div>
+            <PageHeader
+                title="Office — Status Quo"
+                subtitle="Compliance & Governance Gap Analysis"
+                actions={
+                    <Button
+                        variant="primary"
+                        icon={RefreshCcw}
+                        onClick={handleRecompute}
+                        disabled={isRecomputing || isLoading}
+                        className={isRecomputing ? 'animate-pulse' : ''}
+                    >
+                        {isRecomputing ? 'Recomputing...' : 'Recompute Gaps'}
+                    </Button>
+                }
+            />
 
-            <div className="bg-secondary-bg border border-border rounded-xl overflow-hidden shadow-sm">
-                <div className="p-4 border-b border-border flex items-center justify-between gap-4 flex-wrap">
+            <Card noPadding>
+                <div className="p-4 border-b border-border flex items-center justify-between gap-4 flex-wrap bg-surface-secondary">
                     <div className="flex items-center gap-2">
-                        <button
-                            className={`px-3 py-1.5 rounded-lg text-sm transition-all ${filter === 'all' ? 'bg-primary text-white shadow-md' : 'text-gray-400 hover:text-gray-200'}`}
+                        <Button
+                            variant={filter === 'all' ? 'primary' : 'ghost'}
+                            size="sm"
                             onClick={() => setFilter('all')}
                         >
                             All Gaps
-                        </button>
-                        <button
-                            className={`px-3 py-1.5 rounded-lg text-sm transition-all ${filter === 'critical' ? 'bg-rose-500 text-white shadow-md' : 'text-gray-400 hover:text-rose-400'}`}
+                        </Button>
+                        <Button
+                            variant={filter === 'critical' ? 'danger' : 'ghost'}
+                            size="sm"
                             onClick={() => setFilter('critical')}
                         >
                             Critical
-                        </button>
-                        <button
-                            className={`px-3 py-1.5 rounded-lg text-sm transition-all ${filter === 'warn' ? 'bg-amber-500 text-white shadow-md' : 'text-gray-400 hover:text-amber-400'}`}
+                        </Button>
+                        <Button
+                            variant={filter === 'warn' ? 'orange' : 'ghost'}
+                            size="sm"
                             onClick={() => setFilter('warn')}
                         >
                             Warnings
-                        </button>
+                        </Button>
                     </div>
 
                     <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
-                        <input
-                            type="text"
-                            placeholder="Filter by summary or rule..."
-                            className="bg-main-bg border border-border rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 w-64"
+                        <Input
+                            placeholder="Filter by summary..."
+                            className="w-64 mb-0"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
+                            icon={Search}
                         />
                     </div>
                 </div>
@@ -164,10 +169,10 @@ const StatusQuo = () => {
                                     return (
                                         <tr key={item.id} className="hover:bg-white/5 transition-colors group">
                                             <td className="px-6 py-4">
-                                                <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium ${SEVERITY_STYLES[item.severity]}`}>
-                                                    <SeverityIcon size={14} />
+                                                <Badge variant={SEVERITY_VARIANTS[item.severity]} size="sm">
+                                                    <SeverityIcon size={14} className="mr-1" />
                                                     {item.severity.toUpperCase()}
-                                                </div>
+                                                </Badge>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <span className="text-sm font-mono text-gray-300">{item.issue_type}</span>
@@ -206,7 +211,7 @@ const StatusQuo = () => {
                         </tbody>
                     </table>
                 </div>
-            </div>
+            </Card>
         </div>
     );
 };

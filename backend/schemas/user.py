@@ -18,7 +18,7 @@ class UserUpdate(UserBase):
 
 class User(UserBase):
     id: int
-    organization_id: UUID
+    organization_id: Optional[int] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
     last_login: Optional[datetime] = None

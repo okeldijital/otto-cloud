@@ -33,11 +33,16 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 
     
-    CORS_ORIGINS: list = ["*"]
+    CORS_ORIGINS: Optional[str] = None
 
     # Storage
     MAX_UPLOAD_SIZE: int = 100 * 1024 * 1024 
     ALLOWED_EXTENSIONS: list = ["pdf", "png", "jpg", "mp3", "wav", "docx", "xlsx"]
+
+    # External APIs
+    SPOTIFY_CLIENT_ID: Optional[str] = None
+    SPOTIFY_CLIENT_SECRET: Optional[str] = None
+    MUSICBRAINZ_USER_AGENT: Optional[str] = "OTTO/1.0.0"
 
     def __init__(self, **values):
         super().__init__(**values)

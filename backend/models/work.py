@@ -9,7 +9,7 @@ class Work(Base):
     __tablename__ = "works"
     
     id = Column(Integer, primary_key=True, index=True)
-    organization_id = Column(Uuid(as_uuid=True), nullable=False, index=True)
+    organization_id = Column(Uuid(as_uuid=True), nullable=True, index=True)
     is_deleted = Column(Boolean, nullable=False, default=False)
     work_id = Column(String(50), unique=True, index=True)  # WKS001, WKS002, etc.
     title = Column(String(255), nullable=False, index=True)

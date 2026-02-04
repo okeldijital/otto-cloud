@@ -5,6 +5,10 @@ import { AnalyticsService } from '../services/analytics';
 import { BASE_URL } from '../lib/api';
 import { TrendingUp, Music, FileText, Calendar, Activity as ActivityIcon, Layout, GripVertical, Users, Disc, Clock } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import Button from '../components/ui/Button';
+import Card from '../components/ui/Card';
+import PageHeader from '../components/ui/PageHeader';
+import Badge from '../components/ui/Badge';
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
@@ -99,13 +103,13 @@ const Dashboard = () => {
 
     return (
         <div className="dashboard-container">
-            <div className="dashboard-header">
-                <div>
-                    <h1 className="dashboard-title">Welcome to Otto</h1>
-                    <p className="dashboard-subtitle">Data Management System for Record Labels</p>
-                </div>
-                <button className="btn-secondary" onClick={resetLayout}>Reset Layout</button>
-            </div>
+            <PageHeader
+                title="Welcome to Otto"
+                subtitle="Data Management System for Record Labels"
+                actions={
+                    <Button variant="secondary" onClick={resetLayout}>Reset Layout</Button>
+                }
+            />
 
             <ResponsiveGridLayout
                 className="layout"
@@ -122,137 +126,113 @@ const Dashboard = () => {
                 allowOverlap={false}
             >
                 {/* Individual KPI Widgets */}
-                <div key="kpi-artists" className="dashboard-grid-item">
-                    <WidgetHeader title="Artists" icon={Users} />
-                    <div className="widget-content kpi-widget-content">
-                        <div className="kpi-value">{kpis.total_artists}</div>
-                    </div>
-                </div>
+                <Card key="kpi-artists" title="Artists" headerAction={<Users size={18} className="text-muted" />} contentClassName="kpi-widget-content">
+                    <div className="kpi-value">{kpis.total_artists}</div>
+                </Card>
 
-                <div key="kpi-releases" className="dashboard-grid-item">
-                    <WidgetHeader title="Releases" icon={Disc} />
-                    <div className="widget-content kpi-widget-content">
-                        <div className="kpi-value">{kpis.total_releases}</div>
-                    </div>
-                </div>
+                <Card key="kpi-releases" title="Releases" headerAction={<Disc size={18} className="text-muted" />} contentClassName="kpi-widget-content">
+                    <div className="kpi-value">{kpis.total_releases}</div>
+                </Card>
 
-                <div key="kpi-works" className="dashboard-grid-item">
-                    <WidgetHeader title="Works" icon={FileText} />
-                    <div className="widget-content kpi-widget-content">
-                        <div className="kpi-value">{kpis.total_works}</div>
-                    </div>
-                </div>
+                <Card key="kpi-works" title="Works" headerAction={<FileText size={18} className="text-muted" />} contentClassName="kpi-widget-content">
+                    <div className="kpi-value">{kpis.total_works}</div>
+                </Card>
 
-                <div key="kpi-pending" className="dashboard-grid-item">
-                    <WidgetHeader title="Pending" icon={Clock} />
-                    <div className="widget-content kpi-widget-content">
-                        <div className="kpi-value">{pendingContracts}</div>
-                    </div>
-                </div>
+                <Card key="kpi-pending" title="Pending" headerAction={<Clock size={18} className="text-muted" />} contentClassName="kpi-widget-content">
+                    <div className="kpi-value">{pendingContracts}</div>
+                </Card>
 
                 {/* Catalog Growth */}
-                <div key="growth" className="dashboard-grid-item">
-                    <WidgetHeader title="Catalog Overview" icon={TrendingUp} />
-                    <div className="widget-content">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={growthData}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                <XAxis dataKey="name" axisLine={false} tickLine={false} />
-                                <YAxis axisLine={false} tickLine={false} />
-                                <Tooltip cursor={{ fill: '#f8fafc' }} />
-                                <Bar dataKey="value" fill="var(--accent-color)" radius={[6, 6, 0, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
+                <Card key="growth" title="Catalog Overview" headerAction={<TrendingUp size={18} className="text-muted" />}>
+                    <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={growthData}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-color)" />
+                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
+                            <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
+                            <Tooltip cursor={{ fill: 'var(--surface-secondary)' }} contentStyle={{ backgroundColor: 'var(--surface-color)', borderColor: 'var(--border-color)', color: 'var(--text-color)' }} />
+                            <Bar dataKey="value" fill="var(--accent-color)" radius={[6, 6, 0, 0]} />
+                        </BarChart>
+                    </ResponsiveContainer>
+                </Card>
 
                 {/* Recent Activity */}
-                <div key="activity" className="dashboard-grid-item">
-                    <WidgetHeader title="Recent Activity" icon={ActivityIcon} />
-                    <div className="widget-content">
-                        <div className="activity-list compact">
-                            {recentActivity.map(activity => (
-                                <div key={activity.id} className="activity-item">
-                                    <div className={`activity-status-dot ${activity.action}`} />
-                                    <div className="activity-details">
-                                        <div className="activity-text">
-                                            <strong>{activity.action}</strong> {activity.entity_type}
-                                            {activity.entity_name && <span className="entity-name">: {activity.entity_name}</span>}
-                                        </div>
-                                        <div className="activity-time">{formatDate(activity.timestamp)}</div>
+                <Card key="activity" title="Recent Activity" headerAction={<ActivityIcon size={18} className="text-muted" />}>
+                    <div className="activity-list compact">
+                        {recentActivity.map(activity => (
+                            <div key={activity.id} className="activity-item">
+                                <div className={`activity-status-dot ${activity.action}`} />
+                                <div className="activity-details">
+                                    <div className="activity-text">
+                                        <strong>{activity.action}</strong> {activity.entity_type}
+                                        {activity.entity_name && <span className="entity-name">: {activity.entity_name}</span>}
                                     </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Upcoming Events */}
-                <div key="events" className="dashboard-grid-item">
-                    <WidgetHeader title="Upcoming Events" icon={Calendar} />
-                    <div className="widget-content">
-                        <div className="events-list">
-                            {upcomingEvents.map(event => (
-                                <div key={event.id} className="event-item">
-                                    <div className="event-date-small">
-                                        {formatMonthAbbr(event.start_time)} <strong>{formatDay(event.start_time)}</strong>
-                                    </div>
-                                    <div className="event-details">
-                                        <div className="event-title">{event.title}</div>
-                                        <div className="event-meta">{event.event_type} • {formatTime(event.start_time)}</div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Latest Release */}
-                <div key="release" className="dashboard-grid-item">
-                    <WidgetHeader title="Latest Release" icon={Layout} />
-                    <div className="widget-content kpi-widget-content">
-                        {latestRelease ? (
-                            <div className="release-widget">
-                                {latestRelease.cover_art_url ? (
-                                    <img src={latestRelease.cover_art_url.startsWith('http') ? latestRelease.cover_art_url : `${BASE_URL}${latestRelease.cover_art_url}`} alt="" className="release-thumb" />
-                                ) : (
-                                    <div className="release-thumb placeholder"><Disc size={32} /></div>
-                                )}
-                                <div className="release-info">
-                                    <h4>{latestRelease.title}</h4>
-                                    <p>{formatDate(latestRelease.release_date)}</p>
-                                    <span className="badge-small">{latestRelease.release_type}</span>
+                                    <div className="activity-time">{formatDate(activity.timestamp)}</div>
                                 </div>
                             </div>
-                        ) : <p className="text-muted">No releases found</p>}
+                        ))}
                     </div>
-                </div>
+                </Card>
+
+                {/* Upcoming Events */}
+                <Card key="events" title="Upcoming Events" headerAction={<Calendar size={18} className="text-muted" />}>
+                    <div className="events-list">
+                        {upcomingEvents.map(event => (
+                            <div key={event.id} className="event-item">
+                                <div className="event-date-small">
+                                    {formatMonthAbbr(event.start_time)} <strong>{formatDay(event.start_time)}</strong>
+                                </div>
+                                <div className="event-details">
+                                    <div className="event-title">{event.title}</div>
+                                    <div className="event-meta">{event.event_type} • {formatTime(event.start_time)}</div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </Card>
+
+                {/* Latest Release */}
+                <Card key="release" title="Latest Release" headerAction={<Layout size={18} className="text-muted" />} contentClassName="kpi-widget-content">
+                    {latestRelease ? (
+                        <div className="release-widget">
+                            {latestRelease.cover_art_url ? (
+                                <img src={latestRelease.cover_art_url.startsWith('http') ? latestRelease.cover_art_url : `${BASE_URL}${latestRelease.cover_art_url}`} alt="" className="release-thumb" />
+                            ) : (
+                                <div className="release-thumb placeholder"><Disc size={32} /></div>
+                            )}
+                            <div className="release-info">
+                                <h4>{latestRelease.title}</h4>
+                                <p>{formatDate(latestRelease.release_date)}</p>
+                                <Badge variant="primary" size="sm">{latestRelease.release_type}</Badge>
+                            </div>
+                        </div>
+                    ) : <p className="text-muted">No releases found</p>}
+                </Card>
             </ResponsiveGridLayout>
 
             <style>{`
                 .dashboard-container {
                     padding: 0;
-                    background: #f8fafc;
+                    background: var(--background-color);
                     min-height: 100vh;
                 }
                 .dashboard-header {
                     padding: 2rem;
-                    background: white;
+                    background: var(--surface-color);
                     border-bottom: 1px solid var(--border-color);
                     margin-bottom: 1rem;
                 }
                 .dashboard-grid-item {
-                    background: white;
+                    background: var(--surface-color);
                     border-radius: 12px;
                     border: 1px solid var(--border-color);
-                    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+                    box-shadow: var(--shadow-sm);
                     overflow: hidden;
                     display: flex;
                     flex-direction: column;
                     transition: box-shadow 0.2s ease, transform 0.2s ease;
                 }
                 .dashboard-grid-item:hover {
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+                    box-shadow: var(--shadow);
                 }
                 .react-grid-placeholder {
                     background: var(--accent-color) !important;
@@ -274,34 +254,35 @@ const Dashboard = () => {
                     bottom: 5px;
                     width: 8px;
                     height: 8px;
-                    border-right: 2px solid #cbd5e1;
-                    border-bottom: 2px solid #cbd5e1;
+                    border-right: 2px solid var(--border-strong);
+                    border-bottom: 2px solid var(--border-strong);
                 }
                 .activity-status-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; }
-                .activity-status-dot.created { background: #22c55e; }
-                .activity-status-dot.updated { background: #3b82f6; }
-                .activity-status-dot.deleted { background: #ef4444; }
+                .activity-status-dot.created { background: var(--status-success-text); }
+                .activity-status-dot.updated { background: var(--status-info-text); }
+                .activity-status-dot.deleted { background: var(--status-critical-text); }
                 .activity-list.compact { display: flex; flex-direction: column; gap: 0.75rem; }
-                .activity-text { font-size: 0.8125rem; }
+                .activity-text { font-size: 0.8125rem; color: var(--text-color); }
                 .entity-name { color: var(--text-muted); font-weight: normal; }
                 .event-date-small { 
-                    background: #f8fafc; border: 1px solid var(--border-color);
+                    background: var(--surface-secondary); border: 1px solid var(--border-color);
                     border-radius: 6px; padding: 4px 8px; text-align: center;
-                    font-size: 0.625rem; min-width: 40px;
+                    font-size: 0.625rem; min-width: 40px; color: var(--text-color);
                 }
                 .event-date-small strong { display: block; font-size: 1rem; }
                 .release-widget { display: flex; gap: 1rem; align-items: center; }
                 .release-thumb { width: 80px; height: 80px; border-radius: 8px; object-fit: cover; }
-                .release-thumb.placeholder { background: #f1f5f9; display: flex; align-items: center; justify-content: center; color: #94a3b8; }
-                .badge-small { font-size: 0.625rem; background: #eff6ff; color: #2563eb; padding: 2px 6px; border-radius: 4px; font-weight: 600; }
-                .loading-state { height: 100vh; display: flex; align-items: center; justify-content: center; font-weight: 500; color: var(--text-muted); }
+                .release-thumb.placeholder { background: var(--surface-secondary); display: flex; align-items: center; justify-content: center; color: var(--text-muted); }
+                .badge-small { font-size: 0.625rem; background: var(--status-info-bg); color: var(--status-info-text); padding: 2px 6px; border-radius: 4px; font-weight: 600; }
+                .loading-state { height: 100vh; display: flex; align-items: center; justify-content: center; font-weight: 500; color: var(--text-muted); background: var(--background-color); }
                 .widget-header {
                     padding: 1rem;
-                    border-bottom: 1px solid #f1f5f9;
+                    border-bottom: 1px solid var(--border-color);
                     display: flex;
                     justify-content: space-between;
                     align-items: center;
                     cursor: grab;
+                    background: var(--surface-secondary);
                 }
                 .widget-header:active {
                     cursor: grabbing;
@@ -313,12 +294,13 @@ const Dashboard = () => {
                     display: flex;
                     align-items: center;
                     gap: 0.5rem;
-                    color: #1e293b;
+                    color: var(--text-color);
                 }
                 .widget-content {
                     flex: 1;
                     padding: 1rem;
                     overflow: auto;
+                    background: var(--surface-color);
                 }
                 .kpi-widget-content {
                     display: flex;

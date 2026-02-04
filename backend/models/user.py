@@ -16,7 +16,7 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     is_superuser = Column(Boolean, default=False)
     role = Column(String(50), default="member")
-    organization_id = Column(Uuid(as_uuid=True), nullable=False, index=True)
+    organization_id = Column(Integer, nullable=True, index=True)
         
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

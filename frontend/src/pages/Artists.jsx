@@ -7,7 +7,11 @@ import { BASE_URL } from '../lib/api';
 import DataTable from '../components/DataTable';
 import EntityForm from '../components/EntityForm';
 import Autocomplete from '../components/Autocomplete';
-import { Camera, User, ChevronLeft } from 'lucide-react';
+import { Camera, User, ChevronLeft, Download, Plus } from 'lucide-react';
+import Button from '../components/ui/Button';
+import PageHeader from '../components/ui/PageHeader';
+import Input, { Select, Textarea } from '../components/ui/Input';
+import Card from '../components/ui/Card';
 
 const API_URL = BASE_URL;
 
@@ -254,24 +258,34 @@ const Artists = () => {
     ];
 
     return (
-        <div className="entity-page">
-            <Link to="/catalog" className="back-link">
-                <ChevronLeft size={16} /> Back to Catalog
-            </Link>
-            <div className="page-header">
-                <h1 className="page-title">Artists</h1>
-                <div style={{ display: 'flex', gap: '1rem' }}>
-                    <button
-                        className="btn-secondary"
-                        onClick={() => ReportsService.exportData('artists', 'excel')}
-                    >
-                        Export Excel
-                    </button>
-                    <button className="btn-primary" onClick={handleCreate}>
-                        + Add Artist
-                    </button>
-                </div>
-            </div>
+        <div className="entity-page p-8">
+            <PageHeader
+                title="Artists"
+                subtitle="Manage your artist roster"
+                breadcrumb={
+                    <Link to="/catalog" className="back-link" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: 'var(--text-muted)', textDecoration: 'none', marginBottom: '0.5rem' }}>
+                        <ChevronLeft size={16} /> Back to Catalog
+                    </Link>
+                }
+                actions={
+                    <div style={{ display: 'flex', gap: '0.75rem' }}>
+                        <Button
+                            variant="secondary"
+                            icon={Download}
+                            onClick={() => ReportsService.exportData('artists', 'excel')}
+                        >
+                            Export
+                        </Button>
+                        <Button
+                            variant="primary"
+                            icon={Plus}
+                            onClick={handleCreate}
+                        >
+                            Add Artist
+                        </Button>
+                    </div>
+                }
+            />
 
             <DataTable
                 columns={columns}
@@ -313,91 +327,69 @@ const Artists = () => {
                 </div>
 
                 <div className="form-row">
-                    <div className="form-group">
-                        <label htmlFor="name">Artist Name</label>
-                        <input
-                            type="text"
-                            id="name"
-                            value={formData.name}
-                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                            required
-                            autoFocus
-                        />
-                    </div>
-                    <div className="form-group">
-                        <label htmlFor="aka">AKA (Stage Name)</label>
-                        <input
-                            type="text"
-                            id="aka"
-                            value={formData.aka}
-                            onChange={(e) => setFormData({ ...formData, aka: e.target.value })}
-                        />
-                    </div>
-                </div>
-
-                <div className="form-row">
-                    <div className="form-group">
-                        <label htmlFor="id_number">ID Number</label>
-                        <input
-                            type="text"
-                            id="id_number"
-                            value={formData.id_number}
-                            onChange={(e) => setFormData({ ...formData, id_number: e.target.value })}
-                            placeholder="National ID / Passport Number"
-                        />
-                    </div>
-                    <div className="form-group">
-                        <label htmlFor="nationality">Nationality</label>
-                        <input
-                            type="text"
-                            id="nationality"
-                            value={formData.nationality}
-                            onChange={(e) => setFormData({ ...formData, nationality: e.target.value })}
-                            placeholder="e.g. South African"
-                        />
-                    </div>
-                </div>
-
-                <div className="form-row">
-                    <div className="form-group">
-                        <label htmlFor="contact_email">Email</label>
-                        <input
-                            type="email"
-                            id="contact_email"
-                            value={formData.contact_email}
-                            onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
-                        />
-                    </div>
-                    <div className="form-group">
-                        <label htmlFor="contact_phone">Phone</label>
-                        <input
-                            type="text"
-                            id="contact_phone"
-                            value={formData.contact_phone}
-                            onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
-                        />
-                    </div>
-                </div>
-
-                <div className="form-group">
-                    <label htmlFor="physical_address">Physical Address</label>
-                    <textarea
-                        id="physical_address"
-                        value={formData.physical_address}
-                        onChange={(e) => setFormData({ ...formData, physical_address: e.target.value })}
-                        rows={2}
+                    <Input
+                        label="Artist Name"
+                        id="name"
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                        required
+                        autoFocus
+                    />
+                    <Input
+                        label="AKA (Stage Name)"
+                        id="aka"
+                        value={formData.aka}
+                        onChange={(e) => setFormData({ ...formData, aka: e.target.value })}
                     />
                 </div>
 
-                <div className="form-group">
-                    <label htmlFor="ipi_number">IPI Number</label>
-                    <input
-                        type="text"
-                        id="ipi_number"
-                        value={formData.ipi_number}
-                        onChange={(e) => setFormData({ ...formData, ipi_number: e.target.value })}
+                <div className="form-row">
+                    <Input
+                        label="ID Number"
+                        id="id_number"
+                        value={formData.id_number}
+                        onChange={(e) => setFormData({ ...formData, id_number: e.target.value })}
+                        placeholder="National ID / Passport Number"
+                    />
+                    <Input
+                        label="Nationality"
+                        id="nationality"
+                        value={formData.nationality}
+                        onChange={(e) => setFormData({ ...formData, nationality: e.target.value })}
+                        placeholder="e.g. South African"
                     />
                 </div>
+
+                <div className="form-row">
+                    <Input
+                        label="Email"
+                        type="email"
+                        id="contact_email"
+                        value={formData.contact_email}
+                        onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
+                    />
+                    <Input
+                        label="Phone"
+                        id="contact_phone"
+                        value={formData.contact_phone}
+                        onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
+                    />
+                </div>
+
+                <Textarea
+                    label="Physical Address"
+                    id="physical_address"
+                    value={formData.physical_address}
+                    onChange={(e) => setFormData({ ...formData, physical_address: e.target.value })}
+                    rows={2}
+                />
+
+                <Input
+                    label="IPI Number"
+                    id="ipi_number"
+                    value={formData.ipi_number}
+                    onChange={(e) => setFormData({ ...formData, ipi_number: e.target.value })}
+                />
 
                 <h3 className="form-section-title">Relationships</h3>
                 <div className="form-row">

@@ -1,9 +1,10 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Bell, User, Settings as SettingsIcon, LogOut, Music, Users, FileText, Layout, X, Building2, BookOpen, Globe, File, StickyNote, ListMusic } from 'lucide-react';
+import { Search, Bell, User, Settings as SettingsIcon, LogOut, Music, Users, FileText, Layout, X, Building2, BookOpen, Globe, File, StickyNote, ListMusic, Sun, Moon } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import api from '../../lib/api';
+import ThemeToggle from '../ui/ThemeToggle';
 
 const TopBar = () => {
     const { user, logout } = useAuth();
@@ -290,6 +291,7 @@ const TopBar = () => {
             </div>
 
             <div className="topbar-actions">
+                <ThemeToggle />
                 <div className="dropdown-container">
                     <button
                         className="topbar-icon-btn"
@@ -401,7 +403,7 @@ const TopBar = () => {
                 .topbar-search {
                     display: flex;
                     align-items: center;
-                    background: #f1f5f9;
+                    background: var(--surface-secondary);
                     border: 1px solid transparent;
                     border-radius: 12px;
                     padding: 0.25rem 0.5rem;
@@ -409,7 +411,7 @@ const TopBar = () => {
                     height: 44px;
                 }
                 .topbar-search:focus-within {
-                    background: white;
+                    background: var(--surface-color);
                     border-color: var(--accent-color);
                     box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
                     max-width: 650px;
@@ -420,9 +422,9 @@ const TopBar = () => {
                     justify-content: center;
                     padding-right: 0.75rem;
                     margin-right: 0.5rem;
-                    border-right: 1px solid #cbd5e1;
+                    border-right: 1px solid var(--border-color);
                     height: 60%;
-                    color: #64748b;
+                    color: var(--text-muted);
                     padding-left: 0.5rem;
                 }
                 .search-input {
@@ -435,7 +437,7 @@ const TopBar = () => {
                     outline: none;
                 }
                 .search-clear-btn {
-                    background: #e2e8f0;
+                    background: var(--border-color);
                     border: none;
                     border-radius: 50%;
                     width: 20px;
@@ -444,16 +446,16 @@ const TopBar = () => {
                     align-items: center;
                     justify-content: center;
                     cursor: pointer;
-                    color: #64748b;
+                    color: var(--text-muted);
                     transition: all 0.2s;
                     margin-right: 0.5rem;
                 }
                 .search-clear-btn:hover {
-                    background: #cbd5e1;
-                    color: #1e293b;
+                    background: var(--border-strong);
+                    color: var(--text-color);
                 }
                 .search-icon {
-                    color: #64748b;
+                    color: var(--text-muted);
                     flex-shrink: 0;
                 }
                 .search-dropdown {
@@ -461,9 +463,9 @@ const TopBar = () => {
                     top: calc(100% + 0.75rem);
                     left: 0;
                     right: 0;
-                    background: white;
+                    background: var(--surface-color);
                     border-radius: var(--radius);
-                    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+                    box-shadow: var(--shadow-lg);
                     border: 1px solid var(--border-color);
                     z-index: 1001;
                     max-height: 400px;
@@ -486,16 +488,17 @@ const TopBar = () => {
                     align-items: center;
                     gap: 0.5rem;
                     margin: 0;
-                    background: #f8fafc;
+                    background: var(--surface-secondary);
                 }
                 .search-item {
                     padding: 0.75rem 1rem;
                     cursor: pointer;
                     font-size: 0.9375rem;
+                    color: var(--text-color);
                     transition: all 0.2s;
                 }
                 .search-item:hover {
-                    background: #f1f5f9;
+                    background: var(--surface-secondary);
                     color: var(--accent-color);
                     padding-left: 1.25rem;
                 }
@@ -512,7 +515,7 @@ const TopBar = () => {
                     transform: translateY(-50%);
                     width: 16px;
                     height: 16px;
-                    border: 2px solid #e2e8f0;
+                    border: 2px solid var(--border-color);
                     border-top-color: var(--accent-color);
                     border-radius: 50%;
                     animation: spin 0.8s linear infinite;
