@@ -1,1 +1,17 @@
+steps:
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      [
+        "build",
+        "-t",
+        "${_IMAGE}",
+        "-f",
+        "backend/Dockerfile",
+        "backend"
+      ]
 
+images:
+  - "${_IMAGE}"
+
+substitutions:
+  _IMAGE: "africa-south1-docker.pkg.dev/$PROJECT_ID/otto/otto:latest"
