@@ -6,7 +6,6 @@
 **Status:** ✅ Ready for Testing
 
 OTTO is a comprehensive SaaS platform for managing all aspects of a record label's operations, from catalog management to contracts, royalties, and analytics.
-
 ---
 
 ## 🚀 Quick Start
