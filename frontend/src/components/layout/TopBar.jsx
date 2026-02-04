@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Search, Bell, User, Settings as SettingsIcon, LogOut, Music, Users, FileText, Layout, X, Building2, BookOpen, Globe, File, StickyNote, ListMusic, Sun, Moon } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import api from '../../lib/api';
+import api, { BASE_URL } from '../../lib/api';
 import ThemeToggle from '../ui/ThemeToggle';
 
 const TopBar = () => {
@@ -135,7 +135,7 @@ const TopBar = () => {
     };
 
     const unreadCount = notifications.filter(n => n.unread).length;
-    const API_URL = 'http://localhost:8000'; // Or import from config
+    const API_URL = BASE_URL;
 
     const hasResults = searchResults && Object.values(searchResults).some(arr => arr.length > 0);
 

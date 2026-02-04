@@ -12,10 +12,12 @@ import {
     FileSearch,
     ListTodo,
     Calendar,
-    ShieldCheck
+    ShieldCheck,
+    RefreshCw
 } from 'lucide-react';
 import { officeReportsService } from '../../services/officeReportsService';
-import api from '../../lib/api';
+import api, { BASE_URL } from '../../lib/api';
+import PageHeader from '../../components/ui/PageHeader';
 
 const REPORT_ICONS = {
     status_quo: ShieldCheck,
@@ -64,11 +66,29 @@ const Reports = () => {
         }
     };
 
+    const handleDownload = async (run) => {
+        try {
+            const response = await api.get(`/office/reports/runs/${run.id}/export`, {
+                responseType: 'blob',
+            });
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `report_${run.id}.xlsx`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (error) {
+            console.error('Download failed', error);
+        }
+    };
+
     const handleShare = async (runId) => {
         try {
             const res = await api.post(`/office/reports/runs/${runId}/share`);
-            alert(`Report shared as document: ${res.data.url}`);
-            window.open(res.data.url, '_blank');
+            const fullUrl = `${BASE_URL}${res.data.url}`;
+            alert(`Report shared as document: ${fullUrl}`);
+            window.open(fullUrl, '_blank');
         } catch (error) {
             alert('Sharing failed');
         }
@@ -76,120 +96,124 @@ const Reports = () => {
 
     return (
         <div className="page-container p-8">
-            <div className="flex items-center justify-between mb-10">
-                <div>
-                    <h1 className="text-3xl font-bold">Office — Reports</h1>
-                    <p className="text-gray-400">Generate and export operational intelligence.</p>
-                </div>
-            </div>
+            <PageHeader
+                title="Office — Reports"
+                subtitle="Generate and export operational intelligence."
+            />
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
                 {reports.map((report) => {
                     const Icon = REPORT_ICONS[report.id] || FileText;
                     return (
-                        <div key={report.id} className="bg-secondary-bg border border-border rounded-xl p-6 flex flex-col hover:border-primary/50 transition-all group">
-                            <div className="p-3 bg-primary/10 rounded-lg text-primary w-fit mb-4 group-hover:scale-110 transition-transform">
-                                <Icon size={24} />
+                        <div key={report.id} className="panel group hover:border-primary/50 transition-all flex flex-col">
+                            <div className="p-6 flex flex-col flex-1">
+                                <div className="p-3 bg-primary/10 rounded-xl text-primary w-fit mb-4 group-hover:scale-110 transition-transform">
+                                    <Icon size={24} />
+                                </div>
+                                <h3 className="text-lg font-bold mb-2">{report.title}</h3>
+                                <p className="text-muted text-sm mb-6 flex-1">{report.description}</p>
                             </div>
-                            <h3 className="text-lg font-bold mb-2">{report.title}</h3>
-                            <p className="text-gray-400 text-sm mb-6 flex-1">{report.description}</p>
-                            <button
-                                className="btn-primary w-full flex items-center justify-center gap-2 py-2"
-                                onClick={() => handleRun(report.id)}
-                                disabled={isRunning === report.id}
-                            >
-                                <Play size={16} fill="currentColor" />
-                                {isRunning === report.id ? 'Running...' : 'Run Report'}
-                            </button>
+                            <div className="p-4 bg-surface-secondary border-t border-border mt-auto">
+                                <button
+                                    className="btn btn-primary btn-md w-full flex items-center justify-center gap-2"
+                                    onClick={() => handleRun(report.id)}
+                                    disabled={isRunning === report.id}
+                                >
+                                    {isRunning === report.id ? <RefreshCw size={16} className="animate-spin" /> : <Play size={16} fill="currentColor" />}
+                                    {isRunning === report.id ? 'Running...' : 'Run Report'}
+                                </button>
+                            </div>
                         </div>
                     );
                 })}
             </div>
 
-            <div className="bg-secondary-bg border border-border rounded-xl overflow-hidden shadow-lg">
-                <div className="p-4 border-b border-border bg-black/20 flex items-center justify-between">
+            <div className="panel shadow-lg">
+                <div className="panel-header bg-surface-secondary">
                     <h2 className="font-bold flex items-center gap-2">
                         <Clock size={18} className="text-primary" />
                         Recent Report Runs
                     </h2>
-                    <button className="text-xs text-primary hover:underline" onClick={fetchRuns}>Refresh List</button>
+                    <button className="btn-icon btn-sm" onClick={fetchRuns} title="Refresh List">
+                        <RefreshCw size={14} />
+                    </button>
                 </div>
 
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left">
+                <div className="table-container">
+                    <table className="data-table">
                         <thead>
-                            <tr className="text-gray-500 text-xs uppercase tracking-wider">
-                                <th className="px-6 py-4">Status</th>
-                                <th className="px-6 py-4">Report Type</th>
-                                <th className="px-6 py-4">Generated At</th>
-                                <th className="px-6 py-4">Rows</th>
-                                <th className="px-6 py-4 text-right">Actions</th>
+                            <tr>
+                                <th>Status</th>
+                                <th>Report Type</th>
+                                <th>Generated At</th>
+                                <th>Rows</th>
+                                <th className="actions-header">Actions</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-border">
+                        <tbody>
                             {isLoadingRuns ? (
                                 <tr>
-                                    <td colSpan="5" className="px-6 py-12 text-center text-gray-500">
-                                        Loading runs...
+                                    <td colSpan="5" className="py-12 text-center text-muted">
+                                        <div className="flex flex-col items-center gap-2 text-sm">
+                                            <RefreshCw size={24} className="animate-spin opacity-20" />
+                                            Loading runs...
+                                        </div>
                                     </td>
                                 </tr>
                             ) : runs.length === 0 ? (
                                 <tr>
-                                    <td colSpan="5" className="px-6 py-12 text-center text-gray-500">
+                                    <td colSpan="5" className="py-12 text-center text-muted">
                                         No recent runs. Start by clicking "Run Report" above.
                                     </td>
                                 </tr>
                             ) : (
                                 runs.map((run) => (
-                                    <tr key={run.id} className="hover:bg-white/5 transition-colors">
-                                        <td className="px-6 py-4">
+                                    <tr key={run.id}>
+                                        <td>
                                             {run.status === 'done' ? (
-                                                <span className="flex items-center gap-1.5 text-emerald-400 text-sm font-medium">
-                                                    <CheckCircle2 size={14} /> Ready
-                                                </span>
+                                                <span className="badge badge-success">Ready</span>
                                             ) : run.status === 'failed' ? (
-                                                <span className="flex items-center gap-1.5 text-rose-400 text-sm font-medium">
-                                                    <AlertCircle size={14} /> Failed
-                                                </span>
+                                                <span className="badge badge-danger">Failed</span>
                                             ) : (
-                                                <span className="flex items-center gap-1.5 text-blue-400 text-sm font-medium">
-                                                    <Clock size={14} className="animate-pulse" /> Processing
-                                                </span>
+                                                <span className="badge badge-primary animate-pulse">Processing</span>
                                             )}
                                         </td>
-                                        <td className="px-6 py-4">
-                                            <span className="text-sm font-medium text-gray-200 uppercase">{run.report_definition_id ? `Def #${run.report_definition_id}` : run.parameters?.report_type || 'ADHOC'}</span>
-                                            <span className="block text-xs text-gray-400">Run ID: {run.id}</span>
+                                        <td>
+                                            <div className="font-medium text-sm">
+                                                {runs.find(r => r.id === run.id)?.report_type || run.report_definition_id ? `Def #${run.report_definition_id}` : run.parameters?.report_type || 'ADHOC'}
+                                            </div>
+                                            <div className="text-[10px] text-muted">ID: {run.id}</div>
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-gray-400">
+                                        <td className="text-sm text-muted">
                                             {new Date(run.created_at).toLocaleString()}
                                         </td>
-                                        <td className="px-6 py-4">
-                                            <span className="bg-gray-800 text-gray-300 px-2 py-0.5 rounded text-xs">{run.row_count || 0} rows</span>
+                                        <td>
+                                            <span className="badge badge-gray">{run.row_count || 0} rows</span>
                                         </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <div className="flex items-center justify-end gap-3">
-                                                {run.status === 'done' && (
-                                                    <>
-                                                        <a
-                                                            href={`/api/office/reports/runs/${run.id}/export.pdf`}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="text-gray-400 hover:text-primary transition-colors"
-                                                            title="Preview PDF"
-                                                        >
-                                                            <Eye size={18} />
-                                                        </a>
-                                                        <button
-                                                            className="text-gray-400 hover:text-emerald-400 transition-colors"
-                                                            title="Share (Store as Doc)"
-                                                            onClick={() => handleShare(run.id)}
-                                                        >
-                                                            <Share2 size={18} />
-                                                        </button>
-                                                    </>
-                                                )}
-                                            </div>
+                                        <td className="actions-cell">
+                                            {run.status === 'done' && (
+                                                <div className="flex items-center justify-end gap-1">
+                                                    <button className="btn-icon" onClick={() => handleDownload(run)} title="Download Excel">
+                                                        <Download size={18} />
+                                                    </button>
+                                                    <a
+                                                        href={`${BASE_URL}/office/reports/runs/${run.id}/export.pdf`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="btn-icon"
+                                                        title="Preview PDF"
+                                                    >
+                                                        <Eye size={18} />
+                                                    </a>
+                                                    <button
+                                                        className="btn-icon"
+                                                        title="Share (Store as Doc)"
+                                                        onClick={() => handleShare(run.id)}
+                                                    >
+                                                        <Share2 size={18} />
+                                                    </button>
+                                                </div>
+                                            )}
                                         </td>
                                     </tr>
                                 ))
@@ -199,12 +223,12 @@ const Reports = () => {
                 </div>
             </div>
 
-            <div className="mt-8 p-6 bg-primary/5 border border-primary/20 rounded-xl">
+            <div className="mt-8 panel padded border-primary/20 bg-primary/5">
                 <div className="flex gap-4">
-                    <ShieldCheck className="text-primary mt-1" size={24} />
+                    <ShieldCheck className="text-primary" size={24} />
                     <div>
-                        <h4 className="font-bold text-gray-200">Governance Lock Version 1.0</h4>
-                        <p className="text-sm text-gray-400 mt-1">All reports are deterministically generated based on organization-scoped database relationships. Direct PDF analysis is disabled to ensure 100% data integrity and compliance with OTTO Governance Laws.</p>
+                        <h4 className="font-bold">Governance Lock Version 1.0</h4>
+                        <p className="text-sm text-muted mt-1">All reports are deterministically generated based on organization-scoped database relationships. Direct PDF analysis is disabled to ensure 100% data integrity and compliance with OTTO Governance Laws.</p>
                     </div>
                 </div>
             </div>

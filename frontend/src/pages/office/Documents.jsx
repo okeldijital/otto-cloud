@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Plus, Search, Filter, FileText, Download, Eye, Trash2 } from 'lucide-react';
 import EntityForm from '../../components/EntityForm';
 import { officeDocumentsService } from '../../services/officeDocumentsService';
+import PageHeader from '../../components/ui/PageHeader';
 
 const DOC_TYPES = [
     { label: 'Contract', value: 'contract' },
@@ -246,55 +249,69 @@ const OfficeDocuments = () => {
 
     return (
         <div className="page-container p-8">
-            <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold">Office — Documents</h1>
-                    <p className="text-gray-400">Internal document cabinet for operational files.</p>
-                </div>
-                <button className="btn-primary" onClick={openUpload}>Upload Document</button>
-            </div>
+            <PageHeader
+                title="Office — Documents"
+                subtitle="Internal document cabinet for operational files."
+                actions={
+                    <button className="btn btn-primary btn-md" onClick={openUpload}>
+                        <Plus size={18} /> Upload Document
+                    </button>
+                }
+            />
 
-            <div className="bg-secondary-bg border border-border rounded-xl p-4 mb-6 flex flex-wrap gap-3 items-center">
-                <input
-                    type="text"
-                    className="flex-1 min-w-[220px] bg-transparent border border-border rounded-lg px-3 py-2 text-sm"
-                    placeholder="Search title or file name..."
-                    value={filters.q}
-                    onChange={(event) => setFilters({ ...filters, q: event.target.value })}
-                />
-                <select
-                    className="bg-transparent border border-border rounded-lg px-3 py-2 text-sm"
-                    value={filters.doc_type}
-                    onChange={(event) => setFilters({ ...filters, doc_type: event.target.value })}
-                >
-                    <option value="">All Types</option>
-                    {DOC_TYPES.map((type) => (
-                        <option key={type.value} value={type.value}>{type.label}</option>
-                    ))}
-                </select>
-                <select
-                    className="bg-transparent border border-border rounded-lg px-3 py-2 text-sm"
-                    value={filters.entity_type}
-                    onChange={(event) => setFilters({ ...filters, entity_type: event.target.value })}
-                >
-                    {LINKED_TYPES.map((option) => (
-                        <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
-                </select>
-                <input
-                    type="number"
-                    className="w-32 bg-transparent border border-border rounded-lg px-3 py-2 text-sm"
-                    placeholder="Linked ID"
-                    value={filters.entity_id}
-                    onChange={(event) => setFilters({ ...filters, entity_id: event.target.value })}
-                />
+            <div className="panel padded mb-8">
+                <div className="filters-row">
+                    <div className="filter-group flex-1">
+                        <div className="search-box-inline w-full">
+                            <Search size={16} className="text-muted" />
+                            <input
+                                type="text"
+                                className="w-full"
+                                placeholder="Search title or file name..."
+                                value={filters.q}
+                                onChange={(event) => setFilters({ ...filters, q: event.target.value })}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="filter-group">
+                        <Filter size={16} className="text-muted" />
+                        <select
+                            className="bg-transparent border border-border rounded-lg px-3 py-2 text-sm"
+                            value={filters.doc_type}
+                            onChange={(event) => setFilters({ ...filters, doc_type: event.target.value })}
+                        >
+                            <option value="">All Types</option>
+                            {DOC_TYPES.map((type) => (
+                                <option key={type.value} value={type.value}>{type.label}</option>
+                            ))}
+                        </select>
+                        <select
+                            className="bg-transparent border border-border rounded-lg px-3 py-2 text-sm"
+                            value={filters.entity_type}
+                            onChange={(event) => setFilters({ ...filters, entity_type: event.target.value })}
+                        >
+                            {LINKED_TYPES.map((option) => (
+                                <option key={option.value} value={option.value}>{option.label}</option>
+                            ))}
+                        </select>
+                        <input
+                            type="number"
+                            className="w-24 bg-transparent border border-border rounded-lg px-3 py-2 text-sm"
+                            placeholder="ID"
+                            value={filters.entity_id}
+                            onChange={(event) => setFilters({ ...filters, entity_id: event.target.value })}
+                        />
+                    </div>
+                </div>
             </div>
 
             {isLoading ? (
-                <div className="text-gray-400">Loading documents...</div>
+                <div className="placeholder py-12">Loading documents...</div>
             ) : documents.length === 0 ? (
-                <div className="bg-secondary-bg border border-border border-dashed rounded-xl p-12 text-center text-gray-500">
-                    No documents yet.
+                <div className="panel padded border-dashed text-center text-muted py-24">
+                    <FileText size={48} className="mx-auto mb-4 opacity-20" />
+                    <p>No documents found.</p>
                 </div>
             ) : (
                 <div className="table-container">
@@ -316,36 +333,37 @@ const OfficeDocuments = () => {
                                     <td>{DOC_TYPES.find((type) => type.value === doc.doc_type)?.label || 'Other'}</td>
                                     <td>
                                         {doc.links?.length
-                                            ? doc.links.map((link) => `${link.entity_type}:${link.entity_id}`).join(', ')
+                                            ? doc.links.map((link, idx) => (
+                                                <React.Fragment key={`${link.entity_type}-${link.entity_id}`}>
+                                                    <Link
+                                                        to={
+                                                            link.entity_type === 'artist' ? `/catalog/artists/${link.entity_id}` :
+                                                                link.entity_type === 'release' ? `/catalog/releases/${link.entity_id}` :
+                                                                    link.entity_type === 'track' ? `/catalog/tracks/${link.entity_id}` :
+                                                                        link.entity_type === 'work' ? `/catalog/works/${link.entity_id}` :
+                                                                            link.entity_type === 'contract' ? `/admin-of-works/contracts/${link.entity_id}` :
+                                                                                '#'
+                                                        }
+                                                        className="text-primary hover:underline"
+                                                    >
+                                                        {link.entity_type}:{link.entity_id}
+                                                    </Link>
+                                                    {idx < doc.links.length - 1 ? ', ' : ''}
+                                                </React.Fragment>
+                                            ))
                                             : 'None'}
                                     </td>
                                     <td>{formatSize(doc.file_size_bytes)}</td>
                                     <td>{new Date(doc.created_at).toLocaleDateString()}</td>
-                                    <td className="actions-cell" style={{ width: '180px' }}>
-                                        <button className="btn-icon edit" onClick={() => openDetail(doc)} title="View">
-                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                                <circle cx="12" cy="12" r="3"></circle>
-                                            </svg>
+                                    <td className="actions-cell">
+                                        <button className="btn-icon" onClick={() => openDetail(doc)} title="View Detail">
+                                            <Eye size={18} />
                                         </button>
-                                        <a className="btn-icon" href={officeDocumentsService.downloadUrl(doc.id)} title="Download">
-                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                                <polyline points="7 10 12 15 17 10"></polyline>
-                                                <line x1="12" y1="15" x2="12" y2="3"></line>
-                                            </svg>
+                                        <a className="btn-icon" href={officeDocumentsService.downloadUrl(doc.id)} target="_blank" rel="noreferrer" title="Download">
+                                            <Download size={18} />
                                         </a>
-                                        <button className="btn-icon edit" onClick={() => openEdit(doc)} title="Edit">
-                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                <path d="M12 20h9"></path>
-                                                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"></path>
-                                            </svg>
-                                        </button>
-                                        <button className="btn-icon delete" onClick={() => handleDelete(doc)} title="Delete">
-                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                <polyline points="3 6 5 6 21 6"></polyline>
-                                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                                            </svg>
+                                        <button className="btn-icon delete" onClick={() => handleDelete(doc)} title="Delete Document">
+                                            <Trash2 size={18} />
                                         </button>
                                     </td>
                                 </tr>

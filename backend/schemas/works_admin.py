@@ -5,6 +5,13 @@ from datetime import date, datetime
 from schemas.contract import StatusQuoResponse
 
 
+class WorkMinimal(BaseModel):
+    id: int
+    title: str
+    iswc_code: Optional[str] = None
+    model_config = ConfigDict(from_attributes=True)
+
+
 class WorksAdminDocumentBase(BaseModel):
     doc_type: str
     file_path: str
@@ -54,5 +61,6 @@ class WorksAdminResponse(WorksAdminBase):
     documents: List[WorksAdminDocumentResponse] = []
     status_quo: Optional[StatusQuoResponse] = None
     linked_contracts: List[Dict[str, Any]] = []
+    work: Optional[WorkMinimal] = None
     
     model_config = ConfigDict(from_attributes=True)

@@ -145,6 +145,44 @@ def recompute_status_quo(db: Session, org_id: UUID, user_id: int):
                 None
             )
 
+    # --- Rule 5: CONTRACT_EXPIRING_SOON & CONTRACT_MISSING_PDF ---
+    all_contracts = db.query(Contract).filter(Contract.organization_id == org_id).all()
+    today = datetime.utcnow().date()
+    for contract in all_contracts:
+        # Check for missing PDF if status is not Draft
+        if contract.status != "Draft":
+            # Check for any PDF document in office_documents (not contract_documents table which is older)
+            # Actually, the older contract_documents table is still used in Some places. 
+            # But office_documents is the new way. Let's check both or favor office_documents.
+            has_pdf = db.query(OfficeDocumentLink).join(OfficeDocument).filter(
+                OfficeDocumentLink.entity_type == "contract",
+                OfficeDocumentLink.entity_id == contract.id,
+                OfficeDocument.mime_type == "application/pdf"
+            ).first()
+            
+            if not has_pdf:
+                report_issue(
+                    "contract", contract.id, "CONTRACT_MISSING_PDF", "critical",
+                    f"Active contract '{contract.title}' ({contract.contract_number}) is missing a signed PDF document.",
+                    {"contract_number": contract.contract_number}
+                )
+
+        # Expiration check
+        if contract.status == "Active" and contract.end_date:
+            days_to_end = (contract.end_date - today).days
+            if days_to_end < 0:
+                report_issue(
+                    "contract", contract.id, "CONTRACT_EXPIRED", "critical",
+                    f"Contract '{contract.title}' expired on {contract.end_date}.",
+                    {"end_date": str(contract.end_date)}
+                )
+            elif days_to_end < 60:
+                report_issue(
+                    "contract", contract.id, "CONTRACT_EXPIRING_SOON", "warn",
+                    f"Contract '{contract.title}' is expiring in {days_to_end} days.",
+                    {"end_date": str(contract.end_date), "days_left": days_to_end}
+                )
+
     # --- Finalize: Resolve items no longer found ---
     for key, item in unresolved_map.items():
         if key not in found_keys:

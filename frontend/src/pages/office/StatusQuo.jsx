@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import {
     ShieldCheck,
     RefreshCcw,
@@ -86,17 +87,25 @@ const StatusQuo = () => {
         <div className="page-container p-8">
             <PageHeader
                 title="Office — Status Quo"
-                subtitle="Compliance & Governance Gap Analysis"
+                subtitle="Consensus-driven governance and compliance monitoring."
                 actions={
-                    <Button
-                        variant="primary"
-                        icon={RefreshCcw}
-                        onClick={handleRecompute}
-                        disabled={isRecomputing || isLoading}
-                        className={isRecomputing ? 'animate-pulse' : ''}
-                    >
-                        {isRecomputing ? 'Recomputing...' : 'Recompute Gaps'}
-                    </Button>
+                    <div className="flex gap-2">
+                        <Link to="/admin-of-works/status-quo">
+                            <Button variant="outline" size="sm" className="flex items-center gap-2">
+                                <ExternalLink size={16} /> View Dashboard
+                            </Button>
+                        </Link>
+                        <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={handleRecompute}
+                            disabled={isRecomputing}
+                            className="flex items-center gap-2"
+                        >
+                            <RefreshCcw size={16} className={isRecomputing ? 'animate-spin' : ''} />
+                            {isRecomputing ? 'Recomputing...' : 'Recompute Gaps'}
+                        </Button>
+                    </div>
                 }
             />
 
@@ -195,13 +204,20 @@ const StatusQuo = () => {
                                                     >
                                                         <CheckCircle2 size={18} />
                                                     </button>
-                                                    <a
-                                                        href={`#/catalog/${item.entity_type}s/${item.entity_id}`}
+                                                    <Link
+                                                        to={
+                                                            item.entity_type === 'artist' ? `/catalog/artists/${item.entity_id}` :
+                                                                item.entity_type === 'release' ? `/catalog/releases/${item.entity_id}` :
+                                                                    item.entity_type === 'track' ? `/catalog/tracks/${item.entity_id}` :
+                                                                        item.entity_type === 'work' ? `/catalog/works/${item.entity_id}` :
+                                                                            item.entity_type === 'contract' ? `/admin-of-works/contracts/${item.entity_id}` :
+                                                                                `/catalog/${item.entity_type}s/${item.entity_id}`
+                                                        }
                                                         className="p-2 text-gray-400 hover:text-primary transition-colors"
                                                         title="Open Entity"
                                                     >
                                                         <ExternalLink size={18} />
-                                                    </a>
+                                                    </Link>
                                                 </div>
                                             </td>
                                         </tr>

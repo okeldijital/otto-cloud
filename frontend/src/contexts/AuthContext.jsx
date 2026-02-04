@@ -90,6 +90,18 @@ export const AuthProvider = ({ children }) => {
         checkAuth();
     };
 
+    const refreshUser = async () => {
+        try {
+            const response = await api.get('/auth/me');
+            storage.setUser(response.data);
+            setUser(response.data);
+            return response.data;
+        } catch (error) {
+            console.error('Failed to refresh user:', error);
+            throw error;
+        }
+    };
+
     const value = {
         user,
         loading,
@@ -97,8 +109,10 @@ export const AuthProvider = ({ children }) => {
         login,
         register,
         logout,
+        refreshUser,
         isAuthenticated: !!user,
     };
+
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

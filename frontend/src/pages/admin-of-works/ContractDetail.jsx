@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { FileText, Upload, Edit3, Plus, Trash, Download, AlertCircle, CheckCircle } from 'lucide-react';
+import { FileText, Upload, Edit3, Plus, Trash, Download, AlertCircle, CheckCircle, ChevronLeft } from 'lucide-react';
 import contractService from '../../services/contractService';
 import EntityForm from '../../components/EntityForm';
 import EntityTypeahead from '../../components/contracts/EntityTypeahead';
@@ -190,7 +190,9 @@ const ContractDetail = () => {
         <div className="contracts-shell">
             <header className="contracts-header">
                 <div>
-                    <button className="link-btn" onClick={() => navigate('/admin-of-works/contracts')}>← Back to list</button>
+                    <button className="back-link" onClick={() => navigate('/admin-of-works/contracts')}>
+                        <ChevronLeft size={16} /> Back to list
+                    </button>
                     <h1>{contract.title}</h1>
                     <div className="flex-row gap-2 mt-1">
                         <span className="muted mono small">{contract.contract_number}</span>
@@ -221,7 +223,7 @@ const ContractDetail = () => {
             </div>
 
             {activeTab === 'overview' && (
-                <div className="panel grid-2">
+                <div className="panel padded grid-2">
                     <div>
                         <h4 className="eyebrow">Key Metadata</h4>
                         <ul className="kv">

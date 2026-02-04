@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Filter as FilterIcon, Search, Plus, List, Grid, RefreshCw } from 'lucide-react';
 import EntityForm from '../../components/EntityForm';
 import { officeEventsService } from '../../services/officeEventsService';
 
@@ -25,13 +26,13 @@ const LINKED_TYPES = [
 ];
 
 const EVENT_COLORS = {
-    Release: 'bg-emerald-500/20 text-emerald-200 border-emerald-500/40',
-    'Contract Milestone': 'bg-indigo-500/20 text-indigo-200 border-indigo-500/40',
-    Registration: 'bg-amber-500/20 text-amber-200 border-amber-500/40',
-    Deadline: 'bg-rose-500/20 text-rose-200 border-rose-500/40',
-    Meeting: 'bg-sky-500/20 text-sky-200 border-sky-500/40',
-    Reminder: 'bg-purple-500/20 text-purple-200 border-purple-500/40',
-    Other: 'bg-slate-500/20 text-slate-200 border-slate-500/40',
+    Release: 'badge-emerald',
+    'Contract Milestone': 'badge-blue',
+    Registration: 'badge-amber',
+    Deadline: 'badge-rose',
+    Meeting: 'badge-blue',
+    Reminder: 'badge-gray',
+    Other: 'badge-gray',
 };
 
 const Events = () => {
@@ -231,16 +232,18 @@ const Events = () => {
                 <div className="flex items-center gap-3">
                     <div className="bg-secondary-bg border border-border rounded-lg p-1 flex">
                         <button
-                            className={`px-3 py-1 text-sm rounded-md ${viewMode === 'calendar' ? 'bg-primary text-white' : 'text-gray-400'}`}
+                            className={`p-1.5 rounded-md transition-all ${viewMode === 'calendar' ? 'bg-primary text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
                             onClick={() => setViewMode('calendar')}
+                            title="Calendar View"
                         >
-                            Calendar
+                            <CalendarIcon size={18} />
                         </button>
                         <button
-                            className={`px-3 py-1 text-sm rounded-md ${viewMode === 'list' ? 'bg-primary text-white' : 'text-gray-400'}`}
+                            className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-primary text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
                             onClick={() => setViewMode('list')}
+                            title="List View"
                         >
-                            List
+                            <List size={18} />
                         </button>
                     </div>
                     <button className="btn-primary" onClick={openCreate}>Create Event</button>
@@ -300,57 +303,73 @@ const Events = () => {
             </div>
 
             {isLoading ? (
-                <div className="text-gray-400">Loading events...</div>
+                <div className="flex items-center justify-center p-24 text-gray-500">
+                    <div className="animate-spin mr-3"><RefreshCw size={24} /></div>
+                    Loading events...
+                </div>
             ) : viewMode === 'calendar' ? (
-                <div className="bg-secondary-bg border border-border rounded-xl p-4">
-                    <div className="flex items-center justify-between mb-4">
+                <div className="calendar-container">
+                    <div className="calendar-header">
+                        <div className="flex items-center gap-4">
+                            <h2 className="text-xl font-bold">{monthLabel}</h2>
+                            <div className="flex gap-1">
+                                <button
+                                    className="p-2 hover:bg-surface-secondary rounded-full transition-colors"
+                                    onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}
+                                >
+                                    <ChevronLeft size={20} />
+                                </button>
+                                <button
+                                    className="p-2 hover:bg-surface-secondary rounded-full transition-colors"
+                                    onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}
+                                >
+                                    <ChevronRight size={20} />
+                                </button>
+                            </div>
+                        </div>
                         <button
-                            className="btn-secondary"
-                            onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}
+                            className="btn-secondary btn-sm"
+                            onClick={() => setCurrentMonth(new Date())}
                         >
-                            Prev
-                        </button>
-                        <div className="text-lg font-semibold">{monthLabel}</div>
-                        <button
-                            className="btn-secondary"
-                            onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}
-                        >
-                            Next
+                            Today
                         </button>
                     </div>
-                    <div className="grid grid-cols-7 gap-2 text-xs text-gray-400 mb-2">
+
+                    <div className="calendar-grid-header">
                         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-                            <div key={day} className="text-center">{day}</div>
+                            <div key={day} className="calendar-header-day">{day}</div>
                         ))}
                     </div>
-                    <div className="grid grid-cols-7 gap-2">
+
+                    <div className="calendar-grid">
                         {calendarDays.map((day) => {
-                            const key = day.date.toDateString();
-                            const dayEvents = eventsByDay[key] || [];
+                            const dateKey = day.date.toDateString();
+                            const dayEvents = eventsByDay[dateKey] || [];
+                            const isToday = day.date.toDateString() === now.toDateString();
+
                             return (
                                 <div
-                                    key={key}
-                                    className={`border border-border rounded-lg p-2 min-h-[110px] ${day.isCurrentMonth ? 'bg-black/10' : 'bg-black/5 text-gray-500'}`}
+                                    key={dateKey}
+                                    className={`calendar-day ${!day.isCurrentMonth ? 'other-month' : ''} ${isToday ? 'today' : ''}`}
                                 >
-                                    <div className="text-xs mb-2">{day.date.getDate()}</div>
-                                    <div className="space-y-1">
-                                        {dayEvents.slice(0, 3).map((event) => (
-                                            (() => {
-                                                const isOverdue = new Date(event.start_datetime) < now && event.status !== 'Completed';
-                                                return (
-                                                    <button
-                                                        key={event.id}
-                                                        className={`w-full text-left text-xs px-2 py-1 rounded border ${EVENT_COLORS[event.event_type] || EVENT_COLORS.Other} ${isOverdue ? 'ring-1 ring-rose-400/70' : ''}`}
-                                                        onClick={() => openDetail(event)}
-                                                    >
-                                                        {event.title}
-                                                    </button>
-                                                );
-                                            })()
-                                        ))}
-                                        {dayEvents.length > 3 && (
-                                            <div className="text-xs text-gray-500">+{dayEvents.length - 3} more</div>
-                                        )}
+                                    <div className="day-number-wrapper">
+                                        <span className="day-number">{day.date.getDate()}</span>
+                                    </div>
+
+                                    <div className="flex flex-col gap-1 overflow-y-auto max-h-[80px]">
+                                        {dayEvents.map((event) => {
+                                            const isOverdue = new Date(event.start_datetime) < now && event.status !== 'Completed';
+                                            return (
+                                                <button
+                                                    key={event.id}
+                                                    className={`calendar-event ${EVENT_COLORS[event.event_type] || EVENT_COLORS.Other} ${isOverdue ? 'ring-1 ring-rose-500/50' : ''}`}
+                                                    onClick={() => openDetail(event)}
+                                                    title={event.title}
+                                                >
+                                                    {event.title}
+                                                </button>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             );

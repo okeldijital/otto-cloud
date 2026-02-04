@@ -12,7 +12,8 @@ class WorksAdminRepository(BaseRepository[WorksAdmin]):
 
     def get_by_work(self, db: Session, work_id: int, organization_id: UUID) -> Optional[WorksAdmin]:
         return db.query(WorksAdmin).options(
-            selectinload(WorksAdmin.documents)
+            selectinload(WorksAdmin.documents),
+            selectinload(WorksAdmin.work)
         ).filter(
             WorksAdmin.work_id == work_id,
             WorksAdmin.organization_id == organization_id
@@ -20,7 +21,8 @@ class WorksAdminRepository(BaseRepository[WorksAdmin]):
 
     def get_with_details(self, db: Session, admin_id: UUID, organization_id: UUID) -> Optional[WorksAdmin]:
         return db.query(WorksAdmin).options(
-            selectinload(WorksAdmin.documents)
+            selectinload(WorksAdmin.documents),
+            selectinload(WorksAdmin.work)
         ).filter(
             WorksAdmin.id == admin_id,
             WorksAdmin.organization_id == organization_id
@@ -28,7 +30,8 @@ class WorksAdminRepository(BaseRepository[WorksAdmin]):
 
     def get_all_for_org(self, db: Session, organization_id: UUID) -> List[WorksAdmin]:
         return db.query(WorksAdmin).options(
-            selectinload(WorksAdmin.documents)
+            selectinload(WorksAdmin.documents),
+            selectinload(WorksAdmin.work)
         ).filter(
             WorksAdmin.organization_id == organization_id
         ).all()

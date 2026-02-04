@@ -8,7 +8,8 @@ import {
     FileText,
     ShieldCheck,
     Filter,
-    Download
+    Download,
+    RefreshCw
 } from 'lucide-react';
 import statusQuoService from '../../services/statusQuoService';
 
@@ -19,27 +20,42 @@ const StatusQuoDashboard = () => {
     const [error, setError] = useState('');
     const [filter, setFilter] = useState({ status: 'All', type: 'All' });
 
-    useEffect(() => {
-        const load = async () => {
-            setLoading(true);
-            try {
-                const params = {};
-                if (filter.status !== 'All') params.status_filter = filter.status.toUpperCase();
-                if (filter.type !== 'All') params.type_filter = filter.type.toLowerCase();
+    const [recomputing, setRecomputing] = useState(false);
 
-                const res = await statusQuoService.getDashboard(params);
-                setData(res.data || res);
-            } catch (err) {
-                console.error(err);
-                setError('Failed to load status quo dashboard.');
-            } finally {
-                setLoading(false);
-            }
-        };
-        load();
+    const loadData = async () => {
+        setLoading(true);
+        try {
+            const params = {};
+            if (filter.status !== 'All') params.status_filter = filter.status.toUpperCase();
+            if (filter.type !== 'All') params.type_filter = filter.type.toLowerCase();
+
+            const res = await statusQuoService.getDashboard(params);
+            setData(res.data || res);
+        } catch (err) {
+            console.error(err);
+            setError('Failed to load status quo dashboard.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        loadData();
     }, [filter]);
 
-    if (loading) return <div className="placeholder">Loading status quo insight…</div>;
+    const handleRecompute = async () => {
+        setRecomputing(true);
+        try {
+            await statusQuoService.recompute();
+            await loadData();
+        } catch (err) {
+            alert('Recompute failed');
+        } finally {
+            setRecomputing(false);
+        }
+    };
+
+    if (loading && !data) return <div className="placeholder">Loading status quo insight…</div>;
     if (error) return <div className="error-banner">{error}</div>;
 
     const { summary, alerts, contracts, works } = data;
@@ -57,6 +73,14 @@ const StatusQuoDashboard = () => {
                     <p className="muted">Live monitoring of legal compliance and registration health.</p>
                 </div>
                 <div className="header-actions">
+                    <button
+                        className={`btn-primary flex items-center gap-2 ${recomputing ? 'animate-pulse' : ''}`}
+                        onClick={handleRecompute}
+                        disabled={recomputing}
+                    >
+                        <RefreshCw size={16} className={recomputing ? 'animate-spin' : ''} />
+                        {recomputing ? 'Recomputing...' : 'Recompute Gaps'}
+                    </button>
                     <div className={`status-badge big ${getStatusClass(summary.overall_status)}`}>
                         {summary.overall_status === 'GREEN' ? <CheckCircle size={18} /> : <AlertTriangle size={18} />}
                         Overall Health: {summary.overall_status}
@@ -109,7 +133,7 @@ const StatusQuoDashboard = () => {
             </div>
 
             <div className="grid-2">
-                <div className="panel">
+                <div className="panel padded">
                     <h3 className="section-title">Critical Attention (RED)</h3>
                     <div className="alerts-list">
                         {(alerts.missing_signed_pdf || []).map((item, i) => (
@@ -138,9 +162,9 @@ const StatusQuoDashboard = () => {
                     </div>
                 </div>
 
-                <div className="panel">
+                <div className="panel padded">
                     <h3 className="section-title">Aggregated View</h3>
-                    <div className="scroll-panel" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                    <div className="scroll-panel" style={{ maxHeight: '600px', overflowY: 'auto' }}>
                         <table className="contracts-table">
                             <thead>
                                 <tr>
@@ -151,10 +175,18 @@ const StatusQuoDashboard = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {[...contracts, ...works].map((item, i) => (
+                                {(data.aggregated || [...contracts, ...works]).map((item, i) => (
                                     <tr
                                         key={i}
-                                        onClick={() => navigate(item.contract_id ? `/admin-of-works/contracts/${item.contract_id}` : `/admin-of-works/works/${item.work_id}`)}
+                                        onClick={() => {
+                                            const path =
+                                                item.type === 'contract' ? `/admin-of-works/contracts/${item.id}` :
+                                                    item.type === 'work' ? `/admin-of-works/works/${item.work_id || item.id}` :
+                                                        item.type === 'artist' ? `/catalog/artists/${item.id}` :
+                                                            item.type === 'release' ? `/catalog/releases/${item.id}` :
+                                                                '#';
+                                            if (path !== '#') navigate(path);
+                                        }}
                                         className="clickable"
                                     >
                                         <td>
@@ -163,7 +195,7 @@ const StatusQuoDashboard = () => {
                                             </span>
                                         </td>
                                         <td className="strong">{item.title}</td>
-                                        <td>{item.contract_id ? 'Contract' : 'Work'}</td>
+                                        <td className="text-xs uppercase font-bold text-primary">{item.type}</td>
                                         <td>
                                             <div className="reasons-list">
                                                 {item.status_quo.reasons.map((r, ri) => (

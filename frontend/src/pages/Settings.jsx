@@ -1,107 +1,239 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { User, Mail, Building, Save, Camera } from 'lucide-react';
-import { DocumentsService } from '../services/operations';
-import api from '../lib/api';
-
-const API_URL = 'http://localhost:8000'; // Or import from config
+import { User, Mail, Building, Save, Camera, Upload, X, Check, AlertCircle } from 'lucide-react';
+import PageHeader from '../components/ui/PageHeader';
+import api, { BASE_URL } from '../lib/api';
 
 export default function Settings() {
-    const { user } = useAuth();
+    const { user, refreshUser } = useAuth();
     const [formData, setFormData] = useState({
+        full_name: user?.full_name || '',
         email: user?.email || '',
-        organization: 'OTTO Records', // Placeholder
+        organization: 'OTTO Records',
         notifications: true,
         theme: 'light'
     });
     const [isSaving, setIsSaving] = useState(false);
-    const [saveMessage, setSaveMessage] = useState('');
+    const [saveStatus, setSaveStatus] = useState({ type: '', message: '' });
 
     const [selectedAvatar, setSelectedAvatar] = useState(null);
-    const [previewUrl, setPreviewUrl] = useState(user?.avatar_url ? (user.avatar_url.startsWith('http') ? user.avatar_url : `${API_URL}${user.avatar_url}`) : null);
+    const [previewUrl, setPreviewUrl] = useState(
+        user?.avatar_url
+            ? (user.avatar_url.startsWith('http') ? user.avatar_url : `${BASE_URL}${user.avatar_url}`)
+            : null
+    );
+    const [isUploading, setIsUploading] = useState(false);
+
+    useEffect(() => {
+        if (user) {
+            setFormData(prev => ({
+                ...prev,
+                full_name: user.full_name || '',
+                email: user.email || ''
+            }));
+
+            if (user.avatar_url) {
+                const avatarUrl = user.avatar_url.startsWith('http')
+                    ? user.avatar_url
+                    : `${BASE_URL}${user.avatar_url}`;
+                setPreviewUrl(avatarUrl);
+            }
+        }
+    }, [user]);
 
     const handleAvatarChange = (e) => {
         if (e.target.files && e.target.files.length > 0) {
             const file = e.target.files[0];
+
+            // Validate file type
+            const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+            if (!validTypes.includes(file.type)) {
+                setSaveStatus({
+                    type: 'error',
+                    message: 'Please select a valid image file (JPG, PNG, GIF, or WebP)'
+                });
+                return;
+            }
+
+            // Validate file size (max 5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                setSaveStatus({
+                    type: 'error',
+                    message: 'Image size must be less than 5MB'
+                });
+                return;
+            }
+
             setSelectedAvatar(file);
             setPreviewUrl(URL.createObjectURL(file));
+            setSaveStatus({ type: '', message: '' });
         }
+    };
+
+    const handleRemoveAvatar = () => {
+        setSelectedAvatar(null);
+        setPreviewUrl(null);
+        setSaveStatus({ type: '', message: '' });
     };
 
     const handleSave = async (e) => {
         e.preventDefault();
         setIsSaving(true);
-        setSaveMessage('');
+        setSaveStatus({ type: '', message: '' });
 
         try {
             let avatarUrl = user?.avatar_url;
 
+            // Upload avatar if a new one was selected
             if (selectedAvatar) {
-                const uploaded = await DocumentsService.upload(selectedAvatar);
-                avatarUrl = uploaded.file_path;
+                setIsUploading(true);
+                const formData = new FormData();
+                formData.append('file', selectedAvatar);
+
+                const uploadResponse = await api.post('/documents/upload', formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                    },
+                });
+
+                avatarUrl = uploadResponse.data.file_path;
+                setIsUploading(false);
             }
 
+            // Update user profile
             const updateData = {
-                full_name: user?.full_name, // Maintain existing if not in form
+                full_name: formData.full_name,
                 avatar_url: avatarUrl,
-                // Add other fields if editable
             };
-
-            // Also update organization/preferences if backend supports it (mocked here or handled via separate endpoint)
-            // For now, only persisting avatar via /auth/me
 
             await api.put('/auth/me', updateData);
 
-            setSaveMessage('Settings saved successfully! Reloading...');
-            setTimeout(() => window.location.reload(), 1500); // Reload to reflect changes in TopBar
+            setSaveStatus({
+                type: 'success',
+                message: 'Settings saved successfully!'
+            });
+
+            // Refresh user data in context
+            if (refreshUser) {
+                await refreshUser();
+            }
+
+            // Clear selected avatar after successful save
+            setSelectedAvatar(null);
+
         } catch (error) {
             console.error('Failed to save settings:', error);
-            setSaveMessage('Failed to save settings.');
+            setSaveStatus({
+                type: 'error',
+                message: error.response?.data?.detail || 'Failed to save settings. Please try again.'
+            });
         } finally {
             setIsSaving(false);
+            setIsUploading(false);
         }
     };
 
     return (
-        <div className="settings-container">
-            <div className="settings-header">
-                <h1 className="page-title">Settings</h1>
-                <p className="page-subtitle">Manage your account and preferences</p>
-            </div>
+        <div className="page-container p-8">
+            <PageHeader
+                title="Settings"
+                subtitle="Manage your account and preferences"
+            />
 
-            <div className="settings-content">
-                <div className="settings-card">
-                    <div className="settings-section">
-                        <h2 className="section-title">
+            <div className="max-w-3xl">
+                <div className="panel">
+                    <div className="panel-header bg-surface-secondary">
+                        <h2 className="font-bold flex items-center gap-2">
                             <User size={20} />
                             Profile Information
                         </h2>
+                    </div>
 
-                        <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
-                            <div style={{ position: 'relative', width: '80px', height: '80px', borderRadius: '50%', overflow: 'hidden', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                {previewUrl ? (
-                                    <img src={previewUrl} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                ) : (
-                                    <User size={40} className="text-muted" />
-                                )}
+                    <div className="panel-content">
+                        <form onSubmit={handleSave} className="space-y-6">
+                            {/* Avatar Upload Section */}
+                            <div className="flex items-start gap-6 pb-6 border-b border-border">
+                                <div className="relative">
+                                    <div className="w-24 h-24 rounded-full overflow-hidden bg-surface-secondary border-2 border-border flex items-center justify-center group">
+                                        {previewUrl ? (
+                                            <img
+                                                src={previewUrl}
+                                                alt="Avatar"
+                                                className="w-full h-full object-cover"
+                                            />
+                                        ) : (
+                                            <User size={40} className="text-muted" />
+                                        )}
+                                        {previewUrl && (
+                                            <button
+                                                type="button"
+                                                onClick={handleRemoveAvatar}
+                                                className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                                                title="Remove avatar"
+                                            >
+                                                <X size={24} className="text-white" />
+                                            </button>
+                                        )}
+                                    </div>
+                                    {selectedAvatar && (
+                                        <div className="absolute -bottom-1 -right-1 bg-primary text-white rounded-full p-1">
+                                            <Check size={14} />
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="flex-1">
+                                    <h3 className="font-semibold mb-2">Profile Photo</h3>
+                                    <p className="text-sm text-muted mb-4">
+                                        Upload a photo to personalize your account. JPG, PNG, GIF or WebP. Max 5MB.
+                                    </p>
+                                    <div className="flex gap-3">
+                                        <label
+                                            htmlFor="avatar-upload"
+                                            className="btn btn-secondary btn-sm cursor-pointer"
+                                        >
+                                            <Camera size={16} />
+                                            {previewUrl ? 'Change Photo' : 'Upload Photo'}
+                                        </label>
+                                        <input
+                                            type="file"
+                                            id="avatar-upload"
+                                            accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                                            onChange={handleAvatarChange}
+                                            className="hidden"
+                                        />
+                                        {previewUrl && (
+                                            <button
+                                                type="button"
+                                                onClick={handleRemoveAvatar}
+                                                className="btn btn-ghost btn-sm text-status-critical-text"
+                                            >
+                                                Remove
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
-                            <div>
-                                <label htmlFor="avatar-upload" className="btn-secondary" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <Camera size={16} /> Change Photo
+
+                            {/* Full Name */}
+                            <div className="form-group">
+                                <label htmlFor="full_name" className="flex items-center gap-2 mb-2 font-medium">
+                                    <User size={16} />
+                                    Full Name
                                 </label>
                                 <input
-                                    type="file"
-                                    id="avatar-upload"
-                                    accept="image/*"
-                                    onChange={handleAvatarChange}
-                                    style={{ display: 'none' }}
+                                    type="text"
+                                    id="full_name"
+                                    value={formData.full_name}
+                                    onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                                    className="w-full bg-surface-color border border-border rounded-lg px-4 py-2.5 outline-none focus:border-primary/50 transition-colors"
+                                    placeholder="Enter your full name"
                                 />
                             </div>
-                        </div>
 
-                        <form onSubmit={handleSave}>
+                            {/* Email */}
                             <div className="form-group">
-                                <label htmlFor="email">
+                                <label htmlFor="email" className="flex items-center gap-2 mb-2 font-medium">
                                     <Mail size={16} />
                                     Email Address
                                 </label>
@@ -109,14 +241,17 @@ export default function Settings() {
                                     type="email"
                                     id="email"
                                     value={formData.email}
-                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                                     disabled
+                                    className="w-full bg-surface-secondary border border-border rounded-lg px-4 py-2.5 outline-none opacity-60 cursor-not-allowed"
                                 />
-                                <small className="form-hint">Email cannot be changed</small>
+                                <small className="text-xs text-muted mt-1 block">
+                                    Email cannot be changed
+                                </small>
                             </div>
 
+                            {/* Organization */}
                             <div className="form-group">
-                                <label htmlFor="organization">
+                                <label htmlFor="organization" className="flex items-center gap-2 mb-2 font-medium">
                                     <Building size={16} />
                                     Organization
                                 </label>
@@ -125,51 +260,98 @@ export default function Settings() {
                                     id="organization"
                                     value={formData.organization}
                                     onChange={(e) => setFormData({ ...formData, organization: e.target.value })}
+                                    className="w-full bg-surface-color border border-border rounded-lg px-4 py-2.5 outline-none focus:border-primary/50 transition-colors"
+                                    placeholder="Organization name"
                                 />
+                            </div>
+
+                            {/* Status Messages */}
+                            {saveStatus.message && (
+                                <div className={`p-4 rounded-lg flex items-start gap-3 ${saveStatus.type === 'success'
+                                    ? 'bg-status-success-bg border border-status-success-text/20'
+                                    : 'bg-status-critical-bg border border-status-critical-text/20'
+                                    }`}>
+                                    {saveStatus.type === 'success' ? (
+                                        <Check size={20} className="text-status-success-text flex-shrink-0 mt-0.5" />
+                                    ) : (
+                                        <AlertCircle size={20} className="text-status-critical-text flex-shrink-0 mt-0.5" />
+                                    )}
+                                    <p className={`text-sm font-medium ${saveStatus.type === 'success'
+                                        ? 'text-status-success-text'
+                                        : 'text-status-critical-text'
+                                        }`}>
+                                        {saveStatus.message}
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Save Button */}
+                            <div className="flex justify-end pt-4 border-t border-border">
+                                <button
+                                    type="submit"
+                                    className="btn btn-primary btn-md"
+                                    disabled={isSaving || isUploading}
+                                >
+                                    {isUploading ? (
+                                        <>
+                                            <Upload size={18} className="animate-pulse" />
+                                            Uploading...
+                                        </>
+                                    ) : isSaving ? (
+                                        <>
+                                            <Save size={18} className="animate-pulse" />
+                                            Saving...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Save size={18} />
+                                            Save Changes
+                                        </>
+                                    )}
+                                </button>
                             </div>
                         </form>
                     </div>
+                </div>
 
-                    <div className="settings-section">
-                        <h2 className="section-title">Preferences</h2>
+                {/* Preferences Section */}
+                <div className="panel mt-6">
+                    <div className="panel-header bg-surface-secondary">
+                        <h2 className="font-bold">Preferences</h2>
+                    </div>
 
+                    <div className="panel-content space-y-6">
                         <div className="form-group">
-                            <label className="checkbox-label">
+                            <label className="flex items-center gap-3 cursor-pointer">
                                 <input
                                     type="checkbox"
                                     checked={formData.notifications}
                                     onChange={(e) => setFormData({ ...formData, notifications: e.target.checked })}
+                                    className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
                                 />
-                                <span>Email notifications</span>
+                                <div>
+                                    <span className="font-medium">Email Notifications</span>
+                                    <p className="text-xs text-muted mt-0.5">
+                                        Receive updates about your catalog and contracts
+                                    </p>
+                                </div>
                             </label>
-                            <small className="form-hint">Receive updates about your catalog and contracts</small>
                         </div>
 
                         <div className="form-group">
-                            <label htmlFor="theme">Theme</label>
+                            <label htmlFor="theme" className="block mb-2 font-medium">
+                                Theme
+                            </label>
                             <select
                                 id="theme"
                                 value={formData.theme}
                                 onChange={(e) => setFormData({ ...formData, theme: e.target.value })}
+                                className="w-full bg-surface-color border border-border rounded-lg px-4 py-2.5 outline-none focus:border-primary/50 transition-colors"
                             >
                                 <option value="light">Light</option>
-                                <option value="dark">Dark (Coming Soon)</option>
+                                <option value="dark" disabled>Dark (Coming Soon)</option>
                             </select>
                         </div>
-                    </div>
-
-                    <div className="settings-actions">
-                        {saveMessage && (
-                            <span className="save-message success">{saveMessage}</span>
-                        )}
-                        <button
-                            className="btn-primary"
-                            onClick={handleSave}
-                            disabled={isSaving}
-                        >
-                            <Save size={18} />
-                            {isSaving ? 'Saving...' : 'Save Changes'}
-                        </button>
                     </div>
                 </div>
             </div>

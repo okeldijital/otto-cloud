@@ -9,7 +9,8 @@ import {
     AlertCircle,
     Trash,
     Download,
-    Link as LinkIcon
+    Link as LinkIcon,
+    ChevronLeft
 } from 'lucide-react';
 import worksAdminService from '../../services/worksAdminService';
 import EntityForm from '../../components/EntityForm';
@@ -114,7 +115,9 @@ const WorksAdminDetail = () => {
         <div className="contracts-shell">
             <header className="contracts-header">
                 <div>
-                    <button className="link-btn" onClick={() => navigate('/admin-of-works/works')}>← Back to list</button>
+                    <button className="back-link" onClick={() => navigate('/admin-of-works/works')}>
+                        <ChevronLeft size={16} /> Back to list
+                    </button>
                     <h1>Admin: {admin.work?.title}</h1>
                     <div className="flex-row gap-2 mt-1">
                         <span className="muted mono small">Work ID #{admin.work_id}</span>
@@ -134,7 +137,7 @@ const WorksAdminDetail = () => {
             </header>
 
             <div className="grid-2">
-                <div className="panel">
+                <div className="panel padded">
                     <h3 className="section-title">Registration Details</h3>
                     <ul className="kv">
                         <li><span>Status</span><strong><span className={`status-badge ${STATUS_COLORS[admin.registration_status]}`}>{admin.registration_status}</span></strong></li>
@@ -156,7 +159,7 @@ const WorksAdminDetail = () => {
                     </div>
                 </div>
 
-                <div className="panel">
+                <div className="panel padded">
                     <h3 className="section-title">Linked Contracts</h3>
                     <div className="linked-list">
                         {admin.linked_contracts?.map((lc, i) => (
@@ -178,7 +181,7 @@ const WorksAdminDetail = () => {
                 </div>
             </div>
 
-            <div className="panel mt-1">
+            <div className="panel padded mt-1">
                 <h3 className="section-title">Documents & Proof</h3>
                 <div className="document-stack">
                     <div className="document-versions">

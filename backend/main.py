@@ -35,18 +35,22 @@ app = FastAPI(title=getattr(settings, "APP_NAME", "OTTO"), version=getattr(setti
 # -----------------------------
 # CORS (FIXED)
 # -----------------------------
-# IMPORTANT:
-# If allow_credentials=True, allow_origins cannot be ["*"].
-# We explicitly allow your Vite dev origin(s).
 DEFAULT_DEV_ORIGINS: List[str] = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
+    "tauri://localhost",
+    "http://tauri.localhost",
 ]
 
-# Allow override via env: CORS_ORIGINS="http://localhost:5173,http://example.com"
 cors_env = os.getenv("CORS_ORIGINS", "").strip()
 if cors_env:
-    allow_origins = [o.strip() for o in cors_env.split(",") if o.strip()]
+    # Merge env origins with defaults and remove duplicates
+    env_origins = [o.strip() for o in cors_env.split(",") if o.strip()]
+    allow_origins = list(set(DEFAULT_DEV_ORIGINS + env_origins))
 else:
     allow_origins = DEFAULT_DEV_ORIGINS
 
@@ -56,6 +60,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # -----------------------------

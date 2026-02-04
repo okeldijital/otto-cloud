@@ -23,60 +23,97 @@ def get_status_quo_dashboard(
     org_id: UUID = Depends(get_current_organization_id),
     current_user=Depends(get_current_user),
 ):
-    # 1. Fetch all contracts and compute status
-    contracts = db.query(Contract).options(
-        selectinload(Contract.documents)
-    ).filter(Contract.organization_id == org_id).all()
+    from models.governance import StatusQuoItem
+    from models.contract import Contract
+    from models.work import Work
+    from models.artist import Artist
+    from models.release import Release
+
+    # Fetch unified items (only unresolved)
+    query = db.query(StatusQuoItem).filter(
+        StatusQuoItem.organization_id == org_id,
+        StatusQuoItem.resolved_at == None
+    )
     
+    if type_filter:
+        query = query.filter(StatusQuoItem.entity_type == type_filter)
+    
+    # Severity mapping for filtering
+    if status_filter:
+        sev_map = {"RED": "critical", "AMBER": "warn", "GREEN": "info"}
+        target_sev = sev_map.get(status_filter)
+        if target_sev:
+            query = query.filter(StatusQuoItem.severity == target_sev)
+
+    items = query.all()
+
     contracts_info = []
-    for c in contracts:
-        if type_filter and type_filter != "contract":
-            break
-        sq = compute_contract_status(c, c.documents)
-        if status_filter and sq['status'] != status_filter:
-            continue
-        contracts_info.append({
-            "id": str(c.id),
-            "title": c.title,
-            "type": "contract",
-            "status_quo": sq
-        })
-        
-    # 2. Fetch all works_admin and compute status
-    works_admins = db.query(WorksAdmin).options(
-        selectinload(WorksAdmin.documents)
-    ).filter(WorksAdmin.organization_id == org_id).all()
-    
     works_info = []
-    for wa in works_admins:
-        if type_filter and type_filter != "work":
-            break
-        work = db.query(Work).filter(Work.id == wa.work_id).first()
-        sq = compute_work_admin_status(wa, wa.documents, work)
-        if status_filter and sq['status'] != status_filter:
-            continue
-        works_info.append({
-            "id": str(wa.id),
-            "title": work.title if work else "Unknown",
-            "type": "work",
-            "status_quo": sq
-        })
+    other_info = [] # For things like Artist records if they appear in Dashboard V2
+    
+    for item in items:
+        status_label = "RED" if item.severity == "critical" else "AMBER" if item.severity == "warn" else "GREEN"
         
-    # 3. Overall summary
-    summary = compute_overall_status(contracts_info, works_info)
+        # Try to find a nice title
+        title = f"{item.entity_type} #{item.entity_id}"
+        if item.entity_type == "contract":
+            c = db.query(Contract).filter(Contract.id == item.entity_id).first()
+            if c: title = c.title
+        elif item.entity_type == "work":
+            w = db.query(Work).filter(Work.id == item.entity_id).first()
+            if w: title = w.title
+        elif item.entity_type == "artist":
+            a = db.query(Artist).filter(Artist.id == item.entity_id).first()
+            if a: title = a.name
+        elif item.entity_type == "release":
+            r = db.query(Release).filter(Release.id == item.entity_id).first()
+            if r: title = r.title
+
+        info = {
+            "id": str(item.entity_id),
+            "title": title,
+            "type": item.entity_type,
+            "status_quo": {
+                "status": status_label,
+                "reasons": [item.summary]
+            }
+        }
+        
+        if item.entity_type == "contract":
+            contracts_info.append(info)
+        elif item.entity_type == "work":
+            info["work_id"] = item.entity_id
+            works_info.append(info)
+        else:
+            other_info.append(info)
+
+    # Note: Dashboard currently only renders contracts and works in its split view,
+    # but the 'Aggregated View' can take them all.
+    aggregated = contracts_info + works_info + other_info
+
+    red_count = len([x for x in aggregated if x['status_quo']['status'] == "RED"])
+    amber_count = len([x for x in aggregated if x['status_quo']['status'] == "AMBER"])
     
-    # 4. Filter lists for "RED" items for quick display
-    missing_docs = [c for c in contracts_info if c['status_quo']['status'] == "RED"]
-    missing_reg = [w for w in works_info if w['status_quo']['status'] == "RED"]
-    
-    audit_service.log(db, "VIEW", "StatusQuoDashboard", 0, current_user.id, organization_id=org_id)
+    summary = {
+        "overall_status": "RED" if red_count > 0 else "AMBER" if amber_count > 0 else "GREEN",
+        "red_contracts": len([c for c in contracts_info if c['status_quo']['status'] == "RED"]),
+        "red_works": len([w for w in works_info if w['status_quo']['status'] == "RED"]),
+        "counts": {
+            "red": red_count,
+            "amber": amber_count,
+            "green": 0, # Since we only fetch unresolved, green is not meaningful here or we can assume others
+            "total": len(aggregated)
+        }
+    }
     
     return {
         "summary": summary,
         "contracts": contracts_info,
         "works": works_info,
+        "other": other_info,
+        "aggregated": aggregated,
         "alerts": {
-            "missing_signed_pdf": missing_docs,
-            "missing_registration_proof": missing_reg
+            "missing_signed_pdf": [c for c in contracts_info if c['status_quo']['status'] == "RED"],
+            "missing_registration_proof": [w for w in works_info if w['status_quo']['status'] == "RED"]
         }
     }

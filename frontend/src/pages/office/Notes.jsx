@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import EntityForm from '../../components/EntityForm';
 import { officeNotesService } from '../../services/officeNotesService';
 import { Search, Plus, Filter, Calendar, LayoutGrid, Tag, Link2, Trash2, Edit3, Eye, X } from 'lucide-react';
+import PageHeader from '../../components/ui/PageHeader';
 
 const LINKED_TYPES = [
     { label: 'All Entities', value: '' },
@@ -193,60 +194,61 @@ const Notes = () => {
 
     return (
         <div className="page-container p-8">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-8">
-                <div>
-                    <h1 className="text-3xl font-bold flex items-center gap-2">
-                        Office — Notes
-                    </h1>
-                    <p className="text-gray-400">Collaborative intelligence and operational memos.</p>
-                </div>
-                <button className="btn-primary flex items-center gap-2" onClick={openCreate}>
-                    <Plus size={18} /> New Note
-                </button>
-            </div>
+            <PageHeader
+                title="Office — Notes"
+                subtitle="Collaborative intelligence and operational memos."
+                actions={
+                    <button className="btn btn-primary btn-md" onClick={openCreate}>
+                        <Plus size={18} /> New Note
+                    </button>
+                }
+            />
 
             {/* Controls Bar */}
-            <div className="bg-secondary-bg border border-border rounded-xl p-4 mb-8 flex flex-wrap items-center gap-4">
-                <div className="flex-1 min-w-[280px] relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
-                    <input
-                        type="text"
-                        placeholder="Search by title, content or tags..."
-                        className="w-full bg-black/20 border border-border rounded-lg pl-10 pr-4 py-2 text-sm focus:border-primary/50 transition-colors"
-                        value={filters.q}
-                        onChange={(e) => setFilters({ ...filters, q: e.target.value })}
-                    />
-                </div>
+            <div className="panel padded mb-8">
+                <div className="filters-row">
+                    <div className="filter-group flex-1">
+                        <div className="search-box-inline w-full">
+                            <Search className="text-muted" size={16} />
+                            <input
+                                type="text"
+                                placeholder="Search title, content or tags..."
+                                className="w-full"
+                                value={filters.q}
+                                onChange={(e) => setFilters({ ...filters, q: e.target.value })}
+                            />
+                        </div>
+                    </div>
 
-                <div className="flex items-center gap-2">
-                    <Filter size={16} className="text-gray-500" />
-                    <select
-                        className="bg-black/20 border border-border rounded-lg px-3 py-2 text-sm"
-                        value={filters.entity_type}
-                        onChange={(e) => setFilters({ ...filters, entity_type: e.target.value })}
-                    >
-                        {LINKED_TYPES.map((type) => (
-                            <option key={type.value} value={type.value}>{type.label}</option>
-                        ))}
-                    </select>
-                </div>
+                    <div className="filter-group">
+                        <Filter size={16} className="text-muted" />
+                        <select
+                            className="bg-transparent border border-border rounded-lg px-3 py-2 text-sm"
+                            value={filters.entity_type}
+                            onChange={(e) => setFilters({ ...filters, entity_type: e.target.value })}
+                        >
+                            {LINKED_TYPES.map((type) => (
+                                <option key={type.value} value={type.value}>{type.label}</option>
+                            ))}
+                        </select>
 
-                <div className="w-px h-6 bg-border mx-2 hidden sm:block" />
+                        <div className="w-px h-6 bg-border mx-2 hidden sm:block" />
 
-                <div className="flex bg-black/20 p-1 rounded-lg border border-border">
-                    <button
-                        className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-primary text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
-                        onClick={() => setViewMode('grid')}
-                    >
-                        <LayoutGrid size={18} />
-                    </button>
-                    <button
-                        className={`p-1.5 rounded-md transition-all ${viewMode === 'timeline' ? 'bg-primary text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
-                        onClick={() => setViewMode('timeline')}
-                    >
-                        <Calendar size={18} />
-                    </button>
+                        <div className="flex bg-surface-secondary p-1 rounded-lg border border-border">
+                            <button
+                                className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-primary text-white shadow-lg' : 'text-muted hover:text-white'}`}
+                                onClick={() => setViewMode('grid')}
+                            >
+                                <LayoutGrid size={18} />
+                            </button>
+                            <button
+                                className={`p-1.5 rounded-md transition-all ${viewMode === 'timeline' ? 'bg-primary text-white shadow-lg' : 'text-muted hover:text-white'}`}
+                                onClick={() => setViewMode('timeline')}
+                            >
+                                <Calendar size={18} />
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -270,65 +272,77 @@ const Notes = () => {
                     {notes.map((note) => (
                         <div
                             key={note.id}
-                            className="bg-secondary-bg border border-border rounded-xl p-6 group hover:border-primary/40 transition-all cursor-pointer flex flex-col h-full"
+                            className="panel hover:border-primary/50 transition-all group flex flex-col"
                             onClick={() => openDetail(note)}
                         >
-                            <div className="flex items-start justify-between mb-4">
-                                <h3 className="font-bold text-lg leading-tight group-hover:text-primary transition-colors">
+                            <div className="panel-header" style={{ padding: '1rem' }}>
+                                <h3 className="font-bold text-lg group-hover:text-primary transition-colors cursor-pointer">
                                     {note.title || 'Untitled Note'}
                                 </h3>
+                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button className="btn-icon btn-sm" onClick={(e) => { e.stopPropagation(); openEdit(note); }}><Edit3 size={14} /></button>
+                                    <button className="btn-icon btn-sm delete" onClick={(e) => { e.stopPropagation(); handleDelete(note); }}><Trash2 size={14} /></button>
+                                </div>
                             </div>
 
-                            <p className="text-gray-400 text-sm mb-6 flex-1 line-clamp-4">
-                                {getNotePreview(note.body)}
-                            </p>
+                            <div className="panel-content p-4 flex flex-col gap-3">
+                                <p className="text-muted text-sm line-clamp-3">
+                                    {getNotePreview(note.body)}
+                                </p>
 
-                            <div className="mt-auto">
-                                <div className="flex flex-wrap gap-2 mb-4">
-                                    {note.tags?.split(',').map(tag => (
-                                        <span key={tag} className="px-2 py-0.5 bg-black/30 border border-border rounded text-[10px] text-gray-500 flex items-center gap-1 uppercase tracking-wider">
+                                <div className="flex flex-wrap gap-2 mt-auto">
+                                    {note.tags?.split(',').filter(t => t.trim()).map((tag, idx) => (
+                                        <span key={idx} className="badge badge-gray text-[10px] py-0.5 px-1.5 flex items-center gap-1">
                                             <Tag size={10} /> {tag.trim()}
                                         </span>
                                     ))}
                                 </div>
-                                <div className="flex items-center justify-between text-[11px] text-gray-500">
-                                    <span>{new Date(note.created_at).toLocaleDateString()}</span>
-                                    <div className="flex items-center gap-1">
-                                        <Link2 size={12} /> {note.links?.length || 0}
+                            </div>
+
+                            <div className="panel-footer flex items-center justify-between text-[10px] text-muted">
+                                <span>{new Date(note.created_at).toLocaleDateString()}</span>
+                                {note.links?.length > 0 && (
+                                    <div className="flex -space-x-2">
+                                        {note.links.slice(0, 3).map((link, i) => (
+                                            <div key={i} title={`${link.entity_type}: ${link.entity_id}`} className="w-5 h-5 rounded-full bg-surface-secondary border border-border flex items-center justify-center">
+                                                <Link2 size={10} />
+                                            </div>
+                                        ))}
+                                        {note.links?.length > 3 && <span className="text-[10px] text-gray-600">+{note.links.length - 3}</span>}
                                     </div>
-                                </div>
+                                )}
                             </div>
                         </div>
                     ))}
                 </div>
             ) : (
-                <div className="max-w-3xl mx-auto space-y-8 relative">
-                    <div className="absolute left-8 top-0 bottom-0 w-px bg-border -z-0" />
-                    {notes.map((note, idx) => (
-                        <div key={note.id} className="relative z-10 flex gap-12 group" onClick={() => openDetail(note)}>
-                            <div className="flex-shrink-0 w-16 h-16 rounded-full bg-secondary-bg border border-border flex flex-col items-center justify-center text-xs text-gray-500 font-medium group-hover:border-primary/50 transition-colors">
-                                <div className="text-gray-400 font-bold">{new Date(note.created_at).getDate()}</div>
-                                <div>{new Date(note.created_at).toLocaleString('default', { month: 'short' }).toUpperCase()}</div>
+                <div className="max-w-4xl mx-auto space-y-8 relative">
+                    <div className="absolute left-12 top-0 bottom-0 w-px bg-border -z-0" />
+                    {notes.map((note) => (
+                        <div key={note.id} className="relative z-10 flex gap-8 group" onClick={() => openDetail(note)}>
+                            <div className="flex-shrink-0 w-24 h-24 rounded-2xl bg-surface-secondary border border-border flex flex-col items-center justify-center group-hover:border-primary/50 transition-all rotate-3 group-hover:rotate-0">
+                                <span className="text-xl font-bold">{new Date(note.created_at).getDate()}</span>
+                                <span className="text-[10px] uppercase font-bold text-muted">{new Date(note.created_at).toLocaleString('default', { month: 'short' })}</span>
                             </div>
-                            <div className="bg-secondary-bg border border-border rounded-xl p-6 flex-1 hover:border-primary/40 transition-all cursor-pointer">
-                                <div className="flex items-center justify-between mb-3">
+                            <div className="flex-1 panel p-6 hover:shadow-lg transition-all cursor-pointer">
+                                <div className="flex items-center justify-between mb-2">
                                     <h3 className="font-bold text-lg">{note.title || 'Untitled Note'}</h3>
-                                    <span className="text-[11px] text-gray-500">{new Date(note.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                    {note.tags && (
+                                        <div className="flex gap-1">
+                                            {note.tags.split(',').slice(0, 2).map((tag, i) => (
+                                                <span key={i} className="badge badge-gray text-[10px]">{tag.trim()}</span>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
-                                <p className="text-sm text-gray-400 mb-4 line-clamp-2">{getNotePreview(note.body)}</p>
-                                <div className="flex items-center gap-4">
-                                    <div className="flex -space-x-2">
-                                        {/* Avatar placeholder */}
-                                        <div className="w-6 h-6 rounded-full bg-primary/20 border border-border flex items-center justify-center text-[10px] text-primary font-bold">U</div>
-                                    </div>
-                                    <div className="flex flex-wrap gap-2">
-                                        {note.links?.slice(0, 2).map(link => (
-                                            <span key={`${link.entity_type}-${link.entity_id}`} className="px-2 py-0.5 bg-black/20 border border-border rounded-full text-[10px] text-gray-400">
-                                                {link.entity_type}: {link.entity_id}
-                                            </span>
-                                        ))}
-                                        {note.links?.length > 2 && <span className="text-[10px] text-gray-600">+{note.links.length - 2} more</span>}
-                                    </div>
+                                <p className="text-muted text-sm line-clamp-2 mb-4">
+                                    {getNotePreview(note.body)}
+                                </p>
+                                <div className="flex items-center gap-4 text-[10px] text-muted font-medium">
+                                    <span className="flex items-center gap-1"><Eye size={12} /> View Memo</span>
+                                    {note.links?.length > 0 && (
+                                        <span className="flex items-center gap-1 text-primary"><Link2 size={12} /> {note.links.length} Connected Items</span>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -412,107 +426,109 @@ const Notes = () => {
             </EntityForm>
 
             {/* Detail Overlay */}
-            {isDetailOpen && selectedNote && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-6 animate-in fade-in duration-200">
-                    <div className="bg-secondary-bg border border-border rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
-                        <div className="p-6 border-b border-border flex items-center justify-between bg-black/20">
-                            <div>
-                                <h2 className="text-2xl font-bold mb-1">{selectedNote.title || 'Untitled Note'}</h2>
-                                <div className="flex items-center gap-4 text-xs text-gray-500">
-                                    <span className="flex items-center gap-1"><Calendar size={12} /> {new Date(selectedNote.created_at).toLocaleString()}</span>
-                                    <span className="flex items-center gap-1 underline cursor-pointer hover:text-white">Note #{selectedNote.id}</span>
+            {
+                isDetailOpen && selectedNote && (
+                    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-6 animate-in fade-in duration-200">
+                        <div className="bg-secondary-bg border border-border rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+                            <div className="p-6 border-b border-border flex items-center justify-between bg-black/20">
+                                <div>
+                                    <h2 className="text-2xl font-bold mb-1">{selectedNote.title || 'Untitled Note'}</h2>
+                                    <div className="flex items-center gap-4 text-xs text-gray-500">
+                                        <span className="flex items-center gap-1"><Calendar size={12} /> {new Date(selectedNote.created_at).toLocaleString()}</span>
+                                        <span className="flex items-center gap-1 underline cursor-pointer hover:text-white">Note #{selectedNote.id}</span>
+                                    </div>
                                 </div>
-                            </div>
-                            <button className="p-2 hover:bg-white/10 rounded-full transition-colors" onClick={() => setIsDetailOpen(false)}>
-                                <X size={24} />
-                            </button>
-                        </div>
-
-                        <div className="flex-1 overflow-y-auto p-10">
-                            <div className="prose prose-invert max-w-none text-gray-200">
-                                {renderContent(selectedNote.body)}
+                                <button className="p-2 hover:bg-white/10 rounded-full transition-colors" onClick={() => setIsDetailOpen(false)}>
+                                    <X size={24} />
+                                </button>
                             </div>
 
-                            {selectedNote.tags && (
-                                <div className="mt-12 flex flex-wrap gap-2">
-                                    {selectedNote.tags.split(',').map(tag => (
-                                        <span key={tag} className="px-3 py-1 bg-black/40 border border-border rounded-full text-[11px] text-gray-400 capitalize"># {tag.trim()}</span>
-                                    ))}
+                            <div className="flex-1 overflow-y-auto p-10">
+                                <div className="prose prose-invert max-w-none text-gray-200">
+                                    {renderContent(selectedNote.body)}
                                 </div>
-                            )}
 
-                            <div className="mt-12 pt-8 border-t border-border">
-                                <h4 className="text-sm font-bold uppercase tracking-widest text-gray-500 mb-6 flex items-center gap-2">
-                                    <Link2 size={16} /> Linked Entities
-                                </h4>
+                                {selectedNote.tags && (
+                                    <div className="mt-12 flex flex-wrap gap-2">
+                                        {selectedNote.tags.split(',').map(tag => (
+                                            <span key={tag} className="px-3 py-1 bg-black/40 border border-border rounded-full text-[11px] text-gray-400 capitalize"># {tag.trim()}</span>
+                                        ))}
+                                    </div>
+                                )}
 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-                                    {selectedNote.links?.map(link => (
-                                        <div key={`${link.entity_type}-${link.entity_id}`} className="group relative bg-black/20 border border-border rounded-xl p-4 flex items-center justify-between hover:border-primary/40 transition-all">
-                                            <div
-                                                className="cursor-pointer"
-                                                onClick={() => {
-                                                    const route = ENTITY_ROUTES[link.entity_type];
-                                                    if (route) window.location.href = route(link.entity_id);
-                                                }}
-                                            >
-                                                <div className="text-[10px] uppercase text-primary font-bold">{link.entity_type}</div>
-                                                <div className="text-lg font-mono">ID: {link.entity_id}</div>
+                                <div className="mt-12 pt-8 border-t border-border">
+                                    <h4 className="text-sm font-bold uppercase tracking-widest text-gray-500 mb-6 flex items-center gap-2">
+                                        <Link2 size={16} /> Linked Entities
+                                    </h4>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+                                        {selectedNote.links?.map(link => (
+                                            <div key={`${link.entity_type}-${link.entity_id}`} className="group relative bg-black/20 border border-border rounded-xl p-4 flex items-center justify-between hover:border-primary/40 transition-all">
+                                                <div
+                                                    className="cursor-pointer"
+                                                    onClick={() => {
+                                                        const route = ENTITY_ROUTES[link.entity_type];
+                                                        if (route) window.location.href = route(link.entity_id);
+                                                    }}
+                                                >
+                                                    <div className="text-[10px] uppercase text-primary font-bold">{link.entity_type}</div>
+                                                    <div className="text-lg font-mono">ID: {link.entity_id}</div>
+                                                </div>
+                                                <button
+                                                    className="p-2 text-gray-500 hover:text-red-400 transition-colors"
+                                                    onClick={(e) => { e.stopPropagation(); handleUnlink(selectedNote, link); }}
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
+                                        ))}
+
+                                        <div className="bg-black/10 border border-border border-dashed rounded-xl p-4">
+                                            <div className="grid grid-cols-2 gap-2 mb-2">
+                                                <select
+                                                    className="bg-black/40 border border-border rounded-lg px-2 py-1.5 text-xs outline-none"
+                                                    value={formData.linked_entity_type}
+                                                    onChange={(e) => setFormData({ ...formData, linked_entity_type: e.target.value })}
+                                                >
+                                                    <option value="">Type</option>
+                                                    {LINKED_TYPES.filter(t => t.value).map(t => (
+                                                        <option key={t.value} value={t.value}>{t.label}</option>
+                                                    ))}
+                                                </select>
+                                                <input
+                                                    type="number"
+                                                    placeholder="ID"
+                                                    className="bg-black/40 border border-border rounded-lg px-2 py-1.5 text-xs outline-none focus:border-primary/50"
+                                                    value={formData.linked_entity_id}
+                                                    onChange={(e) => setFormData({ ...formData, linked_entity_id: e.target.value })}
+                                                />
                                             </div>
                                             <button
-                                                className="p-2 text-gray-500 hover:text-red-400 transition-colors"
-                                                onClick={(e) => { e.stopPropagation(); handleUnlink(selectedNote, link); }}
+                                                className="w-full btn-secondary text-xs py-1.5 disabled:opacity-50"
+                                                disabled={!formData.linked_entity_type || !formData.linked_entity_id}
+                                                onClick={() => handleLink(selectedNote)}
                                             >
-                                                <Trash2 size={16} />
+                                                Add Connection
                                             </button>
                                         </div>
-                                    ))}
-
-                                    <div className="bg-black/10 border border-border border-dashed rounded-xl p-4">
-                                        <div className="grid grid-cols-2 gap-2 mb-2">
-                                            <select
-                                                className="bg-black/40 border border-border rounded-lg px-2 py-1.5 text-xs outline-none"
-                                                value={formData.linked_entity_type}
-                                                onChange={(e) => setFormData({ ...formData, linked_entity_type: e.target.value })}
-                                            >
-                                                <option value="">Type</option>
-                                                {LINKED_TYPES.filter(t => t.value).map(t => (
-                                                    <option key={t.value} value={t.value}>{t.label}</option>
-                                                ))}
-                                            </select>
-                                            <input
-                                                type="number"
-                                                placeholder="ID"
-                                                className="bg-black/40 border border-border rounded-lg px-2 py-1.5 text-xs outline-none focus:border-primary/50"
-                                                value={formData.linked_entity_id}
-                                                onChange={(e) => setFormData({ ...formData, linked_entity_id: e.target.value })}
-                                            />
-                                        </div>
-                                        <button
-                                            className="w-full btn-secondary text-xs py-1.5 disabled:opacity-50"
-                                            disabled={!formData.linked_entity_type || !formData.linked_entity_id}
-                                            onClick={() => handleLink(selectedNote)}
-                                        >
-                                            Add Connection
-                                        </button>
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <div className="p-6 border-t border-border bg-black/20 flex gap-4 justify-end">
-                            <button className="btn-secondary flex items-center gap-2" onClick={() => handleDelete(selectedNote)}>
-                                <Trash2 size={16} /> Delete
-                            </button>
-                            <button className="btn-secondary flex items-center gap-2" onClick={() => openEdit(selectedNote)}>
-                                <Edit3 size={16} /> Edit
-                            </button>
-                            <button className="btn-primary" onClick={() => setIsDetailOpen(false)}>Close</button>
+                            <div className="p-6 border-t border-border bg-black/20 flex gap-4 justify-end">
+                                <button className="btn-secondary flex items-center gap-2" onClick={() => handleDelete(selectedNote)}>
+                                    <Trash2 size={16} /> Delete
+                                </button>
+                                <button className="btn-secondary flex items-center gap-2" onClick={() => openEdit(selectedNote)}>
+                                    <Edit3 size={16} /> Edit
+                                </button>
+                                <button className="btn-primary" onClick={() => setIsDetailOpen(false)}>Close</button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 };
 

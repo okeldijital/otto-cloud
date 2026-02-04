@@ -37,7 +37,7 @@ class Settings(BaseSettings):
 
     # Storage
     MAX_UPLOAD_SIZE: int = 100 * 1024 * 1024 
-    ALLOWED_EXTENSIONS: list = ["pdf", "png", "jpg", "mp3", "wav", "docx", "xlsx"]
+    ALLOWED_EXTENSIONS: list = ["pdf", "png", "jpg", "jpeg", "gif", "webp", "svg", "mp3", "wav", "docx", "xlsx"]
 
     # External APIs
     SPOTIFY_CLIENT_ID: Optional[str] = None
