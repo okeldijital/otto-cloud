@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Filter as FilterIcon, Search, Plus, List, Grid, RefreshCw } from 'lucide-react';
+
+import { confirmAction } from '../../lib/tauri';
+import { Calendar as CalendarIcon, Clock, MapPin, Plus, Trash, Search, ChevronLeft, ChevronRight, List, RefreshCw, Filter } from 'lucide-react';
 import EntityForm from '../../components/EntityForm';
 import { officeEventsService } from '../../services/officeEventsService';
 
@@ -171,7 +173,7 @@ const Events = () => {
     };
 
     const handleDelete = async (event) => {
-        if (!window.confirm(`Delete "${event.title}"?`)) return;
+        if (!(await confirmAction(`Delete "${event.title}"?`, 'Delete Event'))) return;
         try {
             await officeEventsService.remove(event.id);
             await fetchEvents();

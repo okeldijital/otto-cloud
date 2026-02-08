@@ -5,10 +5,16 @@ import { DocumentsService } from '../services/operations';
 import { NetworkService } from '../services/network';
 import { ReportsService } from '../services/reports';
 import { BASE_URL } from '../lib/api';
+import { confirmAction } from '../lib/tauri';
 import DataTable from '../components/DataTable';
 import EntityForm from '../components/EntityForm';
 import Autocomplete from '../components/Autocomplete';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Download, Plus } from 'lucide-react';
+import Button from '../components/ui/Button';
+import PageHeader from '../components/ui/PageHeader';
+import Input, { Select, Textarea } from '../components/ui/Input';
+import Card from '../components/ui/Card';
+import HealthBadge from '../components/ui/HealthBadge';
 
 const API_URL = BASE_URL;
 
@@ -159,13 +165,13 @@ const Releases = () => {
     };
 
     const handleDelete = async (release) => {
-        if (window.confirm(`Are you sure you want to delete "${release.title}"?`)) {
+        if (await confirmAction(`Are you sure you want to delete "${release.title}"?`, 'Delete Release')) {
             try {
                 await CatalogService.delete('releases', release.id);
                 fetchData();
             } catch (error) {
                 console.error('Failed to delete release:', error);
-                alert('Failed to delete release');
+                alert(error.response?.data?.detail || 'Failed to delete release');
             }
         }
     };
@@ -234,7 +240,7 @@ const Releases = () => {
                 if (ids.length === 0) return 'Various';
                 if (ids.length === 1) {
                     const artist = artists.find(a => a.id === ids[0]);
-                    return artist ? artist.name : 'Unknown';
+                    return artist ? (artist.display_name || artist.aka || artist.name) : 'Unknown';
                 }
                 return `${ids.length} Artists`;
             }
@@ -251,38 +257,59 @@ const Releases = () => {
         { key: 'release_date', label: 'Date' },
         { key: 'catalog_number', label: 'Catalog #' },
         { key: 'upc_code', label: 'UPC' },
+        {
+            key: 'status_quo',
+            label: 'Health',
+            render: (row) => {
+                const status = row.status_quo?.status || 'GREEN'; // Default to Green if missing (legacy)
+                const reasons = row.status_quo?.reasons || [];
+                return (
+                    <HealthBadge status={status} reasons={reasons} />
+                );
+            }
+        }
     ];
 
     return (
         <div className="entity-page">
-            <Link to="/catalog" className="back-link">
-                <ChevronLeft size={16} /> Back to Catalog
-            </Link>
-            <div className="page-header">
-                <h1 className="page-title">Releases</h1>
-                <div style={{ display: 'flex', gap: '1rem' }}>
-                    <button
-                        className="btn-secondary"
-                        onClick={async () => {
-                            try {
-                                await ReportsService.exportData('releases', 'excel');
-                            } catch (err) {
-                                console.error(err);
-                                if (err.response?.status === 401) {
-                                    alert("Session expired. Please log in again.");
-                                } else {
-                                    alert("Export failed: " + (err.response?.data?.detail || err.message));
+            <PageHeader
+                title="Releases"
+                subtitle="Manage your music releases"
+                breadcrumb={
+                    <Link to="/catalog" className="back-link" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: 'var(--text-muted)', textDecoration: 'none', marginBottom: '0.5rem' }}>
+                        <ChevronLeft size={16} /> Back to Catalog
+                    </Link>
+                }
+                actions={
+                    <div style={{ display: 'flex', gap: '0.75rem' }}>
+                        <Button
+                            variant="secondary"
+                            icon={Download}
+                            onClick={async () => {
+                                try {
+                                    await ReportsService.exportData('releases', 'excel');
+                                } catch (err) {
+                                    console.error(err);
+                                    if (err.response?.status === 401) {
+                                        alert("Session expired. Please log in again.");
+                                    } else {
+                                        alert("Export failed: " + (err.response?.data?.detail || err.message));
+                                    }
                                 }
-                            }
-                        }}
-                    >
-                        Export Excel
-                    </button>
-                    <button className="btn-primary" onClick={handleCreate}>
-                        + Add Release
-                    </button>
-                </div>
-            </div>
+                            }}
+                        >
+                            Export Excel
+                        </Button>
+                        <Button
+                            variant="primary"
+                            icon={Plus}
+                            onClick={handleCreate}
+                        >
+                            Add Release
+                        </Button>
+                    </div>
+                }
+            />
 
             <DataTable
                 columns={columns}
@@ -300,9 +327,8 @@ const Releases = () => {
                 isSubmitting={isSubmitting}
             >
                 <div className="form-group">
-                    <label htmlFor="title">Title</label>
-                    <input
-                        type="text"
+                    <Input
+                        label="Title"
                         id="title"
                         value={formData.title}
                         onChange={(e) => setFormData({ ...formData, title: e.target.value })}
@@ -366,7 +392,7 @@ const Releases = () => {
                 <div className="form-group">
                     <label>Artist(s)</label>
                     <Autocomplete
-                        options={artists || []}
+                        options={(artists || []).map(a => ({ ...a, name: a.display_name || a.aka || a.name }))}
                         value={formData.artist_ids}
                         onChange={(val) => setFormData({ ...formData, artist_ids: val })}
                         placeholder="Select Artist(s)..."
@@ -444,11 +470,12 @@ const Releases = () => {
                                 />
                             </div>
                             <input
+                                className="input"
                                 type="text"
                                 placeholder="Role (e.g. Mixer)"
                                 value={newCreditRole}
                                 onChange={(e) => setNewCreditRole(e.target.value)}
-                                style={{ flex: 1, padding: '0.5rem 0.75rem', borderRadius: '0.375rem', border: '1px solid #e2e8f0' }}
+                                style={{ flex: 1 }}
                             />
                             <button
                                 type="button"
@@ -464,52 +491,44 @@ const Releases = () => {
                                         setNewCreditRole('');
                                     }
                                 }}
+                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: '36px' }}
+                                title="Add Credit"
                             >
-                                Add
+                                <Plus size={16} />
                             </button>
                         </div>
                     </div>
                 </div>
-                <div className="form-group">
-                    <label htmlFor="release_type">Type</label>
-                    <select
-                        id="release_type"
-                        value={formData.release_type}
-                        onChange={(e) => setFormData({ ...formData, release_type: e.target.value })}
-                    >
-                        <option value="Album">Album</option>
-                        <option value="EP">EP</option>
-                        <option value="Single">Single</option>
-                    </select>
-                </div>
-                <div className="form-group">
-                    <label htmlFor="release_date">Release Date</label>
-                    <input
-                        type="date"
-                        id="release_date"
-                        value={formData.release_date}
-                        onChange={(e) => setFormData({ ...formData, release_date: e.target.value })}
-                    />
-                </div>
-                <div className="form-group">
-                    <label htmlFor="catalog_number">Catalog Number</label>
-                    <input
-                        type="text"
-                        id="catalog_number"
-                        value={formData.catalog_number}
-                        onChange={(e) => setFormData({ ...formData, catalog_number: e.target.value })}
-                        placeholder="M2KR0001"
-                    />
-                </div>
-                <div className="form-group">
-                    <label htmlFor="upc_code">UPC Code</label>
-                    <input
-                        type="text"
-                        id="upc_code"
-                        value={formData.upc_code}
-                        onChange={(e) => setFormData({ ...formData, upc_code: e.target.value })}
-                    />
-                </div>
+                <Select
+                    label="Type"
+                    id="release_type"
+                    value={formData.release_type}
+                    onChange={(e) => setFormData({ ...formData, release_type: e.target.value })}
+                >
+                    <option value="Album">Album</option>
+                    <option value="EP">EP</option>
+                    <option value="Single">Single</option>
+                </Select>
+                <Input
+                    label="Release Date"
+                    type="date"
+                    id="release_date"
+                    value={formData.release_date}
+                    onChange={(e) => setFormData({ ...formData, release_date: e.target.value })}
+                />
+                <Input
+                    label="Catalog Number"
+                    id="catalog_number"
+                    value={formData.catalog_number}
+                    onChange={(e) => setFormData({ ...formData, catalog_number: e.target.value })}
+                    placeholder="M2KR0001"
+                />
+                <Input
+                    label="UPC Code"
+                    id="upc_code"
+                    value={formData.upc_code}
+                    onChange={(e) => setFormData({ ...formData, upc_code: e.target.value })}
+                />
             </EntityForm>
         </div>
     );

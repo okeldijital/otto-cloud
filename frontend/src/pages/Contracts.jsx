@@ -2,8 +2,11 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Search, Filter, FileText, Download } from 'lucide-react';
 import contractService from '../services/contractService';
+import CatalogService from '../services/catalog';
 import { formatCreateError } from '../utils/contracts';
+import { isTauriEnv, downloadFile } from '../lib/tauri';
 import EntityForm from '../components/EntityForm';
+import Autocomplete from '../components/Autocomplete';
 
 const STATUS_COLORS = {
     Draft: 'neutral',
@@ -23,6 +26,7 @@ const EXPIRING_BUCKETS = [
 const Contracts = () => {
     const navigate = useNavigate();
     const [contracts, setContracts] = useState([]);
+    const [releases, setReleases] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
@@ -45,13 +49,18 @@ const Contracts = () => {
         exclusivity: false,
         notes: '',
         file: null,
+        release_id: null,
     });
 
     useEffect(() => {
         const load = async () => {
             try {
-                const res = await contractService.getAll();
-                setContracts(res.data || res || []);
+                const [conRes, relRes] = await Promise.all([
+                    contractService.getAll(),
+                    CatalogService.getAll('releases')
+                ]);
+                setContracts(conRes.data || conRes || []);
+                setReleases(relRes.data || relRes || []);
             } catch (e) {
                 console.error(e);
                 setError('Unable to load contracts. Please check network or auth.');
@@ -83,6 +92,7 @@ const Contracts = () => {
             if (createForm.territory) payload.append('territory', createForm.territory);
             payload.append('exclusivity', createForm.exclusivity);
             if (createForm.notes) payload.append('notes', createForm.notes);
+            if (createForm.release_id) payload.append('release_id', createForm.release_id);
 
             if (createForm.file) {
                 payload.append('file', createForm.file);
@@ -110,6 +120,7 @@ const Contracts = () => {
                 exclusivity: false,
                 notes: '',
                 file: null,
+                release_id: null,
             });
             const newContract = res.data || res;
             setContracts((prev) => [newContract, ...prev]);
@@ -162,7 +173,7 @@ const Contracts = () => {
         return new Date(endDate) < now;
     };
 
-    const handleDownload = (e, contract) => {
+    const handleDownload = async (e, contract) => {
         e.stopPropagation();
         const docId = contract.primary_document_id || contract.documents?.[0]?.id;
         if (!docId) {
@@ -170,7 +181,19 @@ const Contracts = () => {
             return;
         }
         const url = contractService.buildDownloadUrl(contract.id, docId);
-        window.open(url, '_blank');
+
+        if (isTauriEnv()) {
+            try {
+                // Determine filename (best effort)
+                const filename = `Contract_${contract.contract_number || contract.id}.pdf`;
+                await downloadFile(url, filename);
+            } catch (error) {
+                console.error('Download failed', error);
+                alert('Download failed: ' + (error.message || 'Unknown error'));
+            }
+        } else {
+            window.open(url, '_blank');
+        }
     };
 
     return (
@@ -310,6 +333,23 @@ const Contracts = () => {
                         value={createForm.contract_number}
                         onChange={(e) => setCreateForm({ ...createForm, contract_number: e.target.value })}
                         placeholder="CTR-XXXXX"
+                    />
+                </div>
+                <div className="form-group">
+                    <label>Link Release (Optional)</label>
+                    <Autocomplete
+                        options={releases}
+                        value={createForm.release_id}
+                        onChange={(val) => {
+                            const rel = releases.find(r => r.id === val);
+                            setCreateForm(prev => ({
+                                ...prev,
+                                release_id: val,
+                                title: rel ? `Release - ${rel.title}` : prev.title
+                            }));
+                        }}
+                        placeholder="Select a release to auto-link..."
+                        labelKey="title"
                     />
                 </div>
                 <div className="form-group">

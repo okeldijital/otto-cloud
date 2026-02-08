@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { UsersService, AdminService } from '../services/operations';
+import { BASE_URL } from '../lib/api';
+import { confirmAction, isTauriEnv } from '../lib/tauri';
+import PageHeader from '../components/ui/PageHeader';
 import DataTable from '../components/DataTable';
 import EntityForm from '../components/EntityForm';
 import { Shield, Users, Database, History, RefreshCcw, HardDrive, Settings, Activity, Upload, Download, Timer } from 'lucide-react';
@@ -77,7 +80,7 @@ const Admin = () => {
     };
 
     const handleDeleteUser = async (user) => {
-        if (window.confirm(`Are you sure you want to delete user ${user.email}?`)) {
+        if (await confirmAction(`Are you sure you want to delete user ${user.email}?`, 'Delete User')) {
             try {
                 await UsersService.delete(user.id);
                 fetchData();
@@ -119,7 +122,7 @@ const Admin = () => {
     };
 
     const handleRestore = async (filename) => {
-        if (window.confirm(`RESTORE SYSTEM from ${filename}? This will overwrite current data.`)) {
+        if (await confirmAction(`RESTORE SYSTEM from ${filename}? This will overwrite current data.`, 'Restore System')) {
             try {
                 const res = await AdminService.restore(filename);
                 alert(res.message || 'System restored successfully');
@@ -137,8 +140,42 @@ const Admin = () => {
         }
     };
 
-    const handleUploadClick = () => {
-        fileInputRef.current?.click();
+    const handleUploadClick = async () => {
+        if (isTauriEnv()) {
+            // Use Tauri file dialog
+            try {
+                const { open } = await import('@tauri-apps/plugin-dialog');
+                const { readFile } = await import('@tauri-apps/plugin-fs');
+
+                const filePath = await open({
+                    multiple: false,
+                    filters: [{
+                        name: 'Backup Files',
+                        extensions: ['zip']
+                    }]
+                });
+
+                if (!filePath) return; // User cancelled
+
+                // Read the file
+                const fileData = await readFile(filePath);
+
+                // Create a File object from the data
+                const fileName = filePath.split('/').pop();
+                const file = new File([fileData], fileName, { type: 'application/zip' });
+
+                // Upload to backend
+                const response = await AdminService.uploadBackup(file);
+                alert(response.message || 'Backup uploaded and restored successfully');
+                window.location.reload();
+            } catch (error) {
+                console.error('Tauri file import failed:', error);
+                alert('Failed to import backup: ' + (error.message || 'Unknown error'));
+            }
+        } else {
+            // Browser environment - use HTML file input
+            fileInputRef.current?.click();
+        }
     };
 
     const handleFileChange = async (event) => {
@@ -151,11 +188,12 @@ const Admin = () => {
         }
 
         try {
-            await AdminService.uploadBackup(file);
-            fetchData();
-            alert('Backup uploaded successfully');
+            const response = await AdminService.uploadBackup(file);
+            alert(response.message || 'Backup uploaded and restored successfully');
+            // Reload the page to reflect restored data
+            window.location.reload();
         } catch (error) {
-            alert('Failed to upload backup');
+            alert('Failed to upload backup: ' + (error.response?.data?.detail || error.message));
         }
         // Reset input
         event.target.value = null;

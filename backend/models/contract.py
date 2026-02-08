@@ -26,6 +26,7 @@ class Contract(Base):
     advances_amount = Column(Numeric(10, 2))
     advances_currency = Column(String(3), default="USD")
     recoupment_notes = Column(Text)
+    status_quo_override = Column(String(50), nullable=True) # RED, AMBER, GREEN
 
     created_by = Column(Integer)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

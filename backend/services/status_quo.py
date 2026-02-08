@@ -11,6 +11,10 @@ def compute_contract_status(contract: Any, documents: List[Any]) -> Dict[str, An
     reasons = []
     status = "GREEN"
 
+    # Check for manual override
+    if getattr(contract, 'status_quo_override', None):
+        return {"status": contract.status_quo_override, "reasons": ["Manual override set"]}
+
     # Rule: If status is not Draft, MUST have at least one document
     if contract.status != "Draft":
         if not documents:
@@ -125,3 +129,44 @@ def compute_overall_status(contracts_info: List[Dict], works_info: List[Dict]) -
             "total": red_count + amber_count + green_count
         }
     }
+
+def compute_release_status(release: Any, tracks: List[Any], has_contract: bool, has_artist_contract: bool) -> Dict[str, Any]:
+    """
+    Computes release status/health.
+    RED:
+     - No tracks
+     - Tracks exist but any track has no work linked (track.work_id is None)
+     - Release not linked to any Contract
+     - Release Artist not linked to any Contract
+    AMBER:
+     - No artwork (image_url missing)
+    """
+    reasons = []
+    status = "GREEN"
+
+    # Red Rules
+    if not tracks:
+        status = "RED"
+        reasons.append("Release has no tracks")
+    else:
+        # Check if any track is missing a work
+        missing_works = [t.title for t in tracks if not getattr(t, 'work_id', None)]
+        if missing_works:
+            status = "RED"
+            reasons.append(f"Tracks missing Works: {', '.join(missing_works[:3])}" + ("..." if len(missing_works) > 3 else ""))
+
+    if not has_contract:
+        status = "RED"
+        reasons.append("Release is not linked to any contract")
+    
+    if not has_artist_contract:
+        status = "RED"
+        reasons.append("Release Artist is not linked to any contract")
+
+    # Amber Rules (only if not already Red)
+    if status != "RED":
+        if not getattr(release, 'image_url', None):
+            status = "AMBER"
+            reasons.append("Missing artwork")
+
+    return {"status": status, "reasons": reasons}

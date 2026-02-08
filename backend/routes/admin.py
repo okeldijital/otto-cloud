@@ -76,7 +76,7 @@ def upload_backup(
     current_user: UserModel = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
-    """Upload a backup file"""
+    """Upload a backup file and automatically restore it"""
     if not file.filename.endswith('.zip'):
         raise HTTPException(status_code=400, detail="Only .zip files are allowed")
     
@@ -86,14 +86,27 @@ def upload_backup(
     file_path = os.path.join(BACKUP_DIR, file.filename)
     
     try:
+        # Save the uploaded file
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
             
         log_activity(db, current_user.id, "upload_backup", "system", 0, file.filename)
-        return {"status": "success", "filename": file.filename}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Could not upload file: {str(e)}")
-
+        
+        # Automatically restore the backup
+        success = restore_backup(file.filename)
+        if success:
+            log_activity(db, current_user.id, "restore_backup", "system", 0, file.filename)
+            return {
+                "status": "success", 
+                "filename": file.filename,
+                "message": "Backup uploaded and restored successfully. Please refresh the page."
+            }
+        else:
+            return {
+                "status": "partial",
+                "filename": file.filename,
+                "message": "Backup uploaded but restore failed. You can try restoring manually."
+            }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Could not upload file: {str(e)}")
 

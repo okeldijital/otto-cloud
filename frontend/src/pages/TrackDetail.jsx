@@ -4,7 +4,8 @@ import { CatalogService } from '../services/catalog';
 import { NetworkService } from '../services/network';
 import { ReportsService } from '../services/reports';
 import { BASE_URL } from '../lib/api';
-import { Music, User, Calendar, Tag, FileAudio, ChevronRight, Play, ChevronLeft, Disc, Clock, Hash, ExternalLink } from 'lucide-react';
+import { confirmAction } from '../lib/tauri';
+import { Music, User, Calendar, Tag, FileAudio, ChevronRight, Play, ChevronLeft, Disc, Clock, Hash, ExternalLink, Trash2 } from 'lucide-react';
 
 const TrackDetail = () => {
     const { id } = useParams();
@@ -79,7 +80,27 @@ const TrackDetail = () => {
                         <span className="meta-tag" style={{ background: '#f5f3ff', color: '#7c3aed', padding: '4px 12px', borderRadius: '16px', fontSize: '0.75rem', fontWeight: 600 }}>MASTER RECORDING</span>
                         {track.isrc_code && <span className="meta-tag" style={{ background: '#f1f5f9', color: '#475569', padding: '4px 12px', borderRadius: '16px', fontSize: '0.75rem', fontWeight: 600 }}>{track.isrc_code}</span>}
                     </div>
-                    <h1 style={{ fontSize: '2.5rem', fontWeight: 800, margin: '0 0 0.5rem 0', color: 'var(--text-color)' }}>{track.title}</h1>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '0.5rem' }}>
+                        <h1 style={{ fontSize: '2.5rem', fontWeight: 800, margin: 0, color: 'var(--text-color)' }}>{track.title}</h1>
+                        <button
+                            className="btn-secondary btn-icon"
+                            style={{ color: '#ef4444', borderColor: '#fee2e2', background: '#fef2f2' }}
+                            onClick={async () => {
+                                if (await confirmAction(`Are you sure you want to delete track "${track.title}"?`, 'Delete Track')) {
+                                    try {
+                                        await CatalogService.delete('tracks', track.id);
+                                        navigate('/catalog/tracks');
+                                    } catch (err) {
+                                        console.error(err);
+                                        alert('Failed to delete: ' + (err.response?.data?.detail || err.message));
+                                    }
+                                }
+                            }}
+                            title="Delete Track"
+                        >
+                            <Trash2 size={24} />
+                        </button>
+                    </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', color: 'var(--text-muted)', fontSize: '1.1rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <User size={18} />

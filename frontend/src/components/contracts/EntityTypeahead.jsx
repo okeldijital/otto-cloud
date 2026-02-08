@@ -32,6 +32,7 @@ const EntityTypeahead = ({
                     ...(data.artists || []).map((a) => ({ ...a, label: a.name, entity_type: 'Artist' })),
                     ...(data.labels || []).map((l) => ({ ...l, label: l.name, entity_type: 'Label' })),
                     ...(data.publishers || []).map((p) => ({ ...p, label: p.name, entity_type: 'Publisher' })),
+                    ...(data.network || []).map((n) => ({ ...n, label: n.name, entity_type: 'Network' })),
                     ...(data.releases || []).map((r) => ({ ...r, label: r.title, entity_type: 'Release' })),
                     ...(data.tracks || []).map((t) => ({ ...t, label: t.title, entity_type: 'Track' })),
                     ...(data.works || []).map((w) => ({ ...w, label: w.title, entity_type: 'Work' })),

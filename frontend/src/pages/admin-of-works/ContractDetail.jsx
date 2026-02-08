@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { FileText, Upload, Edit3, Plus, Trash, Download, AlertCircle, CheckCircle, ChevronLeft } from 'lucide-react';
+import { FileText, Upload, Edit3, Plus, Trash, Download, AlertCircle, CheckCircle, ChevronLeft, Settings } from 'lucide-react';
+import { confirmAction } from '../../lib/tauri';
 import contractService from '../../services/contractService';
 import EntityForm from '../../components/EntityForm';
 import EntityTypeahead from '../../components/contracts/EntityTypeahead';
@@ -32,6 +33,9 @@ const ContractDetail = () => {
 
     const [financialModalOpen, setFinancialModalOpen] = useState(false);
     const [financialForm, setFinancialForm] = useState({});
+
+    const [sqModalOpen, setSqModalOpen] = useState(false);
+    const [sqForm, setSqForm] = useState({ override: '' });
 
     const [partyModalOpen, setPartyModalOpen] = useState(false);
     const [partyForm, setPartyForm] = useState({
@@ -74,7 +78,9 @@ const ContractDetail = () => {
                     signed_date: data.signed_date || '',
                     status: data.status || 'Draft',
                     notes: data.notes || '',
+                    contract_number: data.contract_number || '',
                 });
+                setSqForm({ override: data.status_quo_override || '' });
                 setFinancialForm({
                     royalty_description: data.royalty_description || '',
                     advances_amount: data.advances_amount || '',
@@ -181,6 +187,37 @@ const ContractDetail = () => {
         window.open(contractService.buildDownloadUrl(id, doc.id), '_blank');
     };
 
+    const deleteContract = async () => {
+        if (!(await confirmAction('Delete this contract entirely? This cannot be undone.', 'Delete Contract'))) return;
+        try {
+            await contractService.delete(id);
+            navigate('/admin-of-works/contracts');
+        } catch (err) {
+            alert('Failed to delete contract');
+        }
+    };
+
+    const saveStatusQuo = async (e) => {
+        e.preventDefault();
+        try {
+            const res = await contractService.update(id, { status_quo_override: sqForm.override || null });
+            setContract(res.data || res);
+            setSqModalOpen(false);
+        } catch (err) {
+            alert('Failed to update status override');
+        }
+    };
+
+    const removeAsset = async (assetId) => {
+        if (!(await confirmAction('Remove asset?', 'Remove Asset'))) return;
+        try {
+            const res = await contractService.removeAsset(id, assetId);
+            setContract(res.data || res);
+        } catch (err) {
+            alert('Failed to remove asset');
+        }
+    };
+
     if (loading) return <div className="placeholder">Loading contract…</div>;
     if (error || !contract) return <div className="error-banner">{error || 'Not found'}</div>;
 
@@ -198,6 +235,9 @@ const ContractDetail = () => {
                         <span className="muted mono small">{contract.contract_number}</span>
                         <span className={`status-badge ${sq.status.toLowerCase()}`} title={sq.reasons.join('\n')}>
                             Status Quo: {sq.status}
+                            <button className="icon-btn-small ml-2 opacity-50 hover:opacity-100" onClick={(e) => { e.stopPropagation(); setSqModalOpen(true); }} title="Override">
+                                <Settings size={12} />
+                            </button>
                         </span>
                     </div>
                 </div>
@@ -207,6 +247,9 @@ const ContractDetail = () => {
                     </span>
                     <button className="btn ghost" onClick={() => setMetaModalOpen(true)}>
                         <Edit3 size={16} /> Edit Terms
+                    </button>
+                    <button className="btn ghost danger" onClick={deleteContract}>
+                        <Trash size={16} /> Delete
                     </button>
                     <button className="btn orange" onClick={() => setDocModalOpen(true)}>
                         <Upload size={16} /> New Version
@@ -261,7 +304,7 @@ const ContractDetail = () => {
                                     <td>{p.split_percent ? `${p.split_percent}%` : '—'}</td>
                                     <td>
                                         <button className="ghost-btn danger" onClick={async () => {
-                                            if (window.confirm('Remove party?')) {
+                                            if (await confirmAction('Remove party?', 'Remove Party')) {
                                                 const res = await contractService.removeParty(id, p.id);
                                                 setContract(res.data || res);
                                             }
@@ -300,11 +343,71 @@ const ContractDetail = () => {
                 </div>
             )}
 
+            {activeTab === 'assets' && (
+                <div className="panel">
+                    <div className="panel-header">
+                        <h3>Linked Assets</h3>
+                        <button className="btn ghost btn-sm" onClick={() => setAssetModalOpen(true)}>
+                            <Plus size={14} /> Link Asset
+                        </button>
+                    </div>
+                    {contract.assets?.length === 0 ? (
+                        <div className="placeholder">No assets linked yet.</div>
+                    ) : (
+                        <table className="contracts-table">
+                            <thead>
+                                <tr><th>Type</th><th>Asset ID</th><th>Scope</th><th>Actions</th></tr>
+                            </thead>
+                            <tbody>
+                                {contract.assets?.map(a => (
+                                    <tr key={a.id}>
+                                        <td><span className="badge">{a.asset_type}</span></td>
+                                        <td className="mono">{a.asset_id}</td>
+                                        <td>{a.scope_type}</td>
+                                        <td>
+                                            <button className="ghost-btn danger" onClick={() => removeAsset(a.id)}>
+                                                <Trash size={14} />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
+                </div>
+            )}
+
+            {activeTab === 'financials' && (
+                <div className="panel padded">
+                    <div className="panel-header">
+                        <h3>Financial Terms</h3>
+                        <button className="btn ghost btn-sm" onClick={() => setFinancialModalOpen(true)}>
+                            <Edit3 size={14} /> Edit Financials
+                        </button>
+                    </div>
+                    <div className="grid-2">
+                        <div>
+                            <h4 className="eyebrow">Advances</h4>
+                            <div className="stat-value">{contract.advances_currency} {contract.advances_amount ? Number(contract.advances_amount).toLocaleString() : '0.00'}</div>
+                            {contract.recoupment_notes && <p className="small muted mt-2">{contract.recoupment_notes}</p>}
+                        </div>
+                        <div>
+                            <h4 className="eyebrow">Royalty Description</h4>
+                            <p className="p-notes whitespace-pre-wrap">{contract.royalty_description || 'No royalties defined.'}</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Modals omitted for brevity but they are similar to previous build with type/status fixes */}
             <EntityForm isOpen={metaModalOpen} onClose={() => setMetaModalOpen(false)} title="Update Terms" onSubmit={saveMetadata}>
                 <div className="form-group">
                     <label>Title</label>
                     <input className="input" value={metaForm.title} onChange={e => setMetaForm({ ...metaForm, title: e.target.value })} />
+                </div>
+                <div className="form-group">
+                    <label>Contract Number</label>
+                    <input className="input" value={metaForm.contract_number} onChange={e => setMetaForm({ ...metaForm, contract_number: e.target.value })} />
                 </div>
                 <div className="form-row">
                     <div className="form-group">
@@ -403,6 +506,19 @@ const ContractDetail = () => {
                 <div className="form-group">
                     <label>Split % (Optional)</label>
                     <input type="number" className="input" value={partyForm.split_percent} onChange={e => setPartyForm({ ...partyForm, split_percent: e.target.value })} placeholder="0.00" />
+                </div>
+            </EntityForm>
+
+            <EntityForm isOpen={sqModalOpen} onClose={() => setSqModalOpen(false)} title="Override Status Quo" onSubmit={saveStatusQuo}>
+                <div className="form-group">
+                    <label>Manual Override</label>
+                    <select className="input" value={sqForm.override} onChange={e => setSqForm({ ...sqForm, override: e.target.value })}>
+                        <option value="">Calculated (Default)</option>
+                        <option value="GREEN">Green (Good)</option>
+                        <option value="AMBER">Amber (Warning)</option>
+                        <option value="RED">Red (Critical)</option>
+                    </select>
+                    <p className="small muted mt-2">Setting this will override the automatic calculation.</p>
                 </div>
             </EntityForm>
         </div>

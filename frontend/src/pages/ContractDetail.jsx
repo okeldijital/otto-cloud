@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { FileText, Upload, Edit3, Plus, Trash, Download } from 'lucide-react';
+import { FileText, Upload, Edit3, Plus, Trash, Download, AlertCircle, CheckCircle } from 'lucide-react';
+import { confirmAction } from '../lib/tauri';
 import contractService from '../services/contractService';
 import EntityForm from '../components/EntityForm';
 import EntityTypeahead from '../components/contracts/EntityTypeahead';
@@ -10,6 +11,12 @@ const STATUS_COLORS = {
     Active: 'success',
     Expired: 'muted',
     Terminated: 'danger',
+};
+
+const HEALTH_COLORS = {
+    RED: 'danger',
+    AMBER: 'warning',
+    GREEN: 'success',
 };
 
 const ROLE_OPTIONS = ['Artist', 'Label', 'Publisher', 'Licensee', 'Licensor', 'Producer', 'Other'];
@@ -67,13 +74,15 @@ const ContractDetail = () => {
                 setSelectedDoc(latestDoc(data));
                 setMetaForm({
                     title: data.title || '',
-                    contract_type: data.contract_type || 'Recording',
+                    contract_number: data.contract_number || '',
+                    contract_type: data.type || 'Recording', // Fixed: mapped from type to contract_type
                     territory: data.territory || '',
                     exclusivity: data.exclusivity || '',
                     start_date: data.start_date || '',
                     end_date: data.end_date || '',
                     signed_date: data.signed_date || '',
                     status: data.status || 'Draft',
+                    status_quo_override: data.status_quo_override || '',
                     notes: data.notes || '',
                 });
                 setFinancialForm({
@@ -106,7 +115,11 @@ const ContractDetail = () => {
         e.preventDefault();
         const payload = Object.entries(metaForm).reduce((acc, [key, val]) => {
             if (val === '' || val === null || typeof val === 'undefined') return acc;
-            acc[key] = val;
+            if (key === 'contract_type') {
+                acc['type'] = val;
+            } else {
+                acc[key] = val;
+            }
             return acc;
         }, {});
         if (payload.status === 'Active' && (!contract.documents || contract.documents.length === 0)) {
@@ -148,19 +161,19 @@ const ContractDetail = () => {
         const payload =
             partyForm.party_mode === 'system'
                 ? {
-                      entity_type: partyForm.entity?.entity_type || 'Artist',
-                      entity_id: partyForm.entity?.id,
-                      role: partyForm.role,
-                      split_percent: Number(partyForm.split_percent) || null,
-                      notes: partyForm.notes || null,
-                  }
+                    entity_type: partyForm.entity?.entity_type || 'Artist',
+                    entity_id: partyForm.entity?.id,
+                    role: partyForm.role,
+                    split_percent: Number(partyForm.split_percent) || null,
+                    notes: partyForm.notes || null,
+                }
                 : {
-                      entity_type: 'External',
-                      external_name: partyForm.external_name,
-                      role: partyForm.role,
-                      split_percent: Number(partyForm.split_percent) || null,
-                      notes: partyForm.notes || null,
-                  };
+                    entity_type: 'External',
+                    external_name: partyForm.external_name,
+                    role: partyForm.role,
+                    split_percent: Number(partyForm.split_percent) || null,
+                    notes: partyForm.notes || null,
+                };
 
         const exists = (contract?.parties || []).some((p) => {
             if (payload.entity_type === 'External') {
@@ -193,7 +206,7 @@ const ContractDetail = () => {
     };
 
     const removeParty = async (partyId) => {
-        if (!window.confirm('Remove this party?')) return;
+        if (!(await confirmAction('Remove this party?', 'Remove Party'))) return;
         try {
             const res = await contractService.removeParty(id, partyId);
             setContract(res.data || res);
@@ -236,7 +249,7 @@ const ContractDetail = () => {
     };
 
     const removeAsset = async (assetId) => {
-        if (!window.confirm('Remove this asset?')) return;
+        if (!(await confirmAction('Remove this asset?', 'Remove Asset'))) return;
         try {
             const res = await contractService.removeAsset(id, assetId);
             setContract(res.data || res);
@@ -286,6 +299,17 @@ const ContractDetail = () => {
         }
     };
 
+    const deleteContract = async () => {
+        if (!(await confirmAction('Are you sure you want to delete this contract? This action cannot be undone.', 'Delete Contract'))) return;
+        try {
+            await contractService.delete(contract.id);
+            navigate('/contracts');
+        } catch (err) {
+            console.error(err);
+            alert('Failed to delete contract');
+        }
+    };
+
     if (loading) return <div className="placeholder">Loading contract…</div>;
     if (error || !contract) return <div className="error-banner">{error || 'Not found'}</div>;
 
@@ -298,14 +322,23 @@ const ContractDetail = () => {
                     <p className="muted mono">{contract.contract_number}</p>
                 </div>
                 <div className="header-actions">
-                    <span className={`status-badge ${STATUS_COLORS[contract.status] || 'neutral'}`}>
+                    {contract.status_quo && (
+                        <div className={`status - badge ${HEALTH_COLORS[contract.status_quo.status] || 'neutral'} `} title={contract.status_quo.reasons?.join(', ')}>
+                            Health: {contract.status_quo.status}
+                            {contract.status_quo_override && <span style={{ marginLeft: '4px', opacity: 0.7 }}>(Override)</span>}
+                        </div>
+                    )}
+                    <span className={`status - badge ${STATUS_COLORS[contract.status] || 'neutral'} `}>
                         {contract.status}
                     </span>
                     <button className="btn ghost" onClick={() => setDocModalOpen(true)}>
-                        <Upload size={16} /> Upload New Version
+                        <Upload size={16} /> Upload Payloads
                     </button>
                     <button className="btn orange" onClick={downloadLatest}>
-                        <Download size={16} /> Download PDF
+                        <Download size={16} /> PDF
+                    </button>
+                    <button className="btn ghost danger" onClick={deleteContract} title="Delete Contract">
+                        <Trash size={16} />
                     </button>
                 </div>
             </header>
@@ -314,7 +347,7 @@ const ContractDetail = () => {
                 {TABS.map((tab) => (
                     <button
                         key={tab}
-                        className={`tab ${activeTab === tab ? 'active' : ''}`}
+                        className={`tab ${activeTab === tab ? 'active' : ''} `}
                         onClick={() => setActiveTab(tab)}
                     >
                         {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -325,7 +358,7 @@ const ContractDetail = () => {
             {activeTab === 'documents' && (
                 <div className="panel">
                     <div
-                        className={`dropzone ${dragActive ? 'dragging' : ''}`}
+                        className={`dropzone ${dragActive ? 'dragging' : ''} `}
                         onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
                         onDragLeave={() => setDragActive(false)}
                         onDrop={onDrop}
@@ -342,7 +375,7 @@ const ContractDetail = () => {
                             {documentsWithVersions.map((doc) => (
                                 <button
                                     key={doc.id}
-                                    className={`document-card ${selectedDoc?.id === doc.id ? 'active' : ''}`}
+                                    className={`document - card ${selectedDoc?.id === doc.id ? 'active' : ''} `}
                                     onClick={() => setSelectedDoc(doc)}
                                 >
                                     <div className="doc-meta">
@@ -419,31 +452,31 @@ const ContractDetail = () => {
                     </div>
                     <table className="contracts-table">
                         <thead>
-                        <tr>
-                            <th>Role</th>
-                            <th>Party</th>
-                            <th>Split%</th>
-                            <th>Notes</th>
-                            <th></th>
-                        </tr>
+                            <tr>
+                                <th>Role</th>
+                                <th>Party</th>
+                                <th>Split%</th>
+                                <th>Notes</th>
+                                <th></th>
+                            </tr>
                         </thead>
                         <tbody>
-                        {(contract.parties || []).map((p) => (
-                            <tr key={p.id}>
-                                <td>{p.role}</td>
-                                <td>{p.external_name || p.display_name || `${p.entity_type || ''} #${p.entity_id || ''}`}</td>
-                                <td>{p.split_percent ?? '—'}</td>
-                                <td className="muted">{p.notes || '—'}</td>
-                                <td className="actions">
-                                    <button className="ghost-btn danger" onClick={() => removeParty(p.id)}>
-                                        <Trash size={14} />
-                                    </button>
-                                </td>
-                            </tr>
-                        ))}
-                        {(!contract.parties || contract.parties.length === 0) && (
-                            <tr><td colSpan={5} className="placeholder">No parties yet.</td></tr>
-                        )}
+                            {(contract.parties || []).map((p) => (
+                                <tr key={p.id}>
+                                    <td>{p.role}</td>
+                                    <td>{p.external_name || p.display_name || `${p.entity_type || ''} #${p.entity_id || ''} `}</td>
+                                    <td>{p.split_percent ?? '—'}</td>
+                                    <td className="muted">{p.notes || '—'}</td>
+                                    <td className="actions">
+                                        <button className="ghost-btn danger" onClick={() => removeParty(p.id)}>
+                                            <Trash size={14} />
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                            {(!contract.parties || contract.parties.length === 0) && (
+                                <tr><td colSpan={5} className="placeholder">No parties yet.</td></tr>
+                            )}
                         </tbody>
                     </table>
                 </div>
@@ -459,31 +492,31 @@ const ContractDetail = () => {
                     </div>
                     <table className="contracts-table">
                         <thead>
-                        <tr>
-                            <th>Asset Type</th>
-                            <th>Asset</th>
-                            <th>Scope</th>
-                            <th>Notes</th>
-                            <th></th>
-                        </tr>
+                            <tr>
+                                <th>Asset Type</th>
+                                <th>Asset</th>
+                                <th>Scope</th>
+                                <th>Notes</th>
+                                <th></th>
+                            </tr>
                         </thead>
                         <tbody>
-                        {(contract.assets || []).map((a) => (
-                            <tr key={a.id}>
-                                <td>{a.asset_type}</td>
-                                <td className="mono">ID {a.asset_id}</td>
-                                <td><span className="tag">{a.scope_type}</span></td>
-                                <td className="muted">{a.notes || '—'}</td>
-                                <td className="actions">
-                                    <button className="ghost-btn danger" onClick={() => removeAsset(a.id)}>
-                                        <Trash size={14} />
-                                    </button>
-                                </td>
-                            </tr>
-                        ))}
-                        {(!contract.assets || contract.assets.length === 0) && (
-                            <tr><td colSpan={5} className="placeholder">No assets linked.</td></tr>
-                        )}
+                            {(contract.assets || []).map((a) => (
+                                <tr key={a.id}>
+                                    <td>{a.asset_type}</td>
+                                    <td className="mono">ID {a.asset_id}</td>
+                                    <td><span className="tag">{a.scope_type}</span></td>
+                                    <td className="muted">{a.notes || '—'}</td>
+                                    <td className="actions">
+                                        <button className="ghost-btn danger" onClick={() => removeAsset(a.id)}>
+                                            <Trash size={14} />
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                            {(!contract.assets || contract.assets.length === 0) && (
+                                <tr><td colSpan={5} className="placeholder">No assets linked.</td></tr>
+                            )}
                         </tbody>
                     </table>
                 </div>
@@ -506,7 +539,7 @@ const ContractDetail = () => {
                             <h4 className="eyebrow">Advances</h4>
                             <p>
                                 {contract.advances_amount
-                                    ? `${contract.advances_currency || 'USD'} ${contract.advances_amount}`
+                                    ? `${contract.advances_currency || 'USD'} ${contract.advances_amount} `
                                     : '—'}
                             </p>
                         </div>
@@ -534,14 +567,36 @@ const ContractDetail = () => {
                         required
                     />
                 </div>
+                <div className="form-group">
+                    <label>Contract Number</label>
+                    <input
+                        className="input"
+                        value={metaForm.contract_number}
+                        onChange={(e) => setMetaForm({ ...metaForm, contract_number: e.target.value })}
+                        required
+                    />
+                </div>
                 <div className="form-row">
                     <div className="form-group">
                         <label>Type</label>
                         <input
                             className="input"
-                            value={metaForm.contract_type}
+                            value={metaForm.contract_type} // Note: logic maps this to `type` in payload if needed, verify `saveMetadata`
                             onChange={(e) => setMetaForm({ ...metaForm, contract_type: e.target.value })}
                         />
+                    </div>
+                    <div className="form-group">
+                        <label>Health Override</label>
+                        <select
+                            className="input"
+                            value={metaForm.status_quo_override || ''}
+                            onChange={(e) => setMetaForm({ ...metaForm, status_quo_override: e.target.value || null })}
+                        >
+                            <option value="">(Auto-Calculated)</option>
+                            <option value="GREEN">Green</option>
+                            <option value="AMBER">Amber</option>
+                            <option value="RED">Red</option>
+                        </select>
                     </div>
                     <div className="form-group">
                         <label>Status</label>

@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Search, Filter, LayoutGrid, List, RefreshCw, Calendar, User, Tag, Trash2, Edit3, AlertCircle } from 'lucide-react';
+
+import { confirmAction } from '../../lib/tauri';
+import { CheckSquare, Square, Plus, Trash, Calendar as CalendarIcon, Clock, AlertCircle, List, LayoutGrid, Filter, RefreshCw, Search } from 'lucide-react';
 import EntityForm from '../../components/EntityForm';
 import api from '../../lib/api';
 import { officeTasksService } from '../../services/officeTasksService';
@@ -176,7 +178,7 @@ const Tasks = () => {
     };
 
     const handleDelete = async (task) => {
-        if (!window.confirm(`Delete "${task.title}"?`)) return;
+        if (!(await confirmAction(`Delete "${task.title}"?`, 'Delete Task'))) return;
         try {
             await officeTasksService.remove(task.id);
             await fetchTasks();

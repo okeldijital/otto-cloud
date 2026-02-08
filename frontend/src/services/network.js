@@ -26,6 +26,9 @@ export const NetworkService = {
         const response = await api.post('/network/organizations', data);
         return response.data;
     },
+    deleteOrganization: async (id) => {
+        await api.delete(`/network/organizations/${id}`);
+    },
 
     // Individuals
     getIndividuals: async () => {
@@ -40,6 +43,9 @@ export const NetworkService = {
         const response = await api.post('/network/individuals', data);
         return response.data;
     },
+    deleteIndividual: async (id) => {
+        await api.delete(`/network/individuals/${id}`);
+    },
 
     // Platforms
     getPlatforms: async () => {
@@ -49,6 +55,9 @@ export const NetworkService = {
     createPlatform: async (data) => {
         const response = await api.post('/network/platforms', data);
         return response.data;
+    },
+    deletePlatform: async (id) => {
+        await api.delete(`/network/platforms/${id}`);
     },
 
     // Relationships

@@ -3,10 +3,15 @@ import { Link } from 'react-router-dom';
 import { CatalogService } from '../services/catalog';
 import { ReportsService } from '../services/reports';
 import { BASE_URL } from '../lib/api';
+import { confirmAction } from '../lib/tauri';
 import DataTable from '../components/DataTable';
 import EntityForm from '../components/EntityForm';
 import Autocomplete from '../components/Autocomplete';
-import { Music2, User, Users, Landmark, ChevronLeft } from 'lucide-react';
+import { Music2, User, Users, Landmark, ChevronLeft, Download, Plus } from 'lucide-react';
+import Button from '../components/ui/Button';
+import PageHeader from '../components/ui/PageHeader';
+import Input, { Select, Textarea } from '../components/ui/Input';
+import Card from '../components/ui/Card';
 
 const API_URL = BASE_URL;
 
@@ -78,13 +83,13 @@ const Works = () => {
     };
 
     const handleDelete = async (work) => {
-        if (window.confirm(`Are you sure you want to delete "${work.title}"?`)) {
+        if (await confirmAction(`Are you sure you want to delete "${work.title}"?`, 'Delete Work')) {
             try {
                 await CatalogService.delete('works', work.id);
                 fetchData();
             } catch (error) {
                 console.error('Failed to delete work:', error);
-                alert('Failed to delete work');
+                alert(error.response?.data?.detail || 'Failed to delete work');
             }
         }
     };
@@ -163,20 +168,33 @@ const Works = () => {
             <Link to="/catalog" className="back-link">
                 <ChevronLeft size={16} /> Back to Catalog
             </Link>
-            <div className="page-header">
-                <h1 className="page-title">Musical Works</h1>
-                <div style={{ display: 'flex', gap: '1rem' }}>
-                    <button
-                        className="btn-secondary"
-                        onClick={() => ReportsService.exportData('works', 'excel')}
-                    >
-                        Export Excel
-                    </button>
-                    <button className="btn-primary" onClick={handleCreate}>
-                        + Add Work
-                    </button>
-                </div>
-            </div>
+            <PageHeader
+                title="Musical Works"
+                subtitle="Manage your composition catalog"
+                breadcrumb={
+                    <Link to="/catalog" className="back-link" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: 'var(--text-muted)', textDecoration: 'none', marginBottom: '0.5rem' }}>
+                        <ChevronLeft size={16} /> Back to Catalog
+                    </Link>
+                }
+                actions={
+                    <div style={{ display: 'flex', gap: '0.75rem' }}>
+                        <Button
+                            variant="secondary"
+                            icon={Download}
+                            onClick={() => ReportsService.exportData('works', 'excel')}
+                        >
+                            Export
+                        </Button>
+                        <Button
+                            variant="primary"
+                            icon={Plus}
+                            onClick={handleCreate}
+                        >
+                            Add Work
+                        </Button>
+                    </div>
+                }
+            />
 
             <DataTable
                 columns={columns}
@@ -193,16 +211,13 @@ const Works = () => {
                 onSubmit={handleSubmit}
                 isSubmitting={isSubmitting}
             >
-                <div className="form-group">
-                    <label>Title</label>
-                    <input
-                        type="text"
-                        value={formData.title}
-                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                        required
-                        autoFocus
-                    />
-                </div>
+                <Input
+                    label="Title"
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    required
+                    autoFocus
+                />
 
                 <div className="form-row">
                     <div className="form-group flex-1">
@@ -218,9 +233,8 @@ const Works = () => {
                         />
                     </div>
                     <div className="form-group flex-1">
-                        <label>ISWC Code</label>
-                        <input
-                            type="text"
+                        <Input
+                            label="ISWC Code"
                             value={formData.iswc_code}
                             onChange={(e) => setFormData({ ...formData, iswc_code: e.target.value })}
                             placeholder="T-123.456.789-C"
@@ -269,17 +283,15 @@ const Works = () => {
                 <div className="form-section-title">Manual Entries (Optional)</div>
                 <div className="form-row">
                     <div className="form-group flex-1">
-                        <label>Composer Text (Legacy)</label>
-                        <input
-                            type="text"
+                        <Input
+                            label="Composer Text (Legacy)"
                             value={formData.composers_text}
                             onChange={(e) => setFormData({ ...formData, composers_text: e.target.value })}
                         />
                     </div>
                     <div className="form-group flex-1">
-                        <label>Arranger Text (Legacy)</label>
-                        <input
-                            type="text"
+                        <Input
+                            label="Arranger Text (Legacy)"
                             value={formData.arrangers_text}
                             onChange={(e) => setFormData({ ...formData, arrangers_text: e.target.value })}
                         />

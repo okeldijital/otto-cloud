@@ -4,6 +4,7 @@ import { CatalogService } from '../services/catalog';
 import { DocumentsService } from '../services/operations';
 import { ReportsService } from '../services/reports';
 import { BASE_URL } from '../lib/api';
+import { confirmAction } from '../lib/tauri';
 import DataTable from '../components/DataTable';
 import EntityForm from '../components/EntityForm';
 import Autocomplete from '../components/Autocomplete';
@@ -148,13 +149,13 @@ const Artists = () => {
     };
 
     const handleDelete = async (artist) => {
-        if (window.confirm(`Are you sure you want to delete "${artist.name}"?`)) {
+        if (await confirmAction(`Are you sure you want to delete "${artist.name}"?`, 'Delete Artist')) {
             try {
                 await CatalogService.delete('artists', artist.id);
                 fetchData();
             } catch (error) {
                 console.error('Failed to delete artist:', error);
-                alert('Failed to delete artist');
+                alert(error.response?.data?.detail || 'Failed to delete artist');
             }
         }
     };
@@ -227,25 +228,19 @@ const Artists = () => {
             key: 'name',
             label: 'Artist Name',
             render: (row) => (
-                <Link to={`/catalog/artists/${row.id}`} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontWeight: 600, color: 'var(--primary-color)', textDecoration: 'none' }}>
-                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#f1f5f9', overflow: 'hidden', flexShrink: 0 }}>
-                        {row.profile_image_url ? (
-                            <img
-                                src={row.profile_image_url.startsWith('http') ? row.profile_image_url : `${API_URL}${row.profile_image_url}`}
-                                alt={row.name}
-                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                            />
-                        ) : (
-                            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <User size={16} color="#94a3b8" />
-                            </div>
-                        )}
-                    </div>
-                    {row.name}
-                </Link>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <Link to={`/catalog/artists/${row.id}`} style={{ fontWeight: 600, color: 'var(--primary-color)', textDecoration: 'none' }}>
+                        {row.display_name || row.aka || row.name}
+                    </Link>
+                    {row.aka && row.name !== row.aka && (
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                            Real Name: {row.name}
+                        </span>
+                    )}
+                </div>
             )
         },
-        { key: 'aka', label: 'AKA' },
+        { key: 'aka', label: 'Stage Name' },
         { key: 'contact_email', label: 'Email' },
         {
             key: 'label_id',
@@ -430,78 +425,59 @@ const Artists = () => {
 
                 <h3 className="form-section-title">Social & Streaming</h3>
                 <div className="form-row">
-                    <div className="form-group">
-                        <label htmlFor="instagram">Instagram</label>
-                        <input
-                            type="text"
-                            id="instagram"
-                            value={formData.instagram}
-                            onChange={(e) => setFormData({ ...formData, instagram: e.target.value })}
-                            placeholder="@artist"
-                        />
-                    </div>
-                    <div className="form-group">
-                        <label htmlFor="twitter">Twitter</label>
-                        <input
-                            type="text"
-                            id="twitter"
-                            value={formData.twitter}
-                            onChange={(e) => setFormData({ ...formData, twitter: e.target.value })}
-                            placeholder="@artist"
-                        />
-                    </div>
-                </div>
-                <div className="form-group">
-                    <label htmlFor="spotify">Spotify URL</label>
-                    <input
-                        type="url"
-                        id="spotify"
-                        value={formData.spotify_url}
-                        onChange={(e) => setFormData({ ...formData, spotify_url: e.target.value })}
-                        placeholder="https://open.spotify.com/artist/..."
+                    <Input
+                        label="Instagram"
+                        id="instagram"
+                        value={formData.instagram}
+                        onChange={(e) => setFormData({ ...formData, instagram: e.target.value })}
+                        placeholder="@artist"
+                    />
+                    <Input
+                        label="Twitter"
+                        id="twitter"
+                        value={formData.twitter}
+                        onChange={(e) => setFormData({ ...formData, twitter: e.target.value })}
+                        placeholder="@artist"
                     />
                 </div>
-                <div className="form-group">
-                    <label htmlFor="apple_music">Apple Music URL</label>
-                    <input
-                        type="url"
-                        id="apple_music"
-                        value={formData.apple_music_url}
-                        onChange={(e) => setFormData({ ...formData, apple_music_url: e.target.value })}
-                        placeholder="https://music.apple.com/..."
-                    />
-                </div>
+                <Input
+                    label="Spotify URL"
+                    type="url"
+                    id="spotify"
+                    value={formData.spotify_url}
+                    onChange={(e) => setFormData({ ...formData, spotify_url: e.target.value })}
+                    placeholder="https://open.spotify.com/artist/..."
+                />
+                <Input
+                    label="Apple Music URL"
+                    type="url"
+                    id="apple_music"
+                    value={formData.apple_music_url}
+                    onChange={(e) => setFormData({ ...formData, apple_music_url: e.target.value })}
+                    placeholder="https://music.apple.com/..."
+                />
 
                 <h3 className="form-section-title">Banking Details</h3>
                 <div className="form-row">
-                    <div className="form-group">
-                        <label htmlFor="bank_name">Bank Name</label>
-                        <input
-                            type="text"
-                            id="bank_name"
-                            value={formData.bank_name}
-                            onChange={(e) => setFormData({ ...formData, bank_name: e.target.value })}
-                        />
-                    </div>
-                    <div className="form-group">
-                        <label htmlFor="branch_code">Branch Code</label>
-                        <input
-                            type="text"
-                            id="branch_code"
-                            value={formData.branch_code}
-                            onChange={(e) => setFormData({ ...formData, branch_code: e.target.value })}
-                        />
-                    </div>
-                </div>
-                <div className="form-group">
-                    <label htmlFor="account_number">Account Number</label>
-                    <input
-                        type="text"
-                        id="account_number"
-                        value={formData.account_number}
-                        onChange={(e) => setFormData({ ...formData, account_number: e.target.value })}
+                    <Input
+                        label="Bank Name"
+                        id="bank_name"
+                        value={formData.bank_name}
+                        onChange={(e) => setFormData({ ...formData, bank_name: e.target.value })}
+                    />
+                    <Input
+                        label="Branch Code"
+                        id="branch_code"
+                        value={formData.branch_code}
+                        onChange={(e) => setFormData({ ...formData, branch_code: e.target.value })}
                     />
                 </div>
+                <Input
+                    label="Account Number"
+                    id="account_number"
+                    value={formData.account_number}
+                    onChange={(e) => setFormData({ ...formData, account_number: e.target.value })}
+                />
             </EntityForm>
         </div>
     );

@@ -4,7 +4,8 @@ import { CatalogService } from '../services/catalog';
 import { NetworkService } from '../services/network';
 import { ReportsService } from '../services/reports';
 import { BASE_URL } from '../lib/api';
-import { Disc, Music, User, Calendar, Tag, FileText, ChevronRight, Play, ChevronLeft } from 'lucide-react';
+import { confirmAction } from '../lib/tauri';
+import { Disc, Music, User, Calendar, Tag, FileText, ChevronRight, Play, ChevronLeft, Trash2 } from 'lucide-react';
 
 const ReleaseDetail = () => {
     const { id } = useParams();
@@ -120,7 +121,27 @@ const ReleaseDetail = () => {
                         )}
                     </div>
 
-                    <h1 style={{ fontSize: '3rem', fontWeight: 900, marginBottom: '0.5rem', letterSpacing: '-0.025em', color: 'var(--text-main)' }}>{release.title}</h1>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+                        <h1 style={{ fontSize: '3rem', fontWeight: 900, marginBottom: '0.5rem', letterSpacing: '-0.025em', color: 'var(--text-main)' }}>{release.title}</h1>
+                        <button
+                            className="btn-secondary btn-icon"
+                            style={{ color: '#ef4444', borderColor: '#fee2e2', background: '#fef2f2' }}
+                            onClick={async () => {
+                                if (await confirmAction(`Are you sure you want to delete "${release.title}"?`, 'Delete Release')) {
+                                    try {
+                                        await CatalogService.delete('releases', release.id);
+                                        navigate('/catalog/releases');
+                                    } catch (err) {
+                                        console.error(err);
+                                        alert('Failed to delete: ' + (err.response?.data?.detail || err.message));
+                                    }
+                                }
+                            }}
+                            title="Delete Release"
+                        >
+                            <Trash2 size={24} />
+                        </button>
+                    </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '1.25rem', color: 'var(--primary-color)', marginBottom: '2rem', fontWeight: 600 }}>
                         <User size={24} />

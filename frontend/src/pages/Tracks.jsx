@@ -5,7 +5,11 @@ import { NetworkService } from '../services/network';
 import DataTable from '../components/DataTable';
 import EntityForm from '../components/EntityForm';
 import Autocomplete from '../components/Autocomplete';
-import { Music2, Disc, FileAudio, ExternalLink, Users, ChevronLeft } from 'lucide-react';
+import { Music2, Disc, FileAudio, ExternalLink, Users, ChevronLeft, Download, Plus } from 'lucide-react';
+import Button from '../components/ui/Button';
+import PageHeader from '../components/ui/PageHeader';
+import Input, { Select, Textarea } from '../components/ui/Input';
+import Card from '../components/ui/Card';
 
 const Tracks = () => {
     const [tracks, setTracks] = useState([]);
@@ -100,12 +104,13 @@ const Tracks = () => {
     };
 
     const handleDelete = async (track) => {
-        if (window.confirm(`Are you sure you want to delete track "${track.title}"?`)) {
+        if (await confirmAction(`Are you sure you want to delete track "${track.title}"?`, 'Delete Track')) {
             try {
                 await CatalogService.delete('tracks', track.id);
                 fetchData();
             } catch (error) {
                 console.error('Delete failed:', error);
+                alert(error.response?.data?.detail || 'Failed to delete track');
             }
         }
     };
@@ -175,7 +180,10 @@ const Tracks = () => {
                     <Users size={14} className="text-muted" />
                     {row.artist_ids?.length > 0 ? (
                         row.artist_ids.length === 1 ? (
-                            (artists || []).find(a => a.id === row.artist_ids[0])?.name || 'Unknown'
+                            (() => {
+                                const a = (artists || []).find(art => art.id === row.artist_ids[0]);
+                                return a ? (a.display_name || a.aka || a.name) : 'Unknown';
+                            })()
                         ) : `${row.artist_ids.length} Artists`
                     ) : 'Various'}
                 </div>
@@ -214,15 +222,20 @@ const Tracks = () => {
             <Link to="/catalog" className="back-link">
                 <ChevronLeft size={16} /> Back to Catalog
             </Link>
-            <div className="page-header">
-                <div>
-                    <h1 className="page-title">Tracks</h1>
-                    <p className="page-subtitle">Master recordings and audio assets</p>
-                </div>
-                <button className="btn-primary" onClick={handleCreate}>
-                    <FileAudio size={18} /> Add Track
-                </button>
-            </div>
+            <PageHeader
+                title="Tracks"
+                subtitle="Master recordings and audio assets"
+                breadcrumb={
+                    <Link to="/catalog" className="back-link" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: 'var(--text-muted)', textDecoration: 'none', marginBottom: '0.5rem' }}>
+                        <ChevronLeft size={16} /> Back to Catalog
+                    </Link>
+                }
+                actions={
+                    <Button className="btn-primary" onClick={handleCreate} icon={FileAudio}>
+                        Add Track
+                    </Button>
+                }
+            />
 
             <DataTable
                 columns={columns}
@@ -239,20 +252,17 @@ const Tracks = () => {
                 onSubmit={handleSubmit}
                 isSubmitting={isSubmitting}
             >
-                <div className="form-group">
-                    <label>Track Title</label>
-                    <input
-                        type="text"
-                        value={formData.title}
-                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                        required
-                    />
-                </div>
+                <Input
+                    label="Track Title"
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    required
+                />
 
                 <div className="form-group">
                     <label>Artist(s)</label>
                     <Autocomplete
-                        options={artists || []}
+                        options={(artists || []).map(a => ({ ...a, name: a.display_name || a.aka || a.name }))}
                         value={formData.artist_ids}
                         onChange={(val) => setFormData({ ...formData, artist_ids: val })}
                         placeholder="Select Artist(s)..."
@@ -263,43 +273,32 @@ const Tracks = () => {
                 </div>
 
                 <div className="form-row">
-                    <div className="form-group flex-1">
-                        <label>ISRC Code</label>
-                        <input
-                            type="text"
-                            value={formData.isrc_code}
-                            onChange={(e) => setFormData({ ...formData, isrc_code: e.target.value })}
-                            placeholder="US-XXX-24-00001"
-                        />
-                    </div>
-                    <div className="form-group flex-1">
-                        <label>Duration</label>
-                        <input
-                            type="text"
-                            value={formData.duration}
-                            onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
-                            placeholder="03:45"
-                        />
-                    </div>
+                    <Input
+                        label="ISRC Code"
+                        value={formData.isrc_code}
+                        onChange={(e) => setFormData({ ...formData, isrc_code: e.target.value })}
+                        placeholder="US-XXX-24-00001"
+                    />
+                    <Input
+                        label="Duration"
+                        value={formData.duration}
+                        onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
+                        placeholder="03:45"
+                    />
                 </div>
 
                 <div className="form-row">
-                    <div className="form-group flex-1">
-                        <label>Genre</label>
-                        <input
-                            type="text"
-                            value={formData.genre}
-                            onChange={(e) => setFormData({ ...formData, genre: e.target.value })}
-                        />
-                    </div>
-                    <div className="form-group flex-1">
-                        <label>Release Date</label>
-                        <input
-                            type="date"
-                            value={formData.release_date}
-                            onChange={(e) => setFormData({ ...formData, release_date: e.target.value })}
-                        />
-                    </div>
+                    <Input
+                        label="Genre"
+                        value={formData.genre}
+                        onChange={(e) => setFormData({ ...formData, genre: e.target.value })}
+                    />
+                    <Input
+                        label="Release Date"
+                        type="date"
+                        value={formData.release_date}
+                        onChange={(e) => setFormData({ ...formData, release_date: e.target.value })}
+                    />
                 </div>
 
                 <div className="form-group">
@@ -384,11 +383,12 @@ const Tracks = () => {
                                 />
                             </div>
                             <input
+                                className="input"
                                 type="text"
                                 placeholder="Role (e.g. Guitar)"
                                 value={newCreditRole}
                                 onChange={(e) => setNewCreditRole(e.target.value)}
-                                style={{ flex: 1, padding: '0.5rem 0.75rem', borderRadius: '0.375rem', border: '1px solid #e2e8f0' }}
+                                style={{ flex: 1 }}
                             />
                             <button
                                 type="button"

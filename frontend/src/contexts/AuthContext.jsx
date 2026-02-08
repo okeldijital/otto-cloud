@@ -10,6 +10,27 @@ export const AuthProvider = ({ children }) => {
     const [statusMessage, setStatusMessage] = useState('Starting local services...');
 
     const checkAuth = async () => {
+        // DEV MODE: Bypass authentication entirely
+        const DEV_MODE = true; // Set to false to re-enable auth
+
+        if (DEV_MODE) {
+            console.log('🔓 DEV MODE: Authentication bypassed');
+            const mockUser = {
+                id: 1,
+                email: 'admin@otto.com',
+                full_name: 'Dev Admin',
+                role: 'admin',
+                is_superuser: true,
+                is_active: true,
+                organization_id: '00000000-0000-0000-0000-000000000001'
+            };
+            storage.setUser(mockUser);
+            setUser(mockUser);
+            setLoading(false);
+            return;
+        }
+
+        // Original auth logic (disabled in dev mode)
         let retries = 0;
         const maxRetries = 20;
 

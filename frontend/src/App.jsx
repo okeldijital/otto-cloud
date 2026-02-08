@@ -5,6 +5,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { queryClient } from './lib/queryClient';
 import MainLayout from './components/layout/MainLayout';
+import ConfirmationProvider from './components/ConfirmationProvider';
 
 // Pages
 import Login from './pages/Login';
@@ -65,343 +66,345 @@ function App() {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <ThemeProvider>
-            <HashRouter>
-              <Routes>
-                {/* Public routes */}
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
+          <ConfirmationProvider>
+            <ThemeProvider>
+              <HashRouter>
+                <Routes>
+                  {/* Public routes */}
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/register" element={<Register />} />
 
-                {/* Protected routes */}
-                <Route
-                  path="/dashboard"
-                  element={
-                    <ProtectedRoute>
-                      <MainLayout>
-                        <Dashboard />
-                      </MainLayout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/catalog"
-                  element={
-                    <ProtectedRoute>
-                      <MainLayout>
-                        <Catalog />
-                      </MainLayout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/catalog/labels"
-                  element={
-                    <ProtectedRoute>
-                      <MainLayout>
-                        <Labels />
-                      </MainLayout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/catalog/labels/:id"
-                  element={
-                    <ProtectedRoute>
-                      <MainLayout>
-                        <LabelDetail />
-                      </MainLayout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/catalog/publishers"
-                  element={
-                    <ProtectedRoute>
-                      <MainLayout>
-                        <Publishers />
-                      </MainLayout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/catalog/publishers/:id"
-                  element={
-                    <ProtectedRoute>
-                      <MainLayout>
-                        <PublisherDetail />
-                      </MainLayout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/catalog/pros"
-                  element={
-                    <ProtectedRoute>
-                      <MainLayout>
-                        <PROs />
-                      </MainLayout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/catalog/artists"
-                  element={
-                    <ProtectedRoute>
-                      <MainLayout>
-                        <Artists />
-                      </MainLayout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/catalog/artists/:id"
-                  element={
-                    <ProtectedRoute>
-                      <MainLayout>
-                        <ArtistDetail />
-                      </MainLayout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/catalog/releases"
-                  element={
-                    <ProtectedRoute>
-                      <MainLayout>
-                        <Releases />
-                      </MainLayout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/catalog/releases/:id"
-                  element={
-                    <ProtectedRoute>
-                      <MainLayout>
-                        <ReleaseDetail />
-                      </MainLayout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/catalog/works"
-                  element={
-                    <ProtectedRoute>
-                      <MainLayout>
-                        <Works />
-                      </MainLayout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/catalog/works/:id"
-                  element={
-                    <ProtectedRoute>
-                      <MainLayout>
-                        <WorkDetail />
-                      </MainLayout>
-                    </ProtectedRoute>
-                  }
-                />
+                  {/* Protected routes */}
+                  <Route
+                    path="/dashboard"
+                    element={
+                      <ProtectedRoute>
+                        <MainLayout>
+                          <Dashboard />
+                        </MainLayout>
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/catalog"
+                    element={
+                      <ProtectedRoute>
+                        <MainLayout>
+                          <Catalog />
+                        </MainLayout>
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/catalog/labels"
+                    element={
+                      <ProtectedRoute>
+                        <MainLayout>
+                          <Labels />
+                        </MainLayout>
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/catalog/labels/:id"
+                    element={
+                      <ProtectedRoute>
+                        <MainLayout>
+                          <LabelDetail />
+                        </MainLayout>
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/catalog/publishers"
+                    element={
+                      <ProtectedRoute>
+                        <MainLayout>
+                          <Publishers />
+                        </MainLayout>
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/catalog/publishers/:id"
+                    element={
+                      <ProtectedRoute>
+                        <MainLayout>
+                          <PublisherDetail />
+                        </MainLayout>
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/catalog/pros"
+                    element={
+                      <ProtectedRoute>
+                        <MainLayout>
+                          <PROs />
+                        </MainLayout>
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/catalog/artists"
+                    element={
+                      <ProtectedRoute>
+                        <MainLayout>
+                          <Artists />
+                        </MainLayout>
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/catalog/artists/:id"
+                    element={
+                      <ProtectedRoute>
+                        <MainLayout>
+                          <ArtistDetail />
+                        </MainLayout>
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/catalog/releases"
+                    element={
+                      <ProtectedRoute>
+                        <MainLayout>
+                          <Releases />
+                        </MainLayout>
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/catalog/releases/:id"
+                    element={
+                      <ProtectedRoute>
+                        <MainLayout>
+                          <ReleaseDetail />
+                        </MainLayout>
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/catalog/works"
+                    element={
+                      <ProtectedRoute>
+                        <MainLayout>
+                          <Works />
+                        </MainLayout>
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/catalog/works/:id"
+                    element={
+                      <ProtectedRoute>
+                        <MainLayout>
+                          <WorkDetail />
+                        </MainLayout>
+                      </ProtectedRoute>
+                    }
+                  />
 
-                {/* Administration of Works Routes */}
-                <Route
-                  path="/admin-of-works/contracts"
-                  element={
-                    <ProtectedRoute>
-                      <MainLayout>
-                        <ContractsList />
-                      </MainLayout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/admin-of-works/contracts/:id"
-                  element={
-                    <ProtectedRoute>
-                      <MainLayout>
-                        <ContractDetailAdmin />
-                      </MainLayout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/admin-of-works/works"
-                  element={
-                    <ProtectedRoute>
-                      <MainLayout>
-                        <WorksAdminList />
-                      </MainLayout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/admin-of-works/works/:work_id"
-                  element={
-                    <ProtectedRoute>
-                      <MainLayout>
-                        <WorksAdminDetail />
-                      </MainLayout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/admin-of-works/status-quo"
-                  element={
-                    <ProtectedRoute>
-                      <MainLayout>
-                        <StatusQuoDashboard />
-                      </MainLayout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/catalog/tracks"
-                  element={
-                    <ProtectedRoute>
-                      <MainLayout>
-                        <Tracks />
-                      </MainLayout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/catalog/tracks/:id"
-                  element={
-                    <ProtectedRoute>
-                      <MainLayout>
-                        <TrackDetail />
-                      </MainLayout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/office/status-quo"
-                  element={
-                    <ProtectedRoute>
-                      <MainLayout>
-                        <OfficeStatusQuo />
-                      </MainLayout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/royalties"
-                  element={
-                    <ProtectedRoute>
-                      <MainLayout>
-                        <Royalties />
-                      </MainLayout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/office/documents"
-                  element={
-                    <ProtectedRoute>
-                      <MainLayout>
-                        <OfficeDocuments />
-                      </MainLayout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/office/notes"
-                  element={
-                    <ProtectedRoute>
-                      <MainLayout>
-                        <OfficeNotes />
-                      </MainLayout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/office/reports"
-                  element={
-                    <ProtectedRoute>
-                      <MainLayout>
-                        <OfficeReports />
-                      </MainLayout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/office/tasks"
-                  element={
-                    <ProtectedRoute>
-                      <MainLayout>
-                        <OfficeTasks />
-                      </MainLayout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/office/events"
-                  element={
-                    <ProtectedRoute>
-                      <MainLayout>
-                        <OfficeEvents />
-                      </MainLayout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/playlists"
-                  element={
-                    <ProtectedRoute>
-                      <MainLayout>
-                        <Playlists />
-                      </MainLayout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/settings"
-                  element={
-                    <ProtectedRoute>
-                      <MainLayout>
-                        <Settings />
-                      </MainLayout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/analytics"
-                  element={
-                    <ProtectedRoute>
-                      <MainLayout>
-                        <Analytics />
-                      </MainLayout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/admin"
-                  element={
-                    <ProtectedRoute adminOnly={true}>
-                      <MainLayout>
-                        <Admin />
-                      </MainLayout>
-                    </ProtectedRoute>
-                  }
-                />
-                {/* Network Routes */}
-                <Route path="/network" element={<ProtectedRoute><MainLayout><NetworkDashboard /></MainLayout></ProtectedRoute>} />
-                <Route path="/network/contacts" element={<ProtectedRoute><MainLayout><AllContacts /></MainLayout></ProtectedRoute>} />
-                <Route path="/network/organizations" element={<ProtectedRoute><MainLayout><Organizations /></MainLayout></ProtectedRoute>} />
-                <Route path="/network/organizations/:id" element={<ProtectedRoute><MainLayout><OrganizationDetail /></MainLayout></ProtectedRoute>} />
-                <Route path="/network/individuals" element={<ProtectedRoute><MainLayout><Individuals /></MainLayout></ProtectedRoute>} />
-                <Route path="/network/individuals/:id" element={<ProtectedRoute><MainLayout><IndividualDetail /></MainLayout></ProtectedRoute>} />
-                <Route path="/network/platforms" element={<ProtectedRoute><MainLayout><Platforms /></MainLayout></ProtectedRoute>} />
-                <Route path="/network/platforms/:id" element={<ProtectedRoute><MainLayout><PlatformDetail /></MainLayout></ProtectedRoute>} />
-                <Route path="/network/relationships" element={<ProtectedRoute><MainLayout><Relationships /></MainLayout></ProtectedRoute>} />
+                  {/* Administration of Works Routes */}
+                  <Route
+                    path="/admin-of-works/contracts"
+                    element={
+                      <ProtectedRoute>
+                        <MainLayout>
+                          <ContractsList />
+                        </MainLayout>
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin-of-works/contracts/:id"
+                    element={
+                      <ProtectedRoute>
+                        <MainLayout>
+                          <ContractDetailAdmin />
+                        </MainLayout>
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin-of-works/works"
+                    element={
+                      <ProtectedRoute>
+                        <MainLayout>
+                          <WorksAdminList />
+                        </MainLayout>
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin-of-works/works/:work_id"
+                    element={
+                      <ProtectedRoute>
+                        <MainLayout>
+                          <WorksAdminDetail />
+                        </MainLayout>
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin-of-works/status-quo"
+                    element={
+                      <ProtectedRoute>
+                        <MainLayout>
+                          <StatusQuoDashboard />
+                        </MainLayout>
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/catalog/tracks"
+                    element={
+                      <ProtectedRoute>
+                        <MainLayout>
+                          <Tracks />
+                        </MainLayout>
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/catalog/tracks/:id"
+                    element={
+                      <ProtectedRoute>
+                        <MainLayout>
+                          <TrackDetail />
+                        </MainLayout>
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/office/status-quo"
+                    element={
+                      <ProtectedRoute>
+                        <MainLayout>
+                          <OfficeStatusQuo />
+                        </MainLayout>
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/royalties"
+                    element={
+                      <ProtectedRoute>
+                        <MainLayout>
+                          <Royalties />
+                        </MainLayout>
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/office/documents"
+                    element={
+                      <ProtectedRoute>
+                        <MainLayout>
+                          <OfficeDocuments />
+                        </MainLayout>
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/office/notes"
+                    element={
+                      <ProtectedRoute>
+                        <MainLayout>
+                          <OfficeNotes />
+                        </MainLayout>
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/office/reports"
+                    element={
+                      <ProtectedRoute>
+                        <MainLayout>
+                          <OfficeReports />
+                        </MainLayout>
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/office/tasks"
+                    element={
+                      <ProtectedRoute>
+                        <MainLayout>
+                          <OfficeTasks />
+                        </MainLayout>
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/office/events"
+                    element={
+                      <ProtectedRoute>
+                        <MainLayout>
+                          <OfficeEvents />
+                        </MainLayout>
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/playlists"
+                    element={
+                      <ProtectedRoute>
+                        <MainLayout>
+                          <Playlists />
+                        </MainLayout>
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/settings"
+                    element={
+                      <ProtectedRoute>
+                        <MainLayout>
+                          <Settings />
+                        </MainLayout>
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/analytics"
+                    element={
+                      <ProtectedRoute>
+                        <MainLayout>
+                          <Analytics />
+                        </MainLayout>
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin"
+                    element={
+                      <ProtectedRoute adminOnly={true}>
+                        <MainLayout>
+                          <Admin />
+                        </MainLayout>
+                      </ProtectedRoute>
+                    }
+                  />
+                  {/* Network Routes */}
+                  <Route path="/network" element={<ProtectedRoute><MainLayout><NetworkDashboard /></MainLayout></ProtectedRoute>} />
+                  <Route path="/network/contacts" element={<ProtectedRoute><MainLayout><AllContacts /></MainLayout></ProtectedRoute>} />
+                  <Route path="/network/organizations" element={<ProtectedRoute><MainLayout><Organizations /></MainLayout></ProtectedRoute>} />
+                  <Route path="/network/organizations/:id" element={<ProtectedRoute><MainLayout><OrganizationDetail /></MainLayout></ProtectedRoute>} />
+                  <Route path="/network/individuals" element={<ProtectedRoute><MainLayout><Individuals /></MainLayout></ProtectedRoute>} />
+                  <Route path="/network/individuals/:id" element={<ProtectedRoute><MainLayout><IndividualDetail /></MainLayout></ProtectedRoute>} />
+                  <Route path="/network/platforms" element={<ProtectedRoute><MainLayout><Platforms /></MainLayout></ProtectedRoute>} />
+                  <Route path="/network/platforms/:id" element={<ProtectedRoute><MainLayout><PlatformDetail /></MainLayout></ProtectedRoute>} />
+                  <Route path="/network/relationships" element={<ProtectedRoute><MainLayout><Relationships /></MainLayout></ProtectedRoute>} />
 
-                {/* Default redirect */}
-                <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                <Route path="*" element={<Navigate to="/dashboard" replace />} />
-              </Routes>
-            </HashRouter>
-          </ThemeProvider>
+                  {/* Default redirect */}
+                  <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                  <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                </Routes>
+              </HashRouter>
+            </ThemeProvider>
+          </ConfirmationProvider>
         </AuthProvider>
       </QueryClientProvider>
     </ErrorBoundary>

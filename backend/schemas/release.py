@@ -39,5 +39,7 @@ class Release(ReleaseBase):
     id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
+    
+    status_quo: Optional[dict] = None  # Health status (GREEN, RED, AMBER)
 
     model_config = ConfigDict(from_attributes=True)

@@ -12,6 +12,7 @@ import {
     Link as LinkIcon,
     ChevronLeft
 } from 'lucide-react';
+import { confirmAction } from '../../lib/tauri';
 import worksAdminService from '../../services/worksAdminService';
 import EntityForm from '../../components/EntityForm';
 
@@ -94,7 +95,7 @@ const WorksAdminDetail = () => {
     };
 
     const handleDeleteDoc = async (docId) => {
-        if (!window.confirm('Delete this document?')) return;
+        if (!(await confirmAction('Delete this document?', 'Delete Document'))) return;
         try {
             const res = await worksAdminService.deleteDocument(admin.id, docId);
             setAdmin(res.data || res);

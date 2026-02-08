@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Filter, FileText, Download, AlertCircle } from 'lucide-react';
+import { Plus, Search, Filter, FileText, Download, AlertCircle, Trash2 } from 'lucide-react';
+import { confirmAction } from '../../lib/tauri';
 import contractService from '../../services/contractService';
 import { formatCreateError } from '../../utils/contracts';
 import EntityForm from '../../components/EntityForm';
@@ -114,6 +115,18 @@ const ContractsList = () => {
         window.open(contractService.buildDownloadUrl(contract.id, docId), '_blank');
     };
 
+    const handleDelete = async (e, id) => {
+        e.stopPropagation();
+        if (!(await confirmAction('Are you sure you want to delete this contract? This action cannot be undone.', 'Delete Contract'))) return;
+        try {
+            await contractService.delete(id);
+            setContracts(prev => prev.filter(c => c.id !== id));
+        } catch (err) {
+            console.error(err);
+            alert('Failed to delete contract: ' + (err.response?.data?.detail || err.message));
+        }
+    };
+
     return (
         <div className="contracts-shell">
             <header className="contracts-header">
@@ -199,6 +212,9 @@ const ContractsList = () => {
                                         <button className="ghost-btn" onClick={(e) => { e.stopPropagation(); navigate(`/admin-of-works/contracts/${c.id}`); }}>View</button>
                                         <button className="ghost-btn" onClick={(e) => handleDownload(e, c)} disabled={!c.documents?.length}>
                                             <Download size={14} /> PDF
+                                        </button>
+                                        <button className="ghost-btn danger" onClick={(e) => handleDelete(e, c.id)}>
+                                            <Trash2 size={14} />
                                         </button>
                                     </td>
                                 </tr>

@@ -46,6 +46,7 @@ class ArtistUpdate(BaseModel):
 
 class Artist(ArtistBase):
     id: int
+    display_name: Optional[str] = None  # Computed property
     created_at: datetime
     updated_at: Optional[datetime] = None
 

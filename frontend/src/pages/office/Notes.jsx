@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import EntityForm from '../../components/EntityForm';
-import { officeNotesService } from '../../services/officeNotesService';
-import { Search, Plus, Filter, Calendar, LayoutGrid, Tag, Link2, Trash2, Edit3, Eye, X } from 'lucide-react';
+
+import { confirmAction } from '../../lib/tauri';
+import { Plus, Search, Trash, Save, X, Edit3, LayoutGrid, Calendar, Filter, Trash2, Tag, Link2, Eye } from 'lucide-react';
 import PageHeader from '../../components/ui/PageHeader';
+import { officeNotesService } from '../../services/officeNotesService';
 
 const LINKED_TYPES = [
     { label: 'All Entities', value: '' },
@@ -144,7 +146,7 @@ const Notes = () => {
     };
 
     const handleDelete = async (note) => {
-        if (!window.confirm(`Delete note?`)) return;
+        if (!(await confirmAction(`Delete note?`, 'Delete Note'))) return;
         try {
             await officeNotesService.remove(note.id);
             if (isDetailOpen) setIsDetailOpen(false);

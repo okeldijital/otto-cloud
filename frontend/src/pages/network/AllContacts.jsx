@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { NetworkService } from '../../services/network';
-import { Link } from 'react-router-dom';
-import { Users, Building2, Globe, Filter, Search, FileCheck } from 'lucide-react';
+import { confirmAction } from '../../lib/tauri';
+import DataTable from '../../components/DataTable';
+import { Users, Building2, Globe, Filter, Search, FileCheck, Trash2 } from 'lucide-react';
 
 const AllContacts = () => {
     const [contacts, setContacts] = useState([]);
@@ -24,7 +25,7 @@ const AllContacts = () => {
     }, []);
 
     const filteredContacts = contacts.filter(c => {
-        const matchesSearch = (c.name || `${c.first_name} ${c.last_name}`).toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesSearch = (c.name || `${c.first_name} ${c.last_name} `).toLowerCase().includes(searchTerm.toLowerCase());
         const matchesType = activeType === 'All' || c.item_type === activeType;
         return matchesSearch && matchesType;
     });
@@ -35,6 +36,39 @@ const AllContacts = () => {
             case 'Organization': return <Building2 size={16} />;
             case 'Platform': return <Globe size={16} />;
             default: return null;
+        }
+    };
+
+    const handleDelete = async (e, contact) => {
+        e.preventDefault();
+        e.stopPropagation(); // Prevent navigation
+        if (await confirmAction(`Are you sure you want to delete ${contact.name || contact.first_name}? This cannot be undone.`, 'Delete Contact')) {
+            try {
+                // The original code had specific delete functions for each type.
+                // The instruction's snippet suggests a generic NetworkService.delete.
+                // I will adapt to the generic one as per the instruction,
+                // but keep the item_type check for robustness if NetworkService.delete
+                // expects a specific type string.
+                let deleteSuccess = false;
+                if (contact.item_type === 'Organization') {
+                    await NetworkService.deleteOrganization(contact.id);
+                    deleteSuccess = true;
+                } else if (contact.item_type === 'Individual') {
+                    await NetworkService.deleteIndividual(contact.id);
+                    deleteSuccess = true;
+                } else if (contact.item_type === 'Platform') {
+                    await NetworkService.deletePlatform(contact.id);
+                    deleteSuccess = true;
+                }
+
+                if (deleteSuccess) {
+                    // Re-fetch all contacts to update the list
+                    fetchAll();
+                }
+            } catch (error) {
+                console.error('Failed to delete contact:', error);
+                alert('Failed to delete contact: ' + (error.response?.data?.detail || error.message));
+            }
         }
     };
 
@@ -81,6 +115,7 @@ const AllContacts = () => {
                             <th className="p-4 font-semibold">Role / Category</th>
                             <th className="p-4 font-semibold">Status</th>
                             <th className="p-4 font-semibold">Governance</th>
+                            <th className="p-4 font-semibold text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -88,10 +123,10 @@ const AllContacts = () => {
                             <tr key={index} className="border-b border-border hover:bg-white hover:bg-opacity-5 transition-colors">
                                 <td className="p-4 font-medium">
                                     <Link
-                                        to={`/network/${contact.item_type.toLowerCase()}s/${contact.id}`}
+                                        to={`/ network / ${contact.item_type.toLowerCase()} s / ${contact.id} `}
                                         className="hover:text-primary-color transition-colors"
                                     >
-                                        {contact.item_type === 'Individual' ? `${contact.first_name} ${contact.last_name}` : contact.name}
+                                        {contact.item_type === 'Individual' ? `${contact.first_name} ${contact.last_name} ` : contact.name}
                                     </Link>
                                 </td>
                                 <td className="p-4">
@@ -114,12 +149,21 @@ const AllContacts = () => {
                                         Fully compliant
                                     </span>
                                 </td>
+                                <td className="p-4 text-right">
+                                    <button
+                                        onClick={(e) => handleDelete(e, contact)}
+                                        className="p-2 text-gray-500 hover:text-red-500 hover:bg-white hover:bg-opacity-10 rounded transition-colors"
+                                        title="Delete contact"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                </td>
                             </tr>
                         ))}
                     </tbody>
                 </table>
             </div>
-        </div>
+        </div >
     );
 };
 

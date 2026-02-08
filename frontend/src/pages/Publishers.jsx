@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { CatalogService } from '../services/catalog';
+import { BASE_URL } from '../lib/api';
+import { confirmAction } from '../lib/tauri';
 import DataTable from '../components/DataTable';
 import EntityForm from '../components/EntityForm';
 import { ChevronLeft } from 'lucide-react';
@@ -63,7 +65,7 @@ const Publishers = () => {
     };
 
     const handleDelete = async (publisher) => {
-        if (window.confirm(`Are you sure you want to delete "${publisher.name}"?`)) {
+        if (await confirmAction(`Are you sure you want to delete "${publisher.name}"?`, 'Delete Publisher')) {
             try {
                 await CatalogService.delete('publishers', publisher.id);
                 fetchPublishers();

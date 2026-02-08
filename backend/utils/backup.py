@@ -17,19 +17,24 @@ def create_backup():
     
     # Backup Database (assuming SQLite for now)
     if "sqlite" in settings.DATABASE_URL:
-        db_file = settings.DATABASE_URL.replace("sqlite:///./", "./")
+        # Extract database file path from URL
+        db_file = settings.DATABASE_URL.replace("sqlite:///", "")
         if os.path.exists(db_file):
             shutil.copy2(db_file, os.path.join(backup_path, "otto.db"))
+        else:
+            print(f"Warning: Database file not found at {db_file}")
             
     # Backup Uploads
     if os.path.exists(settings.UPLOAD_DIR):
         shutil.copytree(settings.UPLOAD_DIR, os.path.join(backup_path, "uploads"), dirs_exist_ok=True)
+    else:
+        print(f"Warning: Upload directory not found at {settings.UPLOAD_DIR}")
         
     # Compress the backup
     shutil.make_archive(backup_path, 'zip', backup_path)
     shutil.rmtree(backup_path) # Remove the uncompressed folder
     
-    return f"{backup_path}.zip"
+    return f"otto_backup_{timestamp}.zip"
 
 def list_backups():
     """List all available backups"""
@@ -65,8 +70,10 @@ def restore_backup(filename):
     # Restore DB
     remote_db = os.path.join(temp_dir, "otto.db")
     if os.path.exists(remote_db):
-        db_file = settings.DATABASE_URL.replace("sqlite:///./", "./")
+        db_file = settings.DATABASE_URL.replace("sqlite:///", "")
         shutil.copy2(remote_db, db_file)
+    else:
+        print(f"Warning: No database file found in backup")
         
     # Restore Uploads
     remote_uploads = os.path.join(temp_dir, "uploads")

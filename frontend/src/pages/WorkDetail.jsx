@@ -3,7 +3,8 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { CatalogService } from '../services/catalog';
 import { ReportsService } from '../services/reports';
 import { BASE_URL } from '../lib/api';
-import { Music, User, Calendar, Tag, FileAudio, ChevronRight, Play, ChevronLeft, Landmark, Hash, Info } from 'lucide-react';
+import { confirmAction } from '../lib/tauri';
+import { Music, User, Calendar, Tag, FileAudio, ChevronRight, Play, ChevronLeft, Landmark, Hash, Info, Trash2 } from 'lucide-react';
 
 const WorkDetail = () => {
     const { id } = useParams();
@@ -90,7 +91,27 @@ const WorkDetail = () => {
                         <span className="meta-tag" style={{ background: '#ecfdf5', color: '#059669', padding: '4px 12px', borderRadius: '16px', fontSize: '0.75rem', fontWeight: 600 }}>MUSICAL WORK</span>
                         {work.iswc_code && <span className="meta-tag" style={{ background: '#f1f5f9', color: '#475569', padding: '4px 12px', borderRadius: '16px', fontSize: '0.75rem', fontWeight: 600 }}>{work.iswc_code}</span>}
                     </div>
-                    <h1 style={{ fontSize: '2.5rem', fontWeight: 800, margin: '0 0 0.5rem 0', color: 'var(--text-color)' }}>{work.title}</h1>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '0.5rem' }}>
+                        <h1 style={{ fontSize: '2.5rem', fontWeight: 800, margin: 0, color: 'var(--text-color)' }}>{work.title}</h1>
+                        <button
+                            className="btn-secondary btn-icon"
+                            style={{ color: '#ef4444', borderColor: '#fee2e2', background: '#fef2f2' }}
+                            onClick={async () => {
+                                if (await confirmAction(`Are you sure you want to delete musical work "${work.title}"?`, 'Delete Work')) {
+                                    try {
+                                        await CatalogService.delete('works', work.id);
+                                        navigate('/catalog/works');
+                                    } catch (err) {
+                                        console.error(err);
+                                        alert('Failed to delete: ' + (err.response?.data?.detail || err.message));
+                                    }
+                                }
+                            }}
+                            title="Delete Work"
+                        >
+                            <Trash2 size={24} />
+                        </button>
+                    </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', color: 'var(--text-muted)', fontSize: '1.1rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <User size={18} />

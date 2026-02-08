@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { BASE_URL } from '../lib/api';
+import { confirmAction } from '../lib/tauri';
 import { CatalogService } from '../services/catalog';
 import DataTable from '../components/DataTable';
 import EntityForm from '../components/EntityForm';
@@ -68,7 +70,7 @@ const Labels = () => {
     };
 
     const handleDelete = async (label) => {
-        if (window.confirm(`Are you sure you want to delete "${label.name}"?`)) {
+        if (await confirmAction(`Are you sure you want to delete "${label.name}"?`, 'Delete Label')) {
             try {
                 await CatalogService.delete('labels', label.id);
                 fetchLabels();

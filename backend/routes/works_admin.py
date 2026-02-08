@@ -61,15 +61,38 @@ def list_all_works_admin(
     org_id: UUID = Depends(get_current_organization_id),
     current_user=Depends(get_current_user),
 ):
+    # 1. Fetch all works for organization (if works are scoped) or just all works
+    # Note: Assuming Works are scoped or we filter them. If Works table has org_id, filter by it.
+    all_works = db.query(Work).filter(Work.organization_id == org_id).all()
+    
+    # 2. Fetch existing admin records
     admins = works_admin_repository.get_all_for_org(db, org_id)
-    # Also ensure all works in catalog have an admin record
-    all_works = db.query(Work).all() # Should ideally filter by org_id if works are scoped
-    # For now, we only show already existing admin records
+    admin_map = {a.work_id: a for a in admins}
     
     results = []
-    for admin in admins:
-        results.append(inject_work_status(admin, db, org_id))
     
+    # 3. Merge: Ensure every work has an admin record
+    for work in all_works:
+        existing_admin = admin_map.get(work.id)
+        
+        if existing_admin:
+            # Use existing record
+            results.append(inject_work_status(existing_admin, db, org_id))
+        else:
+            # Create "virtual" admin record for UI
+            virtual_admin = WorksAdmin(
+                work_id=work.id,
+                registration_status="Unknown",
+                organization_id=org_id,
+                # ID is None to indicate not persisted
+            )
+            # Inject work relationship manually for status computation
+            virtual_admin.work = work
+            virtual_admin.documents = []
+            
+            # Compute status for this virtual record
+            results.append(inject_work_status(virtual_admin, db, org_id))
+            
     audit_service.log(db, "VIEW_LIST", "WorksAdmin", 0, current_user.id, organization_id=org_id)
     return results
 

@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Search, Filter, FileText, Download, Eye, Trash2 } from 'lucide-react';
+import { confirmAction } from '../../lib/tauri';
 import EntityForm from '../../components/EntityForm';
 import { officeDocumentsService } from '../../services/officeDocumentsService';
 import PageHeader from '../../components/ui/PageHeader';
+import { isTauriEnv, downloadFile } from '../../lib/tauri';
 
 const DOC_TYPES = [
     { label: 'Contract', value: 'contract' },
@@ -116,7 +118,7 @@ const OfficeDocuments = () => {
     };
 
     const handleDelete = async (doc) => {
-        if (!window.confirm(`Delete "${doc.title || doc.file_name}"?`)) {
+        if (!(await confirmAction(`Delete "${doc.title || doc.file_name}" ? `, 'Delete Document'))) {
             return;
         }
         try {
@@ -247,6 +249,21 @@ const OfficeDocuments = () => {
         return `${bytes} B`;
     };
 
+    const handleDownload = async (e, doc) => {
+        e.preventDefault();
+        const url = officeDocumentsService.downloadUrl(doc.id);
+        if (isTauriEnv()) {
+            try {
+                await downloadFile(url, doc.original_filename || doc.title || 'document');
+            } catch (error) {
+                console.error('Download failed', error);
+                alert('Download failed: ' + (error.message || 'Unknown error'));
+            }
+        } else {
+            window.open(url, '_blank');
+        }
+    };
+
     return (
         <div className="page-container p-8">
             <PageHeader
@@ -334,14 +351,14 @@ const OfficeDocuments = () => {
                                     <td>
                                         {doc.links?.length
                                             ? doc.links.map((link, idx) => (
-                                                <React.Fragment key={`${link.entity_type}-${link.entity_id}`}>
+                                                <React.Fragment key={`${link.entity_type} -${link.entity_id} `}>
                                                     <Link
                                                         to={
-                                                            link.entity_type === 'artist' ? `/catalog/artists/${link.entity_id}` :
-                                                                link.entity_type === 'release' ? `/catalog/releases/${link.entity_id}` :
-                                                                    link.entity_type === 'track' ? `/catalog/tracks/${link.entity_id}` :
-                                                                        link.entity_type === 'work' ? `/catalog/works/${link.entity_id}` :
-                                                                            link.entity_type === 'contract' ? `/admin-of-works/contracts/${link.entity_id}` :
+                                                            link.entity_type === 'artist' ? `/ catalog / artists / ${link.entity_id} ` :
+                                                                link.entity_type === 'release' ? `/ catalog / releases / ${link.entity_id} ` :
+                                                                    link.entity_type === 'track' ? `/ catalog / tracks / ${link.entity_id} ` :
+                                                                        link.entity_type === 'work' ? `/ catalog / works / ${link.entity_id} ` :
+                                                                            link.entity_type === 'contract' ? `/ admin - of - works / contracts / ${link.entity_id} ` :
                                                                                 '#'
                                                         }
                                                         className="text-primary hover:underline"
@@ -359,9 +376,9 @@ const OfficeDocuments = () => {
                                         <button className="btn-icon" onClick={() => openDetail(doc)} title="View Detail">
                                             <Eye size={18} />
                                         </button>
-                                        <a className="btn-icon" href={officeDocumentsService.downloadUrl(doc.id)} target="_blank" rel="noreferrer" title="Download">
+                                        <button className="btn-icon" onClick={(e) => handleDownload(e, doc)} title="Download">
                                             <Download size={18} />
-                                        </a>
+                                        </button>
                                         <button className="btn-icon delete" onClick={() => handleDelete(doc)} title="Delete Document">
                                             <Trash2 size={18} />
                                         </button>
@@ -453,7 +470,7 @@ const OfficeDocuments = () => {
                                 <div className="text-gray-500">Linked To</div>
                                 <div>
                                     {selectedDoc.links?.length
-                                        ? selectedDoc.links.map((link) => `${link.entity_type}:${link.entity_id}`).join(', ')
+                                        ? selectedDoc.links.map((link) => `${link.entity_type}:${link.entity_id} `).join(', ')
                                         : 'None'}
                                 </div>
                             </div>
@@ -475,7 +492,7 @@ const OfficeDocuments = () => {
                                 {selectedDoc.links?.length ? (
                                     selectedDoc.links.map((link) => (
                                         <button
-                                            key={`${link.entity_type}-${link.entity_id}`}
+                                            key={`${link.entity_type} -${link.entity_id} `}
                                             className="px-2 py-1 text-xs rounded-full border border-border text-gray-300 hover:text-white"
                                             onClick={() => handleUnlink(link)}
                                         >
@@ -507,9 +524,9 @@ const OfficeDocuments = () => {
                         </div>
 
                         <div className="mt-6 flex gap-3 justify-end">
-                            <a className="btn-secondary" href={officeDocumentsService.downloadUrl(selectedDoc.id)}>
+                            <button className="btn-secondary" onClick={(e) => handleDownload(e, selectedDoc)}>
                                 Download
-                            </a>
+                            </button>
                             <button className="btn-secondary" onClick={() => openEdit(selectedDoc)}>Edit</button>
                             <button className="btn-primary" onClick={() => setIsDetailOpen(false)}>Close</button>
                         </div>

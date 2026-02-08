@@ -51,9 +51,9 @@ class WorksAdminUpdate(BaseModel):
 
 
 class WorksAdminResponse(WorksAdminBase):
-    id: UUID
+    id: Optional[UUID] = None
     work_id: int
-    organization_id: UUID
+    organization_id: Optional[UUID] = None
     created_by: Optional[int] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None

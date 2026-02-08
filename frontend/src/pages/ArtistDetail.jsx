@@ -4,7 +4,8 @@ import { CatalogService } from '../services/catalog';
 import { DocumentsService } from '../services/operations';
 import { ReportsService } from '../services/reports';
 import { BASE_URL } from '../lib/api';
-import { User, Disc, FileText, Music, Link as LinkIcon, Instagram, Twitter, DollarSign, Edit, Camera, ChevronLeft } from 'lucide-react';
+import { confirmAction } from '../lib/tauri';
+import { User, Disc, FileText, Music, Link as LinkIcon, Instagram, Twitter, DollarSign, Edit, Camera, ChevronLeft, Trash2 } from 'lucide-react';
 import EntityForm from '../components/EntityForm';
 
 const API_URL = BASE_URL;
@@ -209,9 +210,24 @@ const ArtistDetail = () => {
                 <div className="artist-info-main">
                     <div className="artist-header-top">
                         <h1 className="artist-name">{artist.name}</h1>
-                        <button className="btn-secondary btn-sm" onClick={handleEditClick}>
-                            <Edit size={16} /> Edit Profile
-                        </button>
+                        <div className="flex gap-2">
+                            <button className="btn-secondary btn-sm text-red-600 hover:bg-red-50 hover:border-red-200" onClick={async () => {
+                                if (await confirmAction(`Are you sure you want to delete ${artist.name}?`, 'Delete Artist')) {
+                                    try {
+                                        await CatalogService.delete('artists', artist.id);
+                                        navigate('/catalog/artists');
+                                    } catch (err) {
+                                        console.error(err);
+                                        alert('Failed to delete: ' + (err.response?.data?.detail || err.message));
+                                    }
+                                }
+                            }}>
+                                <Trash2 size={16} />
+                            </button>
+                            <button className="btn-secondary btn-sm" onClick={handleEditClick}>
+                                <Edit size={16} /> Edit Profile
+                            </button>
+                        </div>
                     </div>
                     {artist.aka && <p className="artist-aka">aka {artist.aka}</p>}
 

@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { officeReportsService } from '../../services/officeReportsService';
 import api, { BASE_URL } from '../../lib/api';
+import { isTauriEnv, downloadFile } from '../../lib/tauri';
 import PageHeader from '../../components/ui/PageHeader';
 
 const REPORT_ICONS = {
@@ -67,6 +68,16 @@ const Reports = () => {
     };
 
     const handleDownload = async (run) => {
+        if (isTauriEnv()) {
+            try {
+                await downloadFile(`/office/reports/runs/${run.id}/export`, `report_${run.id}.xlsx`);
+            } catch (error) {
+                console.error('Download failed', error);
+                alert('Download failed');
+            }
+            return;
+        }
+
         try {
             const response = await api.get(`/office/reports/runs/${run.id}/export`, {
                 responseType: 'blob',

@@ -18,6 +18,7 @@ from models.document import Document
 from models.note import Note
 from models.playlist import Playlist
 from dependencies import get_current_active_user
+from models.network import Organization, Individual, Platform
 
 router = APIRouter()
 
@@ -137,5 +138,19 @@ def global_search(
         )
     ).limit(5).all()
     results["playlists"] = [{"id": p.id, "title": p.title, "type": "playlist"} for p in playlists]
+    
+    # Search Network (Organizations including Distributors)
+    from models.network import Organization, Individual, Platform # Import here or top level if preferred
+    
+    orgs = db.query(Organization).filter(Organization.name.ilike(search_term)).limit(5).all()
+    individuals = db.query(Individual).filter(Individual.first_name.ilike(search_term) | Individual.last_name.ilike(search_term)).limit(5).all()
+    platforms = db.query(Platform).filter(Platform.name.ilike(search_term)).limit(5).all()
+
+    network_results = []
+    network_results.extend([{"id": o.id, "name": o.name, "type": "organization", "entity_type": "Network"} for o in orgs])
+    network_results.extend([{"id": i.id, "name": i.full_name, "type": "individual", "entity_type": "Network"} for i in individuals])
+    network_results.extend([{"id": p.id, "name": p.name, "type": "platform", "entity_type": "Network"} for p in platforms])
+    
+    results["network"] = network_results
     
     return results

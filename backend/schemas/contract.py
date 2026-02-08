@@ -39,6 +39,8 @@ class ContractUpdate(BaseModel):
     advances_amount: Optional[float] = None
     advances_currency: Optional[str] = None
     recoupment_notes: Optional[str] = None
+    status_quo_override: Optional[str] = None
+    contract_number: Optional[str] = None
 
 
 class ContractPartyBase(BaseModel):
@@ -152,5 +154,6 @@ class ContractResponse(ContractBase):
     documents: List[ContractDocumentResponse] = []
     split_groups: List[ContractSplitGroupResponse] = []
     status_quo: Optional[StatusQuoResponse] = None
+    status_quo_override: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)

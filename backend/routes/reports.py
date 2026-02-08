@@ -420,4 +420,63 @@ def export_events(
     filename = f"events_export_{datetime.now().strftime('%Y%m%d')}"
     if format.lower() == "csv":
         return generate_csv_response(filename, headers, data)
-    return generate_excel_response(filename, "Events", headers, data)
+@router.get("/export/{entity}/{entity_id}")
+def export_single_entity(
+    entity: str,
+    entity_id: int,
+    format: str = "xlsx",
+    db: Session = Depends(get_db),
+    org_id: UUID = Depends(get_current_organization_id),
+    current_user: User = Depends(_require_office_user)
+):
+    """
+    Export single entity metadata (Release, Work, etc.)
+    """
+    filename = f"{entity}_{entity_id}_export_{datetime.now().strftime('%Y%m%d')}"
+    headers = []
+    data = []
+
+    if entity == "release":
+        release = db.query(Release).filter(Release.id == entity_id, Release.organization_id == org_id).first()
+        if not release:
+            raise HTTPException(status_code=404, detail="Release not found")
+        
+        headers = ["Field", "Value"]
+        data = [
+            ["ID", release.id],
+            ["Title", release.title],
+            ["Catalog Number", release.catalog_number],
+            ["UPC", release.upc_code],
+            ["Release Date", str(release.release_date)],
+            ["Type", release.release_type],
+            ["Label ID", release.label_id],
+            ["Distributor ID", release.distributor_id],
+            ["Artist IDs", str(release.artist_ids)],
+            ["Created At", str(release.created_at)],
+            ["Updated At", str(release.updated_at)],
+        ]
+        
+        # Add Tracks?
+        # Maybe separate sheet or section? For now, flat list of metadata.
+        
+    elif entity == "work":
+        work = db.query(Work).filter(Work.id == entity_id, Work.organization_id == org_id).first()
+        if not work:
+            raise HTTPException(status_code=404, detail="Work not found")
+            
+        headers = ["Field", "Value"]
+        data = [
+            ["ID", work.id],
+            ["Title", work.title],
+            ["ISWC", work.iswc_code],
+            ["Work ID", work.work_id],
+            ["Writers", str(work.writers)],
+            ["Created At", str(work.created_at)]
+        ]
+        
+    else:
+        raise HTTPException(status_code=400, detail=f"Entity type '{entity}' not supported for single export")
+
+    if format.lower() == "csv":
+        return generate_csv_response(filename, headers, data)
+    return generate_excel_response(filename, f"{entity.capitalize()}Details", headers, data)

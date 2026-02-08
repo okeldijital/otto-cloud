@@ -56,6 +56,8 @@ class Settings(BaseSettings):
         else:
             self.APP_ENV = env_from_os if env_from_os else "development"
             self.DEBUG = True
+            # DEV MODE: Disable auth for development
+            self.AUTH_DISABLED = True  # Set to False to re-enable auth
 
         # Resolve Data Directory
         if self.APP_ENV == "desktop":
@@ -75,7 +77,9 @@ class Settings(BaseSettings):
         db_dir.mkdir(exist_ok=True)
         storage_dir.mkdir(exist_ok=True)
         
-        if not self.DATABASE_URL:
+        if self.APP_ENV == "desktop":
+            self.DATABASE_URL = f"sqlite:///{db_dir}/app.db"
+        elif not self.DATABASE_URL:
             self.DATABASE_URL = f"sqlite:///{db_dir}/app.db"
             
         self.UPLOAD_DIR = str(storage_dir)

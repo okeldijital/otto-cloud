@@ -90,7 +90,7 @@ const WorksAdminList = () => {
                         </thead>
                         <tbody>
                             {filtered.map(a => (
-                                <tr key={a.id} onClick={() => navigate(`/admin-of-works/works/${a.work_id}`)}>
+                                <tr key={a.work_id} onClick={() => navigate(`/admin-of-works/works/${a.work_id}`)}>
                                     <td className="mono small">#{a.work_id}</td>
                                     <td className="strong">{a.work?.title || 'Unknown Work'}</td>
                                     <td>

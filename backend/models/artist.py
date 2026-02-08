@@ -39,5 +39,10 @@ class Artist(Base):
     royalties = relationship("Royalty", back_populates="artist")
     releases = relationship("Release", back_populates="artist")
     
+    @property
+    def display_name(self):
+        """Returns AKA (Stage Name) if set, otherwise real name"""
+        return self.aka if self.aka else self.name
+
     def __repr__(self):
-        return f"<Artist {self.name}>"
+        return f"<Artist {self.display_name}>"

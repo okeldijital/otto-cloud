@@ -130,6 +130,7 @@ async def create_contract(
     territory: str = Form(None),
     exclusivity: bool = Form(False),
     notes: str = Form(None),
+    release_id: int = Form(None),
     file: UploadFile = File(None),
     db: Session = Depends(get_db),
     org_id: UUID = Depends(get_current_organization_id),
@@ -172,6 +173,35 @@ async def create_contract(
         # Two-step creation allowed; remains Draft until document attached
         if status_value == "Active":
             raise HTTPException(status_code=400, detail="A PDF document is required before activating a contract.")
+
+    # Auto-link Release if release_id provided (Requirement: Contract First linked to Release)
+    if release_id:
+        try:
+            rel = db.query(Release).filter(Release.id == release_id).first()
+            if rel:
+                # 1. Link Release as Asset
+                contract_repository.add_asset(db, contract.id, org_id, {
+                    "asset_type": "Release",
+                    "asset_id": rel.id,
+                    "scope_type": "INCLUSION",
+                    "notes": f"Primary Release: {rel.title}"
+                })
+                
+                # 2. Link Artist as Party
+                # Release has primary artist via artist_id or artist_ids (generic relation handling ideally needed, but assume single for now or first)
+                # Release model has 'artist_id' (single) usually, let's check model if unsure, but standard Otto has artist_id.
+                primary_artist_id = getattr(rel, 'artist_id', None)
+                if primary_artist_id:
+                     contract_repository.add_party(db, contract.id, org_id, {
+                        "entity_type": "Artist",
+                        "entity_id": primary_artist_id,
+                        "role": "Artist",
+                        "split_percent": None,
+                        "notes": "Auto-linked from Release"
+                     })
+        except Exception as e:
+            print(f"Error auto-linking release {release_id}: {e}")
+            # Non-blocking, contract created anyway
 
     audit_service.log(db, "CREATE", "Contract", contract.id, current_user.id, changes=payload, organization_id=org_id)
     if file:

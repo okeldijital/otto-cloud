@@ -8,6 +8,7 @@ const OrganizationDetail = () => {
     const [org, setOrg] = useState(null);
     const [relationships, setRelationships] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
     useEffect(() => {
         const fetchOrgData = async () => {
@@ -59,7 +60,7 @@ const OrganizationDetail = () => {
                     </div>
                 </div>
                 <div className="flex gap-3">
-                    <button className="px-4 py-2 bg-secondary-bg border border-border rounded-lg text-sm font-medium hover:bg-opacity-80">Edit Profile</button>
+                    <button onClick={() => setIsEditModalOpen(true)} className="px-4 py-2 bg-secondary-bg border border-border rounded-lg text-sm font-medium hover:bg-opacity-80">Edit Profile</button>
                     <button className="px-4 py-2 bg-primary-color rounded-lg text-sm font-medium hover:bg-opacity-90">Manage Contracts</button>
                 </div>
             </header>
@@ -136,6 +137,27 @@ const OrganizationDetail = () => {
                         </div>
                     </section>
                 </div>
+
+                {/* Edit Organization Modal */}
+                {isEditModalOpen && org && (
+                    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+                        <div className="bg-secondary-bg border border-border rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
+                            <div className="p-6 border-b border-border flex justify-between items-center">
+                                <h2 className="text-xl font-bold">Edit Organization</h2>
+                                <button onClick={() => setIsEditModalOpen(false)} className="text-gray-400 hover:text-white">×</button>
+                            </div>
+                            <div className="p-6">
+                                <p className="text-gray-400 mb-4">Editing functionality coming soon.</p>
+                                <button
+                                    onClick={() => setIsEditModalOpen(false)}
+                                    className="w-full px-4 py-2 bg-primary-color rounded-lg font-medium hover:bg-opacity-90 transition-all"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

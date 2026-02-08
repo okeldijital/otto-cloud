@@ -11,11 +11,15 @@
     "preview": "vite preview",
     "desktop:dev": "tauri dev",
     "desktop:build": "tauri build",
+    "desktop:build:fixed": "tauri build && bash scripts/post-build.sh",
     "desktop:build:mac": "tauri build --target aarch64-apple-darwin",
     "tauri": "tauri"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.90.20",
+    "@tauri-apps/api": "^2.10.1",
+    "@tauri-apps/plugin-dialog": "^2.6.0",
+    "@tauri-apps/plugin-fs": "^2.4.5",
     "axios": "^1.13.4",
     "lodash": "^4.17.23",
     "lucide-react": "^0.563.0",

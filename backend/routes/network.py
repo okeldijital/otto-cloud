@@ -98,6 +98,19 @@ def get_organization(
         raise HTTPException(status_code=404, detail="Organization not found")
     return org
 
+@router.delete("/organizations/{org_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_organization(
+    org_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    org = db.query(OrganizationModel).filter(OrganizationModel.id == org_id).first()
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    db.delete(org)
+    db.commit()
+    return None
+
 # ==================== Individuals ====================
 
 @router.get("/individuals", response_model=List[Individual])
@@ -132,6 +145,19 @@ def get_individual(
         raise HTTPException(status_code=404, detail="Individual not found")
     return ind
 
+@router.delete("/individuals/{individual_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_individual(
+    individual_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    ind = db.query(IndividualModel).filter(IndividualModel.id == individual_id).first()
+    if not ind:
+        raise HTTPException(status_code=404, detail="Individual not found")
+    db.delete(ind)
+    db.commit()
+    return None
+
 # ==================== Platforms ====================
 
 @router.get("/platforms", response_model=List[Platform])
@@ -163,6 +189,19 @@ def get_platform(
     if not platform:
         raise HTTPException(status_code=404, detail="Platform not found")
     return platform
+
+@router.delete("/platforms/{platform_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_platform(
+    platform_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    platform = db.query(PlatformModel).filter(PlatformModel.id == platform_id).first()
+    if not platform:
+        raise HTTPException(status_code=404, detail="Platform not found")
+    db.delete(platform)
+    db.commit()
+    return None
 
 # ==================== Relationships ====================
 

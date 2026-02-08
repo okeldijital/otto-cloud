@@ -23,6 +23,9 @@ from dependencies import get_current_active_user
 router = APIRouter()
 
 
+from models.contract import ContractAsset, ContractParty
+from services.status_quo import compute_release_status
+
 # ==================== ARTISTS ====================
 
 @router.get("/artists", response_model=List[Artist])
@@ -104,7 +107,7 @@ def delete_artist(
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Cannot delete artist because they are linked to releases, tracks, or contracts."
+            detail="Cannot delete artist because they are linked to releases, tracks, or contracts. Please remove these links first."
         )
     return None
 
@@ -171,6 +174,43 @@ def list_releases(
 ):
     """List all releases"""
     releases = db.query(ReleaseModel).offset(skip).limit(limit).all()
+    
+    # Enrich with status_quo
+    # Optimization: Fetch basic boolean checks. 
+    # For now, simplistic loop to ensure correctness.
+    for r in releases:
+        tracks = db.query(TrackModel).filter(TrackModel.release_id == r.id).all()
+        # Check Contract Link (Asset)
+        has_contract = db.query(ContractAsset).filter(
+            ContractAsset.asset_type == 'Release',
+            ContractAsset.asset_id == r.id
+        ).first() is not None
+        
+        # Check Artist Link (Party)
+        # Note: r.artist_id is primary. r.artist_ids might be multiple. 
+        # Requirement: "Release Artist not linked to any Contract"
+        # We check if THE primary artist is in any contract? Or if ANY contract linked to THIS release has THIS artist?
+        # User phrasing: "Artist not linked to Contract" usually means "Artist attached to this Release has a contractcovering them".
+        # Let's interpret as: Is the Release's Primary Artist a Party on ANY Contract?
+        # Or more strictly: Is the Release's Primary Artist a Party on a Contract that also covers this Release?
+        # Given "Release not linked to any Contract" is separate rule, let's assume this means "Does the Artist have a contract generally?" or "Is the Artist party to the same contract?"
+        # Let's go with: Is the Artist a Party on the contract that covers the Release?
+        # If no contract covers the release, then both fail.
+        # If contract covers release, usually Artist is party.
+        # Let's separate it simpler: Is the Artist linked to ANY contract? (General artist health)
+        # OR: Is the Artist linked to a contract that THIS RELEASE is linked to?
+        # Let's check if the Artist is a Party in ANY Contract for now (Simpler "Artist has contract" check).
+        # Actually, best interpretation of "Release Artist not linked to any Contract" in context of Release Status:
+        # "The Artist of this Release does not have a Contract".
+        has_artist_contract = False
+        if r.artist_id:
+             has_artist_contract = db.query(ContractParty).filter(
+                 ContractParty.entity_type == 'Artist',
+                 ContractParty.entity_id == r.artist_id
+             ).first() is not None
+
+        r.status_quo = compute_release_status(r, tracks, has_contract, has_artist_contract)
+
     return releases
 
 
@@ -206,6 +246,23 @@ def get_release(
     release = db.query(ReleaseModel).filter(ReleaseModel.id == release_id).first()
     if not release:
         raise HTTPException(status_code=404, detail="Release not found")
+    
+    # Enrich status
+    tracks = db.query(TrackModel).filter(TrackModel.release_id == release.id).all()
+    has_contract = db.query(ContractAsset).filter(
+        ContractAsset.asset_type == 'Release', 
+        ContractAsset.asset_id == release.id
+    ).first() is not None
+    
+    has_artist_contract = False
+    if release.artist_id:
+        has_artist_contract = db.query(ContractParty).filter(
+            ContractParty.entity_type == 'Artist',
+            ContractParty.entity_id == release.artist_id
+        ).first() is not None
+
+    release.status_quo = compute_release_status(release, tracks, has_contract, has_artist_contract)
+    
     return release
 
 
@@ -260,15 +317,21 @@ def delete_release(
     db_release = db.query(ReleaseModel).filter(ReleaseModel.id == release_id).first()
     if not db_release:
         raise HTTPException(status_code=404, detail="Release not found")
+    
     from sqlalchemy.exc import IntegrityError
     try:
+        # Unlink tracks first
+        db.query(TrackModel).filter(TrackModel.release_id == release_id).update({"release_id": None}, synchronize_session=False)
+        db.commit()
+
+        # Now delete release
         db.delete(db_release)
         db.commit()
     except IntegrityError:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Cannot delete release because it is linked to other records (e.g. tracks, contracts)."
+            detail="Cannot delete release because it is linked to contracts or other strict dependencies."
         )
     except Exception as e:
         db.rollback()
@@ -449,7 +512,7 @@ def delete_work(
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Cannot delete work because it is linked to other records."
+            detail="Cannot delete work because it is linked to tracks, contracts, or releases. Please remove these links first."
         )
     return None
 

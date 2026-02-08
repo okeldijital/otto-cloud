@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { RoyaltiesService } from '../services/royalties';
+import { BASE_URL } from '../lib/api';
+import { confirmAction } from '../lib/tauri';
 import DataTable from '../components/DataTable';
 import EntityForm from '../components/EntityForm';
 
@@ -52,7 +54,7 @@ const Royalties = () => {
     };
 
     const handleDelete = async (royalty) => {
-        if (window.confirm(`Are you sure you want to delete royalty from "${royalty.source}"?`)) {
+        if (await confirmAction(`Are you sure you want to delete royalty from "${royalty.source}"?`, 'Delete Royalty')) {
             try {
                 await RoyaltiesService.delete(royalty.id);
                 fetchRoyalties();
