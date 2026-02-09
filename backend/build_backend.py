@@ -1,0 +1,123 @@
+#!/usr/bin/env python3
+"""
+PyInstaller spec generator for Otto backend.
+Creates a standalone binary that can be bundled with Electron.
+"""
+
+import os
+import sys
+from pathlib import Path
+
+# Get the backend directory
+backend_dir = Path(__file__).parent
+
+# Create the spec content
+spec_content = '''# -*- mode: python ; coding: utf-8 -*-
+a = Analysis(
+    ['main.py'],
+    pathex=[],
+    binaries=[],
+    datas=[
+        ('alembic', 'alembic'),
+        ('alembic.ini', '.'),
+    ],
+    hiddenimports=[
+        'uvicorn.lifespan.on',
+        'uvicorn.protocols.websocket',
+        'uvicorn.protocols.websocket_auto',
+        'uvicorn.protocols.http.auto',
+        'fastapi',
+        'sqlalchemy',
+        'pydantic',
+        'alembic',
+        'alembic.migration',
+        'alembic.operations',
+        'routes',
+        'routes.auth',
+        'routes.catalog',
+        'routes.royalties',
+        'routes.documents',
+        'routes.notes',
+        'routes.events',
+        'routes.playlists',
+        'routes.analytics',
+        'routes.reports',
+        'routes.tasks',
+        'routes.users',
+        'routes.admin',
+        'routes.search',
+        'routes.contracts',
+        'routes.works_admin',
+        'routes.admin_of_works',
+        'routes.network',
+        'routes.office_documents',
+        'routes.office_events',
+        'routes.office_tasks',
+        'routes.office_notes',
+        'routes.office_reports',
+        'routes.office_status_quo',
+        'routes.backup',
+        'routes.config',
+        'models',
+        'models.activity',
+        'models.artist',
+        'models.audit_log',
+        'models.contract',
+        'models.document',
+        'models.event',
+        'models.governance',
+        'models.label',
+        'models.network',
+        'models.note',
+        'models.office_document',
+        'models.office_note',
+        'models.playlist',
+        'models.pro',
+        'models.publisher',
+        'models.release',
+        'models.reporting',
+        'models.royalty',
+        'models.task',
+        'models.track',
+        'models.user',
+        'models.work',
+        'models.works_admin',
+        'repositories',
+        'repositories.base',
+        'repositories.contract_repository',
+        'repositories.works_admin_repository',
+        'core.audit',
+    ],
+    runtime_hooks=[],
+    excludedimports=[],
+    noarchive=False,
+)
+pyz = PYZ(a.pure, a.zipped_data, cipher=None)
+exe = EXE(
+    pyz,
+    a.scripts,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    [],
+    name='otto-backend',
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    runtime_tmpdir=None,
+    console=False,
+    disable_windowed_traceback=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+)
+'''
+
+# Write spec file
+spec_path = backend_dir / "otto_backend.spec"
+with open(spec_path, 'w') as f:
+    f.write(spec_content)
+
+print(f"✅ Created spec file: {spec_path}")

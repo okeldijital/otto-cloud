@@ -15,11 +15,13 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
     
     APP_NAME: str = "OTTO"
-    APP_VERSION: str = "1.0.0"
+    APP_VERSION: str = "1.0.1"
     APP_ENV: str = "development"
     
     # Paths (initialized in __init__)
     DATABASE_URL: str = ""
+    STORAGE_ROOT: str = ""
+    IMPORT_LOGS_ROOT: str = ""
     UPLOAD_DIR: str = ""
     LOG_FILE: str = ""
     
@@ -42,7 +44,7 @@ class Settings(BaseSettings):
     # External APIs
     SPOTIFY_CLIENT_ID: Optional[str] = None
     SPOTIFY_CLIENT_SECRET: Optional[str] = None
-    MUSICBRAINZ_USER_AGENT: Optional[str] = "OTTO/1.0.0"
+    MUSICBRAINZ_USER_AGENT: Optional[str] = "OTTO/1.0.1"
 
     def __init__(self, **values):
         super().__init__(**values)
@@ -61,6 +63,7 @@ class Settings(BaseSettings):
 
         # Resolve Data Directory
         if self.APP_ENV == "desktop":
+            # Use environment variables if set, otherwise compute from platform
             if platform.system() == "Darwin":
                 data_parent = Path.home() / "Library/Application Support/OTTO"
             elif platform.system() == "Windows":
@@ -72,18 +75,44 @@ class Settings(BaseSettings):
             data_parent = Path(os.path.abspath(os.path.dirname(__file__))) / "otto_data"
 
         data_parent.mkdir(parents=True, exist_ok=True)
-        db_dir = data_parent / "db"
-        storage_dir = data_parent / "storage"
-        db_dir.mkdir(exist_ok=True)
-        storage_dir.mkdir(exist_ok=True)
         
-        if self.APP_ENV == "desktop":
-            self.DATABASE_URL = f"sqlite:///{db_dir}/app.db"
-        elif not self.DATABASE_URL:
-            self.DATABASE_URL = f"sqlite:///{db_dir}/app.db"
+        # Create subdirectories
+        db_dir = data_parent / "db"
+        db_dir.mkdir(exist_ok=True)
+        
+        # STORAGE_ROOT and IMPORT_LOGS_ROOT can be overridden via env
+        storage_root = os.getenv("STORAGE_ROOT")
+        if storage_root:
+            storage_dir = Path(storage_root)
+        else:
+            storage_dir = data_parent / "storage"
+        storage_dir.mkdir(exist_ok=True, parents=True)
+        
+        import_logs_root = os.getenv("IMPORT_LOGS_ROOT")
+        if import_logs_root:
+            import_logs_dir = Path(import_logs_root)
+        else:
+            import_logs_dir = data_parent / "import_logs"
+        import_logs_dir.mkdir(exist_ok=True, parents=True)
+        
+        logs_dir = data_parent / "logs"
+        logs_dir.mkdir(exist_ok=True)
+        
+        # Set DATABASE_URL - respect env override, otherwise use SQLite
+        db_url = os.getenv("DATABASE_URL")
+        if db_url:
+            self.DATABASE_URL = db_url
+        else:
+            self.DATABASE_URL = f"sqlite:///{db_dir}/otto.db"
             
+        self.STORAGE_ROOT = str(storage_dir)
+        self.IMPORT_LOGS_ROOT = str(import_logs_dir)
         self.UPLOAD_DIR = str(storage_dir)
-        self.LOG_FILE = str(data_parent / "otto_backend.log")
+        self.LOG_FILE = str(logs_dir / "otto_backend.log")
+
+
+settings = Settings()
+
 
 
 

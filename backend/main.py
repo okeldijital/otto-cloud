@@ -2,11 +2,13 @@ import os
 import sys
 import logging
 from typing import List
+from pathlib import Path
 
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 # -----------------------------
 # Optional: load .env early
@@ -24,7 +26,7 @@ except Exception:
 # NOTE: These imports reflect YOUR current structure shown in the snippet.
 # If your project uses app.core.config, etc., adjust accordingly.
 from config import settings  # noqa: E402
-from database import init_db, SessionLocal  # noqa: E402
+from database import init_db, SessionLocal, engine  # noqa: E402
 from models import *  # noqa: F401,F403,E402  # Ensure all models register
 
 # -----------------------------
@@ -91,6 +93,8 @@ from routes import (  # noqa: E402
     office_notes,
     office_reports,
     office_status_quo,
+    backup,
+    config,
 )
 
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
@@ -119,6 +123,8 @@ app.include_router(office_tasks.router, prefix="/api", tags=["Office Tasks"])
 app.include_router(office_notes.router, prefix="/api", tags=["Office Notes"])
 app.include_router(office_reports.router, prefix="/api", tags=["Office Reports"])
 app.include_router(office_status_quo.router, prefix="/api", tags=["Office Status Quo"])
+app.include_router(backup.router, prefix="/api", tags=["Backup"])
+app.include_router(config.router, prefix="/api", tags=["Configuration"])
 
 # -----------------------------
 # Static files (uploads)
@@ -138,6 +144,32 @@ async def health():
 # -----------------------------
 # Startup helpers
 # -----------------------------
+def _run_migrations() -> None:
+    """
+    Run Alembic migrations if using SQLite.
+    Graceful failure—logs warning but continues.
+    """
+    try:
+        db_url = getattr(settings, "DATABASE_URL", os.getenv("DATABASE_URL", ""))
+        if "sqlite" not in db_url.lower():
+            logging.info("↩️  Skipping Alembic (non-SQLite database)")
+            return
+
+        import subprocess
+        result = subprocess.run(
+            ["alembic", "upgrade", "head"],
+            cwd=os.path.dirname(os.path.abspath(__file__)),
+            capture_output=True,
+            timeout=60,
+        )
+        if result.returncode == 0:
+            logging.info("✅ Alembic migrations completed successfully")
+        else:
+            logging.warning(f"⚠️  Alembic returned non-zero: {result.stderr.decode()[:200]}")
+    except Exception as e:
+        logging.warning(f"⚠️  Migration error (non-fatal): {e}")
+
+
 def _configure_logging() -> None:
     log_file = getattr(settings, "LOG_FILE", None) or os.getenv("LOG_FILE", "./storage/logs/otto.log")
     os.makedirs(os.path.dirname(log_file), exist_ok=True)
@@ -213,6 +245,9 @@ def start_backend():
         init_db()
     except Exception as e:
         logging.error(f"❌ DB init failed: {e}")
+
+    # Run migrations (best-effort for SQLite)
+    _run_migrations()
 
     # Seed admin (best-effort)
     _seed_admin_user()

@@ -1,0 +1,187 @@
+name: Build & Release Otto V1.0.1
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+env:
+  APP_VERSION: 1.0.1
+
+jobs:
+  build-macos:
+    name: Build macOS (Intel + Apple Silicon)
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        arch: [x64, arm64]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          npm install -g electron-builder
+          pip install pyinstaller
+
+      - name: Build backend
+        run: |
+          cd backend
+          bash build_backend.sh
+          cd ..
+
+      - name: Build frontend
+        run: bash build_frontend.sh
+
+      - name: Build Electron app (macOS ${{ matrix.arch }})
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+          cd ..
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-${{ matrix.arch }}
+          path: |
+            dist-electron/OTTO*.dmg
+            dist-electron/OTTO*.zip
+
+  build-windows:
+    name: Build Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          npm install -g electron-builder
+          pip install pyinstaller
+
+      - name: Build backend
+        run: |
+          cd backend
+          bash build_backend.sh
+          cd ..
+
+      - name: Build frontend
+        run: bash build_frontend.sh
+
+      - name: Build Electron app (Windows)
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+          cd ..
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: |
+            dist-electron/OTTO*.exe
+            dist-electron/OTTO-Setup*.exe
+
+  build-linux:
+    name: Build Linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libfuse-dev
+
+      - name: Install dependencies
+        run: |
+          npm install -g electron-builder
+          pip install pyinstaller
+
+      - name: Build backend
+        run: |
+          cd backend
+          bash build_backend.sh
+          cd ..
+
+      - name: Build frontend
+        run: bash build_frontend.sh
+
+      - name: Build Electron app (Linux)
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+          cd ..
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: |
+            dist-electron/OTTO*.AppImage
+            dist-electron/OTTO*.deb
+
+  release:
+    name: Create Release
+    needs: [build-macos, build-windows, build-linux]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: artifacts/**/*
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create release summary
+        run: |
+          echo "## Otto V1.0.1 Release" > $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Installers" >> $GITHUB_STEP_SUMMARY
+          echo "- macOS (Intel): OTTO-1.0.1-x64.dmg" >> $GITHUB_STEP_SUMMARY
+          echo "- macOS (Apple Silicon): OTTO-1.0.1-arm64.dmg" >> $GITHUB_STEP_SUMMARY
+          echo "- Windows: OTTO-Setup-1.0.1.exe" >> $GITHUB_STEP_SUMMARY
+          echo "- Linux: OTTO-1.0.1.AppImage" >> $GITHUB_STEP_SUMMARY

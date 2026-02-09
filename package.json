@@ -1,16 +1,18 @@
 {
-    "name": "otto-root",
+    "name": "otto",
     "version": "1.0.1",
+    "description": "OTTO: Multi-Platform Database & Collaboration Tool",
     "private": true,
     "scripts": {
-        "postinstall": "cd frontend && npm install && cd ../backend && pip install -r requirements.txt",
-        "tauri": "cd frontend && npm run tauri",
-        "tauri:dev": "cd frontend && npm run tauri dev",
-        "tauri:build": "cd frontend && npm run tauri build",
-        "build:backend": "./backend/build_sidecar.sh",
-        "run-otto": "npm run tauri:dev"
+        "dev": "cd frontend && npm run dev",
+        "backend:dev": "cd backend && python3 main.py",
+        "build": "bash build.sh",
+        "build:frontend": "bash build_frontend.sh",
+        "build:backend": "cd backend && bash build_backend.sh",
+        "release": "git tag v1.0.1 && git push origin v1.0.1"
     },
     "devDependencies": {
-        "@tauri-apps/cli": "^2.0.0"
+        "electron": "^latest",
+        "electron-builder": "^latest"
     }
 }

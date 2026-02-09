@@ -3,13 +3,79 @@ const path = require('path');
 const { spawn } = require('child_process');
 const axios = require('axios');
 const treeKill = require('tree-kill');
+const net = require('net');
+const os = require('os');
+const fs = require('fs');
 
 let mainWindow;
 let backendProcess;
-const BACKEND_PORT = 18000;
-const HEALTH_URL = `http://127.0.0.1:${BACKEND_PORT}/health`;
+let currentBackendPort = 8000;
 
 const isDev = !app.isPackaged;
+
+// Get app data directory
+function getAppDataDir() {
+    const platform = process.platform;
+    let basePath;
+    
+    if (platform === 'darwin') {
+        basePath = path.join(os.homedir(), 'Library', 'Application Support', 'OTTO');
+    } else if (platform === 'win32') {
+        basePath = path.join(os.homedir(), 'AppData', 'Local', 'OTTO');
+    } else {
+        basePath = path.join(os.homedir(), '.local', 'share', 'OTTO');
+    }
+    
+    return basePath;
+}
+
+// Ensure app data directories exist
+function initializeAppDataDirs() {
+    const appDataDir = getAppDataDir();
+    const requiredDirs = [
+        appDataDir,
+        path.join(appDataDir, 'storage'),
+        path.join(appDataDir, 'import_logs'),
+        path.join(appDataDir, 'logs'),
+    ];
+    
+    requiredDirs.forEach(dir => {
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
+    });
+    
+    return appDataDir;
+}
+
+// Find available port
+async function findAvailablePort(startPort = 8000, maxAttempts = 100) {
+    for (let i = 0; i < maxAttempts; i++) {
+        const port = startPort + i;
+        if (await isPortAvailable(port)) {
+            return port;
+        }
+    }
+    throw new Error('Could not find available port');
+}
+
+function isPortAvailable(port) {
+    return new Promise((resolve) => {
+        const server = net.createServer();
+        server.once('error', (err) => {
+            if (err.code === 'EADDRINUSE') {
+                resolve(false);
+            } else {
+                resolve(false);
+            }
+        });
+        server.once('listening', () => {
+            server.close();
+            resolve(true);
+        });
+        server.listen(port, '127.0.0.1');
+    });
+}
 
 function getBackendPath() {
     if (isDev) {
@@ -30,11 +96,27 @@ function getBackendPath() {
 }
 
 function startBackend() {
+    const appDataDir = getAppDataDir();
+    const dbPath = path.join(appDataDir, 'otto.db');
+    const storagePath = path.join(appDataDir, 'storage');
+    const importLogsPath = path.join(appDataDir, 'import_logs');
+    
     const { command, args } = getBackendPath();
-    console.log(`🚀 Starting backend: ${command} ${args.join(' ')}`);
+    console.log(`🚀 Starting backend on port ${currentBackendPort}`);
+    console.log(`📁 App Data: ${appDataDir}`);
+
+    const backendEnv = {
+        ...process.env,
+        APP_ENV: 'desktop',
+        PORT: currentBackendPort.toString(),
+        DATABASE_URL: `sqlite:///${dbPath}`,
+        STORAGE_ROOT: storagePath,
+        IMPORT_LOGS_ROOT: importLogsPath,
+        APP_DATA_DIR: appDataDir,
+    };
 
     backendProcess = spawn(command, args, {
-        env: { ...process.env, APP_ENV: 'desktop' },
+        env: backendEnv,
         shell: false
     });
 
@@ -58,9 +140,10 @@ function startBackend() {
 }
 
 async function waitForBackend(retries = 30) {
+    const healthUrl = `http://127.0.0.1:${currentBackendPort}/health`;
     for (let i = 0; i < retries; i++) {
         try {
-            const response = await axios.get(HEALTH_URL);
+            const response = await axios.get(healthUrl);
             if (response.data.status === 'ok') {
                 console.log('✅ Backend is healthy!');
                 return true;
@@ -89,7 +172,8 @@ function createWindow() {
     if (isDev) {
         mainWindow.loadURL('http://localhost:5173');
     } else {
-        mainWindow.loadFile(path.join(__dirname, 'frontend', 'dist', 'index.html'));
+        // Load from backend server instead of static file
+        mainWindow.loadURL(`http://127.0.0.1:${currentBackendPort}/`);
     }
 
     // Open external links in default browser
@@ -100,6 +184,18 @@ function createWindow() {
 }
 
 app.whenReady().then(async () => {
+    // Initialize app data directories
+    initializeAppDataDirs();
+    
+    // Find available port
+    try {
+        currentBackendPort = await findAvailablePort(8000);
+        console.log(`✅ Using port ${currentBackendPort}`);
+    } catch (err) {
+        console.error('❌ Failed to find available port:', err);
+        process.exit(1);
+    }
+
     startBackend();
 
     // Create window early to show loading state if needed
