@@ -13,8 +13,8 @@
         "release": "git tag v1.0.1 && git push origin v1.0.1"
     },
     "devDependencies": {
-        "electron": "^latest",
-        "electron-builder": "^latest"
+        "electron": "27.0.0",
+        "electron-builder": "24.6.4"
     },
     "build": {
         "appId": "com.otto.desktop",

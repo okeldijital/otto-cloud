@@ -64,10 +64,10 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 
 cd "$SCRIPT_DIR"
 
-echo "📦 Installing root dependencies..."
+echo "Installing root dependencies..."
 npm install
 
-echo "📦 Setting up Electron packaging..."
+echo "Setting up Electron packaging..."
 
 # Create distribution output dir
 mkdir -p dist-electron
@@ -81,18 +81,18 @@ mkdir -p resources
 cp dist-desktop/backend/sidecar resources/backend 2>/dev/null || true
 
 # Build Electron app with electron-builder
-echo "🔨 Building Electron installers..."
+echo "Building Electron installers..."
 electron-builder --publish never
 
-echo "✅ Electron build complete!"
+echo "Electron build complete!"
 
 # Results
 echo ""
-echo "═════════════════════════════════════════════════════"
-echo "✅ BUILD COMPLETE!"
-echo "═════════════════════════════════════════════════════"
+echo "====================================================="
+echo "BUILD COMPLETE!"
+echo "====================================================="
 echo ""
-echo "📦 Artifacts in dist-electron/:"
+echo "Artifacts in dist-electron/:"
 ls -lh dist-electron/ 2>/dev/null || echo "  (Building...)"
 
 echo ""
