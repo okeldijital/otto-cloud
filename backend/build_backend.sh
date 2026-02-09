@@ -7,6 +7,21 @@ set -e
 echo "Otto Backend Build Script"
 echo "===================================="
 
+# Resolve Python/Pip in a cross-platform way (CI includes Windows runners)
+if command -v python3 &> /dev/null; then
+    PYTHON="python3"
+else
+    PYTHON="python"
+fi
+
+if "$PYTHON" -m pip --version &> /dev/null; then
+    PIP="$PYTHON -m pip"
+elif command -v pip3 &> /dev/null; then
+    PIP="pip3"
+else
+    PIP="pip"
+fi
+
 # Detect platform
 if [[ "$OSTYPE" == "darwin"* ]]; then
     PLATFORM="macos"
@@ -27,40 +42,41 @@ fi
 
 cd "$(dirname "$0")"
 
+# Governance + runtime dependency gate
+echo "Running dependency governance checks..."
+$PYTHON governance_check.py
+
+echo "Installing backend runtime dependencies (single source of truth: backend/requirements.txt)..."
+$PIP install -r requirements.txt
+
+echo "Running pre-flight runtime import check..."
+$PYTHON preflight_check.py
+
 # Install dependencies if needed
 echo "Checking Python dependencies..."
 if ! command -v pyinstaller &> /dev/null; then
     echo "Installing PyInstaller..."
-    pip3 install pyinstaller
+    $PIP install pyinstaller
 fi
-
-# Generate spec file
-echo "Generating PyInstaller spec..."
-python3 build_backend.py
 
 # Build the binary
 echo "Building backend binary..."
 mkdir -p build dist
 
-# PyInstaller command
-pyinstaller --onefile \
-    --add-data "alembic:alembic" \
-    --add-data "alembic.ini:." \
-    --collect-all sqlalchemy \
-    --collect-all alembic \
-    --collect-all pydantic \
-    --collect-all fastapi \
-    --hidden-import uvicorn.lifespan.on \
-    --hidden-import uvicorn.protocols.websocket \
-    --hidden-import uvicorn.protocols.websocket_auto \
-    --hidden-import uvicorn.protocols.http.auto \
-    --hidden-import routes.backup \
-    --hidden-import routes.config \
-    --name otto-backend \
-    main.py
+echo "Using maintained PyInstaller spec (governance lock)..."
+$PYTHON build_backend.py
+pyinstaller --clean --noconfirm otto-backend.spec
 
 echo "Backend build complete!"
 ls -lh dist/
+
+# Runtime smoke test hard gate
+echo "Running backend runtime smoke test (/health)..."
+if [[ "$PLATFORM" == "windows" ]]; then
+    $PYTHON smoke_test.py "dist/otto-backend.exe"
+else
+    $PYTHON smoke_test.py "dist/otto-backend"
+fi
 
 # Create output directory for Electron bundling
 OUTPUT_DIR="../dist-desktop/backend"

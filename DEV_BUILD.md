@@ -273,13 +273,26 @@ git push origin v1.0.1
 ### Backend
 ```bash
 # Backend logs to:
-# {APP_DATA_DIR}/logs/otto_backend.log
+# macOS: ~/Library/Application Support/OTTO/logs/backend.log
+# Windows: %AppData%/OTTO/logs/backend.log
+# Linux: ~/.local/share/OTTO/logs/backend.log
 
 # Also check stderr in Electron console
-tail -f ~/Library/Application\ Support/OTTO/logs/otto_backend.log  # macOS
-type %APPDATA%\Local\OTTO\logs\otto_backend.log                    # Windows
-tail -f ~/.local/share/OTTO/logs/otto_backend.log                  # Linux
+tail -f ~/Library/Application\ Support/OTTO/logs/backend.log  # macOS
+type %APPDATA%\\OTTO\\logs\\backend.log                        # Windows
+tail -f ~/.local/share/OTTO/logs/backend.log                    # Linux
 ```
+
+### Installer backend build gates (required)
+
+Before Electron packaging, run:
+
+```bash
+bash installer/backend/pyinstaller_build.sh
+bash installer/backend/smoke_test.sh
+```
+
+These fail the build if runtime dependencies are missing or the packaged backend cannot serve `GET /health` within 30 seconds.
 
 ### Port Conflicts
 ```bash

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, shell } = require('electron');
+const { app, shell, dialog } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
 const axios = require('axios');
@@ -7,9 +7,9 @@ const net = require('net');
 const os = require('os');
 const fs = require('fs');
 
-let mainWindow;
 let backendProcess;
-let currentBackendPort = 8000;
+let currentBackendPort = 8001;
+const appPort = 8000;
 
 const isDev = !app.isPackaged;
 
@@ -21,7 +21,8 @@ function getAppDataDir() {
     if (platform === 'darwin') {
         basePath = path.join(os.homedir(), 'Library', 'Application Support', 'OTTO');
     } else if (platform === 'win32') {
-        basePath = path.join(os.homedir(), 'AppData', 'Local', 'OTTO');
+        const appData = process.env.APPDATA;
+        basePath = appData ? path.join(appData, 'OTTO') : path.join(os.homedir(), 'AppData', 'Roaming', 'OTTO');
     } else {
         basePath = path.join(os.homedir(), '.local', 'share', 'OTTO');
     }
@@ -100,6 +101,7 @@ function startBackend() {
     const dbPath = path.join(appDataDir, 'otto.db');
     const storagePath = path.join(appDataDir, 'storage');
     const importLogsPath = path.join(appDataDir, 'import_logs');
+    const logsPath = path.join(appDataDir, 'logs');
     
     const { command, args } = getBackendPath();
     console.log(`🚀 Starting backend on port ${currentBackendPort}`);
@@ -113,6 +115,7 @@ function startBackend() {
         STORAGE_ROOT: storagePath,
         IMPORT_LOGS_ROOT: importLogsPath,
         APP_DATA_DIR: appDataDir,
+        LOG_FILE: path.join(logsPath, 'backend.log'),
     };
 
     backendProcess = spawn(command, args, {
@@ -120,23 +123,38 @@ function startBackend() {
         shell: false
     });
 
+    const stderrTail = [];
+    const maxTailLines = 30;
+
     backendProcess.stdout.on('data', (data) => {
         console.log(`[Backend]: ${data}`);
     });
 
     backendProcess.stderr.on('data', (data) => {
-        console.error(`[Backend Error]: ${data}`);
+        const text = data.toString();
+        console.error(`[Backend Error]: ${text}`);
+        text.split('\n').forEach((line) => {
+            const trimmed = line.trimEnd();
+            if (!trimmed) return;
+            stderrTail.push(trimmed);
+            if (stderrTail.length > maxTailLines) stderrTail.shift();
+        });
     });
 
     backendProcess.on('close', (code) => {
         console.log(`Backend process exited with code ${code}`);
         if (code !== 0 && code !== null) {
-            // Unexpected exit
-            if (mainWindow) {
-                mainWindow.webContents.send('backend-died', code);
-            }
+            const appDataDir = getAppDataDir();
+            const logPath = path.join(appDataDir, 'logs', 'backend.log');
+            dialog.showErrorBox(
+                'OTTO Backend Failed',
+                `The OTTO backend exited unexpectedly (code ${code}).\n\nLast stderr lines:\n${stderrTail.join('\n') || '(no stderr captured)'}\n\nLog file:\n${logPath}\n\nThe app cannot continue.`,
+            );
+            app.quit();
         }
     });
+
+    return { stderrTail };
 }
 
 async function waitForBackend(retries = 30) {
@@ -156,60 +174,38 @@ async function waitForBackend(retries = 30) {
     return false;
 }
 
-function createWindow() {
-    mainWindow = new BrowserWindow({
-        width: 1280,
-        height: 800,
-        title: "OTTO",
-        titleBarStyle: 'hiddenInset',
-        webPreferences: {
-            preload: path.join(__dirname, 'preload.js'),
-            nodeIntegration: false,
-            contextIsolation: true
-        }
-    });
-
-    if (isDev) {
-        mainWindow.loadURL('http://localhost:5173');
-    } else {
-        // Load from backend server instead of static file
-        mainWindow.loadURL(`http://127.0.0.1:${currentBackendPort}/`);
-    }
-
-    // Open external links in default browser
-    mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-        shell.openExternal(url);
-        return { action: 'deny' };
-    });
-}
-
 app.whenReady().then(async () => {
     // Initialize app data directories
     initializeAppDataDirs();
     
-    // Find available port
+    // Backend port (prefer 8001+) and app port (8000+) for logs/docs consistency
     try {
-        currentBackendPort = await findAvailablePort(8000);
-        console.log(`✅ Using port ${currentBackendPort}`);
+        currentBackendPort = await findAvailablePort(8001);
+        console.log(`✅ Using backend port ${currentBackendPort}`);
     } catch (err) {
         console.error('❌ Failed to find available port:', err);
         process.exit(1);
     }
 
-    startBackend();
-
-    // Create window early to show loading state if needed
-    createWindow();
+    const { stderrTail } = startBackend();
 
     const healthy = await waitForBackend();
     if (!healthy) {
         console.error('❌ Backend failed to start in time.');
-        // Could show an error dialog here
+        const appDataDir = getAppDataDir();
+        const logPath = path.join(appDataDir, 'logs', 'backend.log');
+        dialog.showErrorBox(
+            'OTTO Backend Failed to Start',
+            `The OTTO backend did not become healthy in time.\n\nLast stderr lines:\n${stderrTail.join('\n') || '(no stderr captured)'}\n\nLog file:\n${logPath}\n\nThe app cannot continue.`,
+        );
+        app.quit();
+        return;
     }
 
-    app.on('activate', function () {
-        if (BrowserWindow.getAllWindows().length === 0) createWindow();
-    });
+    const url = isDev ? 'http://localhost:5173' : `http://127.0.0.1:${currentBackendPort}/`;
+    console.log(`🌐 Opening default browser: ${url}`);
+    await shell.openExternal(url);
+    app.quit();
 });
 
 app.on('window-all-closed', function () {

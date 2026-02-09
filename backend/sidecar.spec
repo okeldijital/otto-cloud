@@ -21,6 +21,7 @@ a = Analysis(
         'uvicorn.protocols.websockets.auto',
         'uvicorn.lifespan',
         'uvicorn.lifespan.on',
+        'pydantic.networks',
         'sqlalchemy.ext.declarative',
         'passlib',
         'passlib.handlers.bcrypt',

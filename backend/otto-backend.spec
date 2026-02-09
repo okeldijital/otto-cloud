@@ -1,21 +1,29 @@
 # -*- mode: python ; coding: utf-8 -*-
-from PyInstaller.utils.hooks import collect_all
+from PyInstaller.utils.hooks import collect_all, collect_submodules
 
 datas = [('alembic', 'alembic'), ('alembic.ini', '.')]
 binaries = []
-hiddenimports = ['uvicorn.lifespan.on', 'uvicorn.protocols.websocket', 'uvicorn.protocols.websocket_auto', 'uvicorn.protocols.http.auto', 'routes.backup', 'routes.config']
-tmp_ret = collect_all('sqlalchemy')
-datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
-tmp_ret = collect_all('alembic')
-datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
-tmp_ret = collect_all('pydantic')
-datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
-tmp_ret = collect_all('fastapi')
-datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+
+# Deterministic packaging lock: explicitly include dynamic imports.
+hiddenimports = []
+hiddenimports += collect_submodules('sqlalchemy')
+hiddenimports += collect_submodules('pydantic')
+hiddenimports += collect_submodules('uvicorn')
+hiddenimports += collect_submodules('fastapi')
+hiddenimports += collect_submodules('starlette')
+hiddenimports += collect_submodules('email_validator')
+
+# Also collect package data/binaries where hooks provide them.
+tmp_ret = collect_all('sqlalchemy'); datas += tmp_ret[0]; binaries += tmp_ret[1]
+tmp_ret = collect_all('alembic'); datas += tmp_ret[0]; binaries += tmp_ret[1]
+tmp_ret = collect_all('pydantic'); datas += tmp_ret[0]; binaries += tmp_ret[1]
+tmp_ret = collect_all('fastapi'); datas += tmp_ret[0]; binaries += tmp_ret[1]
+tmp_ret = collect_all('uvicorn'); datas += tmp_ret[0]; binaries += tmp_ret[1]
+tmp_ret = collect_all('email_validator'); datas += tmp_ret[0]; binaries += tmp_ret[1]
 
 
 a = Analysis(
-    ['main.py'],
+    ['backend_runner.py'],
     pathex=[],
     binaries=binaries,
     datas=datas,

@@ -53,6 +53,13 @@ scheduler_config.json
 *.swp
 .DS_Store
 dist-desktop/
+dist-electron/
+public/
+resources/
+frontend/frontend/
+installer/frontend/dist/
+installer/backend/dist/
+installer/electron/dist/
 frontend/src-tauri/target/
 backend/otto_data/
 .env

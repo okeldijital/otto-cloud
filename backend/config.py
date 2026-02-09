@@ -67,7 +67,12 @@ class Settings(BaseSettings):
             if platform.system() == "Darwin":
                 data_parent = Path.home() / "Library/Application Support/OTTO"
             elif platform.system() == "Windows":
-                data_parent = Path.home() / "AppData/Local/OTTO"
+                # Match %AppData%/OTTO (Roaming) for desktop installers
+                appdata = os.environ.get("APPDATA")
+                if appdata:
+                    data_parent = Path(appdata) / "OTTO"
+                else:
+                    data_parent = Path.home() / "AppData/Roaming/OTTO"
             else:
                 data_parent = Path.home() / ".local/share/OTTO"
         else:
@@ -108,7 +113,8 @@ class Settings(BaseSettings):
         self.STORAGE_ROOT = str(storage_dir)
         self.IMPORT_LOGS_ROOT = str(import_logs_dir)
         self.UPLOAD_DIR = str(storage_dir)
-        self.LOG_FILE = str(logs_dir / "otto_backend.log")
+        # Required persistent backend log path
+        self.LOG_FILE = str(logs_dir / "backend.log")
 
 
 settings = Settings()

@@ -26,7 +26,7 @@ Welcome to OTTO! This guide walks you through installation, setup, and basic ope
 On your first launch, OTTO will:
 1. Create a database file at:
    - **macOS**: `~/Library/Application Support/OTTO/otto.db`
-   - **Windows**: `%APPDATA%\Local\OTTO\otto.db`
+   - **Windows**: `%AppData%/OTTO/otto.db`
    - **Linux**: `~/.local/share/OTTO/otto.db`
 2. Show a configuration wizard asking for:
    - **Mode**: Choose "Hub" (main node) or "Spoke" (satellite)
@@ -70,6 +70,14 @@ Click "Save" and the dashboard will load.
 - **Windows**: Ensure port 8000+ is not blocked by firewall
 - **Linux**: Run `lsof -i :8000` to check for conflicting processes
 - Try restarting the app
+
+### Logs (verbose troubleshooting)
+Backend logs are written to:
+- **macOS**: `~/Library/Application Support/OTTO/logs/backend.log`
+- **Windows**: `%AppData%/OTTO/logs/backend.log`
+- **Linux**: `~/.local/share/OTTO/logs/backend.log`
+
+If OTTO reports “Backend failed”, open the log file above and include the last 30 lines when reporting an issue.
 
 ### "Database locked" error
 - Ensure only one instance of OTTO is running
