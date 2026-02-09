@@ -34,21 +34,8 @@ jobs:
           npm install -g electron-builder
           pip install pyinstaller
 
-      - name: Build backend
-        run: |
-          cd backend
-          bash build_backend.sh
-          cd ..
-
-      - name: Build frontend
-        run: bash build_frontend.sh
-
-      - name: Build Electron app (macOS ${{ matrix.arch }})
-        run: |
-          cd frontend
-          npm ci
-          npm run build
-          cd ..
+      - name: Run complete build
+        run: bash build.sh
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -79,21 +66,8 @@ jobs:
           npm install -g electron-builder
           pip install pyinstaller
 
-      - name: Build backend
-        run: |
-          cd backend
-          bash build_backend.sh
-          cd ..
-
-      - name: Build frontend
-        run: bash build_frontend.sh
-
-      - name: Build Electron app (Windows)
-        run: |
-          cd frontend
-          npm ci
-          npm run build
-          cd ..
+      - name: Run complete build
+        run: bash build.sh
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -129,21 +103,8 @@ jobs:
           npm install -g electron-builder
           pip install pyinstaller
 
-      - name: Build backend
-        run: |
-          cd backend
-          bash build_backend.sh
-          cd ..
-
-      - name: Build frontend
-        run: bash build_frontend.sh
-
-      - name: Build Electron app (Linux)
-        run: |
-          cd frontend
-          npm ci
-          npm run build
-          cd ..
+      - name: Run complete build
+        run: bash build.sh
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

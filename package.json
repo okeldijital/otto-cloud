@@ -2,6 +2,7 @@
     "name": "otto",
     "version": "1.0.1",
     "description": "OTTO: Multi-Platform Database & Collaboration Tool",
+    "main": "main.js",
     "private": true,
     "scripts": {
         "dev": "cd frontend && npm run dev",
@@ -14,5 +15,38 @@
     "devDependencies": {
         "electron": "^latest",
         "electron-builder": "^latest"
+    },
+    "build": {
+        "appId": "com.otto.desktop",
+        "productName": "OTTO",
+        "directories": {
+            "buildResources": "assets",
+            "output": "dist-electron"
+        },
+        "files": [
+            "package.json",
+            "main.js",
+            "preload.js",
+            "dist/**/*",
+            "dist-desktop/**/*",
+            "node_modules/**/*"
+        ],
+        "mac": {
+            "target": ["dmg", "zip"],
+            "identity": null,
+            "signingByDefault": false
+        },
+        "win": {
+            "target": ["nsis", "portable"]
+        },
+        "linux": {
+            "target": ["AppImage", "deb"]
+        },
+        "nsis": {
+            "oneClick": false,
+            "allowToChangeInstallationDirectory": true,
+            "createDesktopShortcut": true,
+            "createStartMenuShortcut": true
+        }
     }
 }

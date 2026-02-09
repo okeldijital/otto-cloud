@@ -62,13 +62,27 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo "Step 3/3: Building Electron App"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-cd frontend
+cd "$SCRIPT_DIR"
 
-echo "📦 Installing Electron dependencies..."
-npm ci
+echo "📦 Installing root dependencies..."
+npm install
 
-echo "🔨 Building Electron app for $PLATFORM..."
-npm run build
+echo "📦 Setting up Electron packaging..."
+
+# Create distribution output dir
+mkdir -p dist-electron
+
+# Copy frontend build to public for Electron packaging
+mkdir -p public
+cp -r dist-desktop/frontend/* public/ 2>/dev/null || true
+
+# Copy backend binary to resources
+mkdir -p resources
+cp dist-desktop/backend/sidecar resources/backend 2>/dev/null || true
+
+# Build Electron app with electron-builder
+echo "🔨 Building Electron installers..."
+electron-builder --publish never
 
 echo "✅ Electron build complete!"
 
@@ -78,33 +92,12 @@ echo "════════════════════════�
 echo "✅ BUILD COMPLETE!"
 echo "═════════════════════════════════════════════════════"
 echo ""
-echo "📦 Artifacts:"
-if [[ "$PLATFORM" == "macos" ]]; then
-    echo "  • DMG: dist-electron/OTTO-*.dmg"
-    echo "  • APP: dist-electron/OTTO-*.app"
-elif [[ "$PLATFORM" == "linux" ]]; then
-    echo "  • AppImage: dist-electron/OTTO-*.AppImage"
-    echo "  • Deb: dist-electron/OTTO-*.deb"
-elif [[ "$PLATFORM" == "windows" ]]; then
-    echo "  • EXE: dist-electron/OTTO-*.exe"
-    echo "  • Installer: dist-electron/OTTO-Setup-*.exe"
-fi
+echo "📦 Artifacts in dist-electron/:"
+ls -lh dist-electron/ 2>/dev/null || echo "  (Building...)"
 
 echo ""
 echo "Next steps:"
 echo "  1. Test the installer on this platform"
-echo "  2. Commit and tag: git tag v1.0.1"
-echo "  3. Push to GitHub: git push origin v1.0.1"
-echo "  4. GitHub Actions will build for all platforms"
-source .venv/bin/activate
-pyinstaller --clean --noconfirm otto.spec
-
-# 3. Create Distribution Package
-echo "📦 Packaging for Distribution..."
-cd dist
-zip -r ../OTTO-Desktop-Shell-v1.0.0.zip OTTO.app
-cd ..
-
-echo "✅ Build Complete!"
-echo "👉 Installer Package: OTTO-Installer-v1.0.0.zip"
-echo "To install: Unzip and drag OTTO.app to your Applications folder."
+echo "  2. Commit: git add -A && git commit -m 'fixes'"
+echo "  3. Tag: git tag -d v1.0.1; git tag v1.0.1"
+echo "  4. Push: git push origin v1.0.1 --force"
