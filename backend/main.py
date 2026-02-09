@@ -28,6 +28,8 @@ except Exception:
 from config import settings  # noqa: E402
 from database import init_db, SessionLocal, engine  # noqa: E402
 from models import *  # noqa: F401,F403,E402  # Ensure all models register
+from governance import run_preflight_checks, GovernanceError # noqa: E402
+
 
 # -----------------------------
 # App Init
@@ -129,9 +131,71 @@ app.include_router(config.router, prefix="/api", tags=["Configuration"])
 # -----------------------------
 # Static files (uploads)
 # -----------------------------
+# -----------------------------
+# Static files (uploads & frontend)
+# -----------------------------
 upload_dir = getattr(settings, "UPLOAD_DIR", None) or os.getenv("UPLOAD_DIR", "./uploads")
 os.makedirs(upload_dir, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=upload_dir), name="uploads")
+
+# Serve Frontend (dist-desktop)
+# Logic:
+# 1. Dev: usually skipped or handled by Vite, but if we want to test serving:
+#    look for ../frontend/dist (if built)
+# 2. Prod (PyInstaller):
+#    sys.executable is .../backend/sidecar
+#    dist-desktop is at .../dist-desktop (sibling of backend folder in Resources)
+if getattr(sys, 'frozen', False):
+    # Running as PyInstaller bundle
+    # sys.executable = .../Contents/Resources/backend/sidecar
+    # dist-desktop = .../Contents/Resources/dist-desktop
+    base_dir = Path(sys.executable).parent.parent
+    dist_dir = base_dir / "dist-desktop"
+else:
+    # Running from source (backend/main.py)
+    # dist-desktop might be at ../dist-desktop if built, or ../frontend/dist
+    base_dir = Path(__file__).parent.parent
+    dist_dir = base_dir / "dist-desktop"
+
+if dist_dir.exists():
+    logging.info(f"📂 Serving frontend from {dist_dir}")
+    app.mount("/", StaticFiles(directory=str(dist_dir), html=True), name="frontend")
+else:
+    logging.warning(f"⚠️ Frontend build not found at {dist_dir}")
+
+# Catch-all for SPA client-side routing
+@app.exception_handler(404)
+async def custom_404_handler(_, __):
+    if dist_dir.exists():
+        return FileResponse(dist_dir / "index.html")
+    return {"error": "Frontend not found"}
+
+# -----------------------------
+# MOCK Local Server (Dev Mode Only)
+# -----------------------------
+# Electron handles these in production.
+# In pure dev (browser + python), we need these to pass Setup.
+
+from pydantic import BaseModel
+
+class MockConfig(BaseModel):
+    nodeRole: str
+    node_name: str | None = None
+    hub_url: str | None = None
+    nodeId: str | None = None
+
+@app.post("/__local__/save-config")
+async def mock_save_config(config: MockConfig):
+    logging.warning(f"🔧 MOCK: Saved config: {config}")
+    # In dev, we might want to actually set the env vars or just pretend?
+    # For now, just pretend.
+    return {"status": "ok", "message": "Config saved (Mock). Please restart backend manually if needed."}
+
+@app.post("/__local__/reset-config")
+async def mock_reset_config():
+    logging.warning("🔧 MOCK: Config reset")
+    return {"status": "ok", "message": "Config reset (Mock)."}
+
 
 # -----------------------------
 # Health endpoint
@@ -234,7 +298,11 @@ def _seed_admin_user() -> None:
 # -----------------------------
 def start_backend():
     _configure_logging()
-    port = int(getattr(settings, "PORT", None) or os.getenv("PORT", "8000"))
+    # Prefer OTTO_BACKEND_PORT, fallback to PORT or 8000
+    port_env = os.getenv("OTTO_BACKEND_PORT")
+    if not port_env:
+        port_env = getattr(settings, "PORT", None) or os.getenv("PORT", "8000")
+    port = int(port_env)
     env = getattr(settings, "APP_ENV", os.getenv("APP_ENV", "dev"))
 
     logging.info(f"🚀 OTTO Backend starting on port {port} (env={env})")
@@ -250,10 +318,23 @@ def start_backend():
     _run_migrations()
 
     # Seed admin (best-effort)
+    # Suppress passlib/bcrypt version error
+    import warnings
+    # logging is already imported globally
+    logging.getLogger("passlib.handlers.bcrypt").setLevel(logging.ERROR)
     _seed_admin_user()
 
     # Run server
-    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
+    try:
+        run_preflight_checks()
+    except GovernanceError as e:
+        logging.critical(f"🛑 Governance Check Failed: {e}")
+        sys.exit(1)
+    except Exception as e:
+        logging.critical(f"🛑 Startup Failed: {e}")
+        sys.exit(1)
+
+    uvicorn.run(app, host="127.0.0.1", port=port, log_level="info")
 
 
 if __name__ == "__main__":

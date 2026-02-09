@@ -9,13 +9,25 @@ engine = create_engine(
     echo=settings.DEBUG
 )
 
-# Enable foreign keys for SQLite
+# Enable required PRAGMAs for SQLite (§3 of Governance Spec)
 from sqlalchemy import event
 @event.listens_for(engine, "connect")
 def set_sqlite_pragma(dbapi_connection, connection_record):
-    cursor = dbapi_connection.cursor()
-    cursor.execute("PRAGMA foreign_keys=ON")
-    cursor.close()
+    """
+    Enforce mandatory SQLite settings per Data Governance Spec §3:
+    - journal_mode=WAL (Write-Ahead Logging)
+    - synchronous=FULL (durability)
+    - foreign_keys=ON (referential integrity)
+    - busy_timeout=5000 (handle concurrent access)
+    """
+    if "sqlite" in settings.DATABASE_URL:
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL;")
+        cursor.execute("PRAGMA synchronous=FULL;")
+        cursor.execute("PRAGMA foreign_keys=ON;")
+        cursor.execute("PRAGMA busy_timeout=5000;")
+        cursor.close()
+
 
 # Create session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

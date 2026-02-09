@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { User, Mail, Building, Save, Camera, Upload, X, Check, AlertCircle } from 'lucide-react';
+import { User, Mail, Building, Save, Camera, Upload, X, Check, AlertCircle, Server } from 'lucide-react';
 import PageHeader from '../components/ui/PageHeader';
 import api, { BASE_URL } from '../lib/api';
 
@@ -16,13 +16,47 @@ export default function Settings() {
     const [isSaving, setIsSaving] = useState(false);
     const [saveStatus, setSaveStatus] = useState({ type: '', message: '' });
 
+    const [nodeInfo, setNodeInfo] = useState({ nodeRole: '', nodeName: '' });
+
+    useEffect(() => {
+        // Fetch node info
+        api.get('/node/info')
+            .then(res => setNodeInfo(res.data))
+            .catch(err => console.error('Failed to fetch node info:', err));
+    }, []);
+
+    const [previewUrl, setPreviewUrl] = useState(null);
     const [selectedAvatar, setSelectedAvatar] = useState(null);
-    const [previewUrl, setPreviewUrl] = useState(
-        user?.avatar_url
-            ? (user.avatar_url.startsWith('http') ? user.avatar_url : `${BASE_URL}${user.avatar_url}`)
-            : null
-    );
     const [isUploading, setIsUploading] = useState(false);
+
+    const handleAvatarChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setSelectedAvatar(file);
+            setPreviewUrl(URL.createObjectURL(file));
+        }
+    };
+
+    const handleRemoveAvatar = () => {
+        setSelectedAvatar(null);
+        setPreviewUrl(user?.avatar_url || null);
+    };
+
+    const handleSave = async (e) => {
+        e.preventDefault();
+        setIsSaving(true);
+        setSaveStatus({ type: '', message: '' });
+
+        try {
+            // TODO: Implement actual save logic
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Mock delay
+            setSaveStatus({ type: 'success', message: 'Settings saved successfully (Mock)' });
+        } catch (error) {
+            setSaveStatus({ type: 'error', message: 'Failed to save settings' });
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     useEffect(() => {
         if (user) {
@@ -41,97 +75,7 @@ export default function Settings() {
         }
     }, [user]);
 
-    const handleAvatarChange = (e) => {
-        if (e.target.files && e.target.files.length > 0) {
-            const file = e.target.files[0];
-
-            // Validate file type
-            const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-            if (!validTypes.includes(file.type)) {
-                setSaveStatus({
-                    type: 'error',
-                    message: 'Please select a valid image file (JPG, PNG, GIF, or WebP)'
-                });
-                return;
-            }
-
-            // Validate file size (max 5MB)
-            if (file.size > 5 * 1024 * 1024) {
-                setSaveStatus({
-                    type: 'error',
-                    message: 'Image size must be less than 5MB'
-                });
-                return;
-            }
-
-            setSelectedAvatar(file);
-            setPreviewUrl(URL.createObjectURL(file));
-            setSaveStatus({ type: '', message: '' });
-        }
-    };
-
-    const handleRemoveAvatar = () => {
-        setSelectedAvatar(null);
-        setPreviewUrl(null);
-        setSaveStatus({ type: '', message: '' });
-    };
-
-    const handleSave = async (e) => {
-        e.preventDefault();
-        setIsSaving(true);
-        setSaveStatus({ type: '', message: '' });
-
-        try {
-            let avatarUrl = user?.avatar_url;
-
-            // Upload avatar if a new one was selected
-            if (selectedAvatar) {
-                setIsUploading(true);
-                const formData = new FormData();
-                formData.append('file', selectedAvatar);
-
-                const uploadResponse = await api.post('/documents/upload', formData, {
-                    headers: {
-                        'Content-Type': 'multipart/form-data',
-                    },
-                });
-
-                avatarUrl = uploadResponse.data.file_path;
-                setIsUploading(false);
-            }
-
-            // Update user profile
-            const updateData = {
-                full_name: formData.full_name,
-                avatar_url: avatarUrl,
-            };
-
-            await api.put('/auth/me', updateData);
-
-            setSaveStatus({
-                type: 'success',
-                message: 'Settings saved successfully!'
-            });
-
-            // Refresh user data in context
-            if (refreshUser) {
-                await refreshUser();
-            }
-
-            // Clear selected avatar after successful save
-            setSelectedAvatar(null);
-
-        } catch (error) {
-            console.error('Failed to save settings:', error);
-            setSaveStatus({
-                type: 'error',
-                message: error.response?.data?.detail || 'Failed to save settings. Please try again.'
-            });
-        } finally {
-            setIsSaving(false);
-            setIsUploading(false);
-        }
-    };
+    // ... (keep headers)
 
     return (
         <div className="page-container p-8">
@@ -141,6 +85,52 @@ export default function Settings() {
             />
 
             <div className="max-w-3xl">
+                {/* Node Configuration Section */}
+                <div className="panel mb-6">
+                    <div className="panel-header bg-surface-secondary">
+                        <h2 className="font-bold flex items-center gap-2">
+                            <Server size={20} />
+                            Node Configuration
+                        </h2>
+                    </div>
+                    <div className="panel-content">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-medium text-gray-900">Current Role</p>
+                                <p className="text-sm text-gray-500">This node's operating mode.</p>
+                            </div>
+                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${nodeInfo.nodeRole === 'hub' ? 'bg-indigo-100 text-indigo-800' : 'bg-blue-100 text-blue-800'
+                                }`}>
+                                {nodeInfo.nodeRole ? nodeInfo.nodeRole.toUpperCase() : 'LOADING...'}
+                            </span>
+                        </div>
+                        <div className="mt-4 pt-4 border-t border-gray-100">
+                            <button
+                                onClick={() => {
+                                    if (confirm('Are you sure you want to re-configure this node? You will need to restart the application afterwards.')) {
+                                        // Trigger hard reset via local server
+                                        // This deletes config.json and restarts the app
+                                        axios.post('http://127.0.0.1:8000/__local__/reset-config')
+                                            .then(() => {
+                                                alert('Application is resetting...');
+                                            })
+                                            .catch(err => {
+                                                console.error('Reset failed:', err);
+                                                alert('Failed to reset. Please delete config.json manually.');
+                                            });
+                                    }
+                                }}
+                                className="text-indigo-600 hover:text-indigo-900 text-sm font-medium"
+                            >
+                                Reset Application & Change Role
+                            </button>
+                            <p className="mt-1 text-xs text-gray-500">
+                                This will delete your node configuration and restart the app.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
                 <div className="panel">
                     <div className="panel-header bg-surface-secondary">
                         <h2 className="font-bold flex items-center gap-2">

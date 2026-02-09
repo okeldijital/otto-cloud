@@ -1,7 +1,11 @@
 import axios from 'axios';
 
-// API base URL - use environment variable or default to localhost
-export const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+// API base URL logic
+// 1. If VITE_API_URL is set (dev), use it.
+// 2. If running in browser (served by backend), use relative path '/api'.
+// 3. Fallback to localhost:8000 (dev default).
+const isDev = import.meta.env.DEV;
+export const BASE_URL = import.meta.env.VITE_API_URL || (isDev ? 'http://localhost:8000' : '');
 export const API_URL = `${BASE_URL}/api`;
 
 // Create axios instance

@@ -84,3 +84,36 @@ async def get_current_organization_id(
         return UUID(x_organization_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid Organization ID format")
+
+# ----------------------------------------------------------------
+def get_node_role() -> str:
+    """
+    Get current node role strictly from env var.
+    Env var OTTO_NODE_ROLE is injected by Electron.
+    Default is 'hub' if not set (safe default).
+    """
+    import os
+    env_role = os.getenv("OTTO_NODE_ROLE")
+    if env_role:
+        return env_role.lower()
+    
+    # NO fallback to config file. Backend is stateless/Env-driven regarding role.
+    return "hub"
+
+async def require_hub_role():
+    """Dependency to enforce HUB role only."""
+    role = get_node_role()
+    if role != "hub":
+        raise HTTPException(
+            status_code=403, 
+            detail={"code": "hub_only", "message": "This action requires HUB role."}
+        )
+
+async def require_spoke_role():
+    """Dependency to enforce SPOKE role only."""
+    role = get_node_role()
+    if role != "spoke":
+        raise HTTPException(
+            status_code=403, 
+            detail={"code": "spoke_only", "message": "This action requires SPOKE role."}
+        )

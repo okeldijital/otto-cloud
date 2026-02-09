@@ -15,16 +15,18 @@ router = APIRouter()
 
 class ConfigRequest(BaseModel):
     """Hub/Spoke configuration request."""
-    mode: str  # "hub" or "spoke"
+    nodeRole: str  # "hub" or "spoke"
     node_name: str
     hub_url: Optional[str] = None
 
 
 class ConfigResponse(BaseModel):
     """Hub/Spoke configuration response."""
-    mode: str
+    nodeRole: str
     node_name: str
     hub_url: Optional[str] = None
+    nodeId: Optional[str] = None
+    createdAt: Optional[str] = None
 
 
 def get_config_path() -> Path:
@@ -49,71 +51,61 @@ def read_config() -> Dict[str, Any]:
 def get_default_config() -> Dict[str, Any]:
     """Get default configuration."""
     return {
-        "mode": "hub",
+        "nodeRole": "hub",
         "node_name": "OTTO Node",
         "hub_url": None,
         "version": "1.0.1"
     }
 
 
-def write_config(config: Dict[str, Any]) -> None:
-    """Write configuration to file."""
-    config_path = get_config_path()
-    config_path.parent.mkdir(exist_ok=True, parents=True)
-    with open(config_path, 'w') as f:
-        json.dump(config, f, indent=2)
-    logger.info(f"Configuration saved to {config_path}")
-
-
-@router.get("/api/config", response_model=ConfigResponse)
+@router.get("/config", response_model=ConfigResponse)
 async def get_config():
-    """Get current configuration."""
+    """Get current configuration (Read-Only)."""
     try:
+        # We still read config for the frontend 'Settings' display if needed,
+        # but the Source of Truth for logic is Env Vars.
         config = read_config()
         return ConfigResponse(
-            mode=config.get("mode", "hub"),
+            nodeRole=config.get("nodeRole", "hub"),
             node_name=config.get("node_name", "OTTO Node"),
-            hub_url=config.get("hub_url")
+            hub_url=config.get("hub_url"),
+            nodeId=config.get("nodeId"),
+            createdAt=config.get("createdAt")
         )
     except Exception as e:
         logger.error(f"Error getting config: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/api/config", response_model=ConfigResponse)
-async def set_config(request: ConfigRequest):
-    """Update configuration."""
+@router.get("/node/info")
+async def get_node_info():
+    """Get node role and ID (Strictly from Environment)."""
     try:
-        # Validate mode
-        if request.mode not in ["hub", "spoke"]:
-            raise ValueError("Mode must be 'hub' or 'spoke'")
+        import os
+        env_role = os.getenv("OTTO_NODE_ROLE")
+        env_id = os.getenv("OTTO_NODE_ID")
         
-        # If spoke mode, require hub_url
-        if request.mode == "spoke" and not request.hub_url:
-            raise ValueError("Hub URL is required for spoke mode")
+        # If running in Dev without Electron, we might fall back to config for convenience,
+        # OR strictly return what the process sees.
+        # User requested: "Backend knows OTTO_NODE_ROLE... via Env".
         
-        # Read current config and update
-        config = read_config()
-        config["mode"] = request.mode
-        config["node_name"] = request.node_name
-        config["hub_url"] = request.hub_url
+        # We return the Env values. If missing, we might return defaults or 'unknown'.
+        # For 'Settings.jsx', it expects a role. 
         
-        # Write back
-        write_config(config)
+        config = read_config() # Optional fallback for display only?
         
-        logger.info(f"Configuration updated: mode={request.mode}, node={request.node_name}")
-        
-        return ConfigResponse(
-            mode=request.mode,
-            node_name=request.node_name,
-            hub_url=request.hub_url
-        )
+        return {
+            "nodeRole": env_role or config.get("nodeRole", "hub"),
+            "nodeId": env_id or config.get("nodeId", "unknown"),
+            "nodeName": config.get("node_name", "OTTO Node"),
+            "env_injected": bool(env_role)
+        }
     except Exception as e:
-        logger.error(f"Error setting config: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error(f"Error getting node info: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/api/config/is-first-run")
+@router.get("/config/is-first-run")
 async def is_first_run():
     """Check if this is the first run."""
     try:
