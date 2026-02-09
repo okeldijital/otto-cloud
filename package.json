@@ -20,21 +20,16 @@
         "appId": "com.otto.desktop",
         "productName": "OTTO",
         "directories": {
-            "buildResources": "assets",
             "output": "dist-electron"
         },
         "files": [
-            "package.json",
             "main.js",
             "preload.js",
-            "dist/**/*",
             "dist-desktop/**/*",
             "node_modules/**/*"
         ],
         "mac": {
-            "target": ["dmg", "zip"],
-            "identity": null,
-            "signingByDefault": false
+            "target": ["dmg", "zip"]
         },
         "win": {
             "target": ["nsis", "portable"]
