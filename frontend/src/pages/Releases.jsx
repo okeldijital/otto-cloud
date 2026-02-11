@@ -132,7 +132,8 @@ const Releases = () => {
 
     const handleEdit = async (release) => {
         console.log('Editing release:', release);
-        console.log('Credits from release:', release.credits);
+        console.log('EXPLICIT CHECK: release.id =', release.id, typeof release.id);
+        console.log('EXPLICIT CHECK: release.release_id =', release.release_id);
         setEditingRelease(release);
         setSelectedFile(null);
 
@@ -188,6 +189,8 @@ const Releases = () => {
         e.preventDefault();
         setIsSubmitting(true);
 
+        const submissionData = { ...formData };
+
         // Force assignment in case of spread issue
         submissionData.credits = formData.credits;
 
@@ -221,6 +224,7 @@ const Releases = () => {
             setIsSubmitting(false);
         }
     };
+
 
     const columns = [
         {
@@ -322,11 +326,15 @@ const Releases = () => {
                 }
             />
 
+            {console.log('Releases passed to DataTable:', releases)}
             <DataTable
                 columns={columns}
                 data={releases}
                 isLoading={isLoading}
-                onEdit={handleEdit}
+                onEdit={(row) => {
+                    console.log('DataTable onEdit row:', row);
+                    handleEdit(row);
+                }}
                 onDelete={handleDelete}
             />
 
