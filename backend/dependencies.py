@@ -21,7 +21,7 @@ async def get_current_user(
         if not user:
             # Create default admin for desktop if missing
             from passlib.context import CryptContext
-            pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+            pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
             user = User(
                 email="admin@otto.com",
                 hashed_password=pwd_context.hash("admin"),
@@ -29,7 +29,7 @@ async def get_current_user(
                 is_active=True,
                 is_superuser=True,
                 role="admin",
-                organization_id=UUID("00000000-0000-0000-0000-000000000001"),
+                organization_id=1,
             )
             db.add(user)
             db.commit()
@@ -71,17 +71,17 @@ from uuid import UUID
 
 async def get_current_organization_id(
     x_organization_id: Optional[str] = Header(None, alias="X-Organization-ID")
-) -> UUID:
+) -> int:
     """
     Extracts Organization ID from Header.
     In V1 Strict Mode, this is mandatory for scoped operations.
-    Fallback to a default UUID for development if header is missing.
+    Fallback to a default ID for development if header is missing.
     """
     if not x_organization_id:
-        # Default UUID for development fallback
-        return UUID("00000000-0000-0000-0000-000000000001")
+        # Default ID for development fallback (Integer)
+        return 1
     try:
-        return UUID(x_organization_id)
+        return int(x_organization_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid Organization ID format")
 

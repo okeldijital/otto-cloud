@@ -22,3 +22,4 @@ APScheduler
 pywebview
 psycopg[binary]==3.2.3
 psycopg2-binary
+PyYAML

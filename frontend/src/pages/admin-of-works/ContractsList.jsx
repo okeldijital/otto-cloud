@@ -62,11 +62,11 @@ const ContractsList = () => {
         e.preventDefault();
         setCreateError('');
         try {
-            // Requirement: Active requires PDF
-            if (createForm.status === 'Active' && !createForm.file) {
-                setCreateError('A PDF document is required for Active contracts.');
-                return;
-            }
+            // Requirement: Active requires PDF (Optional for now)
+            // if (createForm.status === 'Active' && !createForm.file) {
+            //     setCreateError('A PDF document is required for Active contracts.');
+            //     return;
+            // }
 
             const payload = new FormData();
             payload.append('title', createForm.title);
@@ -245,9 +245,19 @@ const ContractsList = () => {
                         </select>
                     </div>
                 </div>
+                <div className="form-row">
+                    <div className="form-group">
+                        <label>Start Date</label>
+                        <input type="date" className="input" value={createForm.start_date} onChange={e => setCreateForm({ ...createForm, start_date: e.target.value })} />
+                    </div>
+                    <div className="form-group">
+                        <label>End Date</label>
+                        <input type="date" className="input" value={createForm.end_date} onChange={e => setCreateForm({ ...createForm, end_date: e.target.value })} />
+                    </div>
+                </div>
                 <div className="form-group">
-                    <label>Signed PDF {createForm.status === 'Active' && '(Required)'}</label>
-                    <input type="file" accept="application/pdf" onChange={e => setCreateForm({ ...createForm, file: e.target.files[0] })} required={createForm.status === 'Active'} />
+                    <label>Signed PDF (Optional)</label>
+                    <input type="file" accept="application/pdf" onChange={e => setCreateForm({ ...createForm, file: e.target.files[0] })} />
                 </div>
             </EntityForm>
         </div>

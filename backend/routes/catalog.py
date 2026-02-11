@@ -18,7 +18,10 @@ from schemas.work import Work, WorkCreate, WorkUpdate
 from schemas.label import Label, LabelCreate, LabelUpdate
 from schemas.publisher import Publisher, PublisherCreate, PublisherUpdate
 from schemas.pro import PRO, PROCreate, PROUpdate
-from dependencies import get_current_active_user
+from dependencies import get_current_active_user, get_current_organization_id
+from repositories.track_repository import track_repository
+from utils.audit import audit_service
+from sqlalchemy.exc import IntegrityError
 
 router = APIRouter()
 
@@ -349,35 +352,41 @@ def list_tracks(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
+    org_id: int = Depends(get_current_organization_id),
     current_user: User = Depends(get_current_active_user)
 ):
     """List all tracks"""
-    tracks = db.query(TrackModel).offset(skip).limit(limit).all()
-    return tracks
+    return track_repository.get_all(db, organization_id=org_id, skip=skip, limit=limit)
 
 
 @router.post("/tracks", response_model=Track, status_code=status.HTTP_201_CREATED)
 def create_track(
     track: TrackCreate,
     db: Session = Depends(get_db),
+    org_id: int = Depends(get_current_organization_id),
     current_user: User = Depends(get_current_active_user)
 ):
     """Create a new track"""
-    db_track = TrackModel(**track.model_dump())
-    db.add(db_track)
-    db.commit()
-    db.refresh(db_track)
-    return db_track
+    try:
+        db_track = track_repository.create(db, track.model_dump(), organization_id=org_id)
+        audit_service.log(db, "CREATE", "Track", db_track.id, current_user.id, changes=track.model_dump(), organization_id=org_id)
+        return db_track
+    except IntegrityError:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A track with this ISRC or Track ID already exists."
+        )
 
 
 @router.get("/tracks/{track_id}", response_model=Track)
 def get_track(
     track_id: int,
     db: Session = Depends(get_db),
+    org_id: int = Depends(get_current_organization_id),
     current_user: User = Depends(get_current_active_user)
 ):
     """Get a specific track by ID"""
-    track = db.query(TrackModel).filter(TrackModel.id == track_id).first()
+    track = track_repository.get_by_id(db, track_id, organization_id=org_id)
     if not track:
         raise HTTPException(status_code=404, detail="Track not found")
     return track
@@ -388,45 +397,40 @@ def update_track(
     track_id: int,
     track_update: TrackUpdate,
     db: Session = Depends(get_db),
+    org_id: int = Depends(get_current_organization_id),
     current_user: User = Depends(get_current_active_user)
 ):
     """Update a track"""
-    db_track = db.query(TrackModel).filter(TrackModel.id == track_id).first()
+    db_track = track_repository.get_by_id(db, track_id, organization_id=org_id)
     if not db_track:
         raise HTTPException(status_code=404, detail="Track not found")
     
-    update_data = track_update.model_dump(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(db_track, field, value)
-    
-    db.commit()
-    db.refresh(db_track)
-    return db_track
+    try:
+        updated_track = track_repository.update(db, db_track, track_update.model_dump(exclude_unset=True))
+        audit_service.log(db, "UPDATE", "Track", track_id, current_user.id, changes=track_update.model_dump(exclude_unset=True), organization_id=org_id)
+        return updated_track
+    except IntegrityError:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A track with this ISRC or Track ID already exists."
+        )
 
 
 @router.delete("/tracks/{track_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_track(
     track_id: int,
     db: Session = Depends(get_db),
+    org_id: int = Depends(get_current_organization_id),
     current_user: User = Depends(get_current_active_user)
 ):
     """Delete a track"""
-    db_track = db.query(TrackModel).filter(TrackModel.id == track_id).first()
-    if not db_track:
-        raise HTTPException(status_code=404, detail="Track not found")
-    
-    from sqlalchemy.exc import IntegrityError
     try:
-        db.delete(db_track)
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Cannot delete track because it is linked to other records (e.g. contracts, playlists)."
-        )
+        success = track_repository.delete(db, track_id, organization_id=org_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Track not found")
+        
+        audit_service.log(db, "DELETE", "Track", track_id, current_user.id, organization_id=org_id)
     except Exception as e:
-        db.rollback()
         raise HTTPException(status_code=400, detail=f"Could not delete track: {str(e)}")
     return None
 

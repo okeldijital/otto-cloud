@@ -132,7 +132,7 @@ const Labels = () => {
             label: '',
             render: (row) => {
                 const url = row.logo_url;
-                const fullUrl = url ? (url.startsWith('http') ? url : `http://localhost:8000${url}`) : null;
+                const fullUrl = url ? (url.startsWith('http') ? url : `${BASE_URL}${url}`) : null;
                 return fullUrl ? (
                     <img
                         src={fullUrl}
@@ -203,7 +203,7 @@ const Labels = () => {
                         {formData.logo_url ? (
                             <div className="logo-preview-wrapper" style={{ position: 'relative' }}>
                                 <img
-                                    src={formData.logo_url.startsWith('http') ? formData.logo_url : `http://localhost:8000${formData.logo_url}`}
+                                    src={formData.logo_url.startsWith('http') ? formData.logo_url : `${BASE_URL}${formData.logo_url}`}
                                     alt="Preview"
                                     style={{ width: '80px', height: '80px', borderRadius: '12px', objectFit: 'cover', border: '2px solid #e2e8f0' }}
                                 />

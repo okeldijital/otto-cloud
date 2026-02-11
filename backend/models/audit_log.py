@@ -15,9 +15,9 @@ class AuditLog(Base):
     action = Column(String(50), index=True)  # CREATE, UPDATE, DELETE, VIEW
     entity_type = Column(String(50), index=True)  # artist, track, contract, etc.
     entity_id = Column(Integer)
-    entity_uuid = Column(Uuid(as_uuid=True), index=True) # UUID entities
+    entity_uuid = Column(Integer, index=True, nullable=True) # For legacy UUID entities, now Integer
     entity_name = Column(String(255))  # For quick reference
-    organization_id = Column(Uuid(as_uuid=True), index=True)
+    organization_id = Column(Integer, index=True, nullable=True)
     
     # Changes
     changes = Column(JSON)  # Before/after values for updates

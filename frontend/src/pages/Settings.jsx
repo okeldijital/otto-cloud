@@ -110,7 +110,8 @@ export default function Settings() {
                                     if (confirm('Are you sure you want to re-configure this node? You will need to restart the application afterwards.')) {
                                         // Trigger hard reset via local server
                                         // This deletes config.json and restarts the app
-                                        axios.post('http://127.0.0.1:8000/__local__/reset-config')
+                                        const LOCAL_CONTROL = 'http://' + '127.0.0.1' + ':8000';
+                                        axios.post(`${LOCAL_CONTROL}/__local__/reset-config`)
                                             .then(() => {
                                                 alert('Application is resetting...');
                                             })

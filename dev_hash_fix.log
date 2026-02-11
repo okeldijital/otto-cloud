@@ -1,0 +1,197 @@
+🚀 Starting OTTO Development Servers...
+📦 Starting Backend (port 8001)...
+2026-02-10 13:32:03,715 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+2026-02-10 13:32:03,716 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("users")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("users")
+2026-02-10 13:32:03,716 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-10 13:32:03,716 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("pros")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("pros")
+2026-02-10 13:32:03,716 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-10 13:32:03,716 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("labels")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("labels")
+2026-02-10 13:32:03,716 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-10 13:32:03,716 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("publishers")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("publishers")
+2026-02-10 13:32:03,716 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-10 13:32:03,716 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("artists")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("artists")
+2026-02-10 13:32:03,716 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-10 13:32:03,716 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("releases")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("releases")
+2026-02-10 13:32:03,716 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-10 13:32:03,716 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("tracks")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("tracks")
+2026-02-10 13:32:03,716 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-10 13:32:03,716 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("works")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("works")
+2026-02-10 13:32:03,716 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-10 13:32:03,717 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("royalties")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("royalties")
+2026-02-10 13:32:03,717 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-10 13:32:03,717 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("documents")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("documents")
+2026-02-10 13:32:03,717 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-10 13:32:03,717 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("notes")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("notes")
+2026-02-10 13:32:03,717 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-10 13:32:03,717 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("events")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("events")
+2026-02-10 13:32:03,717 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-10 13:32:03,717 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("playlists")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("playlists")
+2026-02-10 13:32:03,717 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-10 13:32:03,717 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("audit_logs")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("audit_logs")
+2026-02-10 13:32:03,717 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-10 13:32:03,717 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("activities")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("activities")
+2026-02-10 13:32:03,717 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-10 13:32:03,717 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("individual_organizations")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("individual_organizations")
+2026-02-10 13:32:03,717 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-10 13:32:03,717 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("organizations")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("organizations")
+2026-02-10 13:32:03,717 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-10 13:32:03,717 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("individuals")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("individuals")
+2026-02-10 13:32:03,717 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-10 13:32:03,717 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("platforms")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("platforms")
+2026-02-10 13:32:03,717 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-10 13:32:03,717 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("network_relationships")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("network_relationships")
+2026-02-10 13:32:03,717 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-10 13:32:03,717 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("tasks")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("tasks")
+2026-02-10 13:32:03,717 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-10 13:32:03,717 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("office_notes")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("office_notes")
+2026-02-10 13:32:03,717 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-10 13:32:03,717 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("office_note_links")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("office_note_links")
+2026-02-10 13:32:03,717 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-10 13:32:03,717 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("office_documents")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("office_documents")
+2026-02-10 13:32:03,718 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-10 13:32:03,718 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("office_document_links")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("office_document_links")
+2026-02-10 13:32:03,718 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-10 13:32:03,718 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("report_definitions")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("report_definitions")
+2026-02-10 13:32:03,718 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-10 13:32:03,718 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("report_runs")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("report_runs")
+2026-02-10 13:32:03,718 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-10 13:32:03,718 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("report_artifacts")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("report_artifacts")
+2026-02-10 13:32:03,718 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-10 13:32:03,718 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("status_quo_items")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("status_quo_items")
+2026-02-10 13:32:03,718 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-10 13:32:03,718 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("contracts")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("contracts")
+2026-02-10 13:32:03,718 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-10 13:32:03,718 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("contract_parties")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("contract_parties")
+2026-02-10 13:32:03,718 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-10 13:32:03,718 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("contract_assets")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("contract_assets")
+2026-02-10 13:32:03,718 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-10 13:32:03,718 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("contract_documents")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("contract_documents")
+2026-02-10 13:32:03,718 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-10 13:32:03,718 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("contract_split_groups")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("contract_split_groups")
+2026-02-10 13:32:03,718 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-10 13:32:03,718 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("contract_splits")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("contract_splits")
+2026-02-10 13:32:03,718 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-10 13:32:03,718 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("works_admin")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("works_admin")
+2026-02-10 13:32:03,718 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-10 13:32:03,718 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("works_admin_documents")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("works_admin_documents")
+2026-02-10 13:32:03,718 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-10 13:32:03,718 INFO sqlalchemy.engine.Engine COMMIT
+INFO:sqlalchemy.engine.Engine:COMMIT
+WARNING:root:⚠️  Alembic returned non-zero: INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade 6617bcd72266 -> 7c9f40
+2026-02-10 13:32:04,151 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+2026-02-10 13:32:04,152 INFO sqlalchemy.engine.Engine SELECT users.id AS users_id, users.email AS users_email, users.hashed_password AS users_hashed_password, users.full_name AS users_full_name, users.avatar_url AS users_avatar_url, users.is_active AS users_is_active, users.is_superuser AS users_is_superuser, users.role AS users_role, users.organization_id AS users_organization_id, users.created_at AS users_created_at, users.updated_at AS users_updated_at, users.last_login AS users_last_login 
+FROM users 
+WHERE users.email = ?
+ LIMIT ? OFFSET ?
+INFO:sqlalchemy.engine.Engine:SELECT users.id AS users_id, users.email AS users_email, users.hashed_password AS users_hashed_password, users.full_name AS users_full_name, users.avatar_url AS users_avatar_url, users.is_active AS users_is_active, users.is_superuser AS users_is_superuser, users.role AS users_role, users.organization_id AS users_organization_id, users.created_at AS users_created_at, users.updated_at AS users_updated_at, users.last_login AS users_last_login 
+FROM users 
+WHERE users.email = ?
+ LIMIT ? OFFSET ?
+2026-02-10 13:32:04,152 INFO sqlalchemy.engine.Engine [generated in 0.00012s] ('admin@otto.com', 1, 0)
+INFO:sqlalchemy.engine.Engine:[generated in 0.00012s] ('admin@otto.com', 1, 0)
+ERROR:root:❌ Admin seed error: password cannot be longer than 72 bytes, truncate manually if necessary (e.g. my_password[:72])
+2026-02-10 13:32:04,159 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:sqlalchemy.engine.Engine:ROLLBACK
+WARNING:governance:⚠️ No backups directory found.
+INFO:     Started server process [93217]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+ERROR:    [Errno 48] error while attempting to bind on address ('127.0.0.1', 8001): [errno 48] address already in use
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+🎨 Starting Frontend (port 5173)...
+
+✅ OTTO Development Servers Running:
+   Backend:  http://localhost:8001
+   Frontend: http://localhost:5173
+
+Press Ctrl+C to stop both servers
+
+> frontend@0.0.0 dev
+> vite
+
+Port 5173 is in use, trying another one...
+
+  VITE v7.3.1  ready in 205 ms
+
+  ➜  Local:   http://localhost:5174/
+  ➜  Network: use --host to expose
+dev.sh: line 56: 93242 Killed: 9               npm run dev  (wd: ~/otto/frontend)

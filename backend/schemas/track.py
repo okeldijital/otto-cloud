@@ -15,6 +15,7 @@ class TrackBase(BaseModel):
     file_location: Optional[str] = None
     release_id: Optional[int] = None
     work_id: Optional[int] = None
+    organization_id: Optional[int] = None
 
 
 class TrackCreate(TrackBase):
@@ -32,6 +33,7 @@ class TrackUpdate(BaseModel):
     file_location: Optional[str] = None
     release_id: Optional[int] = None
     work_id: Optional[int] = None
+    organization_id: Optional[int] = None
 
 
 class Track(TrackBase):

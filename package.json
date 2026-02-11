@@ -6,6 +6,7 @@
     "private": true,
     "scripts": {
         "dev": "cd frontend && npm run dev",
+        "dev:all": "bash dev.sh",
         "backend:dev": "cd backend && python3 main.py",
         "build": "bash build.sh",
         "build:frontend": "bash build_frontend.sh",

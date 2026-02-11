@@ -5,10 +5,10 @@ from typing import List
 from pathlib import Path
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 
 # -----------------------------
 # Optional: load .env early
@@ -36,6 +36,11 @@ from governance import run_preflight_checks, GovernanceError # noqa: E402
 # -----------------------------
 app = FastAPI(title=getattr(settings, "APP_NAME", "OTTO"), version=getattr(settings, "APP_VERSION", "0.1.0"))
 
+@app.get("/api/health")
+async def api_health():
+    """Alias for /health to support frontend API clients that prefix with /api"""
+    return {"status": "ok", "env": getattr(settings, "APP_ENV", os.getenv("APP_ENV", "dev"))}
+
 # -----------------------------
 # CORS (FIXED)
 # -----------------------------
@@ -60,7 +65,8 @@ else:
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allow_origins,
+    # allow_origins=allow_origins,  # Replaced by regex for better dev experience
+    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -138,37 +144,25 @@ upload_dir = getattr(settings, "UPLOAD_DIR", None) or os.getenv("UPLOAD_DIR", ".
 os.makedirs(upload_dir, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=upload_dir), name="uploads")
 
-# Serve Frontend (dist-desktop)
-# Logic:
-# 1. Dev: usually skipped or handled by Vite, but if we want to test serving:
-#    look for ../frontend/dist (if built)
-# 2. Prod (PyInstaller):
-#    sys.executable is .../backend/sidecar
-#    dist-desktop is at .../dist-desktop (sibling of backend folder in Resources)
-if getattr(sys, 'frozen', False):
-    # Running as PyInstaller bundle
-    # sys.executable = .../Contents/Resources/backend/sidecar
-    # dist-desktop = .../Contents/Resources/dist-desktop
-    base_dir = Path(sys.executable).parent.parent
-    dist_dir = base_dir / "dist-desktop"
-else:
-    # Running from source (backend/main.py)
-    # dist-desktop might be at ../dist-desktop if built, or ../frontend/dist
-    base_dir = Path(__file__).parent.parent
-    dist_dir = base_dir / "dist-desktop"
 
-if dist_dir.exists():
-    logging.info(f"📂 Serving frontend from {dist_dir}")
-    app.mount("/", StaticFiles(directory=str(dist_dir), html=True), name="frontend")
-else:
-    logging.warning(f"⚠️ Frontend build not found at {dist_dir}")
 
 # Catch-all for SPA client-side routing
 @app.exception_handler(404)
-async def custom_404_handler(_, __):
+async def custom_404_handler(request: Request, exc):
+    """Handle 404 errors - return JSON for API routes, HTML for frontend routes."""
+    path = request.url.path
+    
+    # Never serve HTML for API routes, uploads, or special endpoints
+    if path.startswith(('/api/', '/uploads/', '/health', '/docs', '/openapi.json')):
+        return JSONResponse(
+            status_code=404,
+            content={"detail": "Not Found"}
+        )
+    
+    # Serve index.html for frontend routes (SPA client-side routing)
     if dist_dir.exists():
         return FileResponse(dist_dir / "index.html")
-    return {"error": "Frontend not found"}
+    return JSONResponse(status_code=404, content={"error": "Frontend not found"})
 
 # -----------------------------
 # MOCK Local Server (Dev Mode Only)
@@ -203,6 +197,8 @@ async def mock_reset_config():
 @app.get("/health")
 async def health():
     return {"status": "ok", "env": getattr(settings, "APP_ENV", os.getenv("APP_ENV", "dev"))}
+
+
 
 
 # -----------------------------
@@ -291,6 +287,35 @@ def _seed_admin_user() -> None:
         db.rollback()
     finally:
         db.close()
+
+
+# -----------------------------
+# Serve Frontend (dist-desktop) - MOVED TO END
+# -----------------------------
+# Logic:
+# 1. Dev: usually skipped or handled by Vite, but if we want to test serving:
+#    look for ../frontend/dist (if built)
+# 2. Prod (PyInstaller):
+#    sys.executable is .../backend/sidecar
+#    dist-desktop is at .../dist-desktop (sibling of backend folder in Resources)
+if getattr(sys, 'frozen', False):
+    # Running as PyInstaller bundle
+    # sys.executable = .../Contents/Resources/backend/sidecar
+    # dist-desktop = .../Contents/Resources/dist-desktop
+    base_dir = Path(sys.executable).parent.parent
+    dist_dir = base_dir / "dist-desktop"
+else:
+    # Running from source (backend/main.py)
+    # dist-desktop might be at ../dist-desktop if built, or ../frontend/dist
+    base_dir = Path(__file__).parent.parent
+    dist_dir = base_dir / "dist-desktop"
+
+if dist_dir.exists():
+    logging.info(f"📂 Serving frontend from {dist_dir}")
+    app.mount("/", StaticFiles(directory=str(dist_dir), html=True), name="frontend")
+else:
+    logging.warning(f"⚠️ Frontend build not found at {dist_dir}")
+
 
 
 # -----------------------------

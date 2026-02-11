@@ -244,17 +244,42 @@ const ReleaseDetail = () => {
                         {credits.length === 0 ? (
                             <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', textAlign: 'center', padding: '1rem 0' }}>No credits listed.</p>
                         ) : (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                                 {credits.map((credit, idx) => {
-                                    const contact = contacts.find(c => c.id === credit.contact_id);
+                                    let name = 'Unknown';
+                                    let type = 'Contact';
+
+                                    if (credit.artist_id) {
+                                        const artist = artists.find(a => a.id === credit.artist_id);
+                                        name = artist ? (artist.display_name || artist.name) : `Artist #${credit.artist_id}`;
+                                        type = 'Artist';
+                                    } else if (credit.contact_id) {
+                                        const contact = contacts.find(c => c.id === credit.contact_id);
+                                        name = contact ? `${contact.first_name} ${contact.last_name}` : `Individual #${credit.contact_id}`;
+                                        type = 'Contact';
+                                    }
+
                                     return (
-                                        <div key={idx} style={{ display: 'flex', flexDirection: 'column' }}>
-                                            <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-main)' }}>
-                                                {contact ? `${contact.first_name} ${contact.last_name}` : `Individual #${credit.contact_id}`}
-                                            </span>
-                                            <span style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.025em' }}>
-                                                {credit.role}
-                                            </span>
+                                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                            <div style={{
+                                                padding: '2px 6px',
+                                                background: type === 'Artist' ? '#e0e7ff' : '#f1f5f9',
+                                                color: type === 'Artist' ? '#4338ca' : '#64748b',
+                                                borderRadius: '4px',
+                                                fontSize: '0.65rem',
+                                                fontWeight: 700,
+                                                textTransform: 'uppercase'
+                                            }}>
+                                                {type}
+                                            </div>
+                                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                                                    {name}
+                                                </span>
+                                                <span style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.025em' }}>
+                                                    {credit.role}
+                                                </span>
+                                            </div>
                                         </div>
                                     );
                                 })}

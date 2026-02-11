@@ -8,7 +8,7 @@ class Artist(Base):
     __tablename__ = "artists"
     
     id = Column(Integer, primary_key=True, index=True)
-    organization_id = Column(Uuid(as_uuid=True), nullable=True, index=True)
+    organization_id = Column(Integer, nullable=True, index=True)
     is_deleted = Column(Boolean, nullable=False, default=False)
     artist_id = Column(String(50), unique=True, index=True)  # ART001, ART002, etc.
     name = Column(String(255), nullable=False, index=True)

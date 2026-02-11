@@ -17,7 +17,7 @@ class ContractRepository(BaseRepository[Contract]):
     def __init__(self):
         super().__init__(Contract)
 
-    def get_all_filtered(self, db: Session, organization_id: UUID, status: Optional[str] = None, type: Optional[str] = None) -> List[Contract]:
+    def get_all_filtered(self, db: Session, organization_id: int, status: Optional[str] = None, type: Optional[str] = None) -> List[Contract]:
         query = db.query(Contract).options(
             selectinload(Contract.parties),
             selectinload(Contract.assets),
@@ -30,7 +30,7 @@ class ContractRepository(BaseRepository[Contract]):
             query = query.filter(Contract.type == type)
         return query.order_by(Contract.created_at.desc().nullslast()).all()
 
-    def get_with_details(self, db: Session, contract_id: UUID, organization_id: UUID) -> Optional[Contract]:
+    def get_with_details(self, db: Session, contract_id: int, organization_id: int) -> Optional[Contract]:
         return (
             db.query(Contract)
             .options(
@@ -43,7 +43,7 @@ class ContractRepository(BaseRepository[Contract]):
             .first()
         )
 
-    def create_contract(self, db: Session, data: dict, organization_id: UUID, created_by: int):
+    def create_contract(self, db: Session, data: dict, organization_id: int, created_by: int):
         data["organization_id"] = organization_id
         data["created_by"] = created_by
         contract = Contract(**data)
@@ -52,7 +52,7 @@ class ContractRepository(BaseRepository[Contract]):
         db.refresh(contract)
         return contract
 
-    def add_party(self, db: Session, contract_id: UUID, organization_id: UUID, party_data: dict) -> ContractParty:
+    def add_party(self, db: Session, contract_id: int, organization_id: int, party_data: dict) -> ContractParty:
         party_data["contract_id"] = contract_id
         party_data["organization_id"] = organization_id
         party = ContractParty(**party_data)
@@ -61,7 +61,7 @@ class ContractRepository(BaseRepository[Contract]):
         db.refresh(party)
         return party
 
-    def add_asset(self, db: Session, contract_id: UUID, organization_id: UUID, asset_data: dict) -> ContractAsset:
+    def add_asset(self, db: Session, contract_id: int, organization_id: int, asset_data: dict) -> ContractAsset:
         asset_data["contract_id"] = contract_id
         asset_data["organization_id"] = organization_id
         asset = ContractAsset(**asset_data)
@@ -70,7 +70,7 @@ class ContractRepository(BaseRepository[Contract]):
         db.refresh(asset)
         return asset
 
-    def add_document(self, db: Session, contract_id: UUID, organization_id: UUID, doc_data: dict) -> ContractDocument:
+    def add_document(self, db: Session, contract_id: int, organization_id: int, doc_data: dict) -> ContractDocument:
         doc_data["contract_id"] = contract_id
         doc_data["organization_id"] = organization_id
         existing = db.query(func.max(ContractDocument.version)).filter(ContractDocument.contract_id == contract_id).scalar()
@@ -81,7 +81,7 @@ class ContractRepository(BaseRepository[Contract]):
         db.refresh(doc)
         return doc
 
-    def add_split_group(self, db: Session, contract_id: UUID, organization_id: UUID, group_data: dict) -> ContractSplitGroup:
+    def add_split_group(self, db: Session, contract_id: int, organization_id: int, group_data: dict) -> ContractSplitGroup:
         group_data["contract_id"] = contract_id
         group_data["organization_id"] = organization_id
         group = ContractSplitGroup(**group_data)
@@ -90,7 +90,7 @@ class ContractRepository(BaseRepository[Contract]):
         db.refresh(group)
         return group
 
-    def add_split(self, db: Session, group_id: UUID, organization_id: UUID, split_data: dict) -> ContractSplit:
+    def add_split(self, db: Session, group_id: int, organization_id: int, split_data: dict) -> ContractSplit:
         split_data["group_id"] = group_id
         split_data["organization_id"] = organization_id
         split = ContractSplit(**split_data)

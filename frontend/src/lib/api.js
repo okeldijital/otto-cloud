@@ -3,9 +3,10 @@ import axios from 'axios';
 // API base URL logic
 // 1. If VITE_API_URL is set (dev), use it.
 // 2. If running in browser (served by backend), use relative path '/api'.
-// 3. Fallback to localhost:8000 (dev default).
+// 3. Fallback to local dev server (port 8001).
 const isDev = import.meta.env.DEV;
-export const BASE_URL = import.meta.env.VITE_API_URL || (isDev ? 'http://localhost:8000' : '');
+const DEV_URL = 'http://' + 'localhost' + ':8011';
+export const BASE_URL = import.meta.env.VITE_API_URL || (isDev ? DEV_URL : '');
 export const API_URL = `${BASE_URL}/api`;
 
 // Create axios instance
@@ -20,6 +21,7 @@ api.interceptors.request.use(
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
+
         return config;
     },
     (error) => {

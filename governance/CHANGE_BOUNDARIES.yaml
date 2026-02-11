@@ -1,0 +1,92 @@
+scopes:
+  contracts:
+    - backend/routes/contracts.py
+    - backend/models/contract.py
+    - backend/schemas/contract.py
+    - backend/repositories/contract_repository.py
+    - backend/services/contract_service.py
+    - frontend/src/pages/admin-of-works/ContractsList.jsx
+    - frontend/src/pages/admin-of-works/ContractDetail.jsx
+    - frontend/src/components/contracts/**
+    - frontend/src/services/contractService.js
+
+  catalog:
+    - backend/routes/catalog.py
+    - backend/models/artist.py
+    - backend/models/release.py
+    - backend/models/track.py
+    - backend/models/work.py
+    - backend/models/label.py
+    - backend/models/publisher.py
+    - backend/schemas/artist.py
+    - backend/schemas/release.py
+    - backend/schemas/track.py
+    - backend/schemas/work.py
+    - backend/schemas/label.py
+    - backend/schemas/publisher.py
+    - backend/repositories/track_repository.py
+    - frontend/src/pages/Catalog.jsx
+    - frontend/src/pages/Artists.jsx
+    - frontend/src/pages/ArtistDetail.jsx
+    - frontend/src/pages/Releases.jsx
+    - frontend/src/pages/ReleaseDetail.jsx
+    - frontend/src/pages/Works.jsx
+    - frontend/src/pages/WorkDetail.jsx
+    - frontend/src/pages/Tracks.jsx
+    - frontend/src/pages/TrackDetail.jsx
+    - frontend/src/pages/Labels.jsx
+    - frontend/src/pages/LabelDetail.jsx
+    - frontend/src/pages/Publishers.jsx
+    - frontend/src/pages/PublisherDetail.jsx
+    - frontend/src/services/catalogService.js
+
+  office:
+    - backend/routes/office_*.py
+    - backend/models/office_*.py
+    - backend/schemas/office_*.py
+    - frontend/src/pages/office/**
+
+  network:
+    - backend/routes/network.py
+    - backend/models/network.py
+    - backend/schemas/network.py
+    - frontend/src/pages/network/**
+    - frontend/src/services/network.js
+
+  installer:
+    - installer/**
+    - scripts/build_*.sh
+    - .github/workflows/**
+
+  governance:
+    - governance/**
+    - backend/*_check.py
+    - scripts/run_governance.sh
+    - docs/GOVERNANCE.md
+    - docs/ADE_WORK_ORDER.md
+    - frontend/governance_check.js
+
+  frontend-ui:
+    - frontend/src/**
+    - frontend/package.json
+    - frontend/vite.config.js
+    - frontend/tailwind.config.js
+    - frontend/postcss.config.js
+
+  backend-core:
+    - backend/*.py
+    - backend/alembic/**
+    - backend/core/**
+    - backend/db/**
+    - backend/api/**
+    - backend/requirements.txt
+    - Dockerfile
+    - docker-compose.yml
+
+always_allowed:
+  - docs/**
+  - tests/**
+  - scripts/dev.sh
+  - .gitignore
+  - README.md
+  - backend/requirements.txt

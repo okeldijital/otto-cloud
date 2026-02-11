@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File,
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict
-from uuid import UUID
 import os
 import shutil
 
@@ -35,7 +34,7 @@ router = APIRouter(
 )
 
 
-def save_upload_file(contract_id: UUID, file: UploadFile) -> str:
+def save_upload_file(contract_id: int, file: UploadFile) -> str:
     ext = file.filename.split(".")[-1].lower() if "." in file.filename else ""
     if ext not in settings.ALLOWED_EXTENSIONS or ext not in ["pdf", "doc", "docx", "png", "jpg", "jpeg"]:
         raise HTTPException(status_code=400, detail="Unsupported file type; PDF preferred.")
@@ -52,7 +51,7 @@ def _entity_org_id(obj):
     return getattr(obj, "organization_id", None)
 
 
-def assert_same_org(entity_type: str, entity_id: int, org_id: UUID, db: Session):
+def assert_same_org(entity_type: str, entity_id: int, org_id: int, db: Session):
     model_map = {
         "Artist": Artist,
         "Label": Label,
@@ -83,7 +82,7 @@ def list_contracts(
     status_filter: Optional[str] = None,
     type_filter: Optional[str] = None,
     db: Session = Depends(get_db),
-    org_id: UUID = Depends(get_current_organization_id),
+    org_id: int = Depends(get_current_organization_id),
     current_user=Depends(get_current_user),
 ):
     contracts = contract_repository.get_all_filtered(db, org_id, status_filter, type_filter)
@@ -133,7 +132,7 @@ async def create_contract(
     release_id: int = Form(None),
     file: UploadFile = File(None),
     db: Session = Depends(get_db),
-    org_id: UUID = Depends(get_current_organization_id),
+    org_id: int = Depends(get_current_organization_id),
     current_user=Depends(get_current_user),
 ):
     # Create contract record
@@ -212,9 +211,9 @@ async def create_contract(
 
 @router.get("/contracts/{contract_id}", response_model=ContractResponse)
 def get_contract(
-    contract_id: UUID,
+    contract_id: int,
     db: Session = Depends(get_db),
-    org_id: UUID = Depends(get_current_organization_id),
+    org_id: int = Depends(get_current_organization_id),
     current_user=Depends(get_current_user),
 ):
     contract = contract_repository.get_with_details(db, contract_id, org_id)
@@ -226,10 +225,10 @@ def get_contract(
 
 @router.patch("/contracts/{contract_id}", response_model=ContractResponse)
 def update_contract(
-    contract_id: UUID,
+    contract_id: int,
     contract_data: ContractUpdate,
     db: Session = Depends(get_db),
-    org_id: UUID = Depends(get_current_organization_id),
+    org_id: int = Depends(get_current_organization_id),
     current_user=Depends(get_current_user),
 ):
     contract = contract_repository.get(db, contract_id, org_id)
@@ -249,9 +248,9 @@ def update_contract(
 
 @router.delete("/contracts/{contract_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_contract(
-    contract_id: UUID,
+    contract_id: int,
     db: Session = Depends(get_db),
-    org_id: UUID = Depends(get_current_organization_id),
+    org_id: int = Depends(get_current_organization_id),
     current_user=Depends(get_current_user),
 ):
     contract = contract_repository.get(db, contract_id, org_id)
@@ -265,10 +264,10 @@ def delete_contract(
 # Parties
 @router.post("/contracts/{contract_id}/parties", response_model=ContractResponse)
 def add_party(
-    contract_id: UUID,
+    contract_id: int,
     party_data: ContractPartyCreate,
     db: Session = Depends(get_db),
-    org_id: UUID = Depends(get_current_organization_id),
+    org_id: int = Depends(get_current_organization_id),
     current_user=Depends(get_current_user),
 ):
     contract = contract_repository.get(db, contract_id, org_id)
@@ -285,10 +284,10 @@ def add_party(
 
 @router.delete("/contracts/{contract_id}/parties/{party_id}", response_model=ContractResponse)
 def remove_party(
-    contract_id: UUID,
-    party_id: UUID,
+    contract_id: int,
+    party_id: int,
     db: Session = Depends(get_db),
-    org_id: UUID = Depends(get_current_organization_id),
+    org_id: int = Depends(get_current_organization_id),
     current_user=Depends(get_current_user),
 ):
     party = db.query(ContractParty).filter(ContractParty.id == party_id, ContractParty.contract_id == contract_id, ContractParty.organization_id == org_id).first()
@@ -304,10 +303,10 @@ def remove_party(
 # Assets
 @router.post("/contracts/{contract_id}/assets", response_model=ContractResponse)
 def add_asset(
-    contract_id: UUID,
+    contract_id: int,
     asset_data: ContractAssetCreate,
     db: Session = Depends(get_db),
-    org_id: UUID = Depends(get_current_organization_id),
+    org_id: int = Depends(get_current_organization_id),
     current_user=Depends(get_current_user),
 ):
     contract = contract_repository.get(db, contract_id, org_id)
@@ -322,10 +321,10 @@ def add_asset(
 
 @router.delete("/contracts/{contract_id}/assets/{asset_id}", response_model=ContractResponse)
 def remove_asset(
-    contract_id: UUID,
-    asset_id: UUID,
+    contract_id: int,
+    asset_id: int,
     db: Session = Depends(get_db),
-    org_id: UUID = Depends(get_current_organization_id),
+    org_id: int = Depends(get_current_organization_id),
     current_user=Depends(get_current_user),
 ):
     asset = db.query(ContractAsset).filter(ContractAsset.id == asset_id, ContractAsset.contract_id == contract_id, ContractAsset.organization_id == org_id).first()
@@ -341,10 +340,10 @@ def remove_asset(
 # Documents
 @router.post("/contracts/{contract_id}/documents", response_model=ContractResponse)
 async def upload_document(
-    contract_id: UUID,
+    contract_id: int,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    org_id: UUID = Depends(get_current_organization_id),
+    org_id: int = Depends(get_current_organization_id),
     current_user=Depends(get_current_user),
 ):
     contract = contract_repository.get(db, contract_id, org_id)
@@ -365,10 +364,10 @@ async def upload_document(
 
 @router.get("/contracts/{contract_id}/documents/{doc_id}/download")
 def download_document(
-    contract_id: UUID,
-    doc_id: UUID,
+    contract_id: int,
+    doc_id: int,
     db: Session = Depends(get_db),
-    org_id: UUID = Depends(get_current_organization_id),
+    org_id: int = Depends(get_current_organization_id),
     current_user=Depends(get_current_user),
 ):
     doc = db.query(ContractDocument).filter(ContractDocument.id == doc_id, ContractDocument.contract_id == contract_id, ContractDocument.organization_id == org_id).first()
@@ -383,10 +382,10 @@ def download_document(
 
 @router.get("/contracts/{contract_id}/documents/{doc_id}/preview")
 def preview_document(
-    contract_id: UUID,
-    doc_id: UUID,
+    contract_id: int,
+    doc_id: int,
     db: Session = Depends(get_db),
-    org_id: UUID = Depends(get_current_organization_id),
+    org_id: int = Depends(get_current_organization_id),
     current_user=Depends(get_current_user),
 ):
     # same as download but let browser preview
@@ -396,10 +395,10 @@ def preview_document(
 # Split groups
 @router.post("/contracts/{contract_id}/split-groups", response_model=ContractResponse)
 def add_split_group(
-    contract_id: UUID,
+    contract_id: int,
     group_data: ContractSplitGroupCreate,
     db: Session = Depends(get_db),
-    org_id: UUID = Depends(get_current_organization_id),
+    org_id: int = Depends(get_current_organization_id),
     current_user=Depends(get_current_user),
 ):
     contract = contract_repository.get(db, contract_id, org_id)
@@ -413,10 +412,10 @@ def add_split_group(
 
 @router.delete("/contracts/{contract_id}/split-groups/{group_id}", response_model=ContractResponse)
 def remove_split_group(
-    contract_id: UUID,
-    group_id: UUID,
+    contract_id: int,
+    group_id: int,
     db: Session = Depends(get_db),
-    org_id: UUID = Depends(get_current_organization_id),
+    org_id: int = Depends(get_current_organization_id),
     current_user=Depends(get_current_user),
 ):
     group = db.query(ContractSplitGroup).filter(ContractSplitGroup.id == group_id, ContractSplitGroup.contract_id == contract_id, ContractSplitGroup.organization_id == org_id).first()
@@ -432,11 +431,11 @@ def remove_split_group(
 # Splits
 @router.post("/contracts/{contract_id}/split-groups/{group_id}/splits", response_model=ContractResponse)
 def add_split(
-    contract_id: UUID,
-    group_id: UUID,
+    contract_id: int,
+    group_id: int,
     split_data: ContractSplitCreate,
     db: Session = Depends(get_db),
-    org_id: UUID = Depends(get_current_organization_id),
+    org_id: int = Depends(get_current_organization_id),
     current_user=Depends(get_current_user),
 ):
     group = db.query(ContractSplitGroup).filter(ContractSplitGroup.id == group_id, ContractSplitGroup.contract_id == contract_id, ContractSplitGroup.organization_id == org_id).first()
@@ -450,11 +449,11 @@ def add_split(
 
 @router.delete("/contracts/{contract_id}/split-groups/{group_id}/splits/{split_id}", response_model=ContractResponse)
 def remove_split(
-    contract_id: UUID,
-    group_id: UUID,
-    split_id: UUID,
+    contract_id: int,
+    group_id: int,
+    split_id: int,
     db: Session = Depends(get_db),
-    org_id: UUID = Depends(get_current_organization_id),
+    org_id: int = Depends(get_current_organization_id),
     current_user=Depends(get_current_user),
 ):
     split = db.query(ContractSplit).join(ContractSplitGroup).filter(

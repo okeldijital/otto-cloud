@@ -1,0 +1,53 @@
+# Change boundaries: defines what can be modified for a given module task
+# and what must not break. Used by backend/invariant_check.py.
+
+modules:
+  contracts:
+    may_modify:
+      - backend/routes/contracts.py
+      - backend/models/contract
+      - backend/schemas/contract
+      - frontend/src/pages/Contracts
+      - frontend/src/components/contracts
+    must_not_break:
+      - catalog
+      - search
+      - auth
+
+  catalog:
+    may_modify:
+      - backend/routes/catalog.py
+      - backend/models/catalog
+      - backend/schemas/catalog
+      - frontend/src/pages/Catalog
+      - frontend/src/components/catalog
+    must_not_break:
+      - contracts
+      - search
+      - auth
+
+  admin:
+    may_modify:
+      - backend/routes/admin.py
+      - backend/utils/backup
+      - frontend/src/pages/Admin
+      - frontend/src/components/admin
+    must_not_break:
+      - auth
+      - catalog
+      - contracts
+
+  sync_hsp:
+    may_modify:
+      - backend/routes/sync.py
+      - backend/utils/sync
+      - frontend/src/pages/SetupWizard.jsx
+    must_not_break:
+      - auth
+      - admin
+      - catalog
+      - contracts
+
+global:
+  forbidden_paths:
+    - requirements.txt  # root requirements forbidden unless identical to backend/requirements.txt (enforced separately too)

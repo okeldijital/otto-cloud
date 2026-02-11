@@ -62,22 +62,10 @@ class Settings(BaseSettings):
             self.AUTH_DISABLED = True  # Set to False to re-enable auth
 
         # Resolve Data Directory
-        if self.APP_ENV == "desktop":
-            # Use environment variables if set, otherwise compute from platform
-            if platform.system() == "Darwin":
-                data_parent = Path.home() / "Library/Application Support/OTTO"
-            elif platform.system() == "Windows":
-                # Match %AppData%/OTTO (Roaming) for desktop installers
-                appdata = os.environ.get("APPDATA")
-                if appdata:
-                    data_parent = Path(appdata) / "OTTO"
-                else:
-                    data_parent = Path.home() / "AppData/Roaming/OTTO"
-            else:
-                data_parent = Path.home() / ".local/share/OTTO"
-        else:
-            # Dev local folder
-            data_parent = Path(os.path.abspath(os.path.dirname(__file__))) / "otto_data"
+        # Resolve Data Directory
+        # UNIVERSAL SINGLE SOURCE OF TRUTH
+        # Always use ~/.otto/data to ensure Dev, Desktop, and Hub share the same state.
+        data_parent = Path.home() / ".otto" / "data"
 
         data_parent.mkdir(parents=True, exist_ok=True)
         
@@ -108,7 +96,12 @@ class Settings(BaseSettings):
         if db_url:
             self.DATABASE_URL = db_url
         else:
-            self.DATABASE_URL = f"sqlite:///{db_dir}/otto.db"
+            # Use otto.sqlite for consistency
+            self.DATABASE_URL = f"sqlite:///{db_dir}/otto.sqlite"
+        
+        # Ensure database path is absolute
+        db_path_check = Path(self.DATABASE_URL.replace('sqlite:///', ''))
+        assert db_path_check.is_absolute(), f"Database path must be absolute: {self.DATABASE_URL}"
             
         self.STORAGE_ROOT = str(storage_dir)
         self.IMPORT_LOGS_ROOT = str(import_logs_dir)

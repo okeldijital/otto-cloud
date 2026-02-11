@@ -57,9 +57,9 @@ class ContractPartyCreate(ContractPartyBase):
 
 
 class ContractPartyResponse(ContractPartyBase):
-    id: UUID
-    contract_id: UUID
-    organization_id: UUID
+    id: int
+    contract_id: int
+    organization_id: int
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -75,9 +75,9 @@ class ContractAssetCreate(ContractAssetBase):
 
 
 class ContractAssetResponse(ContractAssetBase):
-    id: UUID
-    contract_id: UUID
-    organization_id: UUID
+    id: int
+    contract_id: int
+    organization_id: int
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -92,15 +92,15 @@ class ContractDocumentBase(BaseModel):
 
 
 class ContractDocumentResponse(ContractDocumentBase):
-    id: UUID
-    contract_id: UUID
-    organization_id: UUID
+    id: int
+    contract_id: int
+    organization_id: int
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class ContractSplitBase(BaseModel):
-    party_id: Optional[UUID] = None
+    party_id: Optional[int] = None
     external_party_name: Optional[str] = None
     percent: float
     notes: Optional[str] = None
@@ -111,9 +111,9 @@ class ContractSplitCreate(ContractSplitBase):
 
 
 class ContractSplitResponse(ContractSplitBase):
-    id: UUID
-    group_id: UUID
-    organization_id: UUID
+    id: int
+    group_id: int
+    organization_id: int
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -128,9 +128,9 @@ class ContractSplitGroupCreate(ContractSplitGroupBase):
 
 
 class ContractSplitGroupResponse(ContractSplitGroupBase):
-    id: UUID
-    contract_id: UUID
-    organization_id: UUID
+    id: int
+    contract_id: int
+    organization_id: int
     splits: List[ContractSplitResponse] = []
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
@@ -138,8 +138,8 @@ class ContractSplitGroupResponse(ContractSplitGroupBase):
 
 
 class ContractResponse(ContractBase):
-    id: UUID
-    organization_id: UUID
+    id: int
+    organization_id: int
     created_by: Optional[int] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None

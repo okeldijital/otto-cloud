@@ -27,6 +27,8 @@ const Releases = () => {
     const [tracks, setTracks] = useState([]);
     // State for new credit input
     const [newCreditContactId, setNewCreditContactId] = useState('');
+    const [newCreditArtistId, setNewCreditArtistId] = useState('');
+    const [newCreditType, setNewCreditType] = useState('individual'); // 'individual' or 'artist'
     const [quickAddContactSearch, setQuickAddContactSearch] = useState('');
     const [newCreditRole, setNewCreditRole] = useState('');
     const [isLoading, setIsLoading] = useState(true);
@@ -129,6 +131,8 @@ const Releases = () => {
     };
 
     const handleEdit = async (release) => {
+        console.log('Editing release:', release);
+        console.log('Credits from release:', release.credits);
         setEditingRelease(release);
         setSelectedFile(null);
 
@@ -152,9 +156,13 @@ const Releases = () => {
             artist_ids: release.artist_ids || (release.artist_id ? [release.artist_id] : []),
             distributor_id: release.distributor_id || '',
             cover_art_url: release.cover_art_url || '',
-            credits: release.credits || [],
+            credits: Array.isArray(release.credits) ? release.credits : [],
             track_ids: releaseTrackIds
         });
+
+        // Debugging
+        console.log("Editing release with credits:", release.credits);
+
         setIsModalOpen(true);
     };
 
@@ -180,8 +188,9 @@ const Releases = () => {
         e.preventDefault();
         setIsSubmitting(true);
 
-        // Prepare data for submission
-        const submissionData = { ...formData };
+        // Force assignment in case of spread issue
+        submissionData.credits = formData.credits;
+
         if (submissionData.label_id === '') submissionData.label_id = null;
         if (submissionData.artist_id === '') submissionData.artist_id = null;
         if (submissionData.distributor_id === '') submissionData.distributor_id = null;
@@ -197,8 +206,10 @@ const Releases = () => {
             }
 
             if (editingRelease) {
+                console.log('Updating release with data:', submissionData);
                 await CatalogService.update('releases', editingRelease.id, submissionData);
             } else {
+                console.log('Creating release with data:', submissionData);
                 await CatalogService.create('releases', submissionData);
             }
             setIsModalOpen(false);
@@ -433,14 +444,25 @@ const Releases = () => {
                     <label>Credits (Engineers, Producers, etc.)</label>
                     <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                         {formData.credits.map((credit, index) => {
-                            if (!credit || !credit.contact_id) return null;
-                            const contact = (contacts || []).find(c => c.id == credit.contact_id);
+                            if (!credit) return null;
+                            let name = 'Unknown';
+                            if (credit.artist_id) {
+                                const artist = (artists || []).find(a => a.id == credit.artist_id);
+                                name = artist ? (artist.display_name || artist.name) : `Artist #${credit.artist_id}`;
+                            } else if (credit.contact_id) {
+                                const contact = (contacts || []).find(c => c.id == credit.contact_id);
+                                name = contact ? `${contact.first_name} ${contact.last_name}` : `Contact #${credit.contact_id}`;
+                            }
+
                             return (
-                                <div key={index} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'center' }}>
-                                    <div style={{ flex: 1, padding: '0.5rem', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '0.875rem' }}>
-                                        {contact ? `${contact.first_name} ${contact.last_name}` : 'Unknown Contact'}
+                                <div key={index} style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.75rem', alignItems: 'center', background: '#fff', padding: '0.5rem', borderRadius: '6px', border: '1px solid #f1f5f9' }}>
+                                    <div style={{ padding: '0.25rem 0.5rem', background: '#e2e8f0', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600, color: '#475569', textTransform: 'uppercase', width: '80px', textAlign: 'center' }}>
+                                        {credit.artist_id ? 'Artist' : 'Contact'}
                                     </div>
-                                    <div style={{ flex: 1, padding: '0.5rem', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '0.875rem' }}>
+                                    <div style={{ flex: 1, fontWeight: 500, fontSize: '0.9rem', color: '#1e293b' }}>
+                                        {name}
+                                    </div>
+                                    <div style={{ flex: 1, fontSize: '0.875rem', color: '#64748b' }}>
                                         {credit.role}
                                     </div>
                                     <button
@@ -451,6 +473,7 @@ const Releases = () => {
                                             setFormData({ ...formData, credits: newCredits });
                                         }}
                                         style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem' }}
+                                        title="Remove"
                                     >
                                         &times;
                                     </button>
@@ -458,44 +481,81 @@ const Releases = () => {
                             );
                         })}
 
-                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                            <div style={{ flex: 1 }}>
-                                <Autocomplete
-                                    options={(contacts || []).map(c => ({ id: c.id, name: `${c.first_name} ${c.last_name}` }))}
-                                    value={newCreditContactId}
-                                    onChange={(val) => setNewCreditContactId(val)}
-                                    placeholder="Select Contact..."
-                                    allowQuickAdd={true}
-                                    quickAddType="individual"
-                                />
+                        <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid #e2e8f0' }}>
+                            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                                <div style={{ width: '110px' }}>
+                                    <select
+                                        className="input"
+                                        value={newCreditType}
+                                        onChange={(e) => {
+                                            setNewCreditType(e.target.value);
+                                            setNewCreditContactId('');
+                                            setNewCreditArtistId('');
+                                        }}
+                                        style={{ width: '100%', padding: '0.5rem', fontSize: '0.875rem' }}
+                                    >
+                                        <option value="individual">Contact</option>
+                                        <option value="artist">Artist</option>
+                                    </select>
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    {newCreditType === 'artist' ? (
+                                        <Autocomplete
+                                            options={(artists || []).map(a => ({ id: a.id, name: a.display_name || a.name }))}
+                                            value={newCreditArtistId}
+                                            onChange={(val) => setNewCreditArtistId(val)}
+                                            placeholder="Select Artist..."
+                                            allowQuickAdd={false}
+                                        />
+                                    ) : (
+                                        <Autocomplete
+                                            options={(contacts || []).map(c => ({ id: c.id, name: `${c.first_name} ${c.last_name}` }))}
+                                            value={newCreditContactId}
+                                            onChange={(val) => setNewCreditContactId(val)}
+                                            placeholder="Select Contact..."
+                                            allowQuickAdd={true}
+                                            quickAddType="individual"
+                                        />
+                                    )}
+                                </div>
                             </div>
-                            <input
-                                className="input"
-                                type="text"
-                                placeholder="Role (e.g. Mixer)"
-                                value={newCreditRole}
-                                onChange={(e) => setNewCreditRole(e.target.value)}
-                                style={{ flex: 1 }}
-                            />
-                            <button
-                                type="button"
-                                className="btn-secondary"
-                                disabled={!newCreditContactId || !newCreditRole}
-                                onClick={() => {
-                                    if (newCreditContactId && newCreditRole) {
-                                        setFormData({
-                                            ...formData,
-                                            credits: [...formData.credits, { contact_id: parseInt(newCreditContactId), role: newCreditRole }]
-                                        });
-                                        setNewCreditContactId('');
-                                        setNewCreditRole('');
-                                    }
-                                }}
-                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: '36px' }}
-                                title="Add Credit"
-                            >
-                                <Plus size={16} />
-                            </button>
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                <input
+                                    className="input"
+                                    type="text"
+                                    placeholder="Role (e.g. Mixer, Producer)"
+                                    value={newCreditRole}
+                                    onChange={(e) => setNewCreditRole(e.target.value)}
+                                    style={{ flex: 1 }}
+                                />
+                                <button
+                                    type="button"
+                                    className="btn-secondary"
+                                    disabled={(!newCreditContactId && !newCreditArtistId) || !newCreditRole}
+                                    onClick={() => {
+                                        if ((newCreditContactId || newCreditArtistId) && newCreditRole) {
+                                            const newCredit = { role: newCreditRole };
+                                            if (newCreditType === 'artist') {
+                                                newCredit.artist_id = parseInt(newCreditArtistId);
+                                            } else {
+                                                newCredit.contact_id = parseInt(newCreditContactId);
+                                            }
+
+                                            setFormData({
+                                                ...formData,
+                                                credits: [...formData.credits, newCredit]
+                                            });
+                                            setNewCreditContactId('');
+                                            setNewCreditArtistId('');
+                                            setNewCreditRole('');
+                                        }
+                                    }}
+                                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: '40px', background: 'var(--primary-color)', color: 'white', border: 'none', borderRadius: '4px' }}
+                                    title="Add Credit"
+                                >
+                                    <Plus size={16} />
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

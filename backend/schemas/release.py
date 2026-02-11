@@ -14,7 +14,9 @@ class ReleaseBase(BaseModel):
     label_id: Optional[int] = None
     artist_id: Optional[int] = None
     artist_ids: Optional[List[int]] = None
+    artist_ids: Optional[List[int]] = None
     distributor_id: Optional[int] = None
+    credits: Optional[List[dict]] = None  # List of {contact_id, artist_id, role}
 
 
 class ReleaseCreate(ReleaseBase):
@@ -33,6 +35,7 @@ class ReleaseUpdate(BaseModel):
     artist_ids: Optional[list[int]] = None
     distributor_id: Optional[int] = None
     track_ids: Optional[List[int]] = None
+    credits: Optional[List[dict]] = None
 
 
 class Release(ReleaseBase):
