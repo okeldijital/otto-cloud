@@ -5,7 +5,7 @@ import { confirmAction } from '../lib/tauri';
 import { CatalogService } from '../services/catalog';
 import DataTable from '../components/DataTable';
 import EntityForm from '../components/EntityForm';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Search } from 'lucide-react';
 
 const PROs = () => {
     const [pros, setPros] = useState([]);
@@ -13,6 +13,7 @@ const PROs = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [editingPRO, setEditingPRO] = useState(null);
+    const [searchTerm, setSearchTerm] = useState('');
     const [formData, setFormData] = useState({
         name: '',
         address: '',
@@ -89,33 +90,56 @@ const PROs = () => {
             fetchPROs();
         } catch (error) {
             console.error('Failed to save PRO:', error);
-            alert('Failed to save PRO');
+            alert(error.response?.data?.detail || 'Failed to save PRO');
         } finally {
             setIsSubmitting(false);
         }
     };
 
     const columns = [
-        { key: 'name', label: 'Name' },
-        { key: 'territory', label: 'Territory' },
+        { key: 'name', label: 'Name', sortable: true },
+        { key: 'territory', label: 'Territory', sortable: true },
         { key: 'website', label: 'Website' },
     ];
+
+    const filteredPROs = (pros || []).filter(pro => {
+        const searchLower = searchTerm.toLowerCase();
+        return (
+            (pro.name?.toLowerCase().includes(searchLower)) ||
+            (pro.territory?.toLowerCase().includes(searchLower)) ||
+            (pro.website?.toLowerCase().includes(searchLower))
+        );
+    });
 
     return (
         <div className="entity-page">
             <Link to="/catalog" className="back-link">
                 <ChevronLeft size={16} /> Back to Catalog
             </Link>
-            <div className="page-header">
+            <div className="page-header" style={{ marginBottom: '1.5rem' }}>
                 <h1 className="page-title">Performance Rights Orgs</h1>
-                <button className="btn-primary" onClick={handleCreate}>
-                    + Add PRO
-                </button>
+                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                    <div className="relative" style={{ minWidth: '250px' }}>
+                        <div style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}>
+                            <Search size={16} />
+                        </div>
+                        <input
+                            type="text"
+                            style={{ width: '100%', paddingLeft: '2.5rem', height: '40px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-color)', outline: 'none' }}
+                            placeholder="Quick search PROs..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                    <button className="btn-primary" onClick={handleCreate}>
+                        + Add PRO
+                    </button>
+                </div>
             </div>
 
             <DataTable
                 columns={columns}
-                data={pros}
+                data={filteredPROs}
                 isLoading={isLoading}
                 onEdit={handleEdit}
                 onDelete={handleDelete}

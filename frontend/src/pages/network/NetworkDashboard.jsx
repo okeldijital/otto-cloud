@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { NetworkService } from '../../services/network';
 import { Users, Building2, Globe, Share2, AlertCircle, FileCheck, Clock } from 'lucide-react';
+import PageHeader from '../../components/ui/PageHeader';
+import Card from '../../components/ui/Card';
 import '../../App.css';
 
 const NetworkDashboard = () => {
@@ -52,38 +54,71 @@ const NetworkDashboard = () => {
     if (loading) return <div className="p-8">Loading Network Health...</div>;
 
     return (
-        <div className="page-container p-8">
-            <header className="mb-8 ">
-                <h1 className="text-3xl font-bold mb-2">Network</h1>
-                <p className="text-gray-400">Ecosystem governance and professional relationships.</p>
-            </header>
+        <div className="entity-page">
+            <PageHeader
+                title="Network"
+                subtitle="Ecosystem governance and professional relationships."
+            />
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+            <div className="catalog-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
                 {statCards.map((stat, index) => (
-                    <div key={index} className="stats-card p-6 bg-secondary-bg rounded-xl border border-border shadow-sm">
-                        <div className="flex justify-between items-start mb-4">
-                            <div className="p-3 rounded-lg" style={{ backgroundColor: `${stat.color}20`, color: stat.color }}>
-                                <stat.icon size={24} />
+                    <div key={index} className="stats-card" style={{
+                        padding: '1.5rem',
+                        background: 'var(--surface-color)',
+                        borderRadius: '16px',
+                        border: '1px solid var(--border-color)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.5rem'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                            <div style={{
+                                padding: '0.5rem',
+                                borderRadius: '8px',
+                                background: `${stat.color}20`,
+                                color: stat.color,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                            }}>
+                                <stat.icon size={20} />
                             </div>
                         </div>
-                        <div className="text-4xl font-bold mb-1">{stat.value}</div>
-                        <div className="text-gray-400 font-medium mb-1">{stat.label}</div>
-                        <div className="text-sm text-gray-500">{stat.description}</div>
+                        <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-main)', lineHeight: 1 }}>
+                            {stat.value}
+                        </div>
+                        <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                            {stat.label}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                            {stat.description}
+                        </div>
                     </div>
                 ))}
             </div>
 
-            <section className="mt-12">
-                <h2 className="text-xl font-semibold mb-6">Network Health Overview</h2>
-                <div className="bg-secondary-bg rounded-xl border border-border overflow-hidden">
-                    <div className="p-6 border-b border-border flex items-center justify-between">
-                        <div className="flex items-center gap-2">
+            <section style={{ marginTop: '2rem' }}>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--text-main)' }}>Network Health Overview</h2>
+                <div style={{
+                    background: 'var(--surface-color)',
+                    borderRadius: '16px',
+                    border: '1px solid var(--border-color)',
+                    overflow: 'hidden'
+                }}>
+                    <div style={{
+                        padding: '1.5rem',
+                        borderBottom: '1px solid var(--border-color)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <FileCheck size={20} className="text-green-500" />
-                            <span className="font-medium">Governance Status: V1 Lock</span>
+                            <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>Governance Status: V1 Lock</span>
                         </div>
-                        <div className="text-sm text-gray-400">All data points aligned with Status Quo module</div>
+                        <div style={{ fontSize: '0.875rem', color: '#94a3b8' }}>All data points aligned with Status Quo module</div>
                     </div>
-                    <div className="p-8 text-center text-gray-400 italic">
+                    <div style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8', fontStyle: 'italic' }}>
                         "Ecosystem awareness + governance"
                     </div>
                 </div>

@@ -11,7 +11,7 @@ class Track(Base):
     id = Column(Integer, primary_key=True, index=True)
     organization_id = Column(Integer, nullable=True, index=True)
     track_id = Column(String(50), unique=True, index=True)  # TRK001, TRK002, etc.
-    title = Column(String(255), nullable=False, index=True)
+    title = Column(String(255), nullable=False, index=True, unique=True)
     duration = Column(Time)  # Track length
     genre = Column(String(100), index=True)
     release_date = Column(Date)

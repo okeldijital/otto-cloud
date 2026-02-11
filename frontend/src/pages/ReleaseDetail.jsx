@@ -6,6 +6,7 @@ import { ReportsService } from '../services/reports';
 import { BASE_URL } from '../lib/api';
 import { confirmAction } from '../lib/tauri';
 import { Disc, Music, User, Calendar, Tag, FileText, ChevronRight, Play, ChevronLeft, Trash2 } from 'lucide-react';
+import { formatDurationForDisplay } from '../utils/formatters';
 
 const ReleaseDetail = () => {
     const { id } = useParams();
@@ -14,6 +15,7 @@ const ReleaseDetail = () => {
     const [tracks, setTracks] = useState([]);
     const [labels, setLabels] = useState([]);
     const [artists, setArtists] = useState([]);
+    const [organizations, setOrganizations] = useState([]);
     const [contacts, setContacts] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -21,11 +23,12 @@ const ReleaseDetail = () => {
         const fetchReleaseData = async () => {
             setIsLoading(true);
             try {
-                const [releaseData, tracksData, labelsData, artistsData, contactsData] = await Promise.all([
+                const [releaseData, tracksData, labelsData, artistsData, orgsData, contactsData] = await Promise.all([
                     CatalogService.getById('releases', id),
                     CatalogService.getReleaseTracks(id),
                     CatalogService.getAll('labels'),
                     CatalogService.getAll('artists'),
+                    NetworkService.getOrganizations(),
                     NetworkService.getIndividuals()
                 ]);
 
@@ -33,6 +36,7 @@ const ReleaseDetail = () => {
                 setTracks(tracksData);
                 setLabels(labelsData);
                 setArtists(artistsData);
+                setOrganizations(orgsData);
                 setContacts(contactsData);
             } catch (error) {
                 console.error('Failed to fetch release details:', error);
@@ -209,7 +213,7 @@ const ReleaseDetail = () => {
                                                 <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '2px' }}>{track.genre || 'Recording'}</div>
                                             </td>
                                             <td style={{ padding: '1.25rem 1.5rem', fontFamily: 'monospace', fontSize: '0.875rem', color: '#64748b' }}>{track.isrc_code || '-'}</td>
-                                            <td style={{ padding: '1.25rem 1.5rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>{track.duration || '--:--'}</td>
+                                            <td style={{ padding: '1.25rem 1.5rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>{formatDurationForDisplay(track.duration)}</td>
                                             <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right' }}>
                                                 {track.streaming_link ? (
                                                     <a href={track.streaming_link} target="_blank" rel="noreferrer" style={{
@@ -241,50 +245,75 @@ const ReleaseDetail = () => {
                             <User size={18} /> Contributors
                         </h4>
 
-                        {credits.length === 0 ? (
-                            <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', textAlign: 'center', padding: '1rem 0' }}>No credits listed.</p>
-                        ) : (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                {credits.map((credit, idx) => {
-                                    let name = 'Unknown';
-                                    let type = 'Contact';
+                        {(() => {
+                            // Combine artists and credits
+                            const artistContributors = releaseArtists.map(artist => ({
+                                artist_id: artist.id,
+                                role: 'Primary Artist',
+                                is_primary: true
+                            }));
 
-                                    if (credit.artist_id) {
-                                        const artist = artists.find(a => a.id === credit.artist_id);
-                                        name = artist ? (artist.display_name || artist.name) : `Artist #${credit.artist_id}`;
-                                        type = 'Artist';
-                                    } else if (credit.contact_id) {
-                                        const contact = contacts.find(c => c.id === credit.contact_id);
-                                        name = contact ? `${contact.first_name} ${contact.last_name}` : `Individual #${credit.contact_id}`;
-                                        type = 'Contact';
-                                    }
+                            const allContributors = [...artistContributors, ...credits];
 
-                                    return (
-                                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                            <div style={{
-                                                padding: '2px 6px',
-                                                background: type === 'Artist' ? '#e0e7ff' : '#f1f5f9',
-                                                color: type === 'Artist' ? '#4338ca' : '#64748b',
-                                                borderRadius: '4px',
-                                                fontSize: '0.65rem',
-                                                fontWeight: 700,
-                                                textTransform: 'uppercase'
-                                            }}>
-                                                {type}
+                            if (allContributors.length === 0) {
+                                return (
+                                    <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', textAlign: 'center', padding: '1rem 0' }}>No contributors listed.</p>
+                                );
+                            }
+
+                            return (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                    {allContributors.map((credit, idx) => {
+                                        let name = 'Unknown';
+                                        let type = 'Contact';
+
+                                        if (credit.artist_id) {
+                                            const artist = artists.find(a => a.id === credit.artist_id);
+                                            name = artist ? (artist.display_name || artist.name) : `Artist #${credit.artist_id}`;
+                                            type = 'Artist';
+                                        } else if (credit.contact_id) {
+                                            const contact = contacts.find(c => c.id === credit.contact_id);
+                                            name = contact ? `${contact.first_name} ${contact.last_name}` : `Individual #${credit.contact_id}`;
+                                            type = 'Contact';
+                                        } else if (credit.label_id) {
+                                            const label = labels.find(l => l.id === credit.label_id);
+                                            name = label ? label.name : `Label #${credit.label_id}`;
+                                            type = 'Label';
+                                        } else if (credit.organization_id) {
+                                            const org = organizations.find(o => o.id === credit.organization_id);
+                                            name = org ? org.name : `Org #${credit.organization_id}`;
+                                            type = 'Org';
+                                        }
+
+                                        return (
+                                            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                                <div style={{
+                                                    padding: '2px 6px',
+                                                    background: type === 'Artist' ? '#e0e7ff' : type === 'Label' ? '#fce7f3' : type === 'Org' ? '#dbeafe' : '#f1f5f9',
+                                                    color: type === 'Artist' ? '#4338ca' : type === 'Label' ? '#be185d' : type === 'Org' ? '#1d4ed8' : '#64748b',
+                                                    borderRadius: '4px',
+                                                    fontSize: '0.65rem',
+                                                    fontWeight: 700,
+                                                    textTransform: 'uppercase',
+                                                    textAlign: 'center',
+                                                    minWidth: '60px'
+                                                }}>
+                                                    {type}
+                                                </div>
+                                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                    <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                                                        {name}
+                                                    </span>
+                                                    <span style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.025em' }}>
+                                                        {credit.role}
+                                                    </span>
+                                                </div>
                                             </div>
-                                            <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                                <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-main)' }}>
-                                                    {name}
-                                                </span>
-                                                <span style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.025em' }}>
-                                                    {credit.role}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
+                                        );
+                                    })}
+                                </div>
+                            );
+                        })()}
                     </div>
 
                     <div className="links-section" style={{ background: 'var(--primary-color)', borderRadius: '16px', padding: '1.5rem', color: 'white', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}>

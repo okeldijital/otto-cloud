@@ -50,11 +50,26 @@ def create_artist(
     current_user: User = Depends(get_current_active_user)
 ):
     """Create a new artist"""
-    db_artist = ArtistModel(**artist.model_dump())
-    db.add(db_artist)
-    db.commit()
-    db.refresh(db_artist)
-    return db_artist
+    # Check for existing artist with same name
+    existing = db.query(ArtistModel).filter(ArtistModel.name == artist.name).first()
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"An artist with the name '{artist.name}' already exists."
+        )
+
+    try:
+        db_artist = ArtistModel(**artist.model_dump())
+        db.add(db_artist)
+        db.commit()
+        db.refresh(db_artist)
+        return db_artist
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A database integrity error occurred. This artist name or ID might already exist."
+        )
 
 
 @router.get("/artists/{artist_id}", response_model=Artist)
@@ -83,12 +98,29 @@ def update_artist(
         raise HTTPException(status_code=404, detail="Artist not found")
     
     update_data = artist_update.model_dump(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(db_artist, field, value)
     
-    db.commit()
-    db.refresh(db_artist)
-    return db_artist
+    # Check for duplicate name if name is being updated
+    if "name" in update_data and update_data["name"] != db_artist.name:
+        existing = db.query(ArtistModel).filter(ArtistModel.name == update_data["name"]).first()
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"An artist with the name '{update_data['name']}' already exists."
+            )
+
+    try:
+        for field, value in update_data.items():
+            setattr(db_artist, field, value)
+        
+        db.commit()
+        db.refresh(db_artist)
+        return db_artist
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A database integrity error occurred. This artist name or ID might already be in use."
+        )
 
 
 @router.delete("/artists/{artist_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -224,19 +256,34 @@ def create_release(
     current_user: User = Depends(get_current_active_user)
 ):
     """Create a new release"""
-    track_ids = release.track_ids
-    release_data = release.model_dump(exclude={"track_ids"})
-    db_release = ReleaseModel(**release_data)
-    db.add(db_release)
-    db.commit()
-    db.refresh(db_release)
-    
-    if track_ids:
-        db.query(TrackModel).filter(TrackModel.id.in_(track_ids)).update({"release_id": db_release.id}, synchronize_session=False)
+    # Check for existing release with same title
+    existing = db.query(ReleaseModel).filter(ReleaseModel.title == release.title).first()
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"A release with the title '{release.title}' already exists."
+        )
+
+    try:
+        track_ids = release.track_ids
+        release_data = release.model_dump(exclude={"track_ids"})
+        db_release = ReleaseModel(**release_data)
+        db.add(db_release)
         db.commit()
         db.refresh(db_release)
         
-    return db_release
+        if track_ids:
+            db.query(TrackModel).filter(TrackModel.id.in_(track_ids)).update({"release_id": db_release.id}, synchronize_session=False)
+            db.commit()
+            db.refresh(db_release)
+            
+        return db_release
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A release with this Title, Catalog Number, or UPC already exists."
+        )
 
 
 @router.get("/releases/{release_id}", response_model=Release)
@@ -284,19 +331,33 @@ def update_release(
     update_data = release_update.model_dump(exclude_unset=True)
     track_ids = update_data.pop("track_ids", None)
     
-    for field, value in update_data.items():
-        setattr(db_release, field, value)
-    
-    if track_ids is not None:
-        # Clear existing tracks for this release
-        db.query(TrackModel).filter(TrackModel.release_id == release_id).update({"release_id": None}, synchronize_session=False)
-        # Link new tracks
-        if track_ids:
-            db.query(TrackModel).filter(TrackModel.id.in_(track_ids)).update({"release_id": release_id}, synchronize_session=False)
-    
-    db.commit()
-    db.refresh(db_release)
-    return db_release
+    # Check for duplicate title if title is being updated
+    if "title" in update_data and update_data["title"] != db_release.title:
+        existing = db.query(ReleaseModel).filter(ReleaseModel.title == update_data["title"]).first()
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"A release with the title '{update_data['title']}' already exists."
+            )
+
+    try:
+        for field, value in update_data.items():
+            setattr(db_release, field, value)
+        
+        if track_ids is not None:
+            db.query(TrackModel).filter(TrackModel.release_id == release_id).update({"release_id": None}, synchronize_session=False)
+            if track_ids:
+                db.query(TrackModel).filter(TrackModel.id.in_(track_ids)).update({"release_id": release_id}, synchronize_session=False)
+        
+        db.commit()
+        db.refresh(db_release)
+        return db_release
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A database integrity error occurred. This release title, catalog number, or UPC might already be in use."
+        )
 
 
 @router.get("/releases/{release_id}/tracks", response_model=List[Track])
@@ -367,14 +428,23 @@ def create_track(
     current_user: User = Depends(get_current_active_user)
 ):
     """Create a new track"""
+    # Check for existing track with same title
+    existing = db.query(TrackModel).filter(TrackModel.title == track.title).first()
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"A track with the title '{track.title}' already exists."
+        )
+
     try:
         db_track = track_repository.create(db, track.model_dump(), organization_id=org_id)
         audit_service.log(db, "CREATE", "Track", db_track.id, current_user.id, changes=track.model_dump(), organization_id=org_id)
         return db_track
     except IntegrityError:
+        db.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="A track with this ISRC or Track ID already exists."
+            detail="A track with this ISRC, Track ID, or Title already exists."
         )
 
 
@@ -405,14 +475,26 @@ def update_track(
     if not db_track:
         raise HTTPException(status_code=404, detail="Track not found")
     
+    update_data = track_update.model_dump(exclude_unset=True)
+
+    # Check for duplicate title if title is being updated
+    if "title" in update_data and update_data["title"] != db_track.title:
+        existing = db.query(TrackModel).filter(TrackModel.title == update_data["title"]).first()
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"A track with the title '{update_data['title']}' already exists."
+            )
+
     try:
-        updated_track = track_repository.update(db, db_track, track_update.model_dump(exclude_unset=True))
-        audit_service.log(db, "UPDATE", "Track", track_id, current_user.id, changes=track_update.model_dump(exclude_unset=True), organization_id=org_id)
+        updated_track = track_repository.update(db, db_track, update_data)
+        audit_service.log(db, "UPDATE", "Track", track_id, current_user.id, changes=update_data, organization_id=org_id)
         return updated_track
     except IntegrityError:
+        db.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="A track with this ISRC or Track ID already exists."
+            detail="A database integrity error occurred. This track title or ISRC might already be in use."
         )
 
 
@@ -456,11 +538,26 @@ def create_work(
     current_user: User = Depends(get_current_active_user)
 ):
     """Create a new work"""
-    db_work = WorkModel(**work.model_dump())
-    db.add(db_work)
-    db.commit()
-    db.refresh(db_work)
-    return db_work
+    # Check for existing work with same title
+    existing = db.query(WorkModel).filter(WorkModel.title == work.title).first()
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"A musical work with the title '{work.title}' already exists."
+        )
+
+    try:
+        db_work = WorkModel(**work.model_dump())
+        db.add(db_work)
+        db.commit()
+        db.refresh(db_work)
+        return db_work
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A database integrity error occurred. This work title or ID might already exist."
+        )
 
 
 @router.get("/works/{work_id}", response_model=Work)
@@ -489,12 +586,29 @@ def update_work(
         raise HTTPException(status_code=404, detail="Work not found")
     
     update_data = work_update.model_dump(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(db_work, field, value)
     
-    db.commit()
-    db.refresh(db_work)
-    return db_work
+    # Check for duplicate title if title is being updated
+    if "title" in update_data and update_data["title"] != db_work.title:
+        existing = db.query(WorkModel).filter(WorkModel.title == update_data["title"]).first()
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"A musical work with the title '{update_data['title']}' already exists."
+            )
+
+    try:
+        for field, value in update_data.items():
+            setattr(db_work, field, value)
+        
+        db.commit()
+        db.refresh(db_work)
+        return db_work
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A database integrity error occurred. This work title or ISWC might already be in use."
+        )
 
 
 @router.delete("/works/{work_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -542,11 +656,26 @@ def create_label(
     current_user: User = Depends(get_current_active_user)
 ):
     """Create a new label"""
-    db_label = LabelModel(**label.model_dump())
-    db.add(db_label)
-    db.commit()
-    db.refresh(db_label)
-    return db_label
+    # Check for existing label with same name
+    existing = db.query(LabelModel).filter(LabelModel.name == label.name).first()
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"A label with the name '{label.name}' already exists."
+        )
+
+    try:
+        db_label = LabelModel(**label.model_dump())
+        db.add(db_label)
+        db.commit()
+        db.refresh(db_label)
+        return db_label
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A database integrity error occurred. This label name or ID might already exist."
+        )
 
 
 @router.get("/labels/{label_id}", response_model=Label)
@@ -597,12 +726,29 @@ def update_label(
         raise HTTPException(status_code=404, detail="Label not found")
     
     update_data = label_update.model_dump(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(db_label, field, value)
     
-    db.commit()
-    db.refresh(db_label)
-    return db_label
+    # Check for duplicate name if name is being updated
+    if "name" in update_data and update_data["name"] != db_label.name:
+        existing = db.query(LabelModel).filter(LabelModel.name == update_data["name"]).first()
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"A label with the name '{update_data['name']}' already exists."
+            )
+
+    try:
+        for field, value in update_data.items():
+            setattr(db_label, field, value)
+        
+        db.commit()
+        db.refresh(db_label)
+        return db_label
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A database integrity error occurred. This label name or ID might already be in use."
+        )
 
 
 @router.delete("/labels/{label_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -650,11 +796,26 @@ def create_publisher(
     current_user: User = Depends(get_current_active_user)
 ):
     """Create a new publisher"""
-    db_publisher = PublisherModel(**publisher.model_dump())
-    db.add(db_publisher)
-    db.commit()
-    db.refresh(db_publisher)
-    return db_publisher
+    # Check for existing publisher with same name
+    existing = db.query(PublisherModel).filter(PublisherModel.name == publisher.name).first()
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"A publisher with the name '{publisher.name}' already exists."
+        )
+
+    try:
+        db_publisher = PublisherModel(**publisher.model_dump())
+        db.add(db_publisher)
+        db.commit()
+        db.refresh(db_publisher)
+        return db_publisher
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A database integrity error occurred. This publisher name or ID might already exist."
+        )
 
 
 @router.get("/publishers/{publisher_id}", response_model=Publisher)
@@ -705,12 +866,29 @@ def update_publisher(
         raise HTTPException(status_code=404, detail="Publisher not found")
     
     update_data = publisher_update.model_dump(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(db_publisher, field, value)
     
-    db.commit()
-    db.refresh(db_publisher)
-    return db_publisher
+    # Check for duplicate name if name is being updated
+    if "name" in update_data and update_data["name"] != db_publisher.name:
+        existing = db.query(PublisherModel).filter(PublisherModel.name == update_data["name"]).first()
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"A publisher with the name '{update_data['name']}' already exists."
+            )
+
+    try:
+        for field, value in update_data.items():
+            setattr(db_publisher, field, value)
+        
+        db.commit()
+        db.refresh(db_publisher)
+        return db_publisher
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A database integrity error occurred. This publisher name or ID might already be in use."
+        )
 
 
 @router.delete("/publishers/{publisher_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -758,11 +936,26 @@ def create_pro(
     current_user: User = Depends(get_current_active_user)
 ):
     """Create a new PRO"""
-    db_pro = PROModel(**pro.model_dump())
-    db.add(db_pro)
-    db.commit()
-    db.refresh(db_pro)
-    return db_pro
+    # Check for existing PRO with same name
+    existing = db.query(PROModel).filter(PROModel.name == pro.name).first()
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"A PRO with the name '{pro.name}' already exists."
+        )
+
+    try:
+        db_pro = PROModel(**pro.model_dump())
+        db.add(db_pro)
+        db.commit()
+        db.refresh(db_pro)
+        return db_pro
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A database integrity error occurred. This PRO name or ID might already exist."
+        )
 
 
 @router.get("/pros/{pro_id}", response_model=PRO)
@@ -791,12 +984,29 @@ def update_pro(
         raise HTTPException(status_code=404, detail="PRO not found")
     
     update_data = pro_update.model_dump(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(db_pro, field, value)
     
-    db.commit()
-    db.refresh(db_pro)
-    return db_pro
+    # Check for duplicate name if name is being updated
+    if "name" in update_data and update_data["name"] != db_pro.name:
+        existing = db.query(PROModel).filter(PROModel.name == update_data["name"]).first()
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"A PRO with the name '{update_data['name']}' already exists."
+            )
+
+    try:
+        for field, value in update_data.items():
+            setattr(db_pro, field, value)
+        
+        db.commit()
+        db.refresh(db_pro)
+        return db_pro
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A database integrity error occurred. This PRO name or ID might already be in use."
+        )
 
 
 @router.delete("/pros/{pro_id}", status_code=status.HTTP_204_NO_CONTENT)

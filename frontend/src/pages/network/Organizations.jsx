@@ -1,14 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { NetworkService } from '../../services/network';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Building2, Plus, Search, ExternalLink, ShieldAlert, ShieldCheck, Clock } from 'lucide-react';
+import PageHeader from '../../components/ui/PageHeader';
+import DataTable from '../../components/DataTable';
+import EntityForm from '../../components/EntityForm';
+import Input, { Select } from '../../components/ui/Input';
+import Button from '../../components/ui/Button';
+import { confirmAction } from '../../lib/tauri';
 
 const Organizations = () => {
     const [orgs, setOrgs] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
     const [showAddModal, setShowAddModal] = useState(false);
     const [newOrg, setNewOrg] = useState({ name: '', org_type: 'Distributor', website: '', address: '' });
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const navigate = useNavigate();
 
     const fetchOrgs = async () => {
         try {
@@ -42,6 +50,25 @@ const Organizations = () => {
         }
     };
 
+    const handleDelete = async (org) => {
+        if (await confirmAction(`Are you sure you want to delete ${org.name}?`, 'Delete Organization')) {
+            try {
+                await NetworkService.deleteOrganization(org.id);
+                fetchOrgs();
+            } catch (error) {
+                console.error("Error deleting organization:", error);
+                alert("Failed to delete organization.");
+            }
+        }
+    };
+
+    const filteredOrgs = useMemo(() => {
+        return orgs.filter(org =>
+            org.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (org.org_type || '').toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }, [orgs, searchTerm]);
+
     const getGovernanceBadge = (status) => {
         switch (status) {
             case 'Active':
@@ -55,132 +82,128 @@ const Organizations = () => {
         }
     };
 
-    if (loading) return <div className="p-8">Loading Organizations...</div>;
+    const columns = [
+        {
+            key: 'name',
+            label: 'Organization Name',
+            sortable: true,
+            render: (row) => (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div style={{ padding: '0.5rem', background: '#f1f5f9', borderRadius: '6px', color: 'var(--primary-color)' }}>
+                        <Building2 size={18} />
+                    </div>
+                    <div>
+                        <Link to={`/network/organizations/${row.id}`} style={{ display: 'block', fontWeight: 600, color: 'var(--primary-color)', textDecoration: 'none' }}>
+                            {row.name}
+                        </Link>
+                        {row.website && (
+                            <a href={row.website} target="_blank" rel="noreferrer" style={{ fontSize: '0.75rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '2px', marginTop: '2px' }}>
+                                {row.website.replace(/^https?:\/\//, '')} <ExternalLink size={10} />
+                            </a>
+                        )}
+                    </div>
+                </div>
+            )
+        },
+        {
+            key: 'org_type',
+            label: 'Type',
+            sortable: true,
+            render: (row) => (
+                <span style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', color: '#64748b', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>
+                    {row.org_type || 'Other'}
+                </span>
+            )
+        },
+        {
+            key: 'contracts',
+            label: 'Contracts',
+            render: () => <span style={{ color: '#64748b' }}>1 Active</span>
+        },
+        {
+            key: 'works',
+            label: 'Works',
+            render: () => <span style={{ color: '#64748b' }}>24 Works</span>
+        },
+        {
+            key: 'governance',
+            label: 'Governance',
+            render: () => getGovernanceBadge('Active')
+        }
+    ];
 
     return (
-        <div className="page-container p-8">
-            <header className="flex justify-between items-end mb-8">
-                <div>
-                    <h1 className="text-3xl font-bold mb-2">Organizations</h1>
-                    <p className="text-gray-400">External entities with legal or operational relevance.</p>
-                </div>
-                <button
-                    onClick={() => setShowAddModal(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-primary-color rounded-lg hover:bg-opacity-90 transition-all font-medium"
+        <div className="entity-page">
+            <PageHeader
+                title="Organizations"
+                subtitle="External entities with legal or operational relevance."
+                actions={
+                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                        <div className="relative" style={{ minWidth: '250px' }}>
+                            <div style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}>
+                                <Search size={16} />
+                            </div>
+                            <input
+                                type="text"
+                                style={{ width: '100%', paddingLeft: '2.5rem', height: '40px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-color)', outline: 'none' }}
+                                placeholder="Search organizations..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+                        <Button
+                            variant="primary"
+                            icon={Plus}
+                            onClick={() => setShowAddModal(true)}
+                        >
+                            Add Organization
+                        </Button>
+                    </div>
+                }
+            />
+
+            <DataTable
+                columns={columns}
+                data={filteredOrgs}
+                isLoading={loading}
+                onDelete={handleDelete}
+                onEdit={(row) => navigate(`/network/organizations/${row.id}`)}
+            />
+
+            <EntityForm
+                isOpen={showAddModal}
+                onClose={() => setShowAddModal(false)}
+                title="New Organization"
+                onSubmit={handleCreate}
+                isSubmitting={isSubmitting}
+            >
+                <Input
+                    label="Organization Name"
+                    value={newOrg.name}
+                    onChange={(e) => setNewOrg({ ...newOrg, name: e.target.value })}
+                    required
+                    placeholder="e.g. Universal Music Group"
+                />
+                <Select
+                    label="Type"
+                    value={newOrg.org_type}
+                    onChange={(e) => setNewOrg({ ...newOrg, org_type: e.target.value })}
                 >
-                    <Plus size={18} />
-                    <span>Add Organization</span>
-                </button>
-            </header>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {orgs.map((org) => (
-                    <div key={org.id} className="bg-secondary-bg border border-border rounded-xl p-6 hover:border-primary-color transition-all group">
-                        <div className="flex justify-between items-start mb-4">
-                            <div className="p-3 bg-white bg-opacity-5 rounded-lg text-primary-color text-opacity-80 group-hover:text-opacity-100 transition-all">
-                                <Building2 size={24} />
-                            </div>
-                            <div className="flex flex-col items-end">
-                                <span className="px-2 py-1 rounded text-[10px] uppercase font-bold bg-white bg-opacity-10 text-gray-400 tracking-wider">
-                                    {org.org_type || 'Other'}
-                                </span>
-                            </div>
-                        </div>
-
-                        <Link to={`/network/organizations/${org.id}`}>
-                            <h3 className="text-xl font-bold mb-1 hover:text-primary-color transition-colors">{org.name}</h3>
-                        </Link>
-                        <p className="text-sm text-gray-500 mb-6 flex items-center gap-1">
-                            {org.website ? (
-                                <a href={org.website} target="_blank" rel="noreferrer" className="flex items-center gap-1 hover:text-primary-color">
-                                    {org.website} <ExternalLink size={12} />
-                                </a>
-                            ) : 'No website listed'}
-                        </p>
-
-                        <div className="space-y-4 mb-6">
-                            <div className="flex justify-between text-sm">
-                                <span className="text-gray-500">Contracts</span>
-                                <span className="font-medium">1 Active</span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                                <span className="text-gray-500">Works Administered</span>
-                                <span className="font-medium">24 Works</span>
-                            </div>
-                        </div>
-
-                        <div className="pt-4 border-top border-border">
-                            {getGovernanceBadge('Active')}
-                        </div>
-                    </div>
-                ))}
-            </div>
-
-            {/* Add Organization Modal */}
-            {showAddModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
-                    <div className="bg-secondary-bg border border-border rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
-                        <div className="p-6 border-b border-border flex justify-between items-center">
-                            <h2 className="text-xl font-bold">New Organization</h2>
-                            <button onClick={() => setShowAddModal(false)} className="text-gray-400 hover:text-white">×</button>
-                        </div>
-                        <form onSubmit={handleCreate} className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Organization Name</label>
-                                <input
-                                    type="text"
-                                    required
-                                    className="w-full bg-white bg-opacity-5 border border-border rounded-lg px-4 py-2 focus:border-primary-color outline-none text-white"
-                                    value={newOrg.name}
-                                    onChange={(e) => setNewOrg({ ...newOrg, name: e.target.value })}
-                                    placeholder="e.g. Universal Music Group"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Type</label>
-                                <select
-                                    className="w-full bg-white bg-opacity-5 border border-border rounded-lg px-4 py-2 focus:border-primary-color outline-none text-white appearance-none"
-                                    value={newOrg.org_type}
-                                    onChange={(e) => setNewOrg({ ...newOrg, org_type: e.target.value })}
-                                >
-                                    <option value="Distributor">Distributor</option>
-                                    <option value="Publisher">Publisher</option>
-                                    <option value="Label">Label</option>
-                                    <option value="PRO">PRO</option>
-                                    <option value="Legal">Legal</option>
-                                    <option value="Other">Other</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Website</label>
-                                <input
-                                    type="url"
-                                    className="w-full bg-white bg-opacity-5 border border-border rounded-lg px-4 py-2 focus:border-primary-color outline-none text-white"
-                                    value={newOrg.website}
-                                    onChange={(e) => setNewOrg({ ...newOrg, website: e.target.value })}
-                                    placeholder="https://example.com"
-                                />
-                            </div>
-                            <div className="pt-4 flex gap-3">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowAddModal(false)}
-                                    className="flex-1 px-4 py-2 bg-white bg-opacity-5 rounded-lg font-medium hover:bg-opacity-10 transition-all"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={isSubmitting}
-                                    className="flex-1 px-4 py-2 bg-primary-color rounded-lg font-medium hover:bg-opacity-90 transition-all flex items-center justify-center gap-2"
-                                >
-                                    {isSubmitting ? 'Creating...' : 'Create'}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
+                    <option value="Distributor">Distributor</option>
+                    <option value="Publisher">Publisher</option>
+                    <option value="Label">Label</option>
+                    <option value="PRO">PRO</option>
+                    <option value="Legal">Legal</option>
+                    <option value="Other">Other</option>
+                </Select>
+                <Input
+                    label="Website"
+                    type="url"
+                    value={newOrg.website}
+                    onChange={(e) => setNewOrg({ ...newOrg, website: e.target.value })}
+                    placeholder="https://example.com"
+                />
+            </EntityForm>
         </div>
     );
 };

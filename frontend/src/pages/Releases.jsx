@@ -9,7 +9,7 @@ import { confirmAction } from '../lib/tauri';
 import DataTable from '../components/DataTable';
 import EntityForm from '../components/EntityForm';
 import Autocomplete from '../components/Autocomplete';
-import { ChevronLeft, Download, Plus } from 'lucide-react';
+import { ChevronLeft, Download, Plus, Search } from 'lucide-react';
 import Button from '../components/ui/Button';
 import PageHeader from '../components/ui/PageHeader';
 import Input, { Select, Textarea } from '../components/ui/Input';
@@ -28,7 +28,9 @@ const Releases = () => {
     // State for new credit input
     const [newCreditContactId, setNewCreditContactId] = useState('');
     const [newCreditArtistId, setNewCreditArtistId] = useState('');
-    const [newCreditType, setNewCreditType] = useState('individual'); // 'individual' or 'artist'
+    const [newCreditLabelId, setNewCreditLabelId] = useState('');
+    const [newCreditOrgId, setNewCreditOrgId] = useState('');
+    const [newCreditType, setNewCreditType] = useState('individual'); // 'individual', 'artist', 'label', 'organization'
     const [quickAddContactSearch, setQuickAddContactSearch] = useState('');
     const [newCreditRole, setNewCreditRole] = useState('');
     const [isLoading, setIsLoading] = useState(true);
@@ -36,6 +38,7 @@ const Releases = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [editingRelease, setEditingRelease] = useState(null);
     const [selectedFile, setSelectedFile] = useState(null);
+    const [searchTerm, setSearchTerm] = useState('');
 
     const [formData, setFormData] = useState({
         title: '',
@@ -131,9 +134,6 @@ const Releases = () => {
     };
 
     const handleEdit = async (release) => {
-        console.log('Editing release:', release);
-        console.log('EXPLICIT CHECK: release.id =', release.id, typeof release.id);
-        console.log('EXPLICIT CHECK: release.release_id =', release.release_id);
         setEditingRelease(release);
         setSelectedFile(null);
 
@@ -209,17 +209,15 @@ const Releases = () => {
             }
 
             if (editingRelease) {
-                console.log('Updating release with data:', submissionData);
                 await CatalogService.update('releases', editingRelease.id, submissionData);
             } else {
-                console.log('Creating release with data:', submissionData);
                 await CatalogService.create('releases', submissionData);
             }
             setIsModalOpen(false);
             fetchData();
         } catch (error) {
             console.error('Failed to save release:', error);
-            alert('Failed to save release');
+            alert(error.response?.data?.detail || 'Failed to save release');
         } finally {
             setIsSubmitting(false);
         }
@@ -241,6 +239,7 @@ const Releases = () => {
         {
             key: 'title',
             label: 'Release Title',
+            sortable: true,
             render: (row) => (
                 <Link to={`/catalog/releases/${row.id}`} style={{ fontWeight: 600, color: 'var(--primary-color)', textDecoration: 'none' }}>
                     {row.title}
@@ -268,10 +267,10 @@ const Releases = () => {
                 return label ? label.name : '-';
             }
         },
-        { key: 'release_type', label: 'Type' },
-        { key: 'release_date', label: 'Date' },
-        { key: 'catalog_number', label: 'Catalog #' },
-        { key: 'upc_code', label: 'UPC' },
+        { key: 'release_type', label: 'Type', sortable: true },
+        { key: 'release_date', label: 'Date', sortable: true },
+        { key: 'catalog_number', label: 'Catalog #', sortable: true },
+        { key: 'upc_code', label: 'UPC', sortable: true },
         {
             key: 'status_quo',
             label: 'Health',
@@ -285,6 +284,15 @@ const Releases = () => {
         }
     ];
 
+    const filteredReleases = (releases || []).filter(release => {
+        const searchLower = searchTerm.toLowerCase();
+        return (
+            (release.title?.toLowerCase().includes(searchLower)) ||
+            (release.upc_code?.toLowerCase().includes(searchLower)) ||
+            (release.catalog_number?.toLowerCase().includes(searchLower))
+        );
+    });
+
     return (
         <div className="entity-page">
             <PageHeader
@@ -296,7 +304,19 @@ const Releases = () => {
                     </Link>
                 }
                 actions={
-                    <div style={{ display: 'flex', gap: '0.75rem' }}>
+                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                        <div className="relative" style={{ minWidth: '250px' }}>
+                            <div style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}>
+                                <Search size={16} />
+                            </div>
+                            <input
+                                type="text"
+                                style={{ width: '100%', paddingLeft: '2.5rem', height: '40px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-color)', outline: 'none' }}
+                                placeholder="Quick search releases..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
                         <Button
                             variant="secondary"
                             icon={Download}
@@ -326,13 +346,11 @@ const Releases = () => {
                 }
             />
 
-            {console.log('Releases passed to DataTable:', releases)}
             <DataTable
                 columns={columns}
-                data={releases}
+                data={filteredReleases}
                 isLoading={isLoading}
                 onEdit={(row) => {
-                    console.log('DataTable onEdit row:', row);
                     handleEdit(row);
                 }}
                 onDelete={handleDelete}
@@ -460,12 +478,18 @@ const Releases = () => {
                             } else if (credit.contact_id) {
                                 const contact = (contacts || []).find(c => c.id == credit.contact_id);
                                 name = contact ? `${contact.first_name} ${contact.last_name}` : `Contact #${credit.contact_id}`;
+                            } else if (credit.label_id) {
+                                const label = (labels || []).find(l => l.id == credit.label_id);
+                                name = label ? label.name : `Label #${credit.label_id}`;
+                            } else if (credit.organization_id) {
+                                const org = (distributors || []).find(o => o.id == credit.organization_id);
+                                name = org ? org.name : `Org #${credit.organization_id}`;
                             }
 
                             return (
                                 <div key={index} style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.75rem', alignItems: 'center', background: '#fff', padding: '0.5rem', borderRadius: '6px', border: '1px solid #f1f5f9' }}>
                                     <div style={{ padding: '0.25rem 0.5rem', background: '#e2e8f0', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600, color: '#475569', textTransform: 'uppercase', width: '80px', textAlign: 'center' }}>
-                                        {credit.artist_id ? 'Artist' : 'Contact'}
+                                        {credit.artist_id ? 'Artist' : credit.label_id ? 'Label' : credit.organization_id ? 'Org' : 'Contact'}
                                     </div>
                                     <div style={{ flex: 1, fontWeight: 500, fontSize: '0.9rem', color: '#1e293b' }}>
                                         {name}
@@ -504,6 +528,8 @@ const Releases = () => {
                                     >
                                         <option value="individual">Contact</option>
                                         <option value="artist">Artist</option>
+                                        <option value="label">Label</option>
+                                        <option value="organization">Organization</option>
                                     </select>
                                 </div>
                                 <div style={{ flex: 1 }}>
@@ -513,6 +539,22 @@ const Releases = () => {
                                             value={newCreditArtistId}
                                             onChange={(val) => setNewCreditArtistId(val)}
                                             placeholder="Select Artist..."
+                                            allowQuickAdd={false}
+                                        />
+                                    ) : newCreditType === 'label' ? (
+                                        <Autocomplete
+                                            options={(labels || []).map(l => ({ id: l.id, name: l.name }))}
+                                            value={newCreditLabelId}
+                                            onChange={(val) => setNewCreditLabelId(val)}
+                                            placeholder="Select Label..."
+                                            allowQuickAdd={false}
+                                        />
+                                    ) : newCreditType === 'organization' ? (
+                                        <Autocomplete
+                                            options={(distributors || []).map(o => ({ id: o.id, name: o.name }))}
+                                            value={newCreditOrgId}
+                                            onChange={(val) => setNewCreditOrgId(val)}
+                                            placeholder="Select Organization..."
                                             allowQuickAdd={false}
                                         />
                                     ) : (
@@ -539,12 +581,16 @@ const Releases = () => {
                                 <button
                                     type="button"
                                     className="btn-secondary"
-                                    disabled={(!newCreditContactId && !newCreditArtistId) || !newCreditRole}
+                                    disabled={(!newCreditContactId && !newCreditArtistId && !newCreditLabelId && !newCreditOrgId) || !newCreditRole}
                                     onClick={() => {
-                                        if ((newCreditContactId || newCreditArtistId) && newCreditRole) {
+                                        if ((newCreditContactId || newCreditArtistId || newCreditLabelId || newCreditOrgId) && newCreditRole) {
                                             const newCredit = { role: newCreditRole };
                                             if (newCreditType === 'artist') {
                                                 newCredit.artist_id = parseInt(newCreditArtistId);
+                                            } else if (newCreditType === 'label') {
+                                                newCredit.label_id = parseInt(newCreditLabelId);
+                                            } else if (newCreditType === 'organization') {
+                                                newCredit.organization_id = parseInt(newCreditOrgId);
                                             } else {
                                                 newCredit.contact_id = parseInt(newCreditContactId);
                                             }
@@ -555,6 +601,8 @@ const Releases = () => {
                                             });
                                             setNewCreditContactId('');
                                             setNewCreditArtistId('');
+                                            setNewCreditLabelId('');
+                                            setNewCreditOrgId('');
                                             setNewCreditRole('');
                                         }
                                     }}

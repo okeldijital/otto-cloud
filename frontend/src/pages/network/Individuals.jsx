@@ -1,14 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { NetworkService } from '../../services/network';
-import { Link } from 'react-router-dom';
-import { UserCircle, Plus, Mail, Phone, Building2, Star } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { UserCircle, Plus, Search, Star, Mail, Building2 } from 'lucide-react';
+import PageHeader from '../../components/ui/PageHeader';
+import DataTable from '../../components/DataTable';
+import EntityForm from '../../components/EntityForm';
+import Input, { Select } from '../../components/ui/Input';
+import Button from '../../components/ui/Button';
+import { confirmAction } from '../../lib/tauri';
 
 const Individuals = () => {
     const [individuals, setIndividuals] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
     const [showAddModal, setShowAddModal] = useState(false);
-    const [newInd, setNewInd] = useState({ first_name: '', last_name: '', email: '', role: '', relationship_strength: 'Regular' });
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [newInd, setNewInd] = useState({ first_name: '', last_name: '', email: '', role: '', relationship_strength: 'Regular' });
+    const navigate = useNavigate();
 
     const fetchIndividuals = async () => {
         try {
@@ -42,6 +50,25 @@ const Individuals = () => {
         }
     };
 
+    const handleDelete = async (individual) => {
+        if (await confirmAction(`Are you sure you want to delete ${individual.first_name} ${individual.last_name}?`, 'Delete Individual')) {
+            try {
+                await NetworkService.deleteIndividual(individual.id);
+                fetchIndividuals();
+            } catch (error) {
+                console.error("Error deleting individual:", error);
+                alert("Failed to delete individual.");
+            }
+        }
+    };
+
+    const filteredIndividuals = useMemo(() => {
+        return individuals.filter(ind =>
+            (ind.first_name + ' ' + ind.last_name).toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (ind.email || '').toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }, [individuals, searchTerm]);
+
     const StrengthBadge = ({ strength }) => {
         let color = 'text-gray-400 bg-gray-400';
         if (strength === 'Core') color = 'text-primary-color bg-primary-color';
@@ -55,155 +82,146 @@ const Individuals = () => {
         );
     };
 
-    if (loading) return <div className="p-8">Loading Individuals...</div>;
+    const columns = [
+        {
+            key: 'image_url',
+            label: '',
+            render: (row) => (
+                <div style={{ width: '40px', height: '40px', borderRadius: '50%', overflow: 'hidden', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {row.image_url ? (
+                        <img src={row.image_url} alt={row.first_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                        <UserCircle size={24} color="#cbd5e1" />
+                    )}
+                </div>
+            )
+        },
+        {
+            key: 'name',
+            label: 'Name',
+            sortable: true,
+            render: (row) => (
+                <Link to={`/network/individuals/${row.id}`} style={{ fontWeight: 600, color: 'var(--primary-color)', textDecoration: 'none' }}>
+                    {row.first_name} {row.last_name}
+                </Link>
+            )
+        },
+        {
+            key: 'role',
+            label: 'Role',
+            sortable: true,
+            render: (row) => <span style={{ color: 'var(--text-color)' }}>{row.role || 'Professional'}</span>
+        },
+        {
+            key: 'email',
+            label: 'Email',
+            render: (row) => row.email ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b' }}>
+                    <Mail size={14} />
+                    {row.email}
+                </div>
+            ) : '-'
+        },
+        {
+            key: 'organization',
+            label: 'Organization',
+            render: (row) => row.organizations?.length > 0 ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b' }}>
+                    <Building2 size={14} />
+                    {row.organizations[0].name}
+                </div>
+            ) : '-'
+        },
+        {
+            key: 'relationship_strength',
+            label: 'Relationship',
+            sortable: true,
+            render: (row) => <StrengthBadge strength={row.relationship_strength || 'Regular'} />
+        }
+    ];
 
     return (
-        <div className="page-container p-8">
-            <header className="flex justify-between items-end mb-8">
-                <div>
-                    <h1 className="text-3xl font-bold mb-2">Individuals</h1>
-                    <p className="text-gray-400">Human collaborators and role-first identities.</p>
+        <div className="entity-page">
+            <PageHeader
+                title="Individuals"
+                subtitle="Human collaborators and role-first identities."
+                actions={
+                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                        <div className="relative" style={{ minWidth: '250px' }}>
+                            <div style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}>
+                                <Search size={16} />
+                            </div>
+                            <input
+                                type="text"
+                                style={{ width: '100%', paddingLeft: '2.5rem', height: '40px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-color)', outline: 'none' }}
+                                placeholder="Search individuals..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+                        <Button
+                            variant="primary"
+                            icon={Plus}
+                            onClick={() => setShowAddModal(true)}
+                        >
+                            Add Individual
+                        </Button>
+                    </div>
+                }
+            />
+
+            <DataTable
+                columns={columns}
+                data={filteredIndividuals}
+                isLoading={loading}
+                onDelete={handleDelete}
+                onEdit={(row) => navigate(`/network/individuals/${row.id}`)}
+            />
+
+            <EntityForm
+                isOpen={showAddModal}
+                onClose={() => setShowAddModal(false)}
+                title="New Individual"
+                onSubmit={handleCreate}
+                isSubmitting={isSubmitting}
+            >
+                <div className="form-row">
+                    <Input
+                        label="First Name"
+                        value={newInd.first_name}
+                        onChange={(e) => setNewInd({ ...newInd, first_name: e.target.value })}
+                        required
+                    />
+                    <Input
+                        label="Last Name"
+                        value={newInd.last_name}
+                        onChange={(e) => setNewInd({ ...newInd, last_name: e.target.value })}
+                        required
+                    />
                 </div>
-                <button
-                    onClick={() => setShowAddModal(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-primary-color rounded-lg hover:bg-opacity-90 transition-all font-medium"
+                <Input
+                    label="Email"
+                    type="email"
+                    value={newInd.email}
+                    onChange={(e) => setNewInd({ ...newInd, email: e.target.value })}
+                    required
+                />
+                <Input
+                    label="Role / Title"
+                    value={newInd.role}
+                    onChange={(e) => setNewInd({ ...newInd, role: e.target.value })}
+                    placeholder="e.g. Mixing Engineer"
+                />
+                <Select
+                    label="Relationship Strength"
+                    value={newInd.relationship_strength}
+                    onChange={(e) => setNewInd({ ...newInd, relationship_strength: e.target.value })}
                 >
-                    <Plus size={18} />
-                    <span>Add Individual</span>
-                </button>
-            </header>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {individuals.map((ind) => (
-                    <div key={ind.id} className="bg-secondary-bg border border-border rounded-xl overflow-hidden hover:border-primary-color transition-all group">
-                        <div className="h-24 bg-gradient-to-r from-primary-color to-blue-600 opacity-20 group-hover:opacity-30 transition-all"></div>
-                        <div className="px-6 pb-6 -mt-12">
-                            <div className="w-20 h-20 rounded-xl bg-secondary-bg border-4 border-secondary-bg mb-4 overflow-hidden relative">
-                                {ind.image_url ? (
-                                    <img src={ind.image_url} alt={ind.first_name} className="w-full h-full object-cover" />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center bg-white bg-opacity-5 text-gray-500">
-                                        <UserCircle size={48} />
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="flex justify-between items-start mb-2">
-                                <Link to={`/network/individuals/${ind.id}`}>
-                                    <h3 className="text-lg font-bold hover:text-primary-color transition-colors">{ind.first_name} {ind.last_name}</h3>
-                                </Link>
-                                <StrengthBadge strength={ind.relationship_strength || 'Regular'} />
-                            </div>
-
-                            <div className="text-sm font-medium text-primary-color opacity-80 mb-4">{ind.role || 'Professional'}</div>
-
-                            <div className="space-y-2 mb-6">
-                                <div className="flex items-center gap-2 text-sm text-gray-400">
-                                    <Mail size={14} />
-                                    <span className="truncate">{ind.email || 'No email'}</span>
-                                </div>
-                                <div className="flex items-center gap-2 text-sm text-gray-400">
-                                    <Building2 size={14} />
-                                    <span>{ind.organizations?.length > 0 ? ind.organizations[0].name : 'No affiliation'}</span>
-                                </div>
-                            </div>
-
-                            <div className="flex gap-2">
-                                <Link
-                                    to={`/network/individuals/${ind.id}`}
-                                    className="flex-1 text-center py-2 bg-white bg-opacity-5 rounded-lg text-xs font-semibold hover:bg-opacity-10 transition-all text-white no-underline"
-                                >
-                                    View Profile
-                                </Link>
-                            </div>
-                        </div>
-                    </div>
-                ))}
-            </div>
-
-            {/* Add Individual Modal */}
-            {showAddModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
-                    <div className="bg-secondary-bg border border-border rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
-                        <div className="p-6 border-b border-border flex justify-between items-center">
-                            <h2 className="text-xl font-bold">New Individual</h2>
-                            <button onClick={() => setShowAddModal(false)} className="text-gray-400 hover:text-white">×</button>
-                        </div>
-                        <form onSubmit={handleCreate} className="p-6 space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">First Name</label>
-                                    <input
-                                        type="text"
-                                        required
-                                        className="w-full bg-white bg-opacity-5 border border-border rounded-lg px-4 py-2 focus:border-primary-color outline-none text-white"
-                                        value={newInd.first_name}
-                                        onChange={(e) => setNewInd({ ...newInd, first_name: e.target.value })}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Last Name</label>
-                                    <input
-                                        type="text"
-                                        required
-                                        className="w-full bg-white bg-opacity-5 border border-border rounded-lg px-4 py-2 focus:border-primary-color outline-none text-white"
-                                        value={newInd.last_name}
-                                        onChange={(e) => setNewInd({ ...newInd, last_name: e.target.value })}
-                                    />
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Email</label>
-                                <input
-                                    type="email"
-                                    required
-                                    className="w-full bg-white bg-opacity-5 border border-border rounded-lg px-4 py-2 focus:border-primary-color outline-none text-white"
-                                    value={newInd.email}
-                                    onChange={(e) => setNewInd({ ...newInd, email: e.target.value })}
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Role / Title</label>
-                                <input
-                                    type="text"
-                                    className="w-full bg-white bg-opacity-5 border border-border rounded-lg px-4 py-2 focus:border-primary-color outline-none text-white"
-                                    value={newInd.role}
-                                    onChange={(e) => setNewInd({ ...newInd, role: e.target.value })}
-                                    placeholder="e.g. Mixing Engineer"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Relationship</label>
-                                <select
-                                    className="w-full bg-white bg-opacity-5 border border-border rounded-lg px-4 py-2 focus:border-primary-color outline-none text-white appearance-none"
-                                    value={newInd.relationship_strength}
-                                    onChange={(e) => setNewInd({ ...newInd, relationship_strength: e.target.value })}
-                                >
-                                    <option value="Core">Core</option>
-                                    <option value="Regular">Regular</option>
-                                    <option value="Ad-hoc">Ad-hoc</option>
-                                </select>
-                            </div>
-                            <div className="pt-4 flex gap-3">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowAddModal(false)}
-                                    className="flex-1 px-4 py-2 bg-white bg-opacity-5 rounded-lg font-medium hover:bg-opacity-10 transition-all"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={isSubmitting}
-                                    className="flex-1 px-4 py-2 bg-primary-color rounded-lg font-medium hover:bg-opacity-90 transition-all flex items-center justify-center gap-2"
-                                >
-                                    {isSubmitting ? 'Creating...' : 'Create'}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
+                    <option value="Core">Core</option>
+                    <option value="Regular">Regular</option>
+                    <option value="Ad-hoc">Ad-hoc</option>
+                </Select>
+            </EntityForm>
         </div>
     );
 };

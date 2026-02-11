@@ -7,7 +7,7 @@ import { confirmAction } from '../lib/tauri';
 import DataTable from '../components/DataTable';
 import EntityForm from '../components/EntityForm';
 import Autocomplete from '../components/Autocomplete';
-import { Music2, User, Users, Landmark, ChevronLeft, Download, Plus } from 'lucide-react';
+import { Music2, User, Users, Landmark, ChevronLeft, Download, Plus, Search } from 'lucide-react';
 import Button from '../components/ui/Button';
 import PageHeader from '../components/ui/PageHeader';
 import Input, { Select, Textarea } from '../components/ui/Input';
@@ -24,6 +24,7 @@ const Works = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [editingWork, setEditingWork] = useState(null);
+    const [searchTerm, setSearchTerm] = useState('');
 
     const initialFormState = {
         title: '',
@@ -113,7 +114,7 @@ const Works = () => {
             fetchData();
         } catch (error) {
             console.error('Failed to save work:', error);
-            alert('Failed to save work');
+            alert(error.response?.data?.detail || 'Failed to save work');
         } finally {
             setIsSubmitting(false);
         }
@@ -123,6 +124,7 @@ const Works = () => {
         {
             key: 'title',
             label: 'Work Title',
+            sortable: true,
             render: (row) => (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <div style={{ padding: '6px', background: '#ecfdf5', borderRadius: '6px', color: '#059669' }}>
@@ -160,8 +162,17 @@ const Works = () => {
                 ) : '-';
             }
         },
-        { key: 'iswc_code', label: 'ISWC' },
+        { key: 'iswc_code', label: 'ISWC', sortable: true },
     ];
+
+    const filteredWorks = (works || []).filter(work => {
+        const searchLower = searchTerm.toLowerCase();
+        return (
+            (work.title?.toLowerCase().includes(searchLower)) ||
+            (work.iswc_code?.toLowerCase().includes(searchLower)) ||
+            (work.composers_text?.toLowerCase().includes(searchLower))
+        );
+    });
 
     return (
         <div className="entity-page">
@@ -177,7 +188,19 @@ const Works = () => {
                     </Link>
                 }
                 actions={
-                    <div style={{ display: 'flex', gap: '0.75rem' }}>
+                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                        <div className="relative" style={{ minWidth: '250px' }}>
+                            <div style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}>
+                                <Search size={16} />
+                            </div>
+                            <input
+                                type="text"
+                                style={{ width: '100%', paddingLeft: '2.5rem', height: '40px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-color)', outline: 'none' }}
+                                placeholder="Quick search works..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
                         <Button
                             variant="secondary"
                             icon={Download}
@@ -198,7 +221,7 @@ const Works = () => {
 
             <DataTable
                 columns={columns}
-                data={works}
+                data={filteredWorks}
                 isLoading={isLoading}
                 onEdit={handleEdit}
                 onDelete={handleDelete}

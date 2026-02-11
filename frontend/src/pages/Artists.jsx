@@ -8,7 +8,7 @@ import { confirmAction } from '../lib/tauri';
 import DataTable from '../components/DataTable';
 import EntityForm from '../components/EntityForm';
 import Autocomplete from '../components/Autocomplete';
-import { Camera, User, ChevronLeft, Download, Plus } from 'lucide-react';
+import { Camera, User, ChevronLeft, Download, Plus, Search } from 'lucide-react';
 import Button from '../components/ui/Button';
 import PageHeader from '../components/ui/PageHeader';
 import Input, { Select, Textarea } from '../components/ui/Input';
@@ -25,6 +25,7 @@ const Artists = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [editingArtist, setEditingArtist] = useState(null);
+    const [searchTerm, setSearchTerm] = useState('');
     const [formData, setFormData] = useState({
         name: '',
         aka: '',
@@ -217,7 +218,7 @@ const Artists = () => {
             fetchData();
         } catch (error) {
             console.error('Failed to save artist:', error);
-            alert('Failed to save artist');
+            alert(error.response?.data?.detail || 'Failed to save artist');
         } finally {
             setIsSubmitting(false);
         }
@@ -227,6 +228,7 @@ const Artists = () => {
         {
             key: 'name',
             label: 'Artist Name',
+            sortable: true,
             render: (row) => (
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                     <Link to={`/catalog/artists/${row.id}`} style={{ fontWeight: 600, color: 'var(--primary-color)', textDecoration: 'none' }}>
@@ -240,8 +242,8 @@ const Artists = () => {
                 </div>
             )
         },
-        { key: 'aka', label: 'Stage Name' },
-        { key: 'contact_email', label: 'Email' },
+        { key: 'aka', label: 'Stage Name', sortable: true },
+        { key: 'contact_email', label: 'Email', sortable: true },
         {
             key: 'label_id',
             label: 'Label',
@@ -251,6 +253,16 @@ const Artists = () => {
             }
         },
     ];
+
+    const filteredArtists = (artists || []).filter(artist => {
+        const searchLower = searchTerm.toLowerCase();
+        return (
+            (artist.name?.toLowerCase().includes(searchLower)) ||
+            (artist.aka?.toLowerCase().includes(searchLower)) ||
+            (artist.contact_email?.toLowerCase().includes(searchLower)) ||
+            (artist.ipi_number?.toLowerCase().includes(searchLower))
+        );
+    });
 
     return (
         <div className="entity-page p-8">
@@ -263,7 +275,19 @@ const Artists = () => {
                     </Link>
                 }
                 actions={
-                    <div style={{ display: 'flex', gap: '0.75rem' }}>
+                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                        <div className="relative" style={{ minWidth: '250px' }}>
+                            <div style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}>
+                                <Search size={16} />
+                            </div>
+                            <input
+                                type="text"
+                                style={{ width: '100%', paddingLeft: '2.5rem', height: '40px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-color)', outline: 'none' }}
+                                placeholder="Quick search artists..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
                         <Button
                             variant="secondary"
                             icon={Download}
@@ -284,7 +308,7 @@ const Artists = () => {
 
             <DataTable
                 columns={columns}
-                data={artists || []}
+                data={filteredArtists}
                 isLoading={isLoading}
                 onEdit={handleEdit}
                 onDelete={handleDelete}

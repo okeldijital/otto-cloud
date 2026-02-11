@@ -12,7 +12,7 @@ class Work(Base):
     organization_id = Column(Integer, nullable=True, index=True)
     is_deleted = Column(Boolean, nullable=False, default=False)
     work_id = Column(String(50), unique=True, index=True)  # WKS001, WKS002, etc.
-    title = Column(String(255), nullable=False, index=True)
+    title = Column(String(255), nullable=False, index=True, unique=True)
     iswc_code = Column(String(50))  # International Standard Musical Work Code
     composers = Column(JSON)  # Array of composer artist IDs
     composers_text = Column(Text)  # Text representation: "ART001, ART002"

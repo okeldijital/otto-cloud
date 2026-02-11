@@ -5,7 +5,7 @@ import { BASE_URL } from '../lib/api';
 import { confirmAction } from '../lib/tauri';
 import DataTable from '../components/DataTable';
 import EntityForm from '../components/EntityForm';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Search } from 'lucide-react';
 
 const Publishers = () => {
     const [publishers, setPublishers] = useState([]);
@@ -13,6 +13,7 @@ const Publishers = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [editingPublisher, setEditingPublisher] = useState(null);
+    const [searchTerm, setSearchTerm] = useState('');
     const [formData, setFormData] = useState({
         name: '',
         contact_person: '',
@@ -89,7 +90,7 @@ const Publishers = () => {
             fetchPublishers();
         } catch (error) {
             console.error('Failed to save publisher:', error);
-            alert('Failed to save publisher');
+            alert(error.response?.data?.detail || 'Failed to save publisher');
         } finally {
             setIsSubmitting(false);
         }
@@ -99,32 +100,57 @@ const Publishers = () => {
         {
             key: 'name',
             label: 'Name',
+            sortable: true,
             render: (row) => (
                 <Link to={`/catalog/publishers/${row.id}`} style={{ fontWeight: 600, color: 'var(--primary-color)', textDecoration: 'none' }}>
                     {row.name}
                 </Link>
             )
         },
-        { key: 'contact_person', label: 'Contact Person' },
-        { key: 'contact_email', label: 'Email' },
-        { key: 'rights_type', label: 'Rights Type' },
+        { key: 'contact_person', label: 'Contact Person', sortable: true },
+        { key: 'contact_email', label: 'Email', sortable: true },
+        { key: 'rights_type', label: 'Rights Type', sortable: true },
     ];
+
+    const filteredPublishers = (publishers || []).filter(publisher => {
+        const searchLower = searchTerm.toLowerCase();
+        return (
+            (publisher.name?.toLowerCase().includes(searchLower)) ||
+            (publisher.contact_person?.toLowerCase().includes(searchLower)) ||
+            (publisher.contact_email?.toLowerCase().includes(searchLower)) ||
+            (publisher.rights_type?.toLowerCase().includes(searchLower))
+        );
+    });
 
     return (
         <div className="entity-page">
             <Link to="/catalog" className="back-link">
                 <ChevronLeft size={16} /> Back to Catalog
             </Link>
-            <div className="page-header">
+            <div className="page-header" style={{ marginBottom: '1.5rem' }}>
                 <h1 className="page-title">Publishers</h1>
-                <button className="btn-primary" onClick={handleCreate}>
-                    + Add Publisher
-                </button>
+                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                    <div className="relative" style={{ minWidth: '250px' }}>
+                        <div style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}>
+                            <Search size={16} />
+                        </div>
+                        <input
+                            type="text"
+                            style={{ width: '100%', paddingLeft: '2.5rem', height: '40px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-color)', outline: 'none' }}
+                            placeholder="Quick search publishers..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                    <button className="btn-primary" onClick={handleCreate}>
+                        + Add Publisher
+                    </button>
+                </div>
             </div>
 
             <DataTable
                 columns={columns}
-                data={publishers}
+                data={filteredPublishers}
                 isLoading={isLoading}
                 onEdit={handleEdit}
                 onDelete={handleDelete}

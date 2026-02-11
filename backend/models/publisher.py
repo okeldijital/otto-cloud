@@ -10,7 +10,7 @@ class Publisher(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     publisher_id = Column(String(50), unique=True, index=True)  # PUB001, PUB002, etc.
-    name = Column(String(255), nullable=False, index=True)
+    name = Column(String(255), nullable=False, index=True, unique=True)
     address = Column(Text)
     contact_person = Column(String(255))
     contact_email = Column(String(255))

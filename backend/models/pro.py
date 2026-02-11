@@ -10,7 +10,7 @@ class PRO(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     pro_id = Column(String(50), unique=True, index=True)  # PRO001, PRO002, etc.
-    name = Column(String(255), nullable=False, index=True)
+    name = Column(String(255), nullable=False, index=True, unique=True)
     address = Column(Text)
     contact_email = Column(String(255))
     contact_phone = Column(String(50))

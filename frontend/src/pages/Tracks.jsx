@@ -5,11 +5,13 @@ import { NetworkService } from '../services/network';
 import DataTable from '../components/DataTable';
 import EntityForm from '../components/EntityForm';
 import Autocomplete from '../components/Autocomplete';
-import { Music2, Disc, FileAudio, ExternalLink, Users, ChevronLeft, Download, Plus } from 'lucide-react';
+import { Music2, Disc, FileAudio, ExternalLink, Users, ChevronLeft, Download, Plus, Search } from 'lucide-react';
 import Button from '../components/ui/Button';
 import PageHeader from '../components/ui/PageHeader';
 import Input, { Select, Textarea } from '../components/ui/Input';
 import Card from '../components/ui/Card';
+import { formatDurationForSave, formatDurationForDisplay } from '../utils/formatters';
+import { confirmAction } from '../lib/tauri';
 
 const Tracks = () => {
     const [tracks, setTracks] = useState([]);
@@ -21,14 +23,23 @@ const Tracks = () => {
     const [works, setWorks] = useState([]);
     const [releases, setReleases] = useState([]);
     const [contacts, setContacts] = useState([]);
+    const [labels, setLabels] = useState([]);
+    const [distributors, setDistributors] = useState([]);
+
     // State for new credit input
     const [newCreditContactId, setNewCreditContactId] = useState('');
+    const [newCreditArtistId, setNewCreditArtistId] = useState('');
+    const [newCreditLabelId, setNewCreditLabelId] = useState('');
+    const [newCreditOrgId, setNewCreditOrgId] = useState('');
+    const [newCreditType, setNewCreditType] = useState('individual'); // 'individual', 'artist', 'label', 'organization'
     const [newCreditRole, setNewCreditRole] = useState('');
 
     const [isLoading, setIsLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [editingTrack, setEditingTrack] = useState(null);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [filterType, setFilterType] = useState('all'); // 'all', 'unassigned', 'assigned'
 
     const initialFormState = {
         title: '',
@@ -47,12 +58,14 @@ const Tracks = () => {
     const fetchData = async () => {
         setIsLoading(true);
         try {
-            const [tracksData, worksData, releasesData, artistsData, contactsData] = await Promise.all([
+            const [tracksData, worksData, releasesData, artistsData, contactsData, labelsData, organizationsData] = await Promise.all([
                 CatalogService.getAll('tracks'),
                 CatalogService.getAll('works'),
                 CatalogService.getAll('releases'),
                 CatalogService.getAll('artists'),
-                NetworkService.getIndividuals()
+                NetworkService.getIndividuals(),
+                CatalogService.getAll('labels'),
+                NetworkService.getOrganizations()
             ]);
 
             // Create dictionaries for lookup
@@ -69,6 +82,8 @@ const Tracks = () => {
             setReleases(releasesData || []);
             setArtists(artistsData || []);
             setContacts(contactsData || []);
+            setLabels(labelsData || []);
+            setDistributors(organizationsData || []);
         } catch (error) {
             console.error('Failed to fetch tracks data:', error);
         } finally {
@@ -138,15 +153,23 @@ const Tracks = () => {
             if (!payload.streaming_link) payload.streaming_link = null;
 
             if (editingTrack) {
-                await CatalogService.update('tracks', editingTrack.id, payload);
+                const payloadToSave = {
+                    ...payload,
+                    duration: formatDurationForSave(payload.duration)
+                };
+                await CatalogService.update('tracks', editingTrack.id, payloadToSave);
             } else {
-                await CatalogService.create('tracks', payload);
+                const payloadToCreate = {
+                    ...payload,
+                    duration: formatDurationForSave(payload.duration)
+                };
+                await CatalogService.create('tracks', payloadToCreate);
             }
             setIsModalOpen(false);
             fetchData();
         } catch (error) {
             console.error('Save failed:', error);
-            alert('Failed to save track.');
+            alert(error.response?.data?.detail || 'Failed to save track.');
         } finally {
             setIsSubmitting(false);
         }
@@ -156,6 +179,7 @@ const Tracks = () => {
         {
             key: 'title',
             label: 'Track Title',
+            sortable: true,
             render: (row) => (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <div style={{ padding: '6px', background: '#f5f3ff', borderRadius: '6px', color: '#7c3aed' }}>
@@ -170,8 +194,13 @@ const Tracks = () => {
                 </div>
             )
         },
-        { key: 'isrc_code', label: 'ISRC' },
-        { key: 'duration', label: 'Duration' },
+        { key: 'isrc_code', label: 'ISRC', sortable: true },
+        {
+            key: 'duration',
+            label: 'Duration',
+            sortable: true,
+            render: (row) => formatDurationForDisplay(row.duration)
+        },
         {
             key: 'artist_ids',
             label: 'Artist(s)',
@@ -217,6 +246,25 @@ const Tracks = () => {
         }
     ];
 
+    const filteredTracks = (tracks || []).filter(track => {
+        const searchLower = searchTerm.toLowerCase();
+        const matchesSearch = (
+            (track.title?.toLowerCase().includes(searchLower)) ||
+            (track.isrc_code?.toLowerCase().includes(searchLower)) ||
+            (track.genre?.toLowerCase().includes(searchLower))
+        );
+
+        if (!matchesSearch) return false;
+
+        if (filterType === 'unassigned') {
+            return !track.release_id;
+        }
+        if (filterType === 'assigned') {
+            return !!track.release_id;
+        }
+        return true;
+    });
+
     return (
         <div className="entity-page">
             <Link to="/catalog" className="back-link">
@@ -231,15 +279,41 @@ const Tracks = () => {
                     </Link>
                 }
                 actions={
-                    <Button className="btn-primary" onClick={handleCreate} icon={FileAudio}>
-                        Add Track
-                    </Button>
+                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                        <div className="relative" style={{ minWidth: '250px' }}>
+                            <div style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}>
+                                <Search size={16} />
+                            </div>
+                            <input
+                                type="text"
+                                style={{ width: '100%', paddingLeft: '2.5rem', height: '40px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-color)', outline: 'none' }}
+                                placeholder="Quick search tracks..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+                        <div style={{ minWidth: '150px' }}>
+                            <select
+                                className="input"
+                                style={{ height: '40px', width: '100%', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', padding: '0 1rem', color: 'var(--text-color)' }}
+                                value={filterType}
+                                onChange={(e) => setFilterType(e.target.value)}
+                            >
+                                <option value="all">All Tracks</option>
+                                <option value="unassigned">Unassigned (No Release)</option>
+                                <option value="assigned">Assigned (Has Release)</option>
+                            </select>
+                        </div>
+                        <Button className="btn-primary" onClick={handleCreate} icon={FileAudio}>
+                            Add Track
+                        </Button>
+                    </div>
                 }
             />
 
             <DataTable
                 columns={columns}
-                data={tracks || []}
+                data={filteredTracks}
                 isLoading={isLoading}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
@@ -349,64 +423,151 @@ const Tracks = () => {
                 <div className="form-group">
                     <label>Credits (Musicians, Engineers)</label>
                     <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                        {(formData.credits || []).map((credit, index) => (
-                            <div key={index} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'center' }}>
-                                <div style={{ flex: 1, padding: '0.5rem', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '0.875rem' }}>
-                                    {(contacts || []).find(c => c.id == credit.contact_id)?.first_name} {(contacts || []).find(c => c.id == credit.contact_id)?.last_name}
+                        {formData.credits.map((credit, index) => {
+                            if (!credit) return null;
+                            let name = 'Unknown';
+                            if (credit.artist_id) {
+                                const artist = (artists || []).find(a => a.id == credit.artist_id);
+                                name = artist ? (artist.display_name || artist.name) : `Artist #${credit.artist_id}`;
+                            } else if (credit.contact_id) {
+                                const contact = (contacts || []).find(c => c.id == credit.contact_id);
+                                name = contact ? `${contact.first_name} ${contact.last_name}` : `Contact #${credit.contact_id}`;
+                            } else if (credit.label_id) {
+                                const label = (labels || []).find(l => l.id == credit.label_id);
+                                name = label ? label.name : `Label #${credit.label_id}`;
+                            } else if (credit.organization_id) {
+                                const org = (distributors || []).find(o => o.id == credit.organization_id);
+                                name = org ? org.name : `Org #${credit.organization_id}`;
+                            }
+
+                            return (
+                                <div key={index} style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.75rem', alignItems: 'center', background: '#fff', padding: '0.5rem', borderRadius: '6px', border: '1px solid #f1f5f9' }}>
+                                    <div style={{ padding: '0.25rem 0.5rem', background: '#e2e8f0', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600, color: '#475569', textTransform: 'uppercase', width: '80px', textAlign: 'center' }}>
+                                        {credit.artist_id ? 'Artist' : credit.label_id ? 'Label' : credit.organization_id ? 'Org' : 'Contact'}
+                                    </div>
+                                    <div style={{ flex: 1, fontWeight: 500, fontSize: '0.9rem', color: '#1e293b' }}>
+                                        {name}
+                                    </div>
+                                    <div style={{ flex: 1, fontSize: '0.875rem', color: '#64748b' }}>
+                                        {credit.role}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const newCredits = [...formData.credits];
+                                            newCredits.splice(index, 1);
+                                            setFormData({ ...formData, credits: newCredits });
+                                        }}
+                                        style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem' }}
+                                        title="Remove"
+                                    >
+                                        &times;
+                                    </button>
                                 </div>
-                                <div style={{ flex: 1, padding: '0.5rem', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '4px', fontSize: '0.875rem' }}>
-                                    {credit.role}
+                            );
+                        })}
+
+                        <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid #e2e8f0' }}>
+                            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                                <div style={{ width: '110px' }}>
+                                    <select
+                                        className="input"
+                                        value={newCreditType}
+                                        onChange={(e) => {
+                                            setNewCreditType(e.target.value);
+                                            setNewCreditContactId('');
+                                            setNewCreditArtistId('');
+                                            setNewCreditLabelId('');
+                                            setNewCreditOrgId('');
+                                        }}
+                                        style={{ width: '100%', padding: '0.5rem', fontSize: '0.875rem' }}
+                                    >
+                                        <option value="individual">Contact</option>
+                                        <option value="artist">Artist</option>
+                                        <option value="label">Label</option>
+                                        <option value="organization">Organization</option>
+                                    </select>
                                 </div>
+                                <div style={{ flex: 1 }}>
+                                    {newCreditType === 'artist' ? (
+                                        <Autocomplete
+                                            options={(artists || []).map(a => ({ id: a.id, name: a.display_name || a.name }))}
+                                            value={newCreditArtistId}
+                                            onChange={(val) => setNewCreditArtistId(val)}
+                                            placeholder="Select Artist..."
+                                            allowQuickAdd={false}
+                                        />
+                                    ) : newCreditType === 'label' ? (
+                                        <Autocomplete
+                                            options={(labels || []).map(l => ({ id: l.id, name: l.name }))}
+                                            value={newCreditLabelId}
+                                            onChange={(val) => setNewCreditLabelId(val)}
+                                            placeholder="Select Label..."
+                                            allowQuickAdd={false}
+                                        />
+                                    ) : newCreditType === 'organization' ? (
+                                        <Autocomplete
+                                            options={(distributors || []).map(o => ({ id: o.id, name: o.name }))}
+                                            value={newCreditOrgId}
+                                            onChange={(val) => setNewCreditOrgId(val)}
+                                            placeholder="Select Organization..."
+                                            allowQuickAdd={false}
+                                        />
+                                    ) : (
+                                        <Autocomplete
+                                            options={(contacts || []).map(c => ({ id: c.id, name: `${c.first_name} ${c.last_name}` }))}
+                                            value={newCreditContactId}
+                                            onChange={(val) => setNewCreditContactId(val)}
+                                            placeholder="Select Contact..."
+                                            allowQuickAdd={true}
+                                            quickAddType="individual"
+                                        />
+                                    )}
+                                </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                <input
+                                    className="input"
+                                    type="text"
+                                    placeholder="Role (e.g. Guitar)"
+                                    value={newCreditRole}
+                                    onChange={(e) => setNewCreditRole(e.target.value)}
+                                    style={{ flex: 1 }}
+                                />
                                 <button
                                     type="button"
+                                    className="btn-secondary"
+                                    disabled={(!newCreditContactId && !newCreditArtistId && !newCreditLabelId && !newCreditOrgId) || !newCreditRole}
                                     onClick={() => {
-                                        const newCredits = [...formData.credits];
-                                        newCredits.splice(index, 1);
-                                        setFormData({ ...formData, credits: newCredits });
+                                        if ((newCreditContactId || newCreditArtistId || newCreditLabelId || newCreditOrgId) && newCreditRole) {
+                                            const newCredit = { role: newCreditRole };
+                                            if (newCreditType === 'artist') {
+                                                newCredit.artist_id = parseInt(newCreditArtistId);
+                                            } else if (newCreditType === 'label') {
+                                                newCredit.label_id = parseInt(newCreditLabelId);
+                                            } else if (newCreditType === 'organization') {
+                                                newCredit.organization_id = parseInt(newCreditOrgId);
+                                            } else {
+                                                newCredit.contact_id = parseInt(newCreditContactId);
+                                            }
+
+                                            setFormData({
+                                                ...formData,
+                                                credits: [...formData.credits, newCredit]
+                                            });
+                                            setNewCreditContactId('');
+                                            setNewCreditArtistId('');
+                                            setNewCreditLabelId('');
+                                            setNewCreditOrgId('');
+                                            setNewCreditRole('');
+                                        }
                                     }}
-                                    style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem' }}
+                                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: '40px', background: 'var(--primary-color)', color: 'white', border: 'none', borderRadius: '4px' }}
+                                    title="Add Credit"
                                 >
-                                    &times;
+                                    <Plus size={16} />
                                 </button>
                             </div>
-                        ))}
-
-                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                            <div style={{ flex: 1 }}>
-                                <Autocomplete
-                                    options={(contacts || []).map(c => ({ id: c.id, name: `${c.first_name} ${c.last_name}` }))}
-                                    value={newCreditContactId}
-                                    onChange={(val) => setNewCreditContactId(val)}
-                                    labelKey="name"
-                                    allowQuickAdd={true}
-                                    quickAddType="individual"
-                                />
-                            </div>
-                            <input
-                                className="input"
-                                type="text"
-                                placeholder="Role (e.g. Guitar)"
-                                value={newCreditRole}
-                                onChange={(e) => setNewCreditRole(e.target.value)}
-                                style={{ flex: 1 }}
-                            />
-                            <button
-                                type="button"
-                                className="btn-secondary"
-                                disabled={!newCreditContactId || !newCreditRole}
-                                onClick={() => {
-                                    if (newCreditContactId && newCreditRole) {
-                                        setFormData({
-                                            ...formData,
-                                            credits: [...formData.credits, { contact_id: parseInt(newCreditContactId), role: newCreditRole }]
-                                        });
-                                        setNewCreditContactId('');
-                                        setNewCreditRole('');
-                                    }
-                                }}
-                            >
-                                Add
-                            </button>
                         </div>
                     </div>
                 </div>

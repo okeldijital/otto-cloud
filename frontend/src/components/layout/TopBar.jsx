@@ -94,23 +94,32 @@ const TopBar = () => {
                 if (result.release_id) {
                     navigate(`/catalog/releases/${result.release_id}`);
                 } else {
-                    navigate(`/catalog/tracks`);
+                    navigate(`/catalog/tracks/${result.id}`);
                 }
                 break;
             case 'work':
-                navigate(`/catalog/works`);
+                navigate(`/catalog/works/${result.id}`);
                 break;
             case 'contract':
-                navigate(`/contracts`);
+                navigate(`/admin-of-works/contracts/${result.id}`);
                 break;
             case 'label':
-                navigate(`/catalog/labels`);
+                navigate(`/catalog/labels/${result.id}`);
                 break;
             case 'publisher':
-                navigate(`/catalog/publishers`);
+                navigate(`/catalog/publishers/${result.id}`);
                 break;
             case 'pro':
-                navigate(`/catalog/pros`);
+                navigate(`/catalog/pros`); // PROs don't have a detail page yet, keeping as list
+                break;
+            case 'individual':
+                navigate(`/network/individuals/${result.id}`);
+                break;
+            case 'organization':
+                navigate(`/network/organizations/${result.id}`);
+                break;
+            case 'platform':
+                navigate(`/network/platforms/${result.id}`);
                 break;
             case 'document':
                 navigate(`/documents`);

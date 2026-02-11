@@ -11,7 +11,7 @@ class Artist(Base):
     organization_id = Column(Integer, nullable=True, index=True)
     is_deleted = Column(Boolean, nullable=False, default=False)
     artist_id = Column(String(50), unique=True, index=True)  # ART001, ART002, etc.
-    name = Column(String(255), nullable=False, index=True)
+    name = Column(String(255), nullable=False, index=True, unique=True)
     aka = Column(String(255))  # Stage name / alias
     nationality = Column(String(100))
     id_number = Column(String(100))  # National ID
