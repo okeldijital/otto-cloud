@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Date, Time
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
-
+from models.associations import track_releases
 
 class Track(Base):
     """Track/Recording model"""
@@ -29,10 +29,12 @@ class Track(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
+    
     # Relationships
     release = relationship("Release", back_populates="tracks")
     work = relationship("Work", back_populates="tracks")
     royalties = relationship("Royalty", back_populates="track", cascade="all, delete-orphan")
+    secondary_releases = relationship("Release", secondary=track_releases, back_populates="secondary_tracks")
     
     def __repr__(self):
         return f"<Track {self.title}>"

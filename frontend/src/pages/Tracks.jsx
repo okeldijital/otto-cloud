@@ -51,6 +51,7 @@ const Tracks = () => {
         work_id: '',
         streaming_link: '',
         artist_ids: [],
+        secondary_release_ids: [],
         credits: []
     };
     const [formData, setFormData] = useState(initialFormState);
@@ -113,10 +114,62 @@ const Tracks = () => {
             work_id: track.work_id || '',
             streaming_link: track.streaming_link || '',
             artist_ids: track.artist_ids || [],
+            secondary_release_ids: track.secondary_release_ids || [],
             credits: track.credits || []
         });
         setIsModalOpen(true);
     };
+
+    // Auto-populate credits and date when Release matches
+    useEffect(() => {
+        if (!isModalOpen || !formData.release_id) return;
+
+        // Find the release info
+        const release = (releases || []).find(r => r.id == formData.release_id);
+
+        if (release) {
+            setFormData(prev => {
+                const updates = {};
+                let hasUpdates = false;
+
+                // Auto credits
+                if (release.credits && release.credits.length > 0) {
+                    // Only update if credits are empty to prevent overwriting user work
+                    if (!prev.credits || prev.credits.length === 0) {
+                        updates.credits = [...release.credits];
+                        hasUpdates = true;
+                    }
+                }
+
+                // Auto date
+                if (release.release_date) {
+                    // Only update if date is empty
+                    if (!prev.release_date) {
+                        updates.release_date = release.release_date;
+                        hasUpdates = true;
+                    }
+                }
+
+                // Auto streaming link - "Always pull... unlike date"
+                if (release.streaming_link) {
+                    // Update if empty OR if we are switching to a new release
+                    // (Ensure we don't overwrite if user is just editing track and release is unchanged)
+                    const isSameReleaseAsOriginal = editingTrack && editingTrack.release_id == formData.release_id;
+                    const shouldUpdate = !prev.streaming_link || !isSameReleaseAsOriginal;
+
+                    if (shouldUpdate) {
+                        updates.streaming_link = release.streaming_link;
+                        hasUpdates = true;
+                    }
+                }
+
+                if (hasUpdates) {
+                    return { ...prev, ...updates };
+                }
+                return prev;
+            });
+        }
+    }, [formData.release_id, isModalOpen, releases]);
 
     const handleDelete = async (track) => {
         if (await confirmAction(`Are you sure you want to delete track "${track.title}"?`, 'Delete Track')) {
@@ -406,6 +459,20 @@ const Tracks = () => {
                             quickAddType="releases"
                         />
                     </div>
+                    <div className="form-group flex-1">
+                        <label>Also On (Additional Releases)</label>
+                        <Autocomplete
+                            options={(releases || []).filter(r => r.id !== formData.release_id)}
+                            value={formData.secondary_release_ids}
+                            onChange={(val) => setFormData({ ...formData, secondary_release_ids: val })}
+                            placeholder="Select other releases..."
+                            labelKey="title"
+                            allowQuickAdd={false}
+                            multiple={true}
+                        />
+                    </div>
+                </div>
+                <div className="form-row">
                     <div className="form-group flex-1">
                         <label>Underlying Work</label>
                         <Autocomplete

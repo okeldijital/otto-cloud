@@ -11,6 +11,7 @@ class ReleaseBase(BaseModel):
     release_date: Optional[date] = None
     release_type: Optional[str] = None
     cover_art_url: Optional[str] = None
+    streaming_link: Optional[str] = None
     label_id: Optional[int] = None
     artist_id: Optional[int] = None
     artist_ids: Optional[List[int]] = None
@@ -30,6 +31,7 @@ class ReleaseUpdate(BaseModel):
     release_date: Optional[date] = None
     release_type: Optional[str] = None
     cover_art_url: Optional[str] = None
+    streaming_link: Optional[str] = None
     label_id: Optional[int] = None
     artist_id: Optional[int] = None
     artist_ids: Optional[list[int]] = None

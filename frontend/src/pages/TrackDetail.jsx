@@ -13,6 +13,7 @@ const TrackDetail = () => {
     const navigate = useNavigate();
     const [track, setTrack] = useState(null);
     const [release, setRelease] = useState(null);
+    const [secondaryReleases, setSecondaryReleases] = useState([]);
     const [work, setWork] = useState(null);
     const [artists, setArtists] = useState([]);
     const [allArtists, setAllArtists] = useState([]);
@@ -33,7 +34,7 @@ const TrackDetail = () => {
                     NetworkService.getIndividuals(),
                     CatalogService.getAll('labels'),
                     NetworkService.getOrganizations(),
-                    CatalogService.getAll('artists') // Fetching all artists to resolve credit names if not in track.artist_ids
+                    CatalogService.getAll('artists')
                 ];
 
                 if (trackData.release_id) {
@@ -41,6 +42,16 @@ const TrackDetail = () => {
                 }
                 if (trackData.work_id) {
                     promises.push(CatalogService.getById('works', trackData.work_id));
+                }
+
+                // Fetch secondary releases if any
+                if (trackData.secondary_release_ids && trackData.secondary_release_ids.length > 0) {
+                    // We can fetch all releases to be efficient if there are many, or just loop.
+                    // For simplicity and to reuse endpoint, let's fetch all releases if there are > 0.
+                    // Or better: Promise.all with id.
+                    trackData.secondary_release_ids.forEach(rid => {
+                        promises.push(CatalogService.getById('releases', rid));
+                    });
                 }
 
                 const results = await Promise.all(promises);
@@ -54,6 +65,16 @@ const TrackDetail = () => {
                 let resultIdx = 4;
                 if (trackData.release_id) setRelease(results[resultIdx++]);
                 if (trackData.work_id) setWork(results[resultIdx++]);
+
+                if (trackData.secondary_release_ids && trackData.secondary_release_ids.length > 0) {
+                    const secRels = [];
+                    for (let i = 0; i < trackData.secondary_release_ids.length; i++) {
+                        secRels.push(results[resultIdx++]);
+                    }
+                    setSecondaryReleases(secRels.filter(Boolean)); // Filter out nulls if fetch failed
+                } else {
+                    setSecondaryReleases([]);
+                }
 
                 if (trackData.artist_ids && trackData.artist_ids.length > 0) {
                     setArtists(allArtistsData.filter(a => trackData.artist_ids.includes(a.id)));
@@ -173,19 +194,46 @@ const TrackDetail = () => {
                                     </thead>
                                     <tbody>
                                         {track.credits.map((credit, idx) => {
-                                            // We need to resolve the name. I need access to 'allArtists'.
-                                            // Since I didn't store allArtists in state in previous step, let me fix the fetching logic first
-                                            // effectively by using a small hack or ensuring I have the data.
-                                            // Actually, I can't easily access 'allArtists' inside render if it's local scope in useEffect.
-                                            // I will fix the content in next step properly. For now let's assume I have `allArtistsLookup` state.
-                                            // WAIT - I need to modify the state in the FIRST chunk to include `allArtistsLookup`.
-                                            // Let's assume I did that or will do that.
-                                            // Actually I can't "assume". I need to act.
-                                            // I will use `artists` state for now, but `artists` only contains the track artists.
-                                            // I should store `creditArtists` or just `allArtists`.
+                                            let name = 'Unknown';
+                                            let type = 'Contact';
 
-                                            // RE-PLANNING: I will use `allContextArtists` state.
-                                            return null;
+                                            if (credit.artist_id) {
+                                                const artist = allArtists.find(a => a.id === credit.artist_id);
+                                                name = artist ? (artist.display_name || artist.name) : `Artist #${credit.artist_id}`;
+                                                type = 'Artist';
+                                            } else if (credit.contact_id) {
+                                                const contact = contacts.find(c => c.id === credit.contact_id);
+                                                name = contact ? `${contact.first_name} ${contact.last_name}` : `Indiv #${credit.contact_id}`;
+                                                type = 'Contact';
+                                            } else if (credit.label_id) {
+                                                const label = labels.find(l => l.id === credit.label_id);
+                                                name = label ? label.name : `Label #${credit.label_id}`;
+                                                type = 'Label';
+                                            } else if (credit.organization_id) {
+                                                const org = organizations.find(o => o.id === credit.organization_id);
+                                                name = org ? org.name : `Org #${credit.organization_id}`;
+                                                type = 'Org';
+                                            }
+
+                                            return (
+                                                <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                                    <td style={{ padding: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                                        <span style={{
+                                                            padding: '2px 8px',
+                                                            borderRadius: '12px',
+                                                            background: type === 'Artist' ? '#e0e7ff' : type === 'Label' ? '#fce7f3' : type === 'Org' ? '#dbeafe' : '#f1f5f9',
+                                                            color: type === 'Artist' ? '#4338ca' : type === 'Label' ? '#be185d' : type === 'Org' ? '#1d4ed8' : '#64748b',
+                                                            fontSize: '0.7rem',
+                                                            fontWeight: 700,
+                                                            textTransform: 'uppercase'
+                                                        }}>
+                                                            {type}
+                                                        </span>
+                                                        <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>{name}</span>
+                                                    </td>
+                                                    <td style={{ padding: '1rem', color: 'var(--text-muted)' }}>{credit.role}</td>
+                                                </tr>
+                                            );
                                         })}
                                     </tbody>
                                 </table>
@@ -235,6 +283,18 @@ const TrackDetail = () => {
                                             <div style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{release.title}</div>
                                         </div>
                                     </Link>
+                                )}
+
+                                {secondaryReleases.length > 0 && (
+                                    <div style={{ marginTop: '0.5rem' }}>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem', fontWeight: 600 }}>ALSO APPEARS ON</div>
+                                        {secondaryReleases.map(sr => (
+                                            <Link key={sr.id} to={`/catalog/releases/${sr.id}`} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', textDecoration: 'none', color: 'inherit', padding: '0.5rem', borderRadius: '8px', border: '1px solid #f1f5f9', marginBottom: '0.5rem', fontSize: '0.9rem' }} className="hover-card">
+                                                <Disc size={16} className="text-muted" />
+                                                <span style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sr.title}</span>
+                                            </Link>
+                                        ))}
+                                    </div>
                                 )}
 
                                 {work && (

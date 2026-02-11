@@ -273,7 +273,10 @@ def create_release(
         db.refresh(db_release)
         
         if track_ids:
-            db.query(TrackModel).filter(TrackModel.id.in_(track_ids)).update({"release_id": db_release.id}, synchronize_session=False)
+            # Default track credits to release credits (even if None/empty) to ensure consistency
+            update_payload = {"release_id": db_release.id, "credits": db_release.credits}
+            
+            db.query(TrackModel).filter(TrackModel.id.in_(track_ids)).update(update_payload, synchronize_session=False)
             db.commit()
             db.refresh(db_release)
             
@@ -345,9 +348,23 @@ def update_release(
             setattr(db_release, field, value)
         
         if track_ids is not None:
-            db.query(TrackModel).filter(TrackModel.release_id == release_id).update({"release_id": None}, synchronize_session=False)
-            if track_ids:
-                db.query(TrackModel).filter(TrackModel.id.in_(track_ids)).update({"release_id": release_id}, synchronize_session=False)
+            # Get current tracks to determine which are newly added
+            current_tracks = db.query(TrackModel).filter(TrackModel.release_id == release_id).all()
+            current_track_ids = {t.id for t in current_tracks}
+            new_track_ids = set(track_ids)
+            
+            # Tracks to unassign (in current but not in new)
+            to_unassign = current_track_ids - new_track_ids
+            if to_unassign:
+                 db.query(TrackModel).filter(TrackModel.id.in_(to_unassign)).update({"release_id": None}, synchronize_session=False)
+
+            # Tracks to assign (newly added)
+            to_assign = new_track_ids - current_track_ids
+            if to_assign:
+                 # Default track credits to release credits ONLY for newly assigned tracks
+                 update_payload = {"release_id": release_id, "credits": db_release.credits}
+                 
+                 db.query(TrackModel).filter(TrackModel.id.in_(to_assign)).update(update_payload, synchronize_session=False)
         
         db.commit()
         db.refresh(db_release)
@@ -437,8 +454,40 @@ def create_track(
         )
 
     try:
-        db_track = track_repository.create(db, track.model_dump(), organization_id=org_id)
-        audit_service.log(db, "CREATE", "Track", db_track.id, current_user.id, changes=track.model_dump(), organization_id=org_id)
+        track_data = track.model_dump()
+        secondary_ids = track_data.pop("secondary_release_ids", [])
+        
+        # Auto-assign credits from release if not provided
+        if track.release_id:
+            release = db.query(ReleaseModel).filter(ReleaseModel.id == track.release_id).first()
+            if release:
+                if not track.credits and release.credits:
+                    track_data["credits"] = release.credits
+                
+                # Auto-assign release date from primary release if not provided
+                if not track_data.get("release_date") and release.release_date:
+                    track_data["release_date"] = release.release_date
+                
+                # Auto-assign streaming_link from primary release if not provided
+                # "Always pull... unlike date" implies we prioritize release link?
+                # For consistency with "unlike date", we might overwrite even if provided?
+                # But creation usually respects input. Let's default if empty for now.
+                if not track_data.get("streaming_link") and release.streaming_link:
+                     track_data["streaming_link"] = release.streaming_link
+        
+        # Handle secondary releases
+        secondary_releases = []
+        if secondary_ids:
+            secondary_releases = db.query(ReleaseModel).filter(ReleaseModel.id.in_(secondary_ids)).all()
+        
+        # Create track
+        # We handle secondary_releases relationship manually after creation or if repository supports it
+        # Since repository uses **data, passing 'secondary_releases' object list works for SQLAlchemy
+        if secondary_releases:
+            track_data["secondary_releases"] = secondary_releases
+
+        db_track = track_repository.create(db, track_data, organization_id=org_id)
+        audit_service.log(db, "CREATE", "Track", db_track.id, current_user.id, changes=track_data, organization_id=org_id)
         return db_track
     except IntegrityError:
         db.rollback()
@@ -459,6 +508,15 @@ def get_track(
     track = track_repository.get_by_id(db, track_id, organization_id=org_id)
     if not track:
         raise HTTPException(status_code=404, detail="Track not found")
+    
+    # Populate secondary_release_ids for response if needed by schema (Response model implies it)
+    # Pydantic from_attributes=True handles 'secondary_releases' relationship -> list of objects
+    # But schema expects 'secondary_release_ids' (list of int).
+    # We might need to manually set it or update Pydantic model to use a validator or property.
+    # Hack: Let's attach it.
+    if hasattr(track, "secondary_releases"):
+        track.secondary_release_ids = [r.id for r in track.secondary_releases]
+        
     return track
 
 
@@ -476,6 +534,7 @@ def update_track(
         raise HTTPException(status_code=404, detail="Track not found")
     
     update_data = track_update.model_dump(exclude_unset=True)
+    secondary_ids = update_data.pop("secondary_release_ids", None)
 
     # Check for duplicate title if title is being updated
     if "title" in update_data and update_data["title"] != db_track.title:
@@ -486,8 +545,42 @@ def update_track(
                 detail=f"A track with the title '{update_data['title']}' already exists."
             )
 
+    # Auto-assign credits from release if release is changing and credits are not provided
+    # Also handle Release Date logic
+    if "release_id" in update_data and update_data["release_id"] != db_track.release_id:
+        release = None
+        if update_data["release_id"] is not None:
+             release = db.query(ReleaseModel).filter(ReleaseModel.id == update_data["release_id"]).first()
+        
+        # Credits logic
+        if release and not update_data.get("credits") and not db_track.credits:
+             if release.credits:
+                 update_data["credits"] = release.credits
+        
+        # Release Date Logic (Preserve existing date precedence)
+        # If track has NO release date, and we are setting a release -> use its date
+        if not db_track.release_date and not update_data.get("release_date"):
+            if release and release.release_date:
+                update_data["release_date"] = release.release_date
+
+        # Streaming Link Logic
+        # If release has streaming link, auto-populate if not provided in update
+        # Frontend usually handles this, but as backup:
+        if release and release.streaming_link and "streaming_link" not in update_data:
+             update_data["streaming_link"] = release.streaming_link
+
+    # Add secondary releases to update_data if present
+    if secondary_ids is not None:
+        secondary_releases = db.query(ReleaseModel).filter(ReleaseModel.id.in_(secondary_ids)).all()
+        update_data["secondary_releases"] = secondary_releases
+
     try:
         updated_track = track_repository.update(db, db_track, update_data)
+        
+        # Ensure ID list is populated for response
+        if hasattr(updated_track, "secondary_releases"):
+             updated_track.secondary_release_ids = [r.id for r in updated_track.secondary_releases]
+
         audit_service.log(db, "UPDATE", "Track", track_id, current_user.id, changes=update_data, organization_id=org_id)
         return updated_track
     except IntegrityError:

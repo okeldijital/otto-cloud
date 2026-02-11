@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Date, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
-
+from models.associations import track_releases
 
 class Release(Base):
     """Release/Album model"""
@@ -18,6 +18,7 @@ class Release(Base):
     release_date = Column(Date)
     release_type = Column(String(50))  # Album, EP, Single
     cover_art_url = Column(String(500))
+    streaming_link = Column(String(500))
     
     # Foreign Keys
     label_id = Column(Integer, ForeignKey("labels.id"))
@@ -34,6 +35,7 @@ class Release(Base):
     artist = relationship("Artist", back_populates="releases")
     distributor = relationship("Organization", back_populates="releases")
     tracks = relationship("Track", back_populates="release", cascade="all, delete-orphan")
+    secondary_tracks = relationship("Track", secondary=track_releases, back_populates="secondary_releases")
     
     def __repr__(self):
         return f"<Release {self.title}>"

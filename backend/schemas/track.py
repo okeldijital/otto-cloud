@@ -16,6 +16,9 @@ class TrackBase(BaseModel):
     release_id: Optional[int] = None
     work_id: Optional[int] = None
     organization_id: Optional[int] = None
+    credits: Optional[list[dict]] = None
+    secondary_release_ids: Optional[list[int]] = None
+
 
 
 class TrackCreate(TrackBase):
@@ -34,6 +37,8 @@ class TrackUpdate(BaseModel):
     release_id: Optional[int] = None
     work_id: Optional[int] = None
     organization_id: Optional[int] = None
+    credits: Optional[list[dict]] = None
+    secondary_release_ids: Optional[list[int]] = None
 
 
 class Track(TrackBase):

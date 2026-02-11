@@ -51,6 +51,7 @@ const Releases = () => {
         artist_ids: [],
         distributor_id: '',
         cover_art_url: '',
+        streaming_link: '',
         credits: [],
         track_ids: []
     });
@@ -127,6 +128,7 @@ const Releases = () => {
             artist_ids: [],
             distributor_id: '',
             cover_art_url: '',
+            streaming_link: '',
             credits: [],
             track_ids: []
         });
@@ -157,6 +159,7 @@ const Releases = () => {
             artist_ids: release.artist_ids || (release.artist_id ? [release.artist_id] : []),
             distributor_id: release.distributor_id || '',
             cover_art_url: release.cover_art_url || '',
+            streaming_link: release.streaming_link || '',
             credits: Array.isArray(release.credits) ? release.credits : [],
             track_ids: releaseTrackIds
         });
@@ -200,6 +203,7 @@ const Releases = () => {
         if (submissionData.release_date === '') submissionData.release_date = null;
         if (submissionData.upc_code === '') submissionData.upc_code = null;
         if (submissionData.catalog_number === '') submissionData.catalog_number = null;
+        if (submissionData.streaming_link === '') submissionData.streaming_link = null;
 
         try {
             // Upload cover art if selected
@@ -245,6 +249,15 @@ const Releases = () => {
                     {row.title}
                 </Link>
             )
+        },
+        {
+            key: 'streaming_link',
+            label: 'Link',
+            render: (row) => row.streaming_link ? (
+                <a href={row.streaming_link} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary-color)', textDecoration: 'none' }}>
+                    Stream ↗
+                </a>
+            ) : '-'
         },
         {
             key: 'artist_ids',
@@ -644,6 +657,13 @@ const Releases = () => {
                     id="upc_code"
                     value={formData.upc_code}
                     onChange={(e) => setFormData({ ...formData, upc_code: e.target.value })}
+                />
+                <Input
+                    label="Streaming Link"
+                    id="streaming_link"
+                    value={formData.streaming_link}
+                    onChange={(e) => setFormData({ ...formData, streaming_link: e.target.value })}
+                    placeholder="https://spotify.com/album/..."
                 />
             </EntityForm>
         </div>
