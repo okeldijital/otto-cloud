@@ -7,6 +7,7 @@ import { BASE_URL } from '../lib/api';
 import { confirmAction } from '../lib/tauri';
 import { Music, User, Calendar, Tag, FileAudio, ChevronRight, Play, ChevronLeft, Disc, Clock, Hash, ExternalLink, Trash2 } from 'lucide-react';
 import { formatDurationForDisplay } from '../utils/formatters';
+import AttachmentsSection from '../components/AttachmentsSection';
 
 const TrackDetail = () => {
     const { id } = useParams();
@@ -242,6 +243,12 @@ const TrackDetail = () => {
                             )}
                         </div>
                     </section>
+
+                    <AttachmentsSection
+                        entityType="track"
+                        entityId={id}
+                        entityTitle={track.title}
+                    />
 
                     <section className="metadata-section" style={{ background: 'white', borderRadius: '16px', padding: '1.5rem', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
                         <h3 style={{ margin: '0 0 1.5rem 0', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>

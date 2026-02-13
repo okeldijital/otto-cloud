@@ -8,6 +8,7 @@ import PageHeader from '../../components/ui/PageHeader';
 import { isTauriEnv, downloadFile } from '../../lib/tauri';
 
 const DOC_TYPES = [
+    { label: 'Split Sheet', value: 'split_sheet' },
     { label: 'Contract', value: 'contract' },
     { label: 'Registration Proof', value: 'registration_proof' },
     { label: 'Invoice', value: 'invoice' },

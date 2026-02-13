@@ -26,6 +26,7 @@ from schemas.office_documents_v2 import (
 router = APIRouter()
 
 DOC_TYPES = [
+    "split_sheet",
     "contract",
     "registration_proof",
     "invoice",
