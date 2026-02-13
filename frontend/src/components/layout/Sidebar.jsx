@@ -90,10 +90,8 @@ const Sidebar = () => {
             items: [
                 { icon: Inbox, label: 'Overview', path: '/network' },
                 { icon: Users, label: 'All Contacts', path: '/network/contacts' },
-                { icon: Building2, label: 'Organizations', path: '/network/organizations' },
                 { icon: UserCircle, label: 'Individuals', path: '/network/individuals' },
-                { icon: Globe, label: 'Platforms', path: '/network/platforms' },
-                { icon: Share2, label: 'Relationships', path: '/network/relationships' },
+                { icon: Building2, label: 'Organizations', path: '/network/organizations' },
             ]
         },
         {

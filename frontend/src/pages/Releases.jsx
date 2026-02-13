@@ -462,6 +462,8 @@ const Releases = () => {
                         onChange={(val) => setFormData({ ...formData, track_ids: val })}
                         placeholder="Select Track(s)..."
                         multiple={true}
+                        allowQuickAdd={true}
+                        quickAddType="tracks"
                     />
                     <small style={{ color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
                         Only existing tracks can be linked. To create new tracks, use the Tracks page.

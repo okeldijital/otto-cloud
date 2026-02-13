@@ -114,21 +114,6 @@ const Organizations = () => {
                     {row.org_type || 'Other'}
                 </span>
             )
-        },
-        {
-            key: 'contracts',
-            label: 'Contracts',
-            render: () => <span style={{ color: '#64748b' }}>1 Active</span>
-        },
-        {
-            key: 'works',
-            label: 'Works',
-            render: () => <span style={{ color: '#64748b' }}>24 Works</span>
-        },
-        {
-            key: 'governance',
-            label: 'Governance',
-            render: () => getGovernanceBadge('Active')
         }
     ];
 

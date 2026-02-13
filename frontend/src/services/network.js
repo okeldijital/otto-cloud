@@ -14,8 +14,9 @@ export const NetworkService = {
     },
 
     // Organizations
-    getOrganizations: async () => {
-        const response = await api.get('/network/organizations');
+    getOrganizations: async (params = {}) => {
+        const defaultParams = { limit: 1000, ...params };
+        const response = await api.get('/network/organizations', { params: defaultParams });
         return response.data;
     },
     getOrganization: async (id) => {
@@ -31,8 +32,9 @@ export const NetworkService = {
     },
 
     // Individuals
-    getIndividuals: async () => {
-        const response = await api.get('/network/individuals');
+    getIndividuals: async (params = {}) => {
+        const defaultParams = { limit: 1000, ...params };
+        const response = await api.get('/network/individuals', { params: defaultParams });
         return response.data;
     },
     getIndividual: async (id) => {

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { NetworkService } from '../../services/network';
-import { UserCircle, ChevronLeft, Mail, Phone, Building2, Star, Share2, Activity, PenLine } from 'lucide-react';
+import { CatalogService } from '../../services/catalog';
+import { UserCircle, ChevronLeft, Mail, Phone, Building2, Star, Share2, Activity, PenLine, Play, Disc, Music2 } from 'lucide-react';
 import PageHeader from '../../components/ui/PageHeader';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
@@ -12,6 +13,7 @@ const IndividualDetail = () => {
     const { id } = useParams();
     const [individual, setIndividual] = useState(null);
     const [relationships, setRelationships] = useState([]);
+    const [contributions, setContributions] = useState({ works: [], tracks: [], releases: [] });
     const [loading, setLoading] = useState(true);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -19,9 +21,13 @@ const IndividualDetail = () => {
 
     const fetchIndividualData = async () => {
         try {
-            const [indData, relData] = await Promise.all([
+            const [indData, relData, artistsData, worksData, tracksData, releasesData] = await Promise.all([
                 NetworkService.getIndividual(id),
-                NetworkService.getRelationships()
+                NetworkService.getRelationships(),
+                CatalogService.getAll('artists', { limit: 10000 }),
+                CatalogService.getAll('works', { limit: 10000 }),
+                CatalogService.getAll('tracks', { limit: 10000 }),
+                CatalogService.getAll('releases', { limit: 10000 })
             ]);
             setIndividual(indData);
             setEditData({
@@ -38,6 +44,39 @@ const IndividualDetail = () => {
                 (r.target_type === 'individual' && r.target_id === parseInt(id))
             );
             setRelationships(relevantRels);
+
+            // Calculate Contributions
+            const fullName = `${indData.first_name} ${indData.last_name}`;
+            const matchedArtist = (artistsData || []).find(a =>
+                (a.name || '').toLowerCase() === fullName.toLowerCase() ||
+                (a.display_name || '').toLowerCase() === fullName.toLowerCase() ||
+                (a.aka || '').toLowerCase() === fullName.toLowerCase()
+            );
+            const artistId = matchedArtist ? matchedArtist.id : null;
+            const linkId = id.toString(); // Ensure string comparison
+
+            const contribs = {
+                works: (worksData || []).filter(w => {
+                    if (!artistId) return false;
+                    const comp = (w.composers || []).includes(artistId);
+                    const arr = (w.arrangers || []).includes(artistId);
+                    return comp || arr;
+                }),
+                tracks: (tracksData || []).filter(t => {
+                    const isArtist = artistId && (t.artist_ids || []).includes(artistId);
+                    const isCredited = (t.credits || []).some(c => String(c.contact_id) === linkId);
+                    return isArtist || isCredited;
+                }),
+                releases: (releasesData || []).filter(r => {
+                    // Check main artist_id and artist_ids array
+                    const isMainArtist = artistId && (r.artist_id === artistId);
+                    const isInArtistList = artistId && (r.artist_ids || []).includes(artistId);
+                    const isCredited = (r.credits || []).some(c => String(c.contact_id) === linkId);
+                    return isMainArtist || isInArtistList || isCredited;
+                })
+            };
+            setContributions(contribs);
+
         } catch (error) {
             console.error("Error fetching individual detail:", error);
         } finally {
@@ -49,19 +88,43 @@ const IndividualDetail = () => {
         fetchIndividualData();
     }, [id]);
 
+    const [selectedImage, setSelectedImage] = useState(null);
+    const [imagePreview, setImagePreview] = useState(null);
+
+    // ... existing fetch logic ...
+
+    const handleImageChange = (e) => {
+        if (e.target.files && e.target.files.length > 0) {
+            const file = e.target.files[0];
+            setSelectedImage(file);
+            setImagePreview(URL.createObjectURL(file));
+        }
+    };
+
     const handleUpdate = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
+
         try {
-            // Assuming NetworkService has an update method. If not, this might need adjustment.
-            // Based on previous files, specialized update methods might not exist yet or be named differently.
-            // Checking NetworkService usage in other files implies standard REST might be supported or needed.
-            // For now, I'll assume a standard update pattern or mock it if strictly read-only.
-            // However, the instruction is to "Integrate EntityForm", so I should attempt wire-up.
+            let imageUrl = individual.image_url;
+
+            if (selectedImage) {
+                // Import DocumentsService if not already imported (I will ensure imports are correct in a separate step if needed, but assuming I can use it)
+                // Actually need to check imports. I'll add the logic assuming DocumentsService needs to be imported or is available.
+                // Wait, DocumentsService is NOT imported in the original file. I need to add it. 
+                // I will add the import in a separate tool call to be safe, or just use what I have.
+                // For now, let's assume I can add the import.
+                const { DocumentsService } = await import('../../services/operations');
+                const uploaded = await DocumentsService.upload(selectedImage);
+                imageUrl = uploaded.file_path;
+            }
+
+            const updatePayload = { ...editData, image_url: imageUrl };
+
             if (NetworkService.updateIndividual) {
-                await NetworkService.updateIndividual(id, editData);
+                await NetworkService.updateIndividual(id, updatePayload);
             } else {
-                console.warn("updateIndividual not implemented in service, skipping API call");
+                console.warn("updateIndividual not implemented in service");
             }
 
             await fetchIndividualData();
@@ -90,78 +153,102 @@ const IndividualDetail = () => {
                     </Link>
                 }
                 actions={
-                    <div style={{ display: 'flex', gap: '0.75rem' }}>
-                        <Button
-                            variant="secondary"
-                            onClick={() => setIsEditModalOpen(true)}
-                            icon={PenLine}
-                        >
-                            Edit Profile
-                        </Button>
-                        <Button variant="primary">
-                            Manage Affiliations
-                        </Button>
-                    </div>
+                    <Button
+                        variant="primary"
+                        onClick={() => setIsEditModalOpen(true)}
+                        icon={PenLine}
+                    >
+                        Edit Profile
+                    </Button>
                 }
             />
 
-            <div className="catalog-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                    <Card title="Primary Affiliations" icon={Building2}>
-                        <div className="space-y-4">
-                            {individual.organizations && individual.organizations.length > 0 ? (
-                                individual.organizations.map((org, index) => (
-                                    <div key={index} className="flex justify-between items-center p-4 bg-secondary-bg rounded-lg border border-border">
-                                        <div className="flex items-center gap-3">
-                                            <div className="p-2 bg-black bg-opacity-20 rounded-lg text-gray-400">
-                                                <Building2 size={16} />
-                                            </div>
-                                            <div className="font-semibold text-white">{org.name}</div>
-                                        </div>
-                                        <Link to={`/network/organizations/${org.id}`} className="text-xs text-primary-color hover:underline">View Organization</Link>
-                                    </div>
-                                ))
-                            ) : (
-                                <div className="text-center py-6 text-gray-500 border border-border border-dashed rounded-lg">
-                                    No organization affiliations recorded.
-                                </div>
-                            )}
-                        </div>
-                    </Card>
+            <div className="catalog-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 350px', gap: '2rem', alignItems: 'start' }}>
 
-                    <Card title="Recent Relationships" icon={Share2}>
-                        <div className="space-y-4">
-                            {relationships.length > 0 ? (
-                                relationships.map((rel) => (
-                                    <div key={rel.id} className="flex justify-between items-center p-4 bg-secondary-bg rounded-lg border border-border">
-                                        <div>
-                                            <div className="text-xs text-gray-500 uppercase font-bold mb-1">{rel.relationship_type.replace('_', ' ')}</div>
-                                            <div className="font-medium text-white">
-                                                {rel.source_type} #{rel.source_id} → {rel.target_type} #{rel.target_id}
+                {/* LEFT COLUMN: Contributions (Promoted) */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+
+                    <section>
+                        <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-main)' }}>
+                            <Activity size={20} className="text-primary-color" /> Contribution Catalog
+                        </h3>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
+                            {/* Tracks */}
+                            <Card title={`Tracks (${contributions.tracks.length})`} icon={Play}>
+                                <div className="space-y-2">
+                                    {contributions.tracks.length > 0 ? (
+                                        contributions.tracks.slice(0, 5).map(track => (
+                                            <div key={track.id} className="flex justify-between items-center p-3 bg-secondary-bg rounded-lg border border-border">
+                                                <Link to={`/catalog/tracks/${track.id}`} className="font-medium hover:underline text-white truncate flex-1">
+                                                    {track.title}
+                                                </Link>
+                                                <span className="text-xs text-gray-500 ml-2">{track.isrc_code || '-'}</span>
                                             </div>
-                                            {rel.notes && <div className="text-xs text-gray-400 mt-1 italic">{rel.notes}</div>}
+                                        ))
+                                    ) : <div className="text-sm text-gray-500 italic">No tracks found.</div>}
+                                    {contributions.tracks.length > 5 && (
+                                        <div className="text-center pt-2">
+                                            <span className="text-xs text-primary-color cursor-pointer">View All {contributions.tracks.length} Tracks</span>
                                         </div>
-                                        <div className="px-2 py-0.5 rounded text-[10px] bg-primary-color bg-opacity-10 text-primary-color border border-primary-color border-opacity-20 uppercase font-bold">
-                                            Governed
-                                        </div>
-                                    </div>
-                                ))
-                            ) : (
-                                <div className="text-center py-10 bg-secondary-bg rounded-lg border border-border border-dashed">
-                                    <Share2 size={32} className="mx-auto text-gray-600 mb-3" />
-                                    <p className="text-gray-400">No active network relationships tracked for this individual.</p>
+                                    )}
                                 </div>
-                            )}
+                            </Card>
+
+                            {/* Releases */}
+                            <Card title={`Releases (${contributions.releases.length})`} icon={Disc}>
+                                <div className="space-y-2">
+                                    {contributions.releases.length > 0 ? (
+                                        contributions.releases.slice(0, 5).map(release => (
+                                            <div key={release.id} className="flex justify-between items-center p-3 bg-secondary-bg rounded-lg border border-border">
+                                                <Link to={`/catalog/releases/${release.id}`} className="font-medium hover:underline text-white truncate flex-1">
+                                                    {release.title}
+                                                </Link>
+                                                <span className="text-xs text-gray-500 ml-2">{release.catalog_number || '-'}</span>
+                                            </div>
+                                        ))
+                                    ) : <div className="text-sm text-gray-500 italic">No releases found.</div>}
+                                    {contributions.releases.length > 5 && (
+                                        <div className="text-center pt-2">
+                                            <span className="text-xs text-primary-color cursor-pointer">View All {contributions.releases.length} Releases</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </Card>
+
+                            {/* Works */}
+                            <Card title={`Works (${contributions.works.length})`} icon={Music2}>
+                                <div className="space-y-2">
+                                    {contributions.works.length > 0 ? (
+                                        contributions.works.slice(0, 5).map(work => (
+                                            <div key={work.id} className="flex justify-between items-center p-3 bg-secondary-bg rounded-lg border border-border">
+                                                <Link to={`/catalog/works/${work.id}`} className="font-medium hover:underline text-white truncate flex-1">
+                                                    {work.title}
+                                                </Link>
+                                                <span className="text-xs text-gray-500 ml-2">{work.iswc_code || '-'}</span>
+                                            </div>
+                                        ))
+                                    ) : <div className="text-sm text-gray-500 italic">No works found.</div>}
+                                    {contributions.works.length > 5 && (
+                                        <div className="text-center pt-2">
+                                            <span className="text-xs text-primary-color cursor-pointer">View All {contributions.works.length} Works</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </Card>
                         </div>
-                    </Card>
+                    </section>
                 </div>
 
+                {/* RIGHT COLUMN: Profile & Contact */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+
+                    {/* Profile Card */}
                     <div style={{
                         background: 'var(--surface-color)',
                         borderRadius: '16px',
                         border: '1px solid var(--border-color)',
-                        padding: '1.5rem',
+                        padding: '2rem',
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: 'center',
@@ -174,32 +261,30 @@ const IndividualDetail = () => {
                             overflow: 'hidden',
                             marginBottom: '1rem',
                             border: '4px solid var(--background-color)',
-                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                            position: 'relative',
+                            background: '#f1f5f9'
                         }}>
                             {individual.image_url ? (
                                 <img src={individual.image_url} alt={fullName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                             ) : (
-                                <div style={{ width: '100%', height: '100%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#cbd5e1' }}>
+                                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#cbd5e1' }}>
                                     <UserCircle size={64} />
                                 </div>
                             )}
                         </div>
-                        <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '0.25rem' }}>{fullName}</h2>
-                        <span style={{
-                            padding: '4px 12px',
-                            borderRadius: '9999px',
-                            fontSize: '0.75rem',
-                            fontWeight: 600,
-                            textTransform: 'uppercase',
-                            background: 'rgba(5b, 33, 182, 0.1)',
-                            color: 'var(--primary-color)',
-                            border: '1px solid rgba(5b, 33, 182, 0.2)'
-                        }}>
-                            {individual.relationship_strength || 'Regular'}
-                        </span>
+                        <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '0.25rem' }}>{fullName}</h2>
+                        <div style={{ color: 'var(--primary-color)', fontWeight: 600, fontSize: '0.875rem', marginBottom: '1rem' }}>{individual.role || 'Contributor'}</div>
+
+                        {/* Status / Tags */}
+                        <div className="flex flex-wrap gap-2 justify-center">
+                            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', background: 'var(--bg-color)', padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
+                                #{individual.id}
+                            </span>
+                        </div>
                     </div>
 
-                    <Card title="Contact Layer" icon={Mail}>
+                    <Card title="Contact Details" icon={Mail}>
                         <div className="space-y-4">
                             <div className="flex items-center gap-3">
                                 <Mail size={18} className="text-gray-500" />
@@ -209,15 +294,6 @@ const IndividualDetail = () => {
                                 <Phone size={18} className="text-gray-500" />
                                 <span className="text-sm text-gray-300">{individual.phone || 'No phone provided'}</span>
                             </div>
-                        </div>
-                    </Card>
-
-                    <Card title="Governance Status" icon={Activity}>
-                        <div className="p-4 bg-green-500 bg-opacity-10 border border-green-500 border-opacity-20 rounded-lg">
-                            <div className="flex items-center gap-2 text-green-500 font-bold text-sm mb-1">
-                                <Star size={14} fill="currentColor" /> Fully Compliant
-                            </div>
-                            <p className="text-xs text-gray-500">All necessary agreements and data points are present.</p>
                         </div>
                     </Card>
                 </div>
@@ -230,6 +306,29 @@ const IndividualDetail = () => {
                 onSubmit={handleUpdate}
                 isSubmitting={isSubmitting}
             >
+                {/* Image Upload in Form */}
+                <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+                    <div style={{ position: 'relative', width: '80px', height: '80px', borderRadius: '50%', overflow: 'hidden', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #e2e8f0' }}>
+                        {imagePreview ? (
+                            <img src={imagePreview} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                            <UserCircle size={32} color="#94a3b8" />
+                        )}
+                    </div>
+                    <div>
+                        <label htmlFor="image-upload" className="btn-secondary" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: 'var(--surface-color)', border: '1px solid var(--border-color)', borderRadius: '6px', fontSize: '0.875rem' }}>
+                            <PenLine size={14} /> Upload Photo
+                        </label>
+                        <input
+                            type="file"
+                            id="image-upload"
+                            accept="image/*"
+                            onChange={handleImageChange}
+                            style={{ display: 'none' }}
+                        />
+                    </div>
+                </div>
+
                 <div className="form-row">
                     <Input
                         label="First Name"
@@ -262,15 +361,6 @@ const IndividualDetail = () => {
                     value={editData.role}
                     onChange={(e) => setEditData({ ...editData, role: e.target.value })}
                 />
-                <Select
-                    label="Relationship Strength"
-                    value={editData.relationship_strength}
-                    onChange={(e) => setEditData({ ...editData, relationship_strength: e.target.value })}
-                >
-                    <option value="Core">Core</option>
-                    <option value="Regular">Regular</option>
-                    <option value="Ad-hoc">Ad-hoc</option>
-                </Select>
             </EntityForm>
         </div>
     );

@@ -56,6 +56,8 @@ const Tracks = () => {
     };
     const [formData, setFormData] = useState(initialFormState);
 
+    const [combinedArtistOptions, setCombinedArtistOptions] = useState([]);
+
     const fetchData = async () => {
         setIsLoading(true);
         try {
@@ -85,6 +87,24 @@ const Tracks = () => {
             setContacts(contactsData || []);
             setLabels(labelsData || []);
             setDistributors(organizationsData || []);
+
+            // Combine artists and contacts for selection
+            const combined = [
+                ...(artistsData || []).map(a => ({
+                    ...a,
+                    id: `artist_${a.id}`,
+                    label: a.display_name || a.aka || a.name || 'Unknown Artist',
+                    type: 'artist'
+                })),
+                ...(contactsData || []).map(c => ({
+                    ...c,
+                    id: `contact_${c.id}`,
+                    label: `${c.first_name} ${c.last_name} (Contact)`,
+                    name: `${c.first_name} ${c.last_name}`,
+                    type: 'contact'
+                }))
+            ];
+            setCombinedArtistOptions(combined);
         } catch (error) {
             console.error('Failed to fetch tracks data:', error);
         } finally {
@@ -113,7 +133,7 @@ const Tracks = () => {
             release_id: track.release_id || '',
             work_id: track.work_id || '',
             streaming_link: track.streaming_link || '',
-            artist_ids: track.artist_ids || [],
+            artist_ids: (track.artist_ids || []).map(id => `artist_${id}`),
             secondary_release_ids: track.secondary_release_ids || [],
             credits: track.credits || []
         });
@@ -205,6 +225,46 @@ const Tracks = () => {
             if (!payload.genre) payload.genre = null;
             if (!payload.streaming_link) payload.streaming_link = null;
 
+            // Process artist_ids (handle mixed artist/contact selection)
+            const finalArtistIds = [];
+            for (const uid of payload.artist_ids) {
+                if (typeof uid === 'string' && uid.startsWith('artist_')) {
+                    finalArtistIds.push(parseInt(uid.replace('artist_', '')));
+                } else if (typeof uid === 'string' && uid.startsWith('contact_')) {
+                    // It's a contact - check if artist exists or create new
+                    const contactId = uid.replace('contact_', '');
+                    const contact = contacts.find(c => c.id == contactId);
+                    if (contact) {
+                        const name = `${contact.first_name} ${contact.last_name}`;
+                        // Check if artist already exists with this name (case insensitive)
+                        const existingArtist = artists.find(a =>
+                            (a.name || '').toLowerCase() === name.toLowerCase() ||
+                            (a.display_name || '').toLowerCase() === name.toLowerCase()
+                        );
+
+                        if (existingArtist) {
+                            finalArtistIds.push(existingArtist.id);
+                        } else {
+                            // Create new artist for this contact
+                            try {
+                                // Simple creation with name. Backend handles defaults.
+                                const newArt = await CatalogService.create('artists', { name: name });
+                                finalArtistIds.push(newArt.id);
+                            } catch (err) {
+                                console.error(`Failed to auto-create artist for contact ${name}`, err);
+                                // Fallback: Ignore this one to prevent breaking entire save? 
+                                // Or alert user? Let's log and alert but try to proceed with others.
+                                alert(`Could not create artist profile for contact "${name}": ${err.message}`);
+                            }
+                        }
+                    }
+                } else if (typeof uid === 'number') {
+                    // Should be covered by artist_ prefix, but handle raw numbers just in case
+                    finalArtistIds.push(uid);
+                }
+            }
+            payload.artist_ids = finalArtistIds;
+
             if (editingTrack) {
                 const payloadToSave = {
                     ...payload,
@@ -222,7 +282,11 @@ const Tracks = () => {
             fetchData();
         } catch (error) {
             console.error('Save failed:', error);
-            alert(error.response?.data?.detail || 'Failed to save track.');
+            const errorDetail = error.response?.data?.detail;
+            const errorMessage = typeof errorDetail === 'object'
+                ? JSON.stringify(errorDetail, null, 2)
+                : (errorDetail || error.message || 'Failed to save track.');
+            alert(errorMessage);
         } finally {
             setIsSubmitting(false);
         }
@@ -389,10 +453,11 @@ const Tracks = () => {
                 <div className="form-group">
                     <label>Artist(s)</label>
                     <Autocomplete
-                        options={(artists || []).map(a => ({ ...a, name: a.display_name || a.aka || a.name }))}
+                        options={combinedArtistOptions}
                         value={formData.artist_ids}
                         onChange={(val) => setFormData({ ...formData, artist_ids: val })}
-                        placeholder="Select Artist(s)..."
+                        placeholder="Select Artist(s) or Contact(s)..."
+                        labelKey="label"
                         multiple={true}
                         allowQuickAdd={true}
                         quickAddType="artists"
@@ -405,12 +470,14 @@ const Tracks = () => {
                         value={formData.isrc_code}
                         onChange={(e) => setFormData({ ...formData, isrc_code: e.target.value })}
                         placeholder="US-XXX-24-00001"
+                        required
                     />
                     <Input
                         label="Duration"
                         value={formData.duration}
                         onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
                         placeholder="03:45"
+                        required
                     />
                 </div>
 

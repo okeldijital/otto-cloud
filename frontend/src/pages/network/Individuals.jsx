@@ -136,7 +136,7 @@ const Individuals = () => {
             key: 'relationship_strength',
             label: 'Relationship',
             sortable: true,
-            render: (row) => <StrengthBadge strength={row.relationship_strength || 'Regular'} />
+            render: (row) => <span style={{ color: 'var(--text-color)' }}>{row.relationship_strength || 'Regular'}</span>
         }
     ];
 

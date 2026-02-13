@@ -22,6 +22,9 @@ from dependencies import get_current_active_user, get_current_organization_id
 from repositories.track_repository import track_repository
 from utils.audit import audit_service
 from sqlalchemy.exc import IntegrityError
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -273,10 +276,12 @@ def create_release(
         db.refresh(db_release)
         
         if track_ids:
-            # Default track credits to release credits (even if None/empty) to ensure consistency
-            update_payload = {"release_id": db_release.id, "credits": db_release.credits}
-            
-            db.query(TrackModel).filter(TrackModel.id.in_(track_ids)).update(update_payload, synchronize_session=False)
+            # Default track credits to release credits ONLY if track has no credits
+            tracks_to_assign = db.query(TrackModel).filter(TrackModel.id.in_(track_ids)).all()
+            for t in tracks_to_assign:
+                t.release_id = db_release.id
+                if not t.credits and db_release.credits:
+                    t.credits = db_release.credits
             db.commit()
             db.refresh(db_release)
             
@@ -361,10 +366,12 @@ def update_release(
             # Tracks to assign (newly added)
             to_assign = new_track_ids - current_track_ids
             if to_assign:
-                 # Default track credits to release credits ONLY for newly assigned tracks
-                 update_payload = {"release_id": release_id, "credits": db_release.credits}
-                 
-                 db.query(TrackModel).filter(TrackModel.id.in_(to_assign)).update(update_payload, synchronize_session=False)
+                 # Default track credits to release credits ONLY if track has no credits
+                 tracks_to_assign = db.query(TrackModel).filter(TrackModel.id.in_(to_assign)).all()
+                 for t in tracks_to_assign:
+                     t.release_id = release_id
+                     if not t.credits and db_release.credits:
+                         t.credits = db_release.credits
         
         db.commit()
         db.refresh(db_release)
@@ -455,10 +462,12 @@ def create_track(
 
     try:
         track_data = track.model_dump()
+        logger.info(f"CREATE TRACK PAYLOAD: {track_data}")
         secondary_ids = track_data.pop("secondary_release_ids", [])
         
         # Auto-assign credits from release if not provided
         if track.release_id:
+            logger.info(f"Processing release_id: {track.release_id}")
             release = db.query(ReleaseModel).filter(ReleaseModel.id == track.release_id).first()
             if release:
                 if not track.credits and release.credits:
@@ -533,7 +542,9 @@ def update_track(
     if not db_track:
         raise HTTPException(status_code=404, detail="Track not found")
     
+    
     update_data = track_update.model_dump(exclude_unset=True)
+    logger.info(f"UPDATE TRACK PAYLOAD for {track_id}: {update_data}")
     secondary_ids = update_data.pop("secondary_release_ids", None)
 
     # Check for duplicate title if title is being updated

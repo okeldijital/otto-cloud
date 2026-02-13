@@ -3,8 +3,9 @@ import api from '../lib/api';
 export const CatalogService = {
     // Generic CRUD helper
     // entity: 'labels', 'artists', 'works', etc.
-    getAll: async (entity) => {
-        const response = await api.get(`/catalog/${entity}`);
+    getAll: async (entity, params = {}) => {
+        const defaultParams = { limit: 1000, ...params };
+        const response = await api.get(`/catalog/${entity}`, { params: defaultParams });
         return response.data;
     },
 

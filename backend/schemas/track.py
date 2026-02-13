@@ -22,7 +22,8 @@ class TrackBase(BaseModel):
 
 
 class TrackCreate(TrackBase):
-    pass
+    duration: time
+    isrc_code: str
 
 
 class TrackUpdate(BaseModel):

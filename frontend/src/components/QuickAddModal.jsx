@@ -1,16 +1,53 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, X, Search, Loader2 } from 'lucide-react';
 import { CatalogService } from '../services/catalog';
 import { NetworkService } from '../services/network';
 import { DocumentsService } from '../services/operations';
+import { formatDurationForSave } from '../utils/formatters';
 
 const QuickAddModal = ({ isOpen, onClose, entityType, onAdd, initialName = '' }) => {
     const [name, setName] = useState(initialName);
+    const [stageName, setStageName] = useState(entityType === 'artists' ? initialName : '');
+    const [isrcCode, setIsrcCode] = useState('');
+    const [duration, setDuration] = useState('');
+    const [genre, setGenre] = useState('');
+    const [streamingLink, setStreamingLink] = useState('');
+    const [releaseDate, setReleaseDate] = useState('');
+    const [artists, setArtists] = useState([]);
+    const [contacts, setContacts] = useState([]);
+    const [artistSearch, setArtistSearch] = useState('');
+    const [selectedArtists, setSelectedArtists] = useState([]);
+    const [showArtistResults, setShowArtistResults] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState(null);
 
-    if (!isOpen) return null;
+    useEffect(() => {
+        if (isOpen && entityType === 'tracks') {
+            const fetchArtists = async () => {
+                try {
+                    const [artistsData, contactsData] = await Promise.all([
+                        CatalogService.getAll('artists'),
+                        NetworkService.getIndividuals()
+                    ]);
+                    setArtists(artistsData || []);
+                    setContacts(contactsData || []);
+                } catch (e) {
+                    console.error("Failed to fetch artist data for QuickAdd", e);
+                }
+            };
+            fetchArtists();
+        }
+    }, [isOpen, entityType]);
 
+    // Filtered options for artist search
+    const filteredArtistOptions = (artistSearch.length < 2) ? [] : [
+        ...artists.filter(a => (a.name || '').toLowerCase().includes(artistSearch.toLowerCase()) || (a.aka || '').toLowerCase().includes(artistSearch.toLowerCase()))
+            .map(a => ({ id: a.id, name: a.aka || a.name, type: 'artist', label: a.aka || a.name })),
+        ...contacts.filter(c => (`${c.first_name} ${c.last_name}`).toLowerCase().includes(artistSearch.toLowerCase()))
+            .map(c => ({ id: c.id, name: `${c.first_name} ${c.last_name}`, type: 'contact', label: `${c.first_name} ${c.last_name} (Contact)` }))
+    ].slice(0, 10);
+
+    if (!isOpen) return null;
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
@@ -41,8 +78,46 @@ const QuickAddModal = ({ isOpen, onClose, entityType, onAdd, initialName = '' })
                     payload.name = name;
                 }
 
+                if (entityType === 'artists' && stageName) {
+                    payload.aka = stageName;
+                }
+                if (entityType === 'tracks') {
+                    payload.isrc_code = isrcCode;
+                    payload.duration = formatDurationForSave(duration);
+                    if (genre) payload.genre = genre;
+                    if (streamingLink) payload.streaming_link = streamingLink;
+                    if (genre) payload.genre = genre;
+                    if (streamingLink) payload.streaming_link = streamingLink;
+                    if (releaseDate) payload.release_date = releaseDate;
+
+                    // Process selected artists
+                    const finalArtistIds = [];
+                    for (const item of selectedArtists) {
+                        if (item.type === 'artist') {
+                            finalArtistIds.push(item.id);
+                        } else if (item.type === 'contact') {
+                            // Check if artist already exists
+                            const existing = artists.find(a => (a.name || '').toLowerCase() === item.name.toLowerCase());
+                            if (existing) {
+                                finalArtistIds.push(existing.id);
+                            } else {
+                                // Create new artist
+                                try {
+                                    const newArt = await CatalogService.create('artists', { name: item.name });
+                                    finalArtistIds.push(newArt.id);
+                                } catch (e) {
+                                    console.error("Failed to auto-create artist", e);
+                                }
+                            }
+                        }
+                    }
+                    payload.artist_ids = finalArtistIds;
+                }
+
                 result = await CatalogService.create(entityType, payload);
-                onAdd(result);
+                // Return result with preferred display name
+                const displayName = (entityType === 'artists' && result.aka) ? result.aka : (result.name || result.title);
+                onAdd({ ...result, name: displayName });
             }
             onClose();
         } catch (err) {
@@ -143,10 +218,10 @@ const QuickAddModal = ({ isOpen, onClose, entityType, onAdd, initialName = '' })
                             color: '#475569',
                             marginBottom: '0.5rem'
                         }}>
-                            {getEntityLabel()} Name
+                            {getEntityLabel()} Name {entityType === 'artists' && '(Real Name)'}
                         </label>
                         <input
-                            autoFocus
+                            autoFocus={entityType !== 'artists'}
                             type="text"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
@@ -171,6 +246,180 @@ const QuickAddModal = ({ isOpen, onClose, entityType, onAdd, initialName = '' })
                             }}
                             className="input-focus"
                         />
+                        {entityType === 'artists' && (
+                            <div style={{ marginTop: '1rem' }}>
+                                <label style={{
+                                    display: 'block',
+                                    fontSize: '0.875rem',
+                                    fontWeight: 600,
+                                    color: '#475569',
+                                    marginBottom: '0.5rem'
+                                }}>
+                                    Stage Name (AKA)
+                                </label>
+                                <input
+                                    autoFocus
+                                    type="text"
+                                    value={stageName}
+                                    onChange={(e) => setStageName(e.target.value)}
+                                    placeholder="e.g. The Weeknd"
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.75rem 1rem',
+                                        border: '1px solid #e2e8f0',
+                                        borderRadius: '8px',
+                                        outline: 'none',
+                                        transition: 'border-color 0.2s'
+                                    }}
+                                    className="input-focus"
+                                />
+                            </div>
+                        )}
+                        {entityType === 'tracks' && (
+                            <>
+                                <div style={{ marginTop: '1rem', display: 'flex', gap: '0.75rem' }}>
+                                    <div style={{ flex: 1 }}>
+                                        <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#475569', marginBottom: '0.5rem' }}>
+                                            ISRC Code
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={isrcCode}
+                                            onChange={(e) => setIsrcCode(e.target.value)}
+                                            placeholder="US-XXX-24-00001"
+                                            style={{ width: '100%', padding: '0.75rem 1rem', border: '1px solid #e2e8f0', borderRadius: '8px', outline: 'none' }}
+                                            className="input-focus"
+                                            required
+                                        />
+                                    </div>
+                                    <div style={{ width: '120px' }}>
+                                        <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#475569', marginBottom: '0.5rem' }}>
+                                            Duration
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={duration}
+                                            onChange={(e) => setDuration(e.target.value)}
+                                            placeholder="03:45"
+                                            style={{ width: '100%', padding: '0.75rem 1rem', border: '1px solid #e2e8f0', borderRadius: '8px', outline: 'none' }}
+                                            className="input-focus"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                                <div style={{ marginTop: '1rem' }}>
+                                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#475569', marginBottom: '0.5rem' }}>
+                                        Genre (Optional)
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={genre}
+                                        onChange={(e) => setGenre(e.target.value)}
+                                        placeholder="e.g. Pop"
+                                        style={{ width: '100%', padding: '0.75rem 1rem', border: '1px solid #e2e8f0', borderRadius: '8px', outline: 'none' }}
+                                        className="input-focus"
+                                    />
+                                </div>
+                                <div style={{ marginTop: '1rem' }}>
+                                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#475569', marginBottom: '0.5rem' }}>
+                                        Artist(s) / Contacts
+                                    </label>
+                                    <div style={{ position: 'relative' }}>
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                                            {selectedArtists.map((art, idx) => (
+                                                <div key={idx} style={{
+                                                    background: '#e2e8f0', padding: '0.25rem 0.5rem', borderRadius: '4px',
+                                                    fontSize: '0.8125rem', display: 'flex', alignItems: 'center', gap: '0.25rem'
+                                                }}>
+                                                    {art.label}
+                                                    <button type="button" onClick={() => {
+                                                        const next = [...selectedArtists];
+                                                        next.splice(idx, 1);
+                                                        setSelectedArtists(next);
+                                                    }} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 0, color: '#64748b' }}>
+                                                        <X size={14} />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <div style={{ position: 'relative' }}>
+                                            <Search size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                                            <input
+                                                type="text"
+                                                value={artistSearch}
+                                                onChange={(e) => {
+                                                    setArtistSearch(e.target.value);
+                                                    setShowArtistResults(true);
+                                                }}
+                                                onFocus={() => setShowArtistResults(true)}
+                                                placeholder="Search to add artist..."
+                                                style={{ width: '100%', padding: '0.75rem 1rem 0.75rem 2.5rem', border: '1px solid #e2e8f0', borderRadius: '8px', outline: 'none' }}
+                                                className="input-focus"
+                                            />
+                                        </div>
+                                        {showArtistResults && artistSearch.length >= 2 && filteredArtistOptions.length > 0 && (
+                                            <div style={{
+                                                position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10,
+                                                background: 'white', border: '1px solid #e2e8f0', borderRadius: '8px',
+                                                boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', marginTop: '4px', maxHeight: '200px', overflowY: 'auto'
+                                            }}>
+                                                {filteredArtistOptions.map((opt, i) => (
+                                                    <div
+                                                        key={`${opt.type}_${opt.id}_${i}`}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            // Avoid duplicates
+                                                            if (!selectedArtists.some(s => s.id === opt.id && s.type === opt.type)) {
+                                                                setSelectedArtists([...selectedArtists, opt]);
+                                                            }
+                                                            setArtistSearch('');
+                                                            setShowArtistResults(false);
+                                                        }}
+                                                        style={{ padding: '0.75rem', cursor: 'pointer', borderBottom: '1px solid #f1f5f9' }}
+                                                        onMouseEnter={(e) => e.target.style.background = '#f8fafc'}
+                                                        onMouseLeave={(e) => e.target.style.background = 'white'}
+                                                    >
+                                                        {opt.label}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                        {showArtistResults && artistSearch.length >= 2 && filteredArtistOptions.length === 0 && (
+                                            <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '8px', marginTop: '4px', fontSize: '0.875rem', color: '#64748b' }}>
+                                                No results found
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                                <div style={{ marginTop: '1rem', display: 'flex', gap: '0.75rem' }}>
+                                    <div style={{ flex: 1 }}>
+                                        <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#475569', marginBottom: '0.5rem' }}>
+                                            Release Date (Optional)
+                                        </label>
+                                        <input
+                                            type="date"
+                                            value={releaseDate}
+                                            onChange={(e) => setReleaseDate(e.target.value)}
+                                            style={{ width: '100%', padding: '0.75rem 1rem', border: '1px solid #e2e8f0', borderRadius: '8px', outline: 'none' }}
+                                            className="input-focus"
+                                        />
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#475569', marginBottom: '0.5rem' }}>
+                                            Streaming Link (Optional)
+                                        </label>
+                                        <input
+                                            type="url"
+                                            value={streamingLink}
+                                            onChange={(e) => setStreamingLink(e.target.value)}
+                                            placeholder="https://..."
+                                            style={{ width: '100%', padding: '0.75rem 1rem', border: '1px solid #e2e8f0', borderRadius: '8px', outline: 'none' }}
+                                            className="input-focus"
+                                        />
+                                    </div>
+                                </div>
+                            </>
+                        )}
                         <p style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#94a3b8' }}>
                             You can add full details later from the {getEntityLabel()}s page.
                         </p>
@@ -203,7 +452,11 @@ const QuickAddModal = ({ isOpen, onClose, entityType, onAdd, initialName = '' })
                                 e.stopPropagation();
                                 handleSubmit(e);
                             }}
-                            disabled={isSubmitting || !name.trim()}
+                            disabled={
+                                isSubmitting ||
+                                !name.trim() ||
+                                (entityType === 'tracks' && (!isrcCode.trim() || !duration.trim()))
+                            }
                             style={{
                                 flex: 2,
                                 padding: '0.75rem',

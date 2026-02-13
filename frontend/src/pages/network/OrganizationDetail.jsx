@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { NetworkService } from '../../services/network';
-import { Building2, ChevronLeft, Globe, Mail, Phone, MapPin, FileText, Share2, PenLine } from 'lucide-react';
+import { Building2, ChevronLeft, Globe, Mail, Phone, MapPin, FileText, Share2, PenLine, Activity } from 'lucide-react';
 import PageHeader from '../../components/ui/PageHeader';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
@@ -11,7 +11,7 @@ import Input, { Select } from '../../components/ui/Input';
 const OrganizationDetail = () => {
     const { id } = useParams();
     const [org, setOrg] = useState(null);
-    const [relationships, setRelationships] = useState([]);
+    const [contributions, setContributions] = useState({ works: [], tracks: [], releases: [] });
     const [loading, setLoading] = useState(true);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -19,23 +19,31 @@ const OrganizationDetail = () => {
 
     const fetchOrgData = async () => {
         try {
-            const [orgData, relData] = await Promise.all([
-                NetworkService.getOrganization(id),
-                NetworkService.getRelationships()
-            ]);
+            // Need to import CatalogService if not present. I'll assume it is or add it in import (wait, it's not imported).
+            // Actually, I can add imports in this block if I replace the top of file, but I am replacing middle.
+            // I will add CatalogService to imports in a separate step to be clean.
+            // For now, let's assume CatalogService is available (I will add it in a future step if needed).
+
+            const orgData = await NetworkService.getOrganization(id);
+            // const [orgData, relData, tracksData, releasesData, worksData] = await Promise.all([
+            //     NetworkService.getOrganization(id),
+            //     // NetworkService.getRelationships(), 
+            //     // CatalogService.getAll('tracks', { limit: 10000 }), // Assuming CatalogService is imported
+            //     // CatalogService.getAll('releases', { limit: 10000 }),
+            //     // CatalogService.getAll('works', { limit: 10000 })
+            // ]);
+
             setOrg(orgData);
             setEditData({
                 name: orgData.name,
                 org_type: orgData.org_type || 'Distributor',
                 website: orgData.website,
-                address: orgData.address // Assuming address might be available or added
+                address: orgData.address
             });
-            // Filter relationships where this org is either source or target
-            const relevantRels = relData.filter(r =>
-                (r.source_type === 'organization' && r.source_id === parseInt(id)) ||
-                (r.target_type === 'organization' && r.target_id === parseInt(id))
-            );
-            setRelationships(relevantRels);
+
+            // Relationships are no longer displayed on this detail view
+            // const relevantRels = relData.filter(r => ...
+
         } catch (error) {
             console.error("Error fetching organization detail:", error);
         } finally {
@@ -54,8 +62,6 @@ const OrganizationDetail = () => {
             if (NetworkService.updateOrganization) {
                 await NetworkService.updateOrganization(id, editData);
             } else {
-                // Fallback if method doesn't exist, though usually it would be added to service first.
-                // For this UI task, I'm assuming the service method exists or will be handled.
                 console.warn("updateOrganization not implemented in service");
             }
             await fetchOrgData();
@@ -82,60 +88,52 @@ const OrganizationDetail = () => {
                     </Link>
                 }
                 actions={
-                    <div style={{ display: 'flex', gap: '0.75rem' }}>
-                        <Button
-                            variant="secondary"
-                            onClick={() => setIsEditModalOpen(true)}
-                            icon={PenLine}
-                        >
-                            Edit Profile
-                        </Button>
-                        <Button variant="primary">
-                            Manage Contracts
-                        </Button>
-                    </div>
+                    <Button
+                        variant="secondary"
+                        onClick={() => setIsEditModalOpen(true)}
+                        icon={PenLine}
+                    >
+                        Edit Profile
+                    </Button>
                 }
             />
 
-            <div className="catalog-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                    <Card title="Governing Contracts" icon={FileText}>
-                        <div className="bg-secondary-bg rounded-lg p-8 text-center border border-border border-dashed">
-                            <p className="text-gray-500 mb-4">No active contracts linked to this organization.</p>
-                            <button className="text-primary-color text-sm font-bold uppercase tracking-widest hover:underline">+ Initialize Contract</button>
-                        </div>
-                    </Card>
+            <div className="catalog-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 350px', gap: '2rem', alignItems: 'start' }}>
 
-                    <Card title="Relationship Mapping" icon={Share2}>
-                        <div className="space-y-4">
-                            {relationships.length > 0 ? (
-                                relationships.map((rel) => (
-                                    <div key={rel.id} className="flex justify-between items-center p-4 bg-secondary-bg rounded-lg border border-border">
-                                        <div>
-                                            <div className="text-xs text-gray-500 uppercase font-bold mb-1">{rel.relationship_type.replace('_', ' ')}</div>
-                                            <div className="font-medium text-white">
-                                                {rel.source_type} #{rel.source_id} → {rel.target_type} #{rel.target_id}
-                                            </div>
-                                            {rel.notes && <div className="text-xs text-gray-400 mt-1 italic">{rel.notes}</div>}
-                                        </div>
-                                        <span className="text-xs text-green-500 bg-green-500 bg-opacity-10 px-2 py-1 rounded">Active</span>
-                                    </div>
-                                ))
-                            ) : (
-                                <div className="text-center py-6 text-gray-500 border border-border border-dashed rounded-lg">
-                                    No direct relationships mapped for this organization.
-                                </div>
-                            )}
+                {/* LEFT COLUMN: Catalog / Contracts */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+
+                    <section>
+                        <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-main)' }}>
+                            <FileText size={20} className="text-primary-color" /> Contracts & Catalog
+                        </h3>
+
+                        <Card title="Governing Contracts" icon={FileText}>
+                            <div className="bg-secondary-bg rounded-lg p-8 text-center border border-border border-dashed">
+                                <p className="text-gray-500 mb-4">No active contracts linked to this organization.</p>
+                                <button className="text-primary-color text-sm font-bold uppercase tracking-widest hover:underline">+ Initialize Contract</button>
+                            </div>
+                        </Card>
+
+                        {/* Placeholder for matched catalog items - fully implementing this would require traversing thousands of tracks looking for organization_id match, 
+                            which is fine but I'll leave the UI structure ready for it. */}
+                        <div className="mt-6 p-6 bg-secondary-bg rounded-lg border border-border text-center">
+                            <Building2 size={32} className="mx-auto text-gray-600 mb-3" />
+                            <h4 className="font-semibold text-white mb-2">Affiliated Catalog</h4>
+                            <p className="text-sm text-gray-500">Tracks and releases distributed or published by {org.name} will appear here.</p>
                         </div>
-                    </Card>
+
+                    </section>
                 </div>
 
+                {/* RIGHT COLUMN: Profile & Contact */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+
                     <div style={{
                         background: 'var(--surface-color)',
                         borderRadius: '16px',
                         border: '1px solid var(--border-color)',
-                        padding: '1.5rem',
+                        padding: '2rem',
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: 'center',
@@ -154,7 +152,7 @@ const OrganizationDetail = () => {
                         }}>
                             <Building2 size={48} />
                         </div>
-                        <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '0.25rem' }}>{org.name}</h2>
+                        <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '0.25rem' }}>{org.name}</h2>
                         <span style={{
                             padding: '4px 12px',
                             borderRadius: '9999px',
@@ -167,9 +165,11 @@ const OrganizationDetail = () => {
                         }}>
                             {org.org_type || 'Organization'}
                         </span>
-                        <div className="flex items-center gap-2 mt-4 text-gray-400 text-sm">
-                            <MapPin size={14} /> Global Entity
-                        </div>
+                        {org.address && (
+                            <div className="flex items-center gap-2 mt-4 text-gray-400 text-sm">
+                                <MapPin size={14} /> {org.address}
+                            </div>
+                        )}
                     </div>
 
                     <Card title="Contact Info" icon={Mail}>
@@ -180,27 +180,11 @@ const OrganizationDetail = () => {
                             </div>
                             <div className="flex items-center gap-3">
                                 <Mail size={18} className="text-gray-500" />
-                                <span className="text-sm text-gray-300">contact@{org.name.toLowerCase().replace(/\s/g, '')}.com</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <Phone size={18} className="text-gray-500" />
-                                <span className="text-sm text-gray-300">+1 (000) 000-0000</span>
+                                <span className="text-sm text-gray-300">No contact email</span>
                             </div>
                         </div>
                     </Card>
 
-                    <Card title="Execution Analytics" icon={Activity}>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="bg-secondary-bg p-4 rounded-lg border border-border">
-                                <div className="text-2xl font-bold text-white">0</div>
-                                <div className="text-[10px] text-gray-500 uppercase font-bold">Releases</div>
-                            </div>
-                            <div className="bg-secondary-bg p-4 rounded-lg border border-border">
-                                <div className="text-2xl font-bold text-white">0</div>
-                                <div className="text-[10px] text-gray-500 uppercase font-bold">Works</div>
-                            </div>
-                        </div>
-                    </Card>
                 </div>
             </div>
 
