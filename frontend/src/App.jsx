@@ -57,6 +57,9 @@ import OrganizationDetail from './pages/network/OrganizationDetail';
 import IndividualDetail from './pages/network/IndividualDetail';
 import PlatformDetail from './pages/network/PlatformDetail';
 
+// AI
+import AI from './pages/AI';
+
 import './App.css';
 
 import ErrorBoundary from './components/ErrorBoundary';
@@ -391,6 +394,9 @@ function App() {
                         </ProtectedRoute>
                       }
                     />
+                    {/* AI Route */}
+                    <Route path="/ai" element={<ProtectedRoute><MainLayout><AI /></MainLayout></ProtectedRoute>} />
+
                     {/* Network Routes */}
                     <Route path="/network" element={<ProtectedRoute><MainLayout><NetworkDashboard /></MainLayout></ProtectedRoute>} />
                     <Route path="/network/contacts" element={<ProtectedRoute><MainLayout><AllContacts /></MainLayout></ProtectedRoute>} />

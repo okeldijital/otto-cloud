@@ -103,6 +103,7 @@ from routes import (  # noqa: E402
     office_status_quo,
     backup,
     config,
+    ai,
 )
 
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
@@ -133,6 +134,13 @@ app.include_router(office_reports.router, prefix="/api", tags=["Office Reports"]
 app.include_router(office_status_quo.router, prefix="/api", tags=["Office Status Quo"])
 app.include_router(backup.router, prefix="/api", tags=["Backup"])
 app.include_router(config.router, prefix="/api", tags=["Configuration"])
+
+# AI Router (conditionally mounted based on feature flag)
+if settings.AI_ENABLED:
+    app.include_router(ai.router, prefix="/api/ai", tags=["AI"])
+    logging.info("🤖 AI module enabled")
+else:
+    logging.info("🤖 AI module disabled (AI_ENABLED=False)")
 
 # -----------------------------
 # Static files (uploads)

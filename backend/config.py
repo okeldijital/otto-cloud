@@ -45,6 +45,9 @@ class Settings(BaseSettings):
     SPOTIFY_CLIENT_ID: Optional[str] = None
     SPOTIFY_CLIENT_SECRET: Optional[str] = None
     MUSICBRAINZ_USER_AGENT: Optional[str] = "OTTO/1.0.1"
+    
+    # AI Features (Phase 1: Read-only)
+    AI_ENABLED: bool = False
 
     def __init__(self, **values):
         super().__init__(**values)
