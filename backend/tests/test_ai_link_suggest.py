@@ -65,6 +65,10 @@ class TestAILinkSuggestV1:
         assert isinstance(data["suggestions"], dict)
         assert "artists" in data["suggestions"]
         assert "parties" in data["suggestions"]
+        
+        # Verify isolation warning
+        assert "warnings" in data
+        assert "network_suggestions_disabled_unscoped_models" in data["warnings"]
 
     def test_audit_log_created(self):
         # We can mock log_ai_request or check DB side effect if we have proper DB fixture.

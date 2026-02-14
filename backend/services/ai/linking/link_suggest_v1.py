@@ -105,41 +105,21 @@ def suggest_links(db: Session, org_id: str, extraction: ContractExtractionV1) ->
                 )
                 add_suggestion("artists", sugg)
 
-        # Search Individuals (Global in current schema)
-        persons = db.query(Individual).all()
-        for p in persons:
-            p_norm = normalize_name(f"{p.first_name} {p.last_name}")
-            conf, strat, rat = calculate_match_confidence(norm_name, p_norm)
-            if conf > 0.5:
-                sugg = EntitySuggestion(
-                    entity_type="person",
-                    entity_id=str(p.id),
-                    display_name=f"{p.first_name} {p.last_name}",
-                    confidence=conf,
-                    match_strategy=strat,
-                    rationale=rat,
-                    fields_matched=["name"]
-                )
-                add_suggestion("parties", sugg)
-                
-        # Search Organizations (Global in current schema)
-        orgs = db.query(Organization).all()
-        for o in orgs:
-            o_norm = normalize_name(o.name)
-            conf, strat, rat = calculate_match_confidence(norm_name, o_norm)
-            if conf > 0.5:
-                sugg = EntitySuggestion(
-                    entity_type="organization",
-                    entity_id=str(o.id),
-                    display_name=o.name,
-                    confidence=conf,
-                    match_strategy=strat,
-                    rationale=rat,
-                    fields_matched=["name"]
-                )
-                add_suggestion("parties", sugg) # Party can be person or org
+        # Search Individuals (Global in current schema - DISABLED for isolation)
+        # un-scoped queries disabled until Network V2 adds organization_id
+        # persons = db.query(Individual).all() 
+        
+        # Search Organizations (Global in current schema - DISABLED for isolation)
+        # un-scoped queries disabled until Network V2 adds organization_id
+        # orgs = db.query(Organization).all()
+        
+    # Warn about disabled network suggestions
+    warnings = []
+    # Check if network models are effectively disabled (always true for now)
+    warnings.append("network_suggestions_disabled_unscoped_models")
 
     # 2. Works/Tracks Hints
+    # Extraction might have work_hints: artists, tracks, releases
     hints = extraction.works_hints
     
     # Tracks Matching (Scoped)
@@ -170,6 +150,6 @@ def suggest_links(db: Session, org_id: str, extraction: ContractExtractionV1) ->
     return ContractLinkSuggestResponseV1(
         org_id=str(org_id),
         suggestions=suggestions,
-        warnings=[],
+        warnings=warnings,
         needs_review=True
     )

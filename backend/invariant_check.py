@@ -81,16 +81,53 @@ def main():
     
     drift_violations = check_ai_drift()
     write_violations = check_ai_writes()
+    unscoped_violations = check_ai_unscoped_queries()
     
-    all_violations = drift_violations + write_violations
+    all_violations = drift_violations + write_violations + unscoped_violations
     
     if all_violations:
         for v in all_violations:
             print(f"❌ {v}")
         sys.exit(1)
     else:
-        print("✅ AI invariants pass (No drift, No writes).")
+        print("✅ AI invariants pass (No drift, No writes, No unscoped network queries).")
         sys.exit(0)
+
+def check_ai_unscoped_queries():
+    """
+    Verify AI linking services do not query global Network entities (Individual, Organization)
+    without tenant isolation. Currently, since these models lack org_id, ANY query is a violation.
+    """
+    project_root = Path(__file__).resolve().parent.parent
+    linking_root = project_root / "backend/services/ai/linking"
+    
+    violations = []
+    risky_models = {"Individual", "Organization"}
+    
+    if not linking_root.exists():
+        return violations
+
+    for root, dirs, files in os.walk(linking_root):
+        for file in files:
+            if not file.endswith(".py"):
+                continue
+                
+            full_path = Path(root) / file
+            tree = get_ast(full_path)
+            if not tree: continue
+            
+            rel_path = os.path.relpath(full_path, linking_root)
+            
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Call):
+                    # Check for db.query(Model)
+                    if isinstance(node.func, ast.Attribute) and node.func.attr == "query":
+                        # db.query(...) - check args
+                        for arg in node.args:
+                            if isinstance(arg, ast.Name) and arg.id in risky_models:
+                                violations.append(f"Unscoped query violation in services/ai/linking/{rel_path}: db.query({arg.id}) at line {node.lineno}. Network queries must be scoped or disabled.")
+    
+    return violations
 
 if __name__ == "__main__":
     main()
