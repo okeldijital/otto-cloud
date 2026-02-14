@@ -4,7 +4,11 @@ from database import get_db
 from models.user import User
 from dependencies import get_current_user
 from config import settings
-from schemas.ai_contracts import ContractExtractionV1, ResolvedContractProposalV1
+from schemas.ai_contracts import (
+    ContractExtractionV1, 
+    ResolvedContractProposalV1, 
+    ResolveRequestV1
+)
 from services.ai.parsing.pdf_extract import extract_text_from_pdf
 from services.ai.extractors.contract_extractor_v1 import extract_contract_intelligence
 from services.ai.matchers.contract_resolver_v1 import resolve_entities
@@ -46,14 +50,14 @@ async def extract_contract_endpoint(
         action="contract_extraction",
         message=f"Extracted PDF: {parsed['sha256']}",
         tool="pdf_extract",
-        parser_version=extraction.parser_version
+        parser_version="contract_extractor_v1.2.2"
     )
     
     return extraction
 
 @router.post("/resolve", response_model=ResolvedContractProposalV1, dependencies=[Depends(ensure_ai_contract_intel_enabled)])
 async def resolve_contract_endpoint(
-    extraction: ContractExtractionV1 = None,
+    req: ResolveRequestV1 = ResolveRequestV1(),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -62,7 +66,7 @@ async def resolve_contract_endpoint(
     Returns proposals only (no DB writes).
     Supports empty payload for existence/health checks.
     """
-    if not extraction:
+    if not req.extraction and not req.contract_id:
         return ResolvedContractProposalV1(needs_review=True)
         
     # Audit logging
@@ -71,10 +75,13 @@ async def resolve_contract_endpoint(
         org_id=current_user.organization_id,
         user_id=current_user.id,
         action="contract_resolution",
-        message=f"Resolved extraction for: {extraction.contract_title or 'Untitled'}",
+        message=f"Resolved extraction for: {req.extraction.contract_title if req.extraction else 'Untitled'}",
         tool="contract_resolver",
-        parser_version=extraction.parser_version or "deterministic_v1"
+        parser_version="contract_resolver_v1.2.2"
     )
     
-    proposal = resolve_entities(db, current_user.organization_id, extraction)
-    return proposal
+    if req.extraction:
+        proposal = resolve_entities(db, current_user.organization_id, req.extraction)
+        return proposal
+    
+    return ResolvedContractProposalV1(needs_review=True)

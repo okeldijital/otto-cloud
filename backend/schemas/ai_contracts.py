@@ -59,6 +59,10 @@ class MatchProposalV1(BaseModel):
     confidence: float
     reason: str
 
+class ResolveRequestV1(BaseModel):
+    extraction: Optional[ContractExtractionV1] = None
+    contract_id: Optional[str] = None
+
 class ResolvedContractProposalV1(BaseModel):
     proposed_artist_ids: List[MatchProposalV1] = []
     proposed_track_ids: List[MatchProposalV1] = []

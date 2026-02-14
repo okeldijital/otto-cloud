@@ -85,27 +85,29 @@ def deterministic_extract(text: str) -> ContractExtractionV1:
         parser_version=parser_version
     )
 
+from config import settings
+
 def extract_contract_intelligence(text: str) -> ContractExtractionV1:
     """
     Main entry point for Phase 2 contract extraction.
-    Tries AI engine first, falls back to deterministic rules.
+    Tries AI engine first if enabled, falls back to deterministic rules.
     """
-    engine = get_ai_engine()
+    if settings.AI_ENABLED:
+        try:
+            engine = get_ai_engine()
+            system_prompt = "You are a legal contract analyzer. Extract structured metadata from the provided text."
+            user_prompt = f"Analyze this contract text and return valid JSON:\n\n{text[:5000]}" # Limit size for safety
+            
+            extraction = engine.complete_json(
+                schema=ContractExtractionV1,
+                system=system_prompt,
+                user=user_prompt
+            )
+            if extraction:
+                extraction.parser_version = "ai_v1"
+                return extraction
+        except (AIError, Exception) as e:
+            pass
     
-    system_prompt = "You are a legal contract analyzer. Extract structured metadata from the provided text."
-    user_prompt = f"Analyze this contract text and return valid JSON:\n\n{text[:5000]}" # Limit size for safety
-    
-    try:
-        extraction = engine.complete_json(
-            schema=ContractExtractionV1,
-            system=system_prompt,
-            user=user_prompt
-        )
-        if extraction:
-            extraction.parser_version = "ai_v1"
-            return extraction
-    except (AIError, Exception) as e:
-        pass
-    
-    # Fallback to deterministic if engine is NullEngine or fails
+    # Fallback to deterministic if engine is disabled, NullEngine, or fails
     return deterministic_extract(text)

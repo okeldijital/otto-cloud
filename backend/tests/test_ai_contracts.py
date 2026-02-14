@@ -50,6 +50,7 @@ class TestAIContractsEnabled:
 
     def test_resolve_endpoint_exists(self):
         # We expect a 200 with no-op response if payload is empty
+        # ResolveRequestV1() default returns needs_review=True
         response = client.post("/api/ai/contracts/resolve", json={})
         assert response.status_code == 200
         assert response.json()["needs_review"] is True
