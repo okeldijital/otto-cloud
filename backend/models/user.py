@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text, Uuid
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from database import Base
+from database import Base, SafeUuid
 
 
 class User(Base):
@@ -16,7 +16,7 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     is_superuser = Column(Boolean, default=False)
     role = Column(String(50), default="member")
-    organization_id = Column(Uuid(as_uuid=True), nullable=True, index=True)
+    organization_id = Column(SafeUuid, nullable=True, index=True)
         
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

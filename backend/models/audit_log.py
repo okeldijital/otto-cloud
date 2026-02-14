@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, JSON
 from sqlalchemy import Uuid
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from database import Base
+from database import Base, SafeUuid
 
 
 class AuditLog(Base):
@@ -17,7 +17,7 @@ class AuditLog(Base):
     entity_id = Column(Integer)
     entity_uuid = Column(Integer, index=True, nullable=True) # For legacy UUID entities, now Integer
     entity_name = Column(String(255))  # For quick reference
-    organization_id = Column(Integer, index=True, nullable=True)
+    organization_id = Column(SafeUuid, index=True, nullable=True)
     
     # Changes
     changes = Column(JSON)  # Before/after values for updates

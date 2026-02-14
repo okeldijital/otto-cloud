@@ -1,7 +1,7 @@
-from sqlalchemy import Column, String, Boolean, Date, DateTime, Numeric, Text, ForeignKey, CheckConstraint, Index, Integer
+from sqlalchemy import Column, String, Boolean, Date, DateTime, Numeric, Text, ForeignKey, CheckConstraint, Index, Integer, Uuid
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from database import Base
+from database import Base, SafeUuid
 
 
 class Contract(Base):
@@ -9,7 +9,7 @@ class Contract(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     contract_number = Column(String(50), nullable=False)
-    organization_id = Column(Integer, nullable=False, index=True)
+    organization_id = Column(SafeUuid, nullable=False, index=True)
 
     title = Column(String(255), nullable=False)
     status = Column(String(50), default="Draft", nullable=False) # Draft, Active, Expired, Terminated
@@ -46,7 +46,7 @@ class ContractParty(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     contract_id = Column(Integer, ForeignKey("contracts.id"), nullable=False)
-    organization_id = Column(Integer, nullable=False, index=True)
+    organization_id = Column(SafeUuid, nullable=False, index=True)
 
     entity_type = Column(String(50), nullable=False)  # Artist, Label, Publisher, External
     entity_id = Column(Integer, nullable=True)
@@ -70,7 +70,7 @@ class ContractAsset(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     contract_id = Column(Integer, ForeignKey("contracts.id"), nullable=False)
-    organization_id = Column(Integer, nullable=False, index=True)
+    organization_id = Column(SafeUuid, nullable=False, index=True)
 
     asset_type = Column(String(50), nullable=False)  # Work, Track, Release
     asset_id = Column(Integer, nullable=False)
@@ -89,7 +89,7 @@ class ContractDocument(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     contract_id = Column(Integer, ForeignKey("contracts.id"), nullable=False)
-    organization_id = Column(Integer, nullable=False, index=True)
+    organization_id = Column(SafeUuid, nullable=False, index=True)
 
     file_path = Column(String(500), nullable=False)
     file_name = Column(String(255), nullable=False)
@@ -114,7 +114,7 @@ class ContractSplitGroup(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     contract_id = Column(Integer, ForeignKey("contracts.id"), nullable=False)
-    organization_id = Column(Integer, nullable=False, index=True)
+    organization_id = Column(SafeUuid, nullable=False, index=True)
 
     group_name = Column(String(100), nullable=False)
     group_type = Column(String(50))
@@ -135,7 +135,7 @@ class ContractSplit(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     group_id = Column(Integer, ForeignKey("contract_split_groups.id"), nullable=False)
-    organization_id = Column(Integer, nullable=False, index=True)
+    organization_id = Column(SafeUuid, nullable=False, index=True)
     party_id = Column(Integer, ForeignKey("contract_parties.id"), nullable=True)
     external_party_name = Column(String(255))
     percent = Column(Numeric(6, 3), nullable=False)

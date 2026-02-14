@@ -9,21 +9,21 @@ from datetime import datetime
 
 class TrackRepository:
     @staticmethod
-    def get_all(db: Session, organization_id: Optional[int] = None, skip: int = 0, limit: int = 100) -> List[Track]:
+    def get_all(db: Session, organization_id: Any = None, skip: int = 0, limit: int = 100) -> List[Track]:
         query = db.query(Track)
         if organization_id:
             query = query.filter(Track.organization_id == organization_id)
         return query.offset(skip).limit(limit).all()
 
     @staticmethod
-    def get_by_id(db: Session, track_id: int, organization_id: Optional[int] = None) -> Optional[Track]:
+    def get_by_id(db: Session, track_id: int, organization_id: Any = None) -> Optional[Track]:
         query = db.query(Track).filter(Track.id == track_id)
         if organization_id:
             query = query.filter(Track.organization_id == organization_id)
         return query.first()
 
     @staticmethod
-    def create(db: Session, obj_in: Dict[str, Any], organization_id: Optional[int] = None) -> Track:
+    def create(db: Session, obj_in: Dict[str, Any], organization_id: Any = None) -> Track:
         data = obj_in.copy()
         if organization_id:
             data["organization_id"] = organization_id
@@ -57,7 +57,7 @@ class TrackRepository:
             raise e
 
     @staticmethod
-    def delete(db: Session, track_id: int, organization_id: Optional[int] = None) -> bool:
+    def delete(db: Session, track_id: int, organization_id: Any = None) -> bool:
         track = TrackRepository.get_by_id(db, track_id, organization_id)
         if not track:
             return False

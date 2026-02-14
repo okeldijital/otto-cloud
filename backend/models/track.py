@@ -1,7 +1,7 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Date, Time, Text, JSON
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Date, Time, Text, JSON, Uuid
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from database import Base
+from database import Base, SafeUuid
 from models.associations import track_releases
 
 class Track(Base):
@@ -9,7 +9,7 @@ class Track(Base):
     __tablename__ = "tracks"
     
     id = Column(Integer, primary_key=True, index=True)
-    organization_id = Column(Integer, nullable=True, index=True)
+    organization_id = Column(SafeUuid, nullable=True, index=True)
     track_id = Column(String(50), unique=True, index=True)  # TRK001, TRK002, etc.
     title = Column(String(255), nullable=False, index=True, unique=True)
     duration = Column(Time)  # Track length

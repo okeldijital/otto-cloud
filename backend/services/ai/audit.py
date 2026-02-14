@@ -30,8 +30,12 @@ def log_ai_request(
     Log AI request to audit table.
     Does NOT store full prompt - only metadata and hash.
     """
+    # Ensure org_id is a UUID object for consistent audit hashing
+    if isinstance(org_id, int):
+        org_id = UUID(int=org_id)
+        
     if not isinstance(org_id, UUID):
-        raise ValueError("Invalid organization_id type")
+        raise ValueError(f"Invalid organization_id type: {type(org_id)}")
 
     request_hash = create_request_hash(org_id, user_id, message)
     

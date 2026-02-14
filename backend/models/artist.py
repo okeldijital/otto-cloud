@@ -1,14 +1,14 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, Text, DateTime, JSON, Uuid, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from database import Base
+from database import Base, SafeUuid
 
 class Artist(Base):
     """Artist/Songwriter model"""
     __tablename__ = "artists"
     
     id = Column(Integer, primary_key=True, index=True)
-    organization_id = Column(Integer, nullable=True, index=True)
+    organization_id = Column(SafeUuid, nullable=True, index=True)
     is_deleted = Column(Boolean, nullable=False, default=False)
     artist_id = Column(String(50), unique=True, index=True)  # ART001, ART002, etc.
     name = Column(String(255), nullable=False, index=True, unique=True)

@@ -1,6 +1,37 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, TypeDecorator, Integer
 from sqlalchemy.orm import sessionmaker, declarative_base
+import uuid
 from config import settings
+
+class SafeUuid(TypeDecorator):
+    """
+    Handles UUIDs in the app while storing as Integer in the DB for compatibility.
+    This satisfies the requirement that organization_id be a UUID object in the app
+    while allowing existing integer-based data (like dev org ID 1) to remain visible.
+    """
+    impl = Integer
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
+        if isinstance(value, uuid.UUID):
+            # For OTTO V1, we map UUID(int=1) back to integer 1 for storage
+            return value.int
+        try:
+            return int(value)
+        except (ValueError, TypeError):
+            return value
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return None
+        # Convert integer back to UUID object for the app
+        try:
+            return uuid.UUID(int=value)
+        except (ValueError, TypeError):
+            return value
+
 
 # Create database engine
 engine = create_engine(

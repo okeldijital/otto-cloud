@@ -84,6 +84,9 @@ async def get_current_organization_id(
         # Default UUID for development fallback
         return DEV_ORG_ID
     try:
+        # Check if it's an integer-based ID (standard in OTTO V1)
+        if x_organization_id.isdigit():
+             return uuid.UUID(int=int(x_organization_id))
         return uuid.UUID(x_organization_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid Organization ID format")

@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Date, Text, JSON, Uuid, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from database import Base
+from database import Base, SafeUuid
 from models.associations import track_releases
 
 class Release(Base):
@@ -9,7 +9,7 @@ class Release(Base):
     __tablename__ = "releases"
     
     id = Column(Integer, primary_key=True, index=True)
-    organization_id = Column(Integer, nullable=True, index=True)
+    organization_id = Column(SafeUuid, nullable=True, index=True)
     is_deleted = Column(Boolean, nullable=False, default=False)
     release_id = Column(String(50), unique=True, index=True)  # M2KR0001, etc.
     title = Column(String(255), nullable=False, index=True, unique=True)
