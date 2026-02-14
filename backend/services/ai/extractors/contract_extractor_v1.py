@@ -9,6 +9,7 @@ from schemas.ai_contracts import (
     PartyRoleV1,
     WorksHintsV1
 )
+from services.ai.engine import get_ai_engine, AIError
 from services.ai.parsing.rules.remix_agreement_v1 import (
     extract_parties_from_text,
     extract_splits_governed,

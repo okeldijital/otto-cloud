@@ -49,15 +49,10 @@ class TestAIContractsEnabled:
         assert response.status_code == 200
 
     def test_resolve_endpoint_exists(self):
-        # We expect a 200 if the route exists and we're auto-authenticated
-        response = client.post(
-            "/api/ai/contracts/resolve",
-            json={
-                "raw_confidence": 0.5,
-                "parties": [{"name": "Test Artist", "role": "Artist"}]
-            }
-        )
+        # We expect a 200 with no-op response if payload is empty
+        response = client.post("/api/ai/contracts/resolve", json={})
         assert response.status_code == 200
+        assert response.json()["needs_review"] is True
 
 # Note: Integration tests requiring auth and DB would follow the pattern in test_ai.py
 # but target the /api/ai/contracts/* endpoints.

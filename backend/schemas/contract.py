@@ -59,7 +59,7 @@ class ContractPartyCreate(ContractPartyBase):
 class ContractPartyResponse(ContractPartyBase):
     id: int
     contract_id: int
-    organization_id: int
+    organization_id: UUID
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -77,7 +77,7 @@ class ContractAssetCreate(ContractAssetBase):
 class ContractAssetResponse(ContractAssetBase):
     id: int
     contract_id: int
-    organization_id: int
+    organization_id: UUID
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -94,7 +94,7 @@ class ContractDocumentBase(BaseModel):
 class ContractDocumentResponse(ContractDocumentBase):
     id: int
     contract_id: int
-    organization_id: int
+    organization_id: UUID
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -113,7 +113,7 @@ class ContractSplitCreate(ContractSplitBase):
 class ContractSplitResponse(ContractSplitBase):
     id: int
     group_id: int
-    organization_id: int
+    organization_id: UUID
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -130,7 +130,7 @@ class ContractSplitGroupCreate(ContractSplitGroupBase):
 class ContractSplitGroupResponse(ContractSplitGroupBase):
     id: int
     contract_id: int
-    organization_id: int
+    organization_id: UUID
     splits: List[ContractSplitResponse] = []
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
@@ -139,7 +139,7 @@ class ContractSplitGroupResponse(ContractSplitGroupBase):
 
 class ContractResponse(ContractBase):
     id: int
-    organization_id: int
+    organization_id: UUID
     created_by: Optional[int] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None

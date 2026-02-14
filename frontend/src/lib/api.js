@@ -5,7 +5,7 @@ import axios from 'axios';
 // 2. If running in browser (served by backend), use relative path '/api'.
 // 3. Fallback to local dev server (port 8001).
 const isDev = import.meta.env.DEV;
-const DEV_URL = 'http://' + 'localhost' + ':8011';
+const DEV_URL = 'http://' + 'localhost' + ':8001';
 export const BASE_URL = import.meta.env.VITE_API_URL || (isDev ? DEV_URL : '');
 export const API_URL = `${BASE_URL}/api`;
 

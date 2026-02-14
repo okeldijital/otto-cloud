@@ -49,7 +49,7 @@ class ContractExtractionV1(BaseModel):
     splits: List[ContractSplitV1] = []
     splits_total: float = 0.0
     works_hints: WorksHintsV1 = Field(default_factory=WorksHintsV1)
-    raw_confidence: float = Field(..., ge=0, le=1)
+    raw_confidence: Optional[float] = Field(default=0.0, ge=0, le=1)
     warnings: List[str] = []
     parser_version: str = "deterministic_v1"
 

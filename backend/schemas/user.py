@@ -24,7 +24,7 @@ class UserUpdate(BaseModel):
 
 class User(UserBase):
     id: int
-    organization_id: Optional[int] = None
+    organization_id: Optional[UUID] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
     last_login: Optional[datetime] = None

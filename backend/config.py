@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     # Desktop Settings
     AUTH_DISABLED: bool = False
     DEBUG: bool = False
-    PORT: int = 8000 # Default FastAPI port
+    PORT: int = 8001 # Default OTTO port for dev alignment
     
     # Security
     SECRET_KEY: str = "otto-internal-secret-key-development"

@@ -3,6 +3,7 @@ import sys
 import logging
 from typing import List
 from pathlib import Path
+import uuid
 
 import uvicorn
 from fastapi import FastAPI, Request
@@ -275,20 +276,39 @@ def _seed_admin_user() -> None:
     db = SessionLocal()
     try:
         admin = db.query(User).filter(User.email == admin_email).first()
+        
+        # Prepare desired state
+        hashed_pw = pwd_context.hash(admin_password)
+        target_org_id = uuid.UUID(int=1)
+        
         if not admin:
             admin = User(
                 email=admin_email,
-                hashed_password=pwd_context.hash(admin_password),
+                hashed_password=hashed_pw,
                 full_name="System Admin",
                 is_active=True,
                 is_superuser=True,
-                role="admin",  # keep if your model expects it
+                role="admin",
+                organization_id=target_org_id
             )
             db.add(admin)
-            db.commit()
             logging.info("👤 Admin user seeded")
         else:
-            logging.info("👤 Admin user already exists")
+            # Check for drift and update if needed
+            drift = False
+            if not pwd_context.verify(admin_password, admin.hashed_password):
+                admin.hashed_password = hashed_pw
+                drift = True
+            if admin.organization_id != target_org_id:
+                admin.organization_id = target_org_id
+                drift = True
+            
+            if drift:
+                logging.info("👤 Admin user updated to match canonical state")
+            else:
+                logging.info("👤 Admin user already up to date")
+        
+        db.commit()
     except Exception as e:
         logging.error(f"❌ Admin seed error: {e}")
         db.rollback()
@@ -328,18 +348,21 @@ else:
 # -----------------------------
 # Desktop/CLI entry point
 # -----------------------------
-def start_backend():
+    try:
+        run_preflight_checks()
+    except GovernanceError as e:
+        logging.critical(f"🛑 Governance Check Failed: {e}")
+        # In startup event, raising exception will stop the server
+        raise e
+    except Exception as e:
+        logging.critical(f"🛑 Startup Failed: {e}")
+        raise e
+
+@app.on_event("startup")
+async def startup_event():
+    """Execute startup tasks: logging, DB init, migrations, seeding."""
     _configure_logging()
-    # Prefer OTTO_BACKEND_PORT, fallback to PORT or 8000
-    port_env = os.getenv("OTTO_BACKEND_PORT")
-    if not port_env:
-        port_env = getattr(settings, "PORT", None) or os.getenv("PORT", "8000")
-    port = int(port_env)
-    env = getattr(settings, "APP_ENV", os.getenv("APP_ENV", "dev"))
-
-    logging.info(f"🚀 OTTO Backend starting on port {port} (env={env})")
-    logging.info(f"🌐 CORS allow_origins={allow_origins}")
-
+    
     # Init DB
     try:
         init_db()
@@ -350,23 +373,35 @@ def start_backend():
     _run_migrations()
 
     # Seed admin (best-effort)
-    # Suppress passlib/bcrypt version error
     import warnings
-    # logging is already imported globally
     logging.getLogger("passlib.handlers.bcrypt").setLevel(logging.ERROR)
     _seed_admin_user()
-
-    # Run server
+    
+    # Governance checks
     try:
         run_preflight_checks()
-    except GovernanceError as e:
-        logging.critical(f"🛑 Governance Check Failed: {e}")
-        sys.exit(1)
     except Exception as e:
-        logging.critical(f"🛑 Startup Failed: {e}")
-        sys.exit(1)
+        logging.critical(f"🛑 Preflight checks failed: {e}")
+        # We can't easily sys.exit here without killing the worker, but raising exception works.
+        raise RuntimeError(f"Startup failed: {e}")
 
-    uvicorn.run(app, host="127.0.0.1", port=port, log_level="info")
+# -----------------------------
+# Desktop/CLI entry point
+# -----------------------------
+def start_backend():
+    # Prefer OTTO_BACKEND_PORT, fallback to PORT or 8000
+    port_env = os.getenv("OTTO_BACKEND_PORT")
+    if not port_env:
+        port_env = getattr(settings, "PORT", None) or os.getenv("PORT", "8000")
+    port = int(port_env)
+    env = getattr(settings, "APP_ENV", os.getenv("APP_ENV", "dev"))
+
+    logging.info(f"🚀 OTTO Backend starting on port {port} (env={env})")
+    
+    # NOTE: We rely on the @app.on_event("startup") to handle init/seed/checks.
+    # This ensures consistency whether running via `python main.py` OR `uvicorn main:app`.
+    
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
 
 
 if __name__ == "__main__":

@@ -53,14 +53,18 @@ async def extract_contract_endpoint(
 
 @router.post("/resolve", response_model=ResolvedContractProposalV1, dependencies=[Depends(ensure_ai_contract_intel_enabled)])
 async def resolve_contract_endpoint(
-    extraction: ContractExtractionV1,
+    extraction: ContractExtractionV1 = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
     Resolve extracted metadata against database entities.
     Returns proposals only (no DB writes).
+    Supports empty payload for existence/health checks.
     """
+    if not extraction:
+        return ResolvedContractProposalV1(needs_review=True)
+        
     # Audit logging
     log_ai_request(
         db=db,
@@ -68,7 +72,8 @@ async def resolve_contract_endpoint(
         user_id=current_user.id,
         action="contract_resolution",
         message=f"Resolved extraction for: {extraction.contract_title or 'Untitled'}",
-        tool="contract_resolver"
+        tool="contract_resolver",
+        parser_version=extraction.parser_version or "deterministic_v1"
     )
     
     proposal = resolve_entities(db, current_user.organization_id, extraction)

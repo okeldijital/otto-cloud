@@ -1,6 +1,7 @@
 from pydantic import BaseModel, ConfigDict
-from typing import Optional
+from typing import Optional, Any
 from datetime import datetime, date, time
+from uuid import UUID
 
 
 class TrackBase(BaseModel):
@@ -15,7 +16,7 @@ class TrackBase(BaseModel):
     file_location: Optional[str] = None
     release_id: Optional[int] = None
     work_id: Optional[int] = None
-    organization_id: Optional[int] = None
+    organization_id: Optional[UUID] = None
     credits: Optional[list[dict]] = None
     secondary_release_ids: Optional[list[int]] = None
 
@@ -37,7 +38,7 @@ class TrackUpdate(BaseModel):
     file_location: Optional[str] = None
     release_id: Optional[int] = None
     work_id: Optional[int] = None
-    organization_id: Optional[int] = None
+    organization_id: Optional[UUID] = None
     credits: Optional[list[dict]] = None
     secondary_release_ids: Optional[list[int]] = None
 
