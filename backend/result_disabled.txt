@@ -1,0 +1,3 @@
+--- DISABLED CHECKS ---
+{"status":"ok","enabled":false,"version":"1.0.0"}
+405

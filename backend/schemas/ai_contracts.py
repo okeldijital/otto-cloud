@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, AliasChoices
 from typing import List, Optional, Dict
 from enum import Enum
 from datetime import date
@@ -25,9 +25,10 @@ class PartyRoleV1(str, Enum):
     PUBLISHER = "Publisher"
     OTHER = "Other"
 
+
 class ContractPartyV1(BaseModel):
-    display_name: str
-    role: PartyRoleV1
+    display_name: str = Field(validation_alias=AliasChoices("display_name", "name"))
+    role: Optional[PartyRoleV1] = None
     is_external: bool = True
     confidence: float = Field(default=1.0, ge=0, le=1)
     source_span: Optional[str] = None

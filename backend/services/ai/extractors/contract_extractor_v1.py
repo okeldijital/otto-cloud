@@ -92,9 +92,14 @@ def extract_contract_intelligence(text: str) -> ContractExtractionV1:
     Main entry point for Phase 2 contract extraction.
     Tries AI engine first if enabled, falls back to deterministic rules.
     """
-    if settings.AI_ENABLED:
+    engine = None
+    if settings.AI_ENABLED and getattr(settings, "AI_CONTRACT_INTEL_ENABLED", False):
         try:
+            # Lazy import here if preferred, or use the global import
+            from services.ai.engine import get_ai_engine
             engine = get_ai_engine()
+            
+            # Additional check: if engine is NullEngine or something similar, it might still fail gracefully
             system_prompt = "You are a legal contract analyzer. Extract structured metadata from the provided text."
             user_prompt = f"Analyze this contract text and return valid JSON:\n\n{text[:5000]}" # Limit size for safety
             
@@ -106,7 +111,8 @@ def extract_contract_intelligence(text: str) -> ContractExtractionV1:
             if extraction:
                 extraction.parser_version = "ai_v1"
                 return extraction
-        except (AIError, Exception) as e:
+        except Exception:
+            # Fallback silently or log if needed
             pass
     
     # Fallback to deterministic if engine is disabled, NullEngine, or fails

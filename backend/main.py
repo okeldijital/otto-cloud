@@ -214,26 +214,12 @@ async def health():
 # -----------------------------
 def _run_migrations() -> None:
     """
-    Run Alembic migrations if using SQLite.
+    Run Alembic migrations via Python API (Governance).
     Graceful failure—logs warning but continues.
     """
     try:
-        db_url = getattr(settings, "DATABASE_URL", os.getenv("DATABASE_URL", ""))
-        if "sqlite" not in db_url.lower():
-            logging.info("↩️  Skipping Alembic (non-SQLite database)")
-            return
-
-        import subprocess
-        result = subprocess.run(
-            ["alembic", "upgrade", "head"],
-            cwd=os.path.dirname(os.path.abspath(__file__)),
-            capture_output=True,
-            timeout=60,
-        )
-        if result.returncode == 0:
-            logging.info("✅ Alembic migrations completed successfully")
-        else:
-            logging.warning(f"⚠️  Alembic returned non-zero: {result.stderr.decode()[:200]}")
+        from utils.migrations import upgrade_head
+        upgrade_head()
     except Exception as e:
         logging.warning(f"⚠️  Migration error (non-fatal): {e}")
 
