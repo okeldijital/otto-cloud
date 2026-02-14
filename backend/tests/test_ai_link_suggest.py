@@ -51,6 +51,8 @@ class TestAILinkSuggest:
         # Reset state
         settings.AI_ENABLED = True
         settings.AI_CONTRACT_INTEL_ENABLED = True
+        app.dependency_overrides.clear()
+        app.dependency_overrides[get_db] = override_get_db
         
         # Clear DB tables to ensure isolation between tests
         db = TestingSessionLocal()
