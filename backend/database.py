@@ -19,9 +19,14 @@ class SafeUuid(TypeDecorator):
             # For OTTO V1, we map UUID(int=1) back to integer 1 for storage
             return value.int
         try:
+            # If it's a numeric string or integer, return as int
             return int(value)
         except (ValueError, TypeError):
-            return value
+            # If it's a UUID string, convert to int for storage
+            try:
+                return uuid.UUID(value).int
+            except (ValueError, TypeError):
+                return value
 
     def process_result_value(self, value, dialect):
         if value is None:
