@@ -104,6 +104,7 @@ from routes import (  # noqa: E402
     backup,
     config,
     ai,
+    ai_contracts,
 )
 
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
@@ -135,12 +136,10 @@ app.include_router(office_status_quo.router, prefix="/api", tags=["Office Status
 app.include_router(backup.router, prefix="/api", tags=["Backup"])
 app.include_router(config.router, prefix="/api", tags=["Configuration"])
 
-# AI Router (conditionally mounted based on feature flag)
-if settings.AI_ENABLED:
-    app.include_router(ai.router, prefix="/api/ai", tags=["AI"])
-    logging.info("🤖 AI module enabled")
-else:
-    logging.info("🤖 AI module disabled (AI_ENABLED=False)")
+# AI Router - Always mounted, features gated internally
+app.include_router(ai.router, prefix="/api/ai", tags=["AI"])
+app.include_router(ai_contracts.router, prefix="/api/ai/contracts", tags=["AI Contracts"])
+logging.info("🤖 AI modules mounted")
 
 # -----------------------------
 # Static files (uploads)

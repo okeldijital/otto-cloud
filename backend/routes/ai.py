@@ -20,12 +20,12 @@ from config import settings
 router = APIRouter()
 
 
-def check_ai_enabled():
+def ensure_ai_enabled():
     """Dependency to check if AI is enabled"""
     if not settings.AI_ENABLED:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="AI features are not enabled"
+            detail="AI module disabled"
         )
 
 
@@ -42,7 +42,7 @@ async def ai_health():
     )
 
 
-@router.get("/tools", response_model=AIToolsResponse, dependencies=[Depends(check_ai_enabled)])
+@router.get("/tools", response_model=AIToolsResponse, dependencies=[Depends(ensure_ai_enabled)])
 async def list_tools(
     current_user: User = Depends(get_current_user)
 ):
@@ -54,7 +54,7 @@ async def list_tools(
     return AIToolsResponse(tools=tools)
 
 
-@router.post("/chat", response_model=AIChatResponse, dependencies=[Depends(check_ai_enabled)])
+@router.post("/chat", response_model=AIChatResponse, dependencies=[Depends(ensure_ai_enabled)])
 async def chat(
     request: AIChatRequest,
     db: Session = Depends(get_db),

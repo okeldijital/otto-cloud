@@ -35,9 +35,9 @@ class TestAIDisabled:
         original_value = settings.AI_ENABLED
         settings.AI_ENABLED = False
         
-        # Try without auth (should get 404 before 401)
+        # Try without auth (should get 404)
         response = client.get("/api/ai/tools")
-        assert response.status_code in [404, 401]  # Either is acceptable when disabled
+        assert response.status_code == 404
         
         settings.AI_ENABLED = original_value
     
@@ -50,7 +50,7 @@ class TestAIDisabled:
             "/api/ai/chat",
             json={"message": "test"}
         )
-        assert response.status_code in [404, 401]  # Either is acceptable when disabled
+        assert response.status_code == 404
         
         settings.AI_ENABLED = original_value
 
@@ -58,10 +58,18 @@ class TestAIDisabled:
 class TestAIAuthentication:
     """Test AI authentication requirements"""
     
+    def setup_method(self):
+        self.original_auth = settings.AUTH_DISABLED
+        self.original_ai = settings.AI_ENABLED
+        settings.AI_ENABLED = True
+        settings.AUTH_DISABLED = False
+
+    def teardown_method(self):
+        settings.AUTH_DISABLED = self.original_auth
+        settings.AI_ENABLED = self.original_ai
+
     def test_chat_requires_auth(self):
         """Chat endpoint should require authentication"""
-        settings.AI_ENABLED = True
-        
         response = client.post(
             "/api/ai/chat",
             json={"message": "test"}
@@ -70,8 +78,6 @@ class TestAIAuthentication:
     
     def test_tools_requires_auth(self):
         """Tools endpoint should require authentication"""
-        settings.AI_ENABLED = True
-        
         response = client.get("/api/ai/tools")
         assert response.status_code == 401
 

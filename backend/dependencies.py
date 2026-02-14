@@ -11,6 +11,9 @@ from schemas.token import TokenData
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token", auto_error=False)
 
+import uuid
+DEV_ORG_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
+
 async def get_current_user(
     token: Optional[str] = Depends(oauth2_scheme), 
     db: Session = Depends(get_db)
@@ -29,11 +32,12 @@ async def get_current_user(
                 is_active=True,
                 is_superuser=True,
                 role="admin",
-                organization_id=1,
+                organization_id=DEV_ORG_ID,
             )
             db.add(user)
             db.commit()
             db.refresh(user)
+        
         return user
 
     # Standard JWT Authentication
@@ -67,21 +71,20 @@ async def get_current_active_user(current_user: User = Depends(get_current_user)
     return current_user
 
 from fastapi import Header
-from uuid import UUID
 
 async def get_current_organization_id(
     x_organization_id: Optional[str] = Header(None, alias="X-Organization-ID")
-) -> int:
+) -> uuid.UUID:
     """
     Extracts Organization ID from Header.
     In V1 Strict Mode, this is mandatory for scoped operations.
-    Fallback to a default ID for development if header is missing.
+    Returns UUID for consistent AI audit compliance.
     """
     if not x_organization_id:
-        # Default ID for development fallback (Integer)
-        return 1
+        # Default UUID for development fallback
+        return DEV_ORG_ID
     try:
-        return int(x_organization_id)
+        return uuid.UUID(x_organization_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid Organization ID format")
 

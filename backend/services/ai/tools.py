@@ -26,7 +26,10 @@ def search_catalog(
     # Search Artists
     artists = db.query(Artist).filter(
         Artist.organization_id == org_id,
-        Artist.name.ilike(search_term)
+        or_(
+            Artist.name.ilike(search_term),
+            Artist.aka.ilike(search_term)
+        )
     ).limit(limit).all()
     
     for artist in artists:
@@ -34,7 +37,7 @@ def search_catalog(
             type="artist",
             id=artist.id,
             label=artist.name,
-            metadata={"stage_name": artist.stage_name}
+            metadata={"aka": artist.aka}
         ))
     
     # Search Tracks
@@ -90,14 +93,14 @@ def search_network(
 ) -> List[AIResultItem]:
     """
     Search network (individuals, organizations).
-    Read-only, org-scoped.
+    Read-only, org-scoped where applicable.
     """
     results = []
     search_term = f"%{query}%"
     
     # Search Individuals
+    # Note: Individual model currently lacks organization_id column in current schema
     individuals = db.query(Individual).filter(
-        Individual.organization_id == org_id,
         or_(
             Individual.first_name.ilike(search_term),
             Individual.last_name.ilike(search_term),
@@ -111,12 +114,12 @@ def search_network(
             type="individual",
             id=individual.id,
             label=full_name or individual.email or "Unknown",
-            metadata={"email": individual.email}
+            metadata={"email": individual.email, "role": individual.role}
         ))
     
     # Search Organizations
+    # Note: Organization model currently lacks organization_id column in current schema
     organizations = db.query(Organization).filter(
-        Organization.organization_id == org_id,
         Organization.name.ilike(search_term)
     ).limit(limit).all()
     
@@ -125,7 +128,7 @@ def search_network(
             type="organization",
             id=org.id,
             label=org.name,
-            metadata={"entity_type": org.entity_type}
+            metadata={"org_type": org.org_type}
         ))
     
     return results[:limit]

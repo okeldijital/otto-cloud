@@ -30,6 +30,30 @@ export const aiClient = {
             session_id: sessionId
         });
         return response.data;
+    },
+
+    /**
+     * Extract structured data from a PDF contract
+     * @param {File} file - The PDF file to extract
+     */
+    extractContract: async (file) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        const response = await api.post(`${AI_ENDPOINT}/contracts/extract`, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+        return response.data;
+    },
+
+    /**
+     * Resolve extraction against existing entities
+     * @param {Object} extraction - The data extracted from the contract
+     */
+    resolveContract: async (extraction) => {
+        const response = await api.post(`${AI_ENDPOINT}/contracts/resolve`, extraction);
+        return response.data;
     }
 };
 

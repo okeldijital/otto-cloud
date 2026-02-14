@@ -62,3 +62,15 @@ We use automated checks to prevent drift and ensure system integrity.
 
 4.  **Run Governance**:
     - Always run `scripts/run_governance.sh` before pushing code.
+
+## AI Module Governance
+
+AI modules must strictly follow these rules:
+1.  **Read-Only Core**: AI modules must never write to core tables (Catalog, Network, Contracts) or modify existing CRUD operations.
+2.  **No Core Drift**: AI services must never be imported into core route modules (`catalog.py`, `contracts.py`, `network.py`).
+3.  **Strict Scoping**: Every AI operation must be strictly scoped to the user's `organization_id`.
+4.  **Audit Integrity**: All AI requests must generate a non-reversible audit hash and log metadata.
+5.  **Change Validation**: Any change to AI modules requires:
+    - A specific version tag (e.g., `v1.1.1-ai-phase1-governed`).
+    - A passing `python backend/invariant_check.py`.
+    - A clean working tree.
