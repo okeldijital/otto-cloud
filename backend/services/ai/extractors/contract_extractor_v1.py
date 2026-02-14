@@ -9,20 +9,53 @@ from schemas.ai_contracts import (
     PartyRoleV1,
     WorksHintsV1
 )
-from services.ai.engine import get_ai_engine, AIError
+from services.ai.parsing.rules.remix_agreement_v1 import (
+    extract_parties_from_text,
+    extract_splits_governed,
+    extract_work_hints
+)
 
 def deterministic_extract(text: str) -> ContractExtractionV1:
     """
-    Fallback regex-based extraction for basic contract fields.
+    Governed structured extraction using deterministic rules.
     """
-    warnings = ["Used deterministic fallback (LLM disabled or failed)"]
+    warnings = []
+    parser_version = "deterministic_v1"
     
-    # Simple Date detection (YYYY-MM-DD or DD/MM/YYYY)
+    # 1. Extract Parties
+    raw_parties = extract_parties_from_text(text)
+    parties = [ContractPartyV1(**p) for p in raw_parties]
+    
+    # 2. Extract Splits
+    raw_splits = extract_splits_governed(text, raw_parties)
+    splits = [ContractSplitV1(**s) for s in raw_splits]
+    
+    # Associate splits with known parties if still "Unknown Party"
+    if parties:
+        for s in splits:
+            if s.party_name == "Unknown Party":
+                # If we only have one party, maybe it's them? 
+                # (Simple logic: if one party and one split, associate)
+                if len(parties) == 1:
+                    s.party_name = parties[0].display_name
+                    s.party_role = parties[0].role
+                else:
+                    s.notes = (s.notes or "") + " [UNASSIGNED]"
+    
+    # 3. Compute Splits Total
+    splits_total = sum(s.percent for s in splits)
+    if abs(splits_total - 100.0) > 0.05:
+        warnings.append(f"splits_total_mismatch: Computed total is {splits_total}%")
+    
+    # 4. Extract Work Hints
+    hints_dict = extract_work_hints(text)
+    works_hints = WorksHintsV1(**hints_dict)
+    
+    # 5. Extract Basic Date (fallback)
     date_pattern = r'(\d{4}-\d{2}-\d{2})|(\d{2}/\d{2}/\d{4})'
     dates = re.findall(date_pattern, text)
     effective_date = None
     if dates:
-        # Just grab the first date found as a placeholder
         d_str = dates[0][0] or dates[0][1]
         try:
             if '-' in d_str:
@@ -32,30 +65,29 @@ def deterministic_extract(text: str) -> ContractExtractionV1:
         except:
             pass
 
-    # Simple Percent detection
-    percent_pattern = r'(\d+(?:\.\d+)?)\s*%'
-    percents = re.findall(percent_pattern, text)
-    splits = []
-    for p in percents[:5]: # Take first 5 as hints
-        splits.append(ContractSplitV1(
-            split_type=SplitTypeV1.OTHER,
-            party_name="Unknown Party (Extracted by Regex)",
-            percent=float(p),
-            notes="Extracted from text percentage"
-        ))
+    # Confidence depends on whether we found parties/splits
+    confidence = 0.5
+    if parties and splits:
+        confidence = 0.8
+    elif parties or splits:
+        confidence = 0.6
 
     return ContractExtractionV1(
-        contract_title="Extracted Contract (Regex)",
+        contract_title="Governed Extraction (Deterministic V1)",
         effective_date=effective_date,
+        parties=parties,
         splits=splits,
-        raw_confidence=0.3,
-        warnings=warnings
+        splits_total=splits_total,
+        works_hints=works_hints,
+        raw_confidence=confidence,
+        warnings=warnings,
+        parser_version=parser_version
     )
 
 def extract_contract_intelligence(text: str) -> ContractExtractionV1:
     """
     Main entry point for Phase 2 contract extraction.
-    Tries AI engine first, falls back to deterministic regex.
+    Tries AI engine first, falls back to deterministic rules.
     """
     engine = get_ai_engine()
     
@@ -68,7 +100,11 @@ def extract_contract_intelligence(text: str) -> ContractExtractionV1:
             system=system_prompt,
             user=user_prompt
         )
-        return extraction
+        if extraction:
+            extraction.parser_version = "ai_v1"
+            return extraction
     except (AIError, Exception) as e:
-        # Fallback to regex if engine is NullEngine or fails
-        return deterministic_extract(text)
+        pass
+    
+    # Fallback to deterministic if engine is NullEngine or fails
+    return deterministic_extract(text)

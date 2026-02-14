@@ -24,7 +24,8 @@ def log_ai_request(
     user_id: int,
     action: str,
     message: str,
-    tool: str = None
+    tool: str = None,
+    parser_version: str = None
 ) -> AIAuditLog:
     """
     Log AI request to audit table.
@@ -44,7 +45,8 @@ def log_ai_request(
         user_id=user_id,
         action=action,
         tool=tool,
-        request_hash=request_hash
+        request_hash=request_hash,
+        parser_version=parser_version
     )
     
     try:

@@ -45,6 +45,7 @@ class AIAuditLog(Base):
     action = Column(String(50), nullable=False)  # 'chat', 'search', etc.
     tool = Column(String(50), nullable=True)  # tool name if applicable
     request_hash = Column(String(64), nullable=False)  # sha256 hash
+    parser_version = Column(String(20), nullable=True) # version of logic used
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
     
     def __repr__(self):

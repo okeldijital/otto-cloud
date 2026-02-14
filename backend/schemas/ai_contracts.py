@@ -26,9 +26,11 @@ class PartyRoleV1(str, Enum):
     OTHER = "Other"
 
 class ContractPartyV1(BaseModel):
-    name: str
+    display_name: str
     role: PartyRoleV1
     is_external: bool = True
+    confidence: float = Field(default=1.0, ge=0, le=1)
+    source_span: Optional[str] = None
 
 class WorksHintsV1(BaseModel):
     artists: List[str] = []
@@ -45,9 +47,11 @@ class ContractExtractionV1(BaseModel):
     exclusivity: Optional[bool] = None
     parties: List[ContractPartyV1] = []
     splits: List[ContractSplitV1] = []
+    splits_total: float = 0.0
     works_hints: WorksHintsV1 = Field(default_factory=WorksHintsV1)
     raw_confidence: float = Field(..., ge=0, le=1)
     warnings: List[str] = []
+    parser_version: str = "deterministic_v1"
 
 class MatchProposalV1(BaseModel):
     entity_id: int

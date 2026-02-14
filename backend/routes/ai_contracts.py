@@ -36,6 +36,8 @@ async def extract_contract_endpoint(
     content = await file.read()
     parsed = extract_text_from_pdf(content)
     
+    extraction = extract_contract_intelligence(parsed["text"])
+    
     # Audit logging (hash only)
     log_ai_request(
         db=db,
@@ -43,10 +45,10 @@ async def extract_contract_endpoint(
         user_id=current_user.id,
         action="contract_extraction",
         message=f"Extracted PDF: {parsed['sha256']}",
-        tool="pdf_extract"
+        tool="pdf_extract",
+        parser_version=extraction.parser_version
     )
     
-    extraction = extract_contract_intelligence(parsed["text"])
     return extraction
 
 @router.post("/resolve", response_model=ResolvedContractProposalV1, dependencies=[Depends(ensure_ai_contract_intel_enabled)])
