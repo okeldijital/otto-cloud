@@ -54,6 +54,15 @@ export const aiClient = {
     resolveContract: async (extraction) => {
         const response = await api.post(`${AI_ENDPOINT}/contracts/resolve`, extraction);
         return response.data;
+    },
+
+    /**
+     * Get read-only link suggestions for extraction
+     * @param {Object} extraction - The data extracted from the contract
+     */
+    linkSuggest: async (extraction) => {
+        const response = await api.post(`${AI_ENDPOINT}/contracts/link_suggest`, { extraction });
+        return response.data;
     }
 };
 

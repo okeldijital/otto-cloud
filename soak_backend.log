@@ -1,0 +1,342 @@
+📂 Repo Root: /Users/m2krproduction/otto
+✅ Activated .venv
+🐍 Using Python: Python 3.12.12
+🚀 Starting Backend on Port 8001...
+   Health Check: http://127.0.0.1:8001/api/health
+INFO:     Will watch for changes in these directories: ['/Users/m2krproduction/otto/backend']
+INFO:     Uvicorn running on http://127.0.0.1:8001 (Press CTRL+C to quit)
+INFO:     Started reloader process [72651] using WatchFiles
+WARNING:root:⚠️ Frontend build not found at /Users/m2krproduction/otto/dist-desktop
+WARNING:governance:⚠️ No backups directory found.
+INFO:     Started server process [72667]
+INFO:     Waiting for application startup.
+2026-02-14 22:39:44,719 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+2026-02-14 22:39:44,719 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("users")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("users")
+2026-02-14 22:39:44,719 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-14 22:39:44,720 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("pros")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("pros")
+2026-02-14 22:39:44,720 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-14 22:39:44,720 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("labels")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("labels")
+2026-02-14 22:39:44,720 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-14 22:39:44,720 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("publishers")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("publishers")
+2026-02-14 22:39:44,720 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-14 22:39:44,720 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("artists")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("artists")
+2026-02-14 22:39:44,720 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-14 22:39:44,720 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("track_releases")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("track_releases")
+2026-02-14 22:39:44,720 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-14 22:39:44,720 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("releases")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("releases")
+2026-02-14 22:39:44,720 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-14 22:39:44,720 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("tracks")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("tracks")
+2026-02-14 22:39:44,720 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-14 22:39:44,720 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("works")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("works")
+2026-02-14 22:39:44,720 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-14 22:39:44,720 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("royalties")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("royalties")
+2026-02-14 22:39:44,720 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-14 22:39:44,721 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("documents")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("documents")
+2026-02-14 22:39:44,721 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-14 22:39:44,721 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("notes")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("notes")
+2026-02-14 22:39:44,721 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-14 22:39:44,721 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("events")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("events")
+2026-02-14 22:39:44,721 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-14 22:39:44,721 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("playlists")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("playlists")
+2026-02-14 22:39:44,721 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-14 22:39:44,721 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("audit_logs")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("audit_logs")
+2026-02-14 22:39:44,721 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-14 22:39:44,721 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("activities")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("activities")
+2026-02-14 22:39:44,721 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-14 22:39:44,721 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("individual_organizations")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("individual_organizations")
+2026-02-14 22:39:44,721 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-14 22:39:44,721 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("organizations")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("organizations")
+2026-02-14 22:39:44,721 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-14 22:39:44,721 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("individuals")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("individuals")
+2026-02-14 22:39:44,721 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-14 22:39:44,721 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("platforms")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("platforms")
+2026-02-14 22:39:44,721 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-14 22:39:44,721 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("network_relationships")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("network_relationships")
+2026-02-14 22:39:44,721 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-14 22:39:44,721 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("tasks")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("tasks")
+2026-02-14 22:39:44,721 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-14 22:39:44,721 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("office_notes")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("office_notes")
+2026-02-14 22:39:44,721 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-14 22:39:44,721 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("office_note_links")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("office_note_links")
+2026-02-14 22:39:44,721 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-14 22:39:44,722 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("office_documents")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("office_documents")
+2026-02-14 22:39:44,722 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-14 22:39:44,722 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("office_document_links")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("office_document_links")
+2026-02-14 22:39:44,722 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-14 22:39:44,722 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("report_definitions")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("report_definitions")
+2026-02-14 22:39:44,722 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-14 22:39:44,722 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("report_runs")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("report_runs")
+2026-02-14 22:39:44,722 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-14 22:39:44,722 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("report_artifacts")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("report_artifacts")
+2026-02-14 22:39:44,722 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-14 22:39:44,722 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("status_quo_items")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("status_quo_items")
+2026-02-14 22:39:44,722 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-14 22:39:44,722 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("contracts")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("contracts")
+2026-02-14 22:39:44,722 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-14 22:39:44,722 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("contract_parties")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("contract_parties")
+2026-02-14 22:39:44,722 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-14 22:39:44,722 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("contract_assets")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("contract_assets")
+2026-02-14 22:39:44,722 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-14 22:39:44,722 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("contract_documents")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("contract_documents")
+2026-02-14 22:39:44,722 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-14 22:39:44,722 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("contract_split_groups")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("contract_split_groups")
+2026-02-14 22:39:44,722 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-14 22:39:44,722 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("contract_splits")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("contract_splits")
+2026-02-14 22:39:44,722 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-14 22:39:44,722 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("works_admin")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("works_admin")
+2026-02-14 22:39:44,722 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-14 22:39:44,722 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("works_admin_documents")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("works_admin_documents")
+2026-02-14 22:39:44,722 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-14 22:39:44,722 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("ai_sessions")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("ai_sessions")
+2026-02-14 22:39:44,722 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-14 22:39:44,722 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("ai_messages")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("ai_messages")
+2026-02-14 22:39:44,722 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-14 22:39:44,723 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("ai_audit_log")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("ai_audit_log")
+2026-02-14 22:39:44,723 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-14 22:39:44,723 INFO sqlalchemy.engine.Engine COMMIT
+INFO:sqlalchemy.engine.Engine:COMMIT
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+ERROR [root] ❌ Governance: Migration failed: Can't locate revision identified by '7ba87aa99435'
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT users.id AS users_id, users.email AS users_email, users.hashed_password AS users_hashed_password, users.full_name AS users_full_name, users.avatar_url AS users_avatar_url, users.is_active AS users_is_active, users.is_superuser AS users_is_superuser, users.role AS users_role, users.organization_id AS users_organization_id, users.created_at AS users_created_at, users.updated_at AS users_updated_at, users.last_login AS users_last_login 
+FROM users 
+WHERE users.email = ?
+ LIMIT ? OFFSET ?
+INFO  [sqlalchemy.engine.Engine] [generated in 0.00010s] ('admin@otto.com', 1, 0)
+INFO  [sqlalchemy.engine.Engine] COMMIT
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT users.id AS users_id, users.email AS users_email, users.hashed_password AS users_hashed_password, users.full_name AS users_full_name, users.avatar_url AS users_avatar_url, users.is_active AS users_is_active, users.is_superuser AS users_is_superuser, users.role AS users_role, users.organization_id AS users_organization_id, users.created_at AS users_created_at, users.updated_at AS users_updated_at, users.last_login AS users_last_login 
+FROM users 
+WHERE users.email = ?
+ LIMIT ? OFFSET ?
+INFO  [sqlalchemy.engine.Engine] [cached since 56.19s ago] ('admin@otto.com', 1, 0)
+INFO  [sqlalchemy.engine.Engine] ROLLBACK
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT users.id AS users_id, users.email AS users_email, users.hashed_password AS users_hashed_password, users.full_name AS users_full_name, users.avatar_url AS users_avatar_url, users.is_active AS users_is_active, users.is_superuser AS users_is_superuser, users.role AS users_role, users.organization_id AS users_organization_id, users.created_at AS users_created_at, users.updated_at AS users_updated_at, users.last_login AS users_last_login 
+FROM users 
+WHERE users.email = ?
+ LIMIT ? OFFSET ?
+INFO  [sqlalchemy.engine.Engine] [cached since 57.15s ago] ('admin@otto.com', 1, 0)
+ERROR [root] AI provider not configured. Attempted complete_json.
+INFO  [sqlalchemy.engine.Engine] INSERT INTO ai_audit_log (organization_id, user_id, action, tool, request_hash, parser_version) VALUES (?, ?, ?, ?, ?, ?) RETURNING id, created_at
+INFO  [sqlalchemy.engine.Engine] [generated in 0.00013s] ('00000000000000000000000000000001', 1, 'contract_extraction', 'pdf_extract', '28cdb915b7e96d6c3d8e3a3c97f9e54185dcda2962c17ba141864e6f7a23fd39', 'contract_extractor_v1.2.2')
+INFO  [sqlalchemy.engine.Engine] COMMIT
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT ai_audit_log.id, ai_audit_log.organization_id, ai_audit_log.user_id, ai_audit_log.action, ai_audit_log.tool, ai_audit_log.request_hash, ai_audit_log.parser_version, ai_audit_log.created_at 
+FROM ai_audit_log 
+WHERE ai_audit_log.id = ?
+INFO  [sqlalchemy.engine.Engine] [generated in 0.00007s] (25,)
+INFO  [sqlalchemy.engine.Engine] ROLLBACK
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT users.id AS users_id, users.email AS users_email, users.hashed_password AS users_hashed_password, users.full_name AS users_full_name, users.avatar_url AS users_avatar_url, users.is_active AS users_is_active, users.is_superuser AS users_is_superuser, users.role AS users_role, users.organization_id AS users_organization_id, users.created_at AS users_created_at, users.updated_at AS users_updated_at, users.last_login AS users_last_login 
+FROM users 
+WHERE users.email = ?
+ LIMIT ? OFFSET ?
+INFO  [sqlalchemy.engine.Engine] [cached since 57.53s ago] ('admin@otto.com', 1, 0)
+ERROR [root] AI provider not configured. Attempted complete_json.
+INFO  [sqlalchemy.engine.Engine] INSERT INTO ai_audit_log (organization_id, user_id, action, tool, request_hash, parser_version) VALUES (?, ?, ?, ?, ?, ?) RETURNING id, created_at
+INFO  [sqlalchemy.engine.Engine] [cached since 0.1206s ago] ('00000000000000000000000000000001', 1, 'contract_extraction', 'pdf_extract', '162e6ad9446257b4212269247b913f2c352cb5ca04a3bd1b07820748248175a9', 'contract_extractor_v1.2.2')
+INFO  [sqlalchemy.engine.Engine] COMMIT
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT ai_audit_log.id, ai_audit_log.organization_id, ai_audit_log.user_id, ai_audit_log.action, ai_audit_log.tool, ai_audit_log.request_hash, ai_audit_log.parser_version, ai_audit_log.created_at 
+FROM ai_audit_log 
+WHERE ai_audit_log.id = ?
+INFO  [sqlalchemy.engine.Engine] [cached since 0.1186s ago] (26,)
+INFO  [sqlalchemy.engine.Engine] ROLLBACK
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT users.id AS users_id, users.email AS users_email, users.hashed_password AS users_hashed_password, users.full_name AS users_full_name, users.avatar_url AS users_avatar_url, users.is_active AS users_is_active, users.is_superuser AS users_is_superuser, users.role AS users_role, users.organization_id AS users_organization_id, users.created_at AS users_created_at, users.updated_at AS users_updated_at, users.last_login AS users_last_login 
+FROM users 
+WHERE users.email = ?
+ LIMIT ? OFFSET ?
+INFO  [sqlalchemy.engine.Engine] [cached since 57.65s ago] ('admin@otto.com', 1, 0)
+ERROR [root] AI provider not configured. Attempted complete_json.
+INFO  [sqlalchemy.engine.Engine] INSERT INTO ai_audit_log (organization_id, user_id, action, tool, request_hash, parser_version) VALUES (?, ?, ?, ?, ?, ?) RETURNING id, created_at
+INFO  [sqlalchemy.engine.Engine] [cached since 0.1787s ago] ('00000000000000000000000000000001', 1, 'contract_extraction', 'pdf_extract', '299e4845668643c9cad60b269fb0732ba16d887bc9f5436b3cbbc80552358a3a', 'contract_extractor_v1.2.2')
+INFO  [sqlalchemy.engine.Engine] COMMIT
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT ai_audit_log.id, ai_audit_log.organization_id, ai_audit_log.user_id, ai_audit_log.action, ai_audit_log.tool, ai_audit_log.request_hash, ai_audit_log.parser_version, ai_audit_log.created_at 
+FROM ai_audit_log 
+WHERE ai_audit_log.id = ?
+INFO  [sqlalchemy.engine.Engine] [cached since 0.1765s ago] (27,)
+INFO  [sqlalchemy.engine.Engine] ROLLBACK
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT users.id AS users_id, users.email AS users_email, users.hashed_password AS users_hashed_password, users.full_name AS users_full_name, users.avatar_url AS users_avatar_url, users.is_active AS users_is_active, users.is_superuser AS users_is_superuser, users.role AS users_role, users.organization_id AS users_organization_id, users.created_at AS users_created_at, users.updated_at AS users_updated_at, users.last_login AS users_last_login 
+FROM users 
+WHERE users.email = ?
+ LIMIT ? OFFSET ?
+INFO  [sqlalchemy.engine.Engine] [cached since 57.7s ago] ('admin@otto.com', 1, 0)
+ERROR [root] AI provider not configured. Attempted complete_json.
+INFO  [sqlalchemy.engine.Engine] INSERT INTO ai_audit_log (organization_id, user_id, action, tool, request_hash, parser_version) VALUES (?, ?, ?, ?, ?, ?) RETURNING id, created_at
+INFO  [sqlalchemy.engine.Engine] [cached since 0.3121s ago] ('00000000000000000000000000000001', 1, 'contract_extraction', 'pdf_extract', 'daa44f0723747133522ccc51ac00e98979b1371f97eb168040c8f80fc0e6b7b4', 'contract_extractor_v1.2.2')
+INFO  [sqlalchemy.engine.Engine] COMMIT
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT ai_audit_log.id, ai_audit_log.organization_id, ai_audit_log.user_id, ai_audit_log.action, ai_audit_log.tool, ai_audit_log.request_hash, ai_audit_log.parser_version, ai_audit_log.created_at 
+FROM ai_audit_log 
+WHERE ai_audit_log.id = ?
+INFO  [sqlalchemy.engine.Engine] [cached since 0.31s ago] (28,)
+INFO  [sqlalchemy.engine.Engine] ROLLBACK
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT users.id AS users_id, users.email AS users_email, users.hashed_password AS users_hashed_password, users.full_name AS users_full_name, users.avatar_url AS users_avatar_url, users.is_active AS users_is_active, users.is_superuser AS users_is_superuser, users.role AS users_role, users.organization_id AS users_organization_id, users.created_at AS users_created_at, users.updated_at AS users_updated_at, users.last_login AS users_last_login 
+FROM users 
+WHERE users.email = ?
+ LIMIT ? OFFSET ?
+INFO  [sqlalchemy.engine.Engine] [cached since 57.84s ago] ('admin@otto.com', 1, 0)
+ERROR [root] AI provider not configured. Attempted complete_json.
+INFO  [sqlalchemy.engine.Engine] INSERT INTO ai_audit_log (organization_id, user_id, action, tool, request_hash, parser_version) VALUES (?, ?, ?, ?, ?, ?) RETURNING id, created_at
+INFO  [sqlalchemy.engine.Engine] [cached since 0.4446s ago] ('00000000000000000000000000000001', 1, 'contract_extraction', 'pdf_extract', '6587faf082df15cc31b246dc3487d8645145c0c976147c265b56f31adb1aa6b0', 'contract_extractor_v1.2.2')
+INFO  [sqlalchemy.engine.Engine] COMMIT
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT ai_audit_log.id, ai_audit_log.organization_id, ai_audit_log.user_id, ai_audit_log.action, ai_audit_log.tool, ai_audit_log.request_hash, ai_audit_log.parser_version, ai_audit_log.created_at 
+FROM ai_audit_log 
+WHERE ai_audit_log.id = ?
+INFO  [sqlalchemy.engine.Engine] [cached since 0.4426s ago] (29,)
+INFO  [sqlalchemy.engine.Engine] ROLLBACK
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT users.id AS users_id, users.email AS users_email, users.hashed_password AS users_hashed_password, users.full_name AS users_full_name, users.avatar_url AS users_avatar_url, users.is_active AS users_is_active, users.is_superuser AS users_is_superuser, users.role AS users_role, users.organization_id AS users_organization_id, users.created_at AS users_created_at, users.updated_at AS users_updated_at, users.last_login AS users_last_login 
+FROM users 
+WHERE users.email = ?
+ LIMIT ? OFFSET ?
+INFO  [sqlalchemy.engine.Engine] [cached since 57.97s ago] ('admin@otto.com', 1, 0)
+ERROR [root] AI provider not configured. Attempted complete_json.
+INFO  [sqlalchemy.engine.Engine] INSERT INTO ai_audit_log (organization_id, user_id, action, tool, request_hash, parser_version) VALUES (?, ?, ?, ?, ?, ?) RETURNING id, created_at
+INFO  [sqlalchemy.engine.Engine] [cached since 0.5303s ago] ('00000000000000000000000000000001', 1, 'contract_extraction', 'pdf_extract', '923b0fe41d5e0130a30277dfb799303d798dcf9835832b7e1d6e6a1c851e8e65', 'contract_extractor_v1.2.2')
+INFO  [sqlalchemy.engine.Engine] COMMIT
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT ai_audit_log.id, ai_audit_log.organization_id, ai_audit_log.user_id, ai_audit_log.action, ai_audit_log.tool, ai_audit_log.request_hash, ai_audit_log.parser_version, ai_audit_log.created_at 
+FROM ai_audit_log 
+WHERE ai_audit_log.id = ?
+INFO  [sqlalchemy.engine.Engine] [cached since 0.5282s ago] (30,)
+INFO  [sqlalchemy.engine.Engine] ROLLBACK
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT users.id AS users_id, users.email AS users_email, users.hashed_password AS users_hashed_password, users.full_name AS users_full_name, users.avatar_url AS users_avatar_url, users.is_active AS users_is_active, users.is_superuser AS users_is_superuser, users.role AS users_role, users.organization_id AS users_organization_id, users.created_at AS users_created_at, users.updated_at AS users_updated_at, users.last_login AS users_last_login 
+FROM users 
+WHERE users.email = ?
+ LIMIT ? OFFSET ?
+INFO  [sqlalchemy.engine.Engine] [cached since 58.06s ago] ('admin@otto.com', 1, 0)
+ERROR [root] AI provider not configured. Attempted complete_json.
+INFO  [sqlalchemy.engine.Engine] INSERT INTO ai_audit_log (organization_id, user_id, action, tool, request_hash, parser_version) VALUES (?, ?, ?, ?, ?, ?) RETURNING id, created_at
+INFO  [sqlalchemy.engine.Engine] [cached since 0.5842s ago] ('00000000000000000000000000000001', 1, 'contract_extraction', 'pdf_extract', '69dc4e3326b4a236111fab211eceae570735144492fd928d87040af586a6e173', 'contract_extractor_v1.2.2')
+INFO  [sqlalchemy.engine.Engine] COMMIT
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT ai_audit_log.id, ai_audit_log.organization_id, ai_audit_log.user_id, ai_audit_log.action, ai_audit_log.tool, ai_audit_log.request_hash, ai_audit_log.parser_version, ai_audit_log.created_at 
+FROM ai_audit_log 
+WHERE ai_audit_log.id = ?
+INFO  [sqlalchemy.engine.Engine] [cached since 0.5823s ago] (31,)
+INFO  [sqlalchemy.engine.Engine] ROLLBACK
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT users.id AS users_id, users.email AS users_email, users.hashed_password AS users_hashed_password, users.full_name AS users_full_name, users.avatar_url AS users_avatar_url, users.is_active AS users_is_active, users.is_superuser AS users_is_superuser, users.role AS users_role, users.organization_id AS users_organization_id, users.created_at AS users_created_at, users.updated_at AS users_updated_at, users.last_login AS users_last_login 
+FROM users 
+WHERE users.email = ?
+ LIMIT ? OFFSET ?
+INFO  [sqlalchemy.engine.Engine] [cached since 58.11s ago] ('admin@otto.com', 1, 0)
+ERROR [root] AI provider not configured. Attempted complete_json.
+INFO  [sqlalchemy.engine.Engine] INSERT INTO ai_audit_log (organization_id, user_id, action, tool, request_hash, parser_version) VALUES (?, ?, ?, ?, ?, ?) RETURNING id, created_at
+INFO  [sqlalchemy.engine.Engine] [cached since 0.6359s ago] ('00000000000000000000000000000001', 1, 'contract_extraction', 'pdf_extract', '793fab868fafb03be3f508d3eb59e88f82f3c5e2ed8003b82a0826638393965c', 'contract_extractor_v1.2.2')
+INFO  [sqlalchemy.engine.Engine] COMMIT
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT ai_audit_log.id, ai_audit_log.organization_id, ai_audit_log.user_id, ai_audit_log.action, ai_audit_log.tool, ai_audit_log.request_hash, ai_audit_log.parser_version, ai_audit_log.created_at 
+FROM ai_audit_log 
+WHERE ai_audit_log.id = ?
+INFO  [sqlalchemy.engine.Engine] [cached since 0.634s ago] (32,)
+INFO  [sqlalchemy.engine.Engine] ROLLBACK
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT users.id AS users_id, users.email AS users_email, users.hashed_password AS users_hashed_password, users.full_name AS users_full_name, users.avatar_url AS users_avatar_url, users.is_active AS users_is_active, users.is_superuser AS users_is_superuser, users.role AS users_role, users.organization_id AS users_organization_id, users.created_at AS users_created_at, users.updated_at AS users_updated_at, users.last_login AS users_last_login 
+FROM users 
+WHERE users.email = ?
+ LIMIT ? OFFSET ?
+INFO  [sqlalchemy.engine.Engine] [cached since 58.17s ago] ('admin@otto.com', 1, 0)
+ERROR [root] AI provider not configured. Attempted complete_json.
+INFO  [sqlalchemy.engine.Engine] INSERT INTO ai_audit_log (organization_id, user_id, action, tool, request_hash, parser_version) VALUES (?, ?, ?, ?, ?, ?) RETURNING id, created_at
+INFO  [sqlalchemy.engine.Engine] [cached since 0.6904s ago] ('00000000000000000000000000000001', 1, 'contract_extraction', 'pdf_extract', '38b8878459badac80a48b4ed24731fd31997398c024980382fa9ec8422831b4a', 'contract_extractor_v1.2.2')
+INFO  [sqlalchemy.engine.Engine] COMMIT
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT ai_audit_log.id, ai_audit_log.organization_id, ai_audit_log.user_id, ai_audit_log.action, ai_audit_log.tool, ai_audit_log.request_hash, ai_audit_log.parser_version, ai_audit_log.created_at 
+FROM ai_audit_log 
+WHERE ai_audit_log.id = ?
+INFO  [sqlalchemy.engine.Engine] [cached since 0.6882s ago] (33,)
+INFO  [sqlalchemy.engine.Engine] ROLLBACK
+INFO:     Stopping reloader process [72651]

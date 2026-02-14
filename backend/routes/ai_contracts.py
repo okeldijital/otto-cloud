@@ -55,6 +55,39 @@ async def extract_contract_endpoint(
     
     return extraction
 
+from schemas.ai_linking import (
+    ContractLinkSuggestRequestV1,
+    ContractLinkSuggestResponseV1
+)
+from services.ai.linking.link_suggest_v1 import suggest_links
+
+@router.post("/link_suggest", response_model=ContractLinkSuggestResponseV1, dependencies=[Depends(ensure_ai_contract_intel_enabled)])
+async def link_suggest_endpoint(
+    req: ContractLinkSuggestRequestV1,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Read-only pass: Match extraction results to existing Catalog/Network entities.
+    Returns suggested links with confidence scores.
+    """
+    extraction = req.extraction
+    
+    # Audit logging (hash only)
+    log_ai_request(
+        db=db,
+        org_id=current_user.organization_id,
+        user_id=current_user.id,
+        action="contract_link_suggest",
+        message=f"Link Suggest request for: {extraction.contract_title or 'Untitled'}",
+        tool="contract_linker",
+        parser_version=extraction.parser_version,
+        linker_version="link_suggest_v1.0.0"
+    )
+    
+    response = suggest_links(db, str(current_user.organization_id), extraction)
+    return response
+
 @router.post("/resolve", response_model=ResolvedContractProposalV1, dependencies=[Depends(ensure_ai_contract_intel_enabled)])
 async def resolve_contract_endpoint(
     req: ResolveRequestV1 = ResolveRequestV1(),

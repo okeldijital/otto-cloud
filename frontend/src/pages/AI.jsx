@@ -22,6 +22,10 @@ const AI = () => {
     const [proposals, setProposals] = useState(null);
     const [isResolving, setIsResolving] = useState(false);
 
+    // New Linking State (V1)
+    const [suggestions, setSuggestions] = useState(null);
+    const [isSuggesting, setIsSuggesting] = useState(false);
+
     const messagesEndRef = useRef(null);
     const fileInputRef = useRef(null);
     const navigate = useNavigate();
@@ -73,6 +77,7 @@ const AI = () => {
         setError(null);
         setExtraction(null);
         setProposals(null);
+        setSuggestions(null);
 
         try {
             const result = await aiClient.extractContract(file);
@@ -90,6 +95,7 @@ const AI = () => {
 
         setIsResolving(true);
         setError(null);
+        setSuggestions(null); // Clear manual suggestions if mostly redundant
 
         try {
             const result = await aiClient.resolveContract(extraction);
@@ -99,6 +105,24 @@ const AI = () => {
             setError(err.response?.data?.detail || 'Failed to resolve matches.');
         } finally {
             setIsResolving(false);
+        }
+    };
+
+    const handleSuggestLinks = async () => {
+        if (!extraction) return;
+        setIsSuggesting(true);
+        setError(null);
+        setProposals(null); // Clear old proposals
+        setSuggestions(null);
+
+        try {
+            const result = await aiClient.linkSuggest(extraction);
+            setSuggestions(result.suggestions);
+        } catch (err) {
+            console.error('Link Suggest error:', err);
+            setError(err.response?.data?.detail || 'Failed to suggest links.');
+        } finally {
+            setIsSuggesting(false);
         }
     };
 
@@ -305,16 +329,27 @@ const AI = () => {
                                         </div>
                                     )}
 
-                                    {!proposals && (
-                                        <button
-                                            onClick={handleResolve}
-                                            disabled={isResolving}
-                                            className="btn-primary"
-                                            style={{ padding: '1rem', borderRadius: '12px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
-                                        >
-                                            {isResolving ? <Loader size={18} className="spin" /> : <Search size={18} />}
-                                            Resolve Entities in Catalog & Network
-                                        </button>
+                                    {!proposals && !suggestions && (
+                                        <div style={{ display: 'flex', gap: '1rem' }}>
+                                            <button
+                                                onClick={handleResolve}
+                                                disabled={isResolving || isSuggesting}
+                                                className="btn-secondary"
+                                                style={{ flex: 1, padding: '1rem', borderRadius: '12px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', border: '1px solid #e5e7eb', background: 'white' }}
+                                            >
+                                                {isResolving ? <Loader size={18} className="spin" /> : <Search size={18} />}
+                                                Resolve (Legacy)
+                                            </button>
+                                            <button
+                                                onClick={handleSuggestLinks}
+                                                disabled={isResolving || isSuggesting}
+                                                className="btn-primary"
+                                                style={{ flex: 1, padding: '1rem', borderRadius: '12px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                                            >
+                                                {isSuggesting ? <Loader size={18} className="spin" /> : <Bot size={18} />}
+                                                Suggest Links (AI V1)
+                                            </button>
+                                        </div>
                                     )}
                                 </div>
                             )}
@@ -368,54 +403,130 @@ const AI = () => {
                 ) : (
                     <>
                         <h2 style={{ margin: '0 0 1.5rem 0', fontSize: '1.25rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <CheckCircle size={24} color="#7c3aed" /> Resolved Proposals
+                            <CheckCircle size={24} color="#7c3aed" /> Contract Links
                         </h2>
-                        {!proposals ? (
+                        {!proposals && !suggestions ? (
                             <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#9ca3af' }}>
                                 <AlertTriangle size={40} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
-                                <p>Extract a contract and click "Resolve" to see match proposals.</p>
+                                <p>Extract a contract and click "Suggest Links" to see matches.</p>
                             </div>
                         ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                                {proposals.proposed_network_entity_ids.length > 0 && (
-                                    <section>
-                                        <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}><Users size={16} /> Parties</h4>
-                                        {proposals.proposed_network_entity_ids.map((p, i) => (
-                                            <div key={i} onClick={() => handleEntityClick('network', p.entity_id)} style={{ padding: '0.75rem', border: '1px solid #e5e7eb', borderRadius: '8px', marginBottom: '0.5rem', cursor: 'pointer' }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
-                                                    {p.label} <span style={{ color: '#059669', fontSize: '0.8rem' }}>{(p.confidence * 100).toFixed(0)}% Match</span>
-                                                </div>
-                                                <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{p.reason}</div>
-                                            </div>
-                                        ))}
-                                    </section>
+                                {suggestions && (
+                                    <>
+                                        {(suggestions.parties?.length > 0 || suggestions.artists?.length > 0) && (
+                                            <section>
+                                                <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', color: '#4b5563' }}><Users size={16} /> Parties & Artists</h4>
+
+                                                {/* Parties (People/Orgs) */}
+                                                {suggestions.parties?.map((p, i) => (
+                                                    <div key={`p-${i}`} className="suggestion-card" style={{ padding: '0.75rem', border: '1px solid #e5e7eb', borderRadius: '8px', marginBottom: '0.5rem', background: '#f9fafb' }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
+                                                            {p.display_name}
+                                                            <span style={{
+                                                                color: p.confidence > 0.8 ? '#059669' : p.confidence > 0.5 ? '#d97706' : '#9ca3af',
+                                                                fontSize: '0.8rem',
+                                                                background: p.confidence > 0.8 ? '#ecfdf5' : '#fffbeb',
+                                                                padding: '2px 6px',
+                                                                borderRadius: '4px'
+                                                            }}>{(p.confidence * 100).toFixed(0)}%</span>
+                                                        </div>
+                                                        <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '4px' }}>
+                                                            {p.rationale} • {p.entity_type}
+                                                        </div>
+                                                    </div>
+                                                ))}
+
+                                                {/* Artists */}
+                                                {suggestions.artists?.map((a, i) => (
+                                                    <div key={`a-${i}`} className="suggestion-card" style={{ padding: '0.75rem', border: '1px solid #e5e7eb', borderRadius: '8px', marginBottom: '0.5rem', background: '#f9fafb' }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
+                                                            {a.display_name}
+                                                            <span style={{
+                                                                color: a.confidence > 0.8 ? '#059669' : '#d97706',
+                                                                fontSize: '0.8rem',
+                                                                background: a.confidence > 0.8 ? '#ecfdf5' : '#fffbeb',
+                                                                padding: '2px 6px',
+                                                                borderRadius: '4px'
+                                                            }}>{(a.confidence * 100).toFixed(0)}%</span>
+                                                        </div>
+                                                        <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '4px' }}>
+                                                            {a.rationale} • Artist
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </section>
+                                        )}
+
+                                        {(suggestions.tracks?.length > 0 || suggestions.works?.length > 0) && (
+                                            <section>
+                                                <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', color: '#4b5563' }}><FileText size={16} /> Works & Tracks</h4>
+                                                {suggestions.tracks?.map((t, i) => (
+                                                    <div key={`t-${i}`} className="suggestion-card" style={{ padding: '0.75rem', border: '1px solid #e5e7eb', borderRadius: '8px', marginBottom: '0.5rem', background: '#f9fafb' }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
+                                                            {t.display_name}
+                                                            <span style={{
+                                                                color: t.confidence > 0.8 ? '#059669' : '#d97706',
+                                                                fontSize: '0.8rem',
+                                                                background: t.confidence > 0.8 ? '#ecfdf5' : '#fffbeb',
+                                                                padding: '2px 6px',
+                                                                borderRadius: '4px'
+                                                            }}>{(t.confidence * 100).toFixed(0)}%</span>
+                                                        </div>
+                                                        <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '4px' }}>
+                                                            {t.rationale} • Track
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </section>
+                                        )}
+                                    </>
                                 )}
 
-                                {proposals.proposed_artist_ids.length > 0 && (
-                                    <section>
-                                        <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}><UserIcon size={16} /> Artists</h4>
-                                        {proposals.proposed_artist_ids.map((p, i) => (
-                                            <div key={i} onClick={() => handleEntityClick('artist', p.entity_id)} style={{ padding: '0.75rem', border: '1px solid #e5e7eb', borderRadius: '8px', marginBottom: '0.5rem', cursor: 'pointer' }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
-                                                    {p.label} <span style={{ color: '#059669', fontSize: '0.8rem' }}>{(p.confidence * 100).toFixed(0)}%</span>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </section>
-                                )}
+                                {proposals && (
+                                    /* Legacy Proposals View */
+                                    <>
+                                        {proposals.proposed_network_entity_ids.length > 0 && (
+                                            <section>
+                                                <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}><Users size={16} /> Parties</h4>
+                                                {proposals.proposed_network_entity_ids.map((p, i) => (
+                                                    <div key={i} onClick={() => handleEntityClick('network', p.entity_id)} style={{ padding: '0.75rem', border: '1px solid #e5e7eb', borderRadius: '8px', marginBottom: '0.5rem', cursor: 'pointer' }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
+                                                            {p.label} <span style={{ color: '#059669', fontSize: '0.8rem' }}>{(p.confidence * 100).toFixed(0)}% Match</span>
+                                                        </div>
+                                                        <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{p.reason}</div>
+                                                    </div>
+                                                ))}
+                                            </section>
+                                        )}
 
-                                {extraction.splits.length > 0 && (
-                                    <section>
-                                        <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}><Percent size={16} /> Extracted Splits</h4>
-                                        {extraction.splits.map((s, i) => (
-                                            <div key={i} style={{ padding: '0.75rem', border: '1px solid #fee2e2', borderRadius: '8px', marginBottom: '0.5rem', background: '#fff1f1' }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
-                                                    {s.party_name} <span style={{ color: '#dc2626' }}>{s.percent}%</span>
-                                                </div>
-                                                <div style={{ fontSize: '0.75rem', color: '#b91c1c' }}>{s.split_type} - {s.party_role || 'No Role'}</div>
-                                            </div>
-                                        ))}
-                                    </section>
+                                        {proposals.proposed_artist_ids.length > 0 && (
+                                            <section>
+                                                <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}><UserIcon size={16} /> Artists</h4>
+                                                {proposals.proposed_artist_ids.map((p, i) => (
+                                                    <div key={i} onClick={() => handleEntityClick('artist', p.entity_id)} style={{ padding: '0.75rem', border: '1px solid #e5e7eb', borderRadius: '8px', marginBottom: '0.5rem', cursor: 'pointer' }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
+                                                            {p.label} <span style={{ color: '#059669', fontSize: '0.8rem' }}>{(p.confidence * 100).toFixed(0)}%</span>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </section>
+                                        )}
+
+                                        {extraction.splits.length > 0 && (
+                                            <section>
+                                                <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}><Percent size={16} /> Extracted Splits</h4>
+                                                {extraction.splits.map((s, i) => (
+                                                    <div key={i} style={{ padding: '0.75rem', border: '1px solid #fee2e2', borderRadius: '8px', marginBottom: '0.5rem', background: '#fff1f1' }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
+                                                            {s.party_name} <span style={{ color: '#dc2626' }}>{s.percent}%</span>
+                                                        </div>
+                                                        <div style={{ fontSize: '0.75rem', color: '#b91c1c' }}>{s.split_type} - {s.party_role || 'No Role'}</div>
+                                                    </div>
+                                                ))}
+                                            </section>
+                                        )}
+                                    </>
                                 )}
                             </div>
                         )}

@@ -25,11 +25,13 @@ def log_ai_request(
     action: str,
     message: str,
     tool: str = None,
-    parser_version: str = None
+    parser_version: str = None,
+    linker_version: str = None
 ) -> AIAuditLog:
     """
     Log AI request to audit table.
     Does NOT store full prompt - only metadata and hash.
+    linker_version is appended to tool string if provided (schema drift avoidance).
     """
     # Ensure org_id is a UUID object for consistent audit hashing
     if isinstance(org_id, int):
@@ -37,6 +39,10 @@ def log_ai_request(
         
     if not isinstance(org_id, UUID):
         raise ValueError(f"Invalid organization_id type: {type(org_id)}")
+
+    # Append linker version to tool if present
+    if linker_version:
+        tool = f"{tool}:{linker_version}" if tool else f"linker:{linker_version}"
 
     request_hash = create_request_hash(org_id, user_id, message)
     
