@@ -1,7 +1,7 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Table, Enum
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Table, Enum, Uuid
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from database import Base
+from database import Base, SafeUuid
 import enum
 
 # Helper table for Multi-affiliation: one person -> many orgs
@@ -40,6 +40,7 @@ class Organization(Base):
     __tablename__ = "organizations"
     
     id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(SafeUuid, nullable=False, index=True)
     name = Column(String(255), nullable=False, index=True)
     org_type = Column(String(100), index=True) # Distributor, Publisher, etc.
     website = Column(String(255))
@@ -62,6 +63,7 @@ class Individual(Base):
     __tablename__ = "individuals"
     
     id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(SafeUuid, nullable=False, index=True)
     first_name = Column(String(100))
     last_name = Column(String(100))
     email = Column(String(255), index=True)

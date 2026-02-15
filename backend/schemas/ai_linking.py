@@ -3,7 +3,7 @@ from typing import List, Optional, Literal, Dict
 from schemas.ai_contracts import ContractExtractionV1
 
 class EntitySuggestion(BaseModel):
-    entity_type: Literal["artist", "party", "organization", "track", "work"]
+    entity_type: Literal["artist", "individual", "party", "organization", "track", "work"]
     entity_id: Optional[str] = None
     display_name: str
     confidence: float

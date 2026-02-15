@@ -95,8 +95,8 @@ def main():
 
 def check_ai_unscoped_queries():
     """
-    Verify AI linking services do not query global Network entities (Individual, Organization)
-    without tenant isolation. Currently, since these models lack org_id, ANY query is a violation.
+    Verify AI linking services do not query Network entities (Individual, Organization)
+    without tenant isolation. All such queries must include an 'organization_id' filter.
     """
     project_root = Path(__file__).resolve().parent.parent
     linking_root = project_root / "backend/services/ai/linking"
@@ -107,7 +107,7 @@ def check_ai_unscoped_queries():
     if not linking_root.exists():
         return violations
 
-    for root, dirs, files in os.walk(linking_root):
+    for root, _, files in os.walk(linking_root):
         for file in files:
             if not file.endswith(".py"):
                 continue
@@ -120,12 +120,27 @@ def check_ai_unscoped_queries():
             
             for node in ast.walk(tree):
                 if isinstance(node, ast.Call):
-                    # Check for db.query(Model)
+                    # Check for db.query(Individual) / db.query(Organization)
+                    is_risky_query = False
+                    model_name = ""
                     if isinstance(node.func, ast.Attribute) and node.func.attr == "query":
-                        # db.query(...) - check args
                         for arg in node.args:
                             if isinstance(arg, ast.Name) and arg.id in risky_models:
-                                violations.append(f"Unscoped query violation in services/ai/linking/{rel_path}: db.query({arg.id}) at line {node.lineno}. Network queries must be scoped or disabled.")
+                                is_risky_query = True
+                                model_name = arg.id
+                    
+                    if is_risky_query:
+                        # Heuristic: Find if 'organization_id' is present in the line or nearby.
+                        # For AI Link hardening, we require it to be on the same logical expression.
+                        with open(full_path, "r") as f:
+                            lines = f.readlines()
+                            # Check current and next 2 lines for 'organization_id'
+                            start_l = max(0, node.lineno - 1)
+                            end_l = min(len(lines), node.lineno + 2)
+                            context = "".join(lines[start_l:end_l])
+                            
+                            if "organization_id" not in context:
+                                violations.append(f"Unscoped query violation in services/ai/linking/{rel_path}: db.query({model_name}) at line {node.lineno} missing organization_id filter.")
     
     return violations
 

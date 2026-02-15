@@ -105,18 +105,42 @@ def suggest_links(db: Session, org_id: str, extraction: ContractExtractionV1) ->
                 )
                 add_suggestion("artists", sugg)
 
-        # Search Individuals (Global in current schema - DISABLED for isolation)
-        # un-scoped queries disabled until Network V2 adds organization_id
-        # persons = db.query(Individual).all() 
+        # Search Individuals (Scoped)
+        individuals = db.query(Individual).filter(Individual.organization_id == org_id).all()
+        for ind in individuals:
+            ind_norm = normalize_name(ind.full_name)
+            conf, strat, rat = calculate_match_confidence(norm_name, ind_norm)
+            if conf > 0.5:
+                sugg = EntitySuggestion(
+                    entity_type="individual",
+                    entity_id=str(ind.id),
+                    display_name=ind.full_name,
+                    confidence=conf,
+                    match_strategy=strat,
+                    rationale=rat,
+                    fields_matched=["name"]
+                )
+                add_suggestion("parties", sugg)
         
-        # Search Organizations (Global in current schema - DISABLED for isolation)
-        # un-scoped queries disabled until Network V2 adds organization_id
-        # orgs = db.query(Organization).all()
+        # Search Organizations (Scoped)
+        orgs = db.query(Organization).filter(Organization.organization_id == org_id).all()
+        for o in orgs:
+            o_norm = normalize_name(o.name)
+            conf, strat, rat = calculate_match_confidence(norm_name, o_norm)
+            if conf > 0.5:
+                sugg = EntitySuggestion(
+                    entity_type="organization",
+                    entity_id=str(o.id),
+                    display_name=o.name,
+                    confidence=conf,
+                    match_strategy=strat,
+                    rationale=rat,
+                    fields_matched=["name"]
+                )
+                add_suggestion("organizations", sugg)
         
     # Warn about disabled network suggestions
     warnings = []
-    # Check if network models are effectively disabled (always true for now)
-    warnings.append("network_suggestions_disabled_unscoped_models")
 
     # 2. Works/Tracks Hints
     # Extraction might have work_hints: artists, tracks, releases
