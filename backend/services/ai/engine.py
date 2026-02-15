@@ -36,7 +36,7 @@ class NullEngine(AIEngine):
         system: str, 
         user: str
     ) -> T:
-        logging.error("AI provider not configured. Attempted complete_json.")
+        logging.getLogger(__name__).debug("AI provider not configured. Attempted complete_json.")
         raise AIError("AI provider not configured. Please check your environment settings.")
 
 def get_ai_engine() -> AIEngine:

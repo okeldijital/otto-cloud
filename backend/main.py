@@ -4,6 +4,7 @@ import logging
 from typing import List
 from pathlib import Path
 import uuid
+from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI, Request
@@ -35,7 +36,34 @@ from governance import run_preflight_checks, GovernanceError # noqa: E402
 # -----------------------------
 # App Init
 # -----------------------------
-app = FastAPI(title=getattr(settings, "APP_NAME", "OTTO"), version=getattr(settings, "APP_VERSION", "0.1.0"))
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Execute startup tasks: logging, DB init, migrations, seeding."""
+    _configure_logging()
+
+    try:
+        init_db()
+    except Exception as e:
+        logging.error(f"❌ DB init failed: {e}")
+
+    _run_migrations()
+
+    logging.getLogger("passlib.handlers.bcrypt").setLevel(logging.ERROR)
+    _seed_admin_user()
+
+    try:
+        run_preflight_checks()
+    except Exception as e:
+        logging.critical(f"🛑 Preflight checks failed: {e}")
+        raise RuntimeError(f"Startup failed: {e}")
+
+    yield
+
+app = FastAPI(
+    title=getattr(settings, "APP_NAME", "OTTO"),
+    version=getattr(settings, "APP_VERSION", "0.1.0"),
+    lifespan=lifespan,
+)
 
 @app.get("/api/health")
 async def api_health():
@@ -343,33 +371,6 @@ else:
     except Exception as e:
         logging.critical(f"🛑 Startup Failed: {e}")
         raise e
-
-@app.on_event("startup")
-async def startup_event():
-    """Execute startup tasks: logging, DB init, migrations, seeding."""
-    _configure_logging()
-    
-    # Init DB
-    try:
-        init_db()
-    except Exception as e:
-        logging.error(f"❌ DB init failed: {e}")
-
-    # Run migrations (best-effort for SQLite)
-    _run_migrations()
-
-    # Seed admin (best-effort)
-    import warnings
-    logging.getLogger("passlib.handlers.bcrypt").setLevel(logging.ERROR)
-    _seed_admin_user()
-    
-    # Governance checks
-    try:
-        run_preflight_checks()
-    except Exception as e:
-        logging.critical(f"🛑 Preflight checks failed: {e}")
-        # We can't easily sys.exit here without killing the worker, but raising exception works.
-        raise RuntimeError(f"Startup failed: {e}")
 
 # -----------------------------
 # Desktop/CLI entry point

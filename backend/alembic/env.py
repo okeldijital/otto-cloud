@@ -19,8 +19,11 @@ from models import *  # Import all models so Base.metadata is populated
 # access to the values within the .ini file in use.
 config = context.config
 
-# Overwrite the sqlalchemy.url in the config with the one from settings
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+# Prefer an explicit sqlalchemy.url passed via Alembic Config (e.g. tests),
+# otherwise fall back to settings.DATABASE_URL.
+configured_url = config.get_main_option("sqlalchemy.url")
+if not configured_url or configured_url.startswith("driver://"):
+    config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

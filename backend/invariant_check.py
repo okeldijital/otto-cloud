@@ -90,7 +90,7 @@ def main():
             print(f"❌ {v}")
         sys.exit(1)
     else:
-        print("✅ AI invariants pass (No drift, No writes, No unscoped network queries).")
+        print("✅ AI invariants pass (No drift, No writes in AI tools to production DB, No unscoped network queries).")
         sys.exit(0)
 
 def check_ai_unscoped_queries():

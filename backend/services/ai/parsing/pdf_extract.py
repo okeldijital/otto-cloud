@@ -1,7 +1,15 @@
 import hashlib
 import io
-import PyPDF2
+import warnings
 from typing import Dict, Any
+
+warnings.filterwarnings(
+    "ignore",
+    category=DeprecationWarning,
+    module=r"^PyPDF2(\.|$)",
+)
+
+import PyPDF2
 
 def extract_text_from_pdf(pdf_bytes: bytes) -> Dict[str, Any]:
     """
