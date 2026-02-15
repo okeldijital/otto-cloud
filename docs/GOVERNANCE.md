@@ -20,6 +20,9 @@ Canonical DB path:
 Forbidden:
 - any DB files inside repo (backend/app.db, backend/otto.db, etc.)
 
+**UUID Storage**:
+- SQLite stores UUIDs via SafeUuid as integer (uuid.int). Migrations must backfill using UUID-derived int constants, never raw integers.
+
 ## Ports
 No fixed ports. Must pick free ports dynamically for:
 - local control server

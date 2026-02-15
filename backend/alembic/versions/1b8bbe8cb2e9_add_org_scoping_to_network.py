@@ -18,26 +18,37 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+import uuid
+
+DEV_ORG_UUID = uuid.UUID("00000000-0000-0000-0000-000000000001")
+DEV_ORG_INT = DEV_ORG_UUID.int  # SafeUuid stores UUIDs as int in SQLite
+
+
 def upgrade() -> None:
-    # 1. Add columns as nullable first to allow existing rows
-    with op.batch_alter_table('organizations') as batch_op:
-        batch_op.add_column(sa.Column('organization_id', sa.Integer(), nullable=True))
-        batch_op.create_index(batch_op.f('ix_organizations_organization_id'), ['organization_id'], unique=False)
-        
-    with op.batch_alter_table('individuals') as batch_op:
-        batch_op.add_column(sa.Column('organization_id', sa.Integer(), nullable=True))
-        batch_op.create_index(batch_op.f('ix_individuals_organization_id'), ['organization_id'], unique=False)
+    # 1. Add columns as nullable first
+    op.add_column("organizations", sa.Column("organization_id", sa.Integer(), nullable=True))
+    op.add_column("individuals", sa.Column("organization_id", sa.Integer(), nullable=True))
 
-    # 2. Backfill with DEV_ORG_ID = 1
-    op.execute("UPDATE organizations SET organization_id = 1 WHERE organization_id IS NULL")
-    op.execute("UPDATE individuals SET organization_id = 1 WHERE organization_id IS NULL")
+    # 2. Backfill with UUID constant
+    op.execute(
+        sa.text("UPDATE organizations SET organization_id = :org WHERE organization_id IS NULL")
+        .bindparams(org=DEV_ORG_INT)
+    )
+    op.execute(
+        sa.text("UPDATE individuals SET organization_id = :org WHERE organization_id IS NULL")
+        .bindparams(org=DEV_ORG_INT)
+    )
 
-    # 3. Set NOT NULL
-    with op.batch_alter_table('organizations') as batch_op:
-        batch_op.alter_column('organization_id', nullable=False)
-        
-    with op.batch_alter_table('individuals') as batch_op:
-        batch_op.alter_column('organization_id', nullable=False)
+    # 3. Set NOT NULL (requires batch for SQLite)
+    with op.batch_alter_table("organizations") as batch_op:
+        batch_op.alter_column("organization_id", existing_type=sa.Integer(), nullable=False)
+    
+    with op.batch_alter_table("individuals") as batch_op:
+        batch_op.alter_column("organization_id", existing_type=sa.Integer(), nullable=False)
+
+    # 4. Create Indexes
+    op.create_index("ix_organizations_organization_id", "organizations", ["organization_id"])
+    op.create_index("ix_individuals_organization_id", "individuals", ["organization_id"])
 
 
 def downgrade() -> None:
