@@ -151,3 +151,16 @@ def test_resolve_cross_org_isolation(client, db, monkeypatch):
     
     run = db.query(AIContractResolutionRun).filter(AIContractResolutionRun.id == run_id).first()
     assert run.organization_id == org_id
+
+def test_resolve_get_returns_404_even_when_enabled(client, db, monkeypatch):
+    """Confirm GET /resolve returns 404 even when enabled (parity check)"""
+    monkeypatch.setattr("config.settings.AI_ENABLED", True)
+    monkeypatch.setattr("config.settings.AI_CONTRACT_INTEL_ENABLED", True)
+    monkeypatch.setattr("config.settings.AI_CONTRACT_RESOLVE_ENABLED", True)
+    
+    org_id = uuid.UUID(int=1004)
+    user = get_test_user(db, "user_get@example.com", org_id)
+    app.dependency_overrides[get_current_user] = lambda: user
+    
+    response = client.get("/api/ai/contracts/resolve")
+    assert response.status_code == 404

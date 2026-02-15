@@ -39,6 +39,7 @@ class TestAIContractsEnabled:
     def setup_method(self):
         settings.AI_ENABLED = True
         settings.AI_CONTRACT_INTEL_ENABLED = True
+        settings.AI_CONTRACT_RESOLVE_ENABLED = True
 
     def test_extract_endpoint_exists(self, mock_pdf):
         # We expect a 200 if the route exists and we're auto-authenticated in this environment
@@ -49,11 +50,15 @@ class TestAIContractsEnabled:
         assert response.status_code == 200
 
     def test_resolve_endpoint_exists(self):
-        # We expect a 200 with no-op response if payload is empty
-        # ResolveRequestV1() default returns needs_review=True
-        response = client.post("/api/ai/contracts/resolve", json={})
+        # We expect a 200 if payload is valid and resolver is enabled
+        payload = {
+            "contract_hash": "test_hash",
+            "extractor_version": "v1",
+            "linker_version": "v1",
+            "decisions": []
+        }
+        response = client.post("/api/ai/contracts/resolve", json=payload)
         assert response.status_code == 200
-        assert response.json()["needs_review"] is True
 
 # Note: Integration tests requiring auth and DB would follow the pattern in test_ai.py
 # but target the /api/ai/contracts/* endpoints.

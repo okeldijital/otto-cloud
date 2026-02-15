@@ -64,7 +64,7 @@ from schemas.ai_linking import (
 from services.ai.linking.link_suggest_v1 import suggest_links
 from services.ai.resolution.persist import persist_resolution_results
 
-def ensure_ai_resolve_enabled():
+def ensure_ai_contract_resolve_enabled():
     """Dependency to check if contract resolution persistence is enabled"""
     if not settings.AI_ENABLED or not settings.AI_CONTRACT_INTEL_ENABLED or not settings.AI_CONTRACT_RESOLVE_ENABLED:
         raise HTTPException(
@@ -99,7 +99,7 @@ async def link_suggest_endpoint(
     response = suggest_links(db, str(current_user.organization_id), extraction)
     return response
 
-@router.post("/resolve", response_model=AIResolutionResponseV1, dependencies=[Depends(ensure_ai_resolve_enabled)])
+@router.post("/resolve", response_model=AIResolutionResponseV1, dependencies=[Depends(ensure_ai_contract_resolve_enabled)])
 async def resolve_contract_endpoint(
     req: AIResolutionRequestV1,
     db: Session = Depends(get_db),
@@ -129,3 +129,11 @@ async def resolve_contract_endpoint(
     )
     
     return AIResolutionResponseV1(run_id=run_id)
+
+@router.get("/resolve", dependencies=[Depends(ensure_ai_contract_resolve_enabled)])
+async def resolve_contract_get_shim():
+    """
+    GET shim to prevent 405 Method Not Allowed leak.
+    Always returns 404 to keep behavior consistent with 'disabled' state.
+    """
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not Found")
