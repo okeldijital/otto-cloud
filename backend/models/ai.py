@@ -50,3 +50,34 @@ class AIAuditLog(Base):
     
     def __repr__(self):
         return f"<AIAuditLog {self.id} action={self.action}>"
+
+
+class AIContractResolutionRun(Base):
+    """Stores a single execution of the resolution/linking flow"""
+    __tablename__ = "ai_contract_resolution_runs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(Uuid(as_uuid=True), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    contract_hash = Column(String(64), nullable=False, index=True)
+    extractor_version = Column(String(50), nullable=True)
+    linker_version = Column(String(50), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+    links = relationship("AIContractResolutionLink", back_populates="run", cascade="all, delete-orphan")
+
+
+class AIContractResolutionLink(Base):
+    """Stores individual link/ignore decisions within a resolution run"""
+    __tablename__ = "ai_contract_resolution_links"
+
+    id = Column(Integer, primary_key=True, index=True)
+    run_id = Column(Integer, ForeignKey("ai_contract_resolution_runs.id"), nullable=False, index=True)
+    entity_type = Column(String(50), nullable=False)  # 'artist', 'individual', 'organization', etc.
+    entity_id = Column(Integer, nullable=True)  # Can be NULL if action is 'ignore' with no entity
+    action = Column(String(20), nullable=False)  # 'link' or 'ignore'
+    confidence = Column(Integer, nullable=True) # 0-100 score if applicable
+    rationale = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    run = relationship("AIContractResolutionRun", back_populates="links")

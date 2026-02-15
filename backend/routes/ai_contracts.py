@@ -57,9 +57,20 @@ async def extract_contract_endpoint(
 
 from schemas.ai_linking import (
     ContractLinkSuggestRequestV1,
-    ContractLinkSuggestResponseV1
+    ContractLinkSuggestResponseV1,
+    AIResolutionRequestV1,
+    AIResolutionResponseV1
 )
 from services.ai.linking.link_suggest_v1 import suggest_links
+from services.ai.resolution.persist import persist_resolution_results
+
+def ensure_ai_resolve_enabled():
+    """Dependency to check if contract resolution persistence is enabled"""
+    if not settings.AI_ENABLED or not settings.AI_CONTRACT_INTEL_ENABLED or not settings.AI_CONTRACT_RESOLVE_ENABLED:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="AI module disabled"
+        )
 
 @router.post("/link_suggest", response_model=ContractLinkSuggestResponseV1, dependencies=[Depends(ensure_ai_contract_intel_enabled)])
 async def link_suggest_endpoint(
@@ -88,33 +99,33 @@ async def link_suggest_endpoint(
     response = suggest_links(db, str(current_user.organization_id), extraction)
     return response
 
-@router.post("/resolve", response_model=ResolvedContractProposalV1, dependencies=[Depends(ensure_ai_contract_intel_enabled)])
+@router.post("/resolve", response_model=AIResolutionResponseV1, dependencies=[Depends(ensure_ai_resolve_enabled)])
 async def resolve_contract_endpoint(
-    req: ResolveRequestV1 = ResolveRequestV1(),
+    req: AIResolutionRequestV1,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
-    Resolve extracted metadata against database entities.
-    Returns proposals only (no DB writes).
-    Supports empty payload for existence/health checks.
+    Persist link/ignore decisions to the database.
+    Governed: Does not modify core models.
     """
-    if not req.extraction and not req.contract_id:
-        return ResolvedContractProposalV1(needs_review=True)
-        
     # Audit logging
     log_ai_request(
         db=db,
         org_id=current_user.organization_id,
         user_id=current_user.id,
-        action="contract_resolution",
-        message=f"Resolved extraction for: {req.extraction.contract_title if req.extraction else 'Untitled'}",
+        action="contract_resolution_persist",
+        message=f"Persisted resolution for: {req.contract_hash}",
         tool="contract_resolver",
-        parser_version="contract_resolver_v1.2.2"
+        parser_version=req.extractor_version,
+        linker_version=req.linker_version
     )
     
-    if req.extraction:
-        proposal = resolve_entities(db, current_user.organization_id, req.extraction)
-        return proposal
+    run_id = persist_resolution_results(
+        db=db,
+        org_id=current_user.organization_id,
+        user_id=current_user.id,
+        req=req
+    )
     
-    return ResolvedContractProposalV1(needs_review=True)
+    return AIResolutionResponseV1(run_id=run_id)

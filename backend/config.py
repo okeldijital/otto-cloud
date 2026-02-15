@@ -49,6 +49,7 @@ class Settings(BaseSettings):
     # AI Features (Phase 1: Read-only)
     AI_ENABLED: bool = False
     AI_CONTRACT_INTEL_ENABLED: bool = False
+    AI_CONTRACT_RESOLVE_ENABLED: bool = False
 
     def __init__(self, **values):
         super().__init__(**values)

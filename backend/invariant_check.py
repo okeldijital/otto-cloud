@@ -43,36 +43,66 @@ def check_ai_writes():
     """Verify AI services do not perform write operations (except approved)."""
     project_root = Path(__file__).resolve().parent.parent
     ai_services_root = project_root / "backend/services/ai"
+    ai_routes_root = project_root / "backend/routes"
     
-    # Exceptions: audit logging and explicit tools if validated
-    allowed_files = {
+    # Approved locations for mediated persistence
+    allowed_services = {
         "audit.py",
-        "linking/commit_service.py" # Future proofing
+        "resolution/persist.py"
+    }
+    allowed_routes = {
+        "ai_contracts.py"
+    }
+
+    # Prohibited models for AI-initiated writes
+    forbidden_write_models = {
+        "Organization", "Individual", "Artist", "Release", "Track", "Work", 
+        "Contract", "PRO", "Label", "Publisher", "Royalty"
     }
     
     violations = []
     forbidden_methods = {"add", "commit", "delete", "execute"}
     
+    # 1. Check AI Services
     for root, dirs, files in os.walk(ai_services_root):
         for file in files:
             if not file.endswith(".py"):
                 continue
                 
             rel_path = os.path.relpath(os.path.join(root, file), ai_services_root)
-            if rel_path in allowed_files:
-                continue
-                
+            is_allowed = rel_path in allowed_services
+            
             full_path = Path(root) / file
             tree = get_ast(full_path)
             if not tree: continue
             
             for node in ast.walk(tree):
                 if isinstance(node, ast.Call):
-                    # Detect db.add(), db.commit(), etc.
-                    if isinstance(node.func, ast.Attribute):
-                        if node.func.attr in forbidden_methods:
-                            # Heuristic: mostly catching SQLAlchemy session calls
+                    if isinstance(node.func, ast.Attribute) and node.func.attr in forbidden_methods:
+                        if not is_allowed:
                             violations.append(f"Write violation in services/ai/{rel_path}: .{node.func.attr}() at line {node.lineno}")
+                        
+                        # Extra check: Even if in allowed service, must NOT add prohibited models
+                        if node.func.attr == "add":
+                            for arg in node.args:
+                                if isinstance(arg, ast.Call) and isinstance(arg.func, ast.Name):
+                                    if arg.func.id in forbidden_write_models:
+                                        violations.append(f"Integrity violation in services/ai/{rel_path}: AI attempted write to core model {arg.func.id} at line {node.lineno}")
+
+    # 2. Check AI Routes (e.g. ai_contracts.py)
+    # Note: Generally routes should not query DB directly, but OTTO V1 allows it for audit/runs.
+    for file in allowed_routes:
+        full_path = ai_routes_root / file
+        tree = get_ast(full_path)
+        if not tree: continue
+        
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call):
+               if isinstance(node.func, ast.Attribute) and node.func.attr == "add":
+                    for arg in node.args:
+                        if isinstance(arg, ast.Call) and isinstance(arg.func, ast.Name):
+                            if arg.func.id in forbidden_write_models:
+                                violations.append(f"Integrity violation in routes/{file}: AI route attempted write to core model {arg.func.id} at line {node.lineno}")
 
     return violations
 

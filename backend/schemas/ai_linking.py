@@ -20,3 +20,24 @@ class ContractLinkSuggestResponseV1(BaseModel):
     suggestions: Dict[str, List[EntitySuggestion]] = {}
     warnings: List[str] = []
     needs_review: bool = True
+
+
+class LinkDecision(BaseModel):
+    entity_type: str
+    entity_id: Optional[int] = None
+    display_name: str # The name from the contract or chosen alias
+    action: Literal["link", "ignore"]
+    confidence: Optional[int] = None
+    rationale: Optional[str] = None
+
+
+class AIResolutionRequestV1(BaseModel):
+    contract_hash: str
+    extractor_version: str
+    linker_version: str
+    decisions: List[LinkDecision]
+
+
+class AIResolutionResponseV1(BaseModel):
+    status: str = "persisted"
+    run_id: int

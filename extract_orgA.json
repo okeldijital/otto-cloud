@@ -1,0 +1,28 @@
+{
+    "contract_title": "E2E Scoping Test Contract",
+    "contract_id": null,
+    "effective_date": "2023-06-13",
+    "parties": [
+        {
+            "display_name": "M2KR Records",
+            "role": "Label"
+        },
+        {
+            "display_name": "John Producer",
+            "role": "Producer"
+        },
+        {
+            "display_name": "Oddxperienc",
+            "role": "Artist"
+        }
+    ],
+    "splits": [],
+    "works_hints": {
+        "artists": [
+            "Oddxperienc"
+        ],
+        "tracks": [],
+        "releases": []
+    },
+    "parser_version": "test_e2e"
+}
