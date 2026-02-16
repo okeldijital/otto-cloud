@@ -1,0 +1,42 @@
+curl -i http://127.0.0.1:8000/api/ai/analytics/summary  # disabled
+status=404
+{
+  "detail": "Not Found"
+}
+
+curl -i http://127.0.0.1:8000/api/ai/analytics/summary  # enabled
+status=200
+{
+  "org_id": "00000000-0000-0000-0000-00000000a001",
+  "organization_id": "00000000-0000-0000-0000-00000000a001",
+  "generated_at": "2026-02-16T17:43:21.914093+00:00",
+  "analytics_version": "analytics_v1",
+  "contracts_processed_count": 2,
+  "resolution_runs_count": 2,
+  "links_persisted_count": 1,
+  "unresolved_count": 1
+}
+
+curl -i 'http://127.0.0.1:8000/api/ai/analytics/contracts?limit=50'  # enabled
+status=200
+{
+  "org_id": "00000000-0000-0000-0000-00000000a001",
+  "organization_id": "00000000-0000-0000-0000-00000000a001",
+  "analytics_version": "analytics_v1",
+  "contracts": [
+    {
+      "run_id": 2,
+      "contract_id": null,
+      "created_at": "2026-02-16T17:43:21",
+      "links_count": 0,
+      "needs_review": true
+    },
+    {
+      "run_id": 1,
+      "contract_id": null,
+      "created_at": "2026-02-16T17:43:21",
+      "links_count": 1,
+      "needs_review": false
+    }
+  ]
+}

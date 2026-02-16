@@ -134,6 +134,7 @@ from routes import (  # noqa: E402
     config,
     ai,
     ai_contracts,
+    ai_analytics,
 )
 
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
@@ -168,6 +169,7 @@ app.include_router(config.router, prefix="/api", tags=["Configuration"])
 # AI Router - Always mounted, features gated internally
 app.include_router(ai.router, prefix="/api/ai", tags=["AI"])
 app.include_router(ai_contracts.router, prefix="/api/ai/contracts", tags=["AI Contracts"])
+app.include_router(ai_analytics.router, prefix="/api/ai/analytics", tags=["AI Analytics"])
 logging.info("🤖 AI modules mounted")
 
 # -----------------------------

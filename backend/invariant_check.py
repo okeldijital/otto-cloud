@@ -112,8 +112,9 @@ def main():
     drift_violations = check_ai_drift()
     write_violations = check_ai_writes()
     unscoped_violations = check_ai_unscoped_queries()
+    analytics_violations = check_ai_analytics_governance()
     
-    all_violations = drift_violations + write_violations + unscoped_violations
+    all_violations = drift_violations + write_violations + unscoped_violations + analytics_violations
     
     if all_violations:
         for v in all_violations:
@@ -172,6 +173,84 @@ def check_ai_unscoped_queries():
                             if "organization_id" not in context:
                                 violations.append(f"Unscoped query violation in services/ai/linking/{rel_path}: db.query({model_name}) at line {node.lineno} missing organization_id filter.")
     
+    return violations
+
+
+def check_ai_analytics_governance():
+    """
+    Verify analytics v1 remains read-only and org-scoped.
+    Scope:
+      - backend/routes/ai_analytics.py
+      - backend/services/ai/analytics/*.py
+    """
+    project_root = Path(__file__).resolve().parent.parent
+    targets = [project_root / "backend/routes/ai_analytics.py"]
+    analytics_root = project_root / "backend/services/ai/analytics"
+    if analytics_root.exists():
+        for root, _, files in os.walk(analytics_root):
+            for file in files:
+                if file.endswith(".py"):
+                    targets.append(Path(root) / file)
+
+    violations = []
+    mutating_methods = {"add", "commit", "delete"}
+    org_scope_models = {"AIAuditLog", "AIContractResolutionRun"}
+
+    for path in targets:
+        if not path.exists():
+            continue
+        tree = get_ast(path)
+        if not tree:
+            continue
+
+        rel = os.path.relpath(path, project_root / "backend")
+        with open(path, "r") as f:
+            lines = f.readlines()
+
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+
+            if isinstance(node.func, ast.Attribute):
+                method = node.func.attr
+
+                if method in mutating_methods:
+                    violations.append(
+                        f"Analytics read-only violation in {rel}: .{method}() at line {node.lineno}"
+                    )
+
+                if method == "execute" and node.args:
+                    arg0 = node.args[0]
+                    sql_text = ""
+                    if isinstance(arg0, ast.Constant) and isinstance(arg0.value, str):
+                        sql_text = arg0.value.lower()
+                    elif isinstance(arg0, ast.Call) and arg0.args:
+                        inner = arg0.args[0]
+                        if isinstance(inner, ast.Constant) and isinstance(inner.value, str):
+                            sql_text = inner.value.lower()
+                    if any(keyword in sql_text for keyword in ("insert", "update", "delete")):
+                        violations.append(
+                            f"Analytics mutation violation in {rel}: db.execute mutating SQL at line {node.lineno}"
+                        )
+
+                if method == "query":
+                    touched_models = []
+                    for arg in node.args:
+                        if isinstance(arg, ast.Name) and arg.id in org_scope_models:
+                            touched_models.append(arg.id)
+                        if isinstance(arg, ast.Attribute) and isinstance(arg.value, ast.Name):
+                            if arg.value.id in org_scope_models:
+                                touched_models.append(arg.value.id)
+                    if touched_models:
+                        start_l = max(0, node.lineno - 1)
+                        end_l = min(len(lines), node.lineno + 10)
+                        context = "".join(lines[start_l:end_l]).replace(" ", "")
+                        if "organization_id==org_id" not in context:
+                            model_csv = ",".join(sorted(set(touched_models)))
+                            violations.append(
+                                f"Analytics org-scope violation in {rel}: query touches {model_csv} without organization_id == org_id near line {node.lineno}"
+                            )
+
     return violations
 
 if __name__ == "__main__":
