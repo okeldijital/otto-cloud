@@ -1,0 +1,10 @@
+db=/Users/m2krproduction/.otto/data/db/otto.sqlite
+runs_total=10
+links_total=5
+
+latest_run:
+{'id': 10, 'organization_id': '00000000000000000000000000000001', 'user_id': 1, 'contract_hash': 'f3f129b3faed5a1c1d4071adca2faec2a0c91907d47767ba15acc85aa804b812', 'extractor_version': 'deterministic_v1', 'linker_version': 'link_suggest_v1.0.0', 'created_at': '2026-02-16 17:31:54'}
+
+latest_run_links (run_id=10):
+{'id': 4, 'run_id': 10, 'entity_type': 'party', 'entity_id': None, 'display_name': 'Unknown Party', 'name': None, 'action': 'link', 'confidence': None, 'rationale': 'smoke', 'created_at': '2026-02-16 17:31:54'}
+{'id': 5, 'run_id': 10, 'entity_type': 'party', 'entity_id': None, 'display_name': 'Unknown Party', 'name': None, 'action': 'ignore', 'confidence': None, 'rationale': 'smoke', 'created_at': '2026-02-16 17:31:54'}

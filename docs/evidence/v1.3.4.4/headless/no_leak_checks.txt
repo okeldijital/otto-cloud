@@ -1,0 +1,8 @@
+db=/Users/m2krproduction/.otto/data/db/otto.sqlite
+expected_organization_id=00000000000000000000000000000001
+
+check: ai_contract_resolution_runs where organization_id != expected
+(no matches)
+
+check: ai_contract_resolution_links joined via runs where org != expected
+(no matches)
