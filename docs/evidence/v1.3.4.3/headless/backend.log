@@ -1,0 +1,324 @@
+DEBUG: DATABASE_URL resolved to sqlite:////var/folders/5g/c9pt9dzn7rs987kfcprbn2zh0000gp/T/tmp.NntlV2E5pm/.otto/data/db/otto.sqlite
+DEBUG: DATABASE_URL resolved to sqlite:////var/folders/5g/c9pt9dzn7rs987kfcprbn2zh0000gp/T/tmp.NntlV2E5pm/.otto/data/db/otto.sqlite
+WARNING:root:⚠️ Frontend build not found at /Users/m2krproduction/otto/dist-desktop
+DEBUG: Checking dependencies...
+DEBUG: Checking DB Path...
+DEBUG: Checking Pragmas...
+DEBUG: Checking Integrity...
+DEBUG: Checking Backups...
+WARNING:governance:⚠️ No backups directory found.
+DEBUG: Governance Checks Done.
+DEBUG: start_backend called. OTTO_BACKEND_PORT=8001
+DEBUG: Port resolved to 8001
+INFO:     Started server process [50698]
+INFO:     Waiting for application startup.
+2026-02-16 14:42:15,296 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+2026-02-16 14:42:15,297 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("users")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("users")
+2026-02-16 14:42:15,297 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-16 14:42:15,297 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("pros")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("pros")
+2026-02-16 14:42:15,297 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-16 14:42:15,297 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("labels")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("labels")
+2026-02-16 14:42:15,297 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-16 14:42:15,297 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("publishers")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("publishers")
+2026-02-16 14:42:15,297 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-16 14:42:15,297 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("artists")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("artists")
+2026-02-16 14:42:15,297 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-16 14:42:15,297 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("track_releases")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("track_releases")
+2026-02-16 14:42:15,297 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-16 14:42:15,297 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("releases")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("releases")
+2026-02-16 14:42:15,297 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-16 14:42:15,298 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("tracks")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("tracks")
+2026-02-16 14:42:15,298 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-16 14:42:15,298 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("works")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("works")
+2026-02-16 14:42:15,298 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-16 14:42:15,298 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("royalties")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("royalties")
+2026-02-16 14:42:15,298 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-16 14:42:15,298 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("documents")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("documents")
+2026-02-16 14:42:15,298 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-16 14:42:15,298 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("notes")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("notes")
+2026-02-16 14:42:15,298 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-16 14:42:15,298 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("events")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("events")
+2026-02-16 14:42:15,298 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-16 14:42:15,298 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("playlists")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("playlists")
+2026-02-16 14:42:15,298 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-16 14:42:15,298 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("audit_logs")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("audit_logs")
+2026-02-16 14:42:15,298 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-16 14:42:15,298 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("activities")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("activities")
+2026-02-16 14:42:15,298 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-16 14:42:15,298 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("individual_organizations")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("individual_organizations")
+2026-02-16 14:42:15,299 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-16 14:42:15,299 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("organizations")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("organizations")
+2026-02-16 14:42:15,299 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-16 14:42:15,299 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("individuals")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("individuals")
+2026-02-16 14:42:15,299 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-16 14:42:15,299 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("platforms")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("platforms")
+2026-02-16 14:42:15,299 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-16 14:42:15,299 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("network_relationships")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("network_relationships")
+2026-02-16 14:42:15,299 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-16 14:42:15,299 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("tasks")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("tasks")
+2026-02-16 14:42:15,299 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-16 14:42:15,299 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("office_notes")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("office_notes")
+2026-02-16 14:42:15,299 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-16 14:42:15,299 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("office_note_links")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("office_note_links")
+2026-02-16 14:42:15,299 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-16 14:42:15,299 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("office_documents")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("office_documents")
+2026-02-16 14:42:15,299 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-16 14:42:15,299 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("office_document_links")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("office_document_links")
+2026-02-16 14:42:15,299 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-16 14:42:15,300 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("report_definitions")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("report_definitions")
+2026-02-16 14:42:15,300 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-16 14:42:15,300 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("report_runs")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("report_runs")
+2026-02-16 14:42:15,300 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-16 14:42:15,300 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("report_artifacts")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("report_artifacts")
+2026-02-16 14:42:15,300 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-16 14:42:15,300 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("status_quo_items")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("status_quo_items")
+2026-02-16 14:42:15,300 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-16 14:42:15,300 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("ai_sessions")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("ai_sessions")
+2026-02-16 14:42:15,300 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-16 14:42:15,300 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("ai_messages")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("ai_messages")
+2026-02-16 14:42:15,300 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-16 14:42:15,300 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("ai_audit_log")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("ai_audit_log")
+2026-02-16 14:42:15,300 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-16 14:42:15,300 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("ai_contract_resolution_runs")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("ai_contract_resolution_runs")
+2026-02-16 14:42:15,300 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-16 14:42:15,300 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("ai_contract_resolution_links")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("ai_contract_resolution_links")
+2026-02-16 14:42:15,301 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-16 14:42:15,301 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("contracts")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("contracts")
+2026-02-16 14:42:15,301 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-16 14:42:15,301 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("contract_parties")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("contract_parties")
+2026-02-16 14:42:15,301 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-16 14:42:15,301 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("contract_assets")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("contract_assets")
+2026-02-16 14:42:15,301 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-16 14:42:15,301 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("contract_documents")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("contract_documents")
+2026-02-16 14:42:15,301 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-16 14:42:15,301 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("contract_split_groups")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("contract_split_groups")
+2026-02-16 14:42:15,301 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-16 14:42:15,301 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("contract_splits")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("contract_splits")
+2026-02-16 14:42:15,301 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-16 14:42:15,301 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("works_admin")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("works_admin")
+2026-02-16 14:42:15,301 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-16 14:42:15,301 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("works_admin_documents")
+INFO:sqlalchemy.engine.Engine:PRAGMA main.table_info("works_admin_documents")
+2026-02-16 14:42:15,301 INFO sqlalchemy.engine.Engine [raw sql] ()
+INFO:sqlalchemy.engine.Engine:[raw sql] ()
+2026-02-16 14:42:15,302 INFO sqlalchemy.engine.Engine COMMIT
+INFO:sqlalchemy.engine.Engine:COMMIT
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 5ebbf3d74190, Initial_tables
+INFO  [alembic.runtime.migration] Running upgrade 5ebbf3d74190 -> 6617bcd72266, Add_user_role
+INFO  [alembic.runtime.migration] Running upgrade 6617bcd72266 -> 7c9f40c7bb4d, Sync Models
+ERROR [root] ❌ Governance: Migration failed: (sqlite3.OperationalError) index ix_artists_artist_id already exists
+[SQL: CREATE UNIQUE INDEX ix_artists_artist_id ON artists (artist_id)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT users.id AS users_id, users.email AS users_email, users.hashed_password AS users_hashed_password, users.full_name AS users_full_name, users.avatar_url AS users_avatar_url, users.is_active AS users_is_active, users.is_superuser AS users_is_superuser, users.role AS users_role, users.organization_id AS users_organization_id, users.created_at AS users_created_at, users.updated_at AS users_updated_at, users.last_login AS users_last_login 
+FROM users 
+WHERE users.email = ?
+ LIMIT ? OFFSET ?
+INFO  [sqlalchemy.engine.Engine] [generated in 0.00091s] ('admin@otto.com', 1, 0)
+INFO  [sqlalchemy.engine.Engine] UPDATE users SET organization_id=?, updated_at=CURRENT_TIMESTAMP WHERE users.id = ?
+INFO  [sqlalchemy.engine.Engine] [generated in 0.00162s] (1, 1)
+INFO  [sqlalchemy.engine.Engine] COMMIT
+DEBUG: Checking dependencies...
+DEBUG: Checking DB Path...
+DEBUG: Checking Pragmas...
+DEBUG: Checking Integrity...
+DEBUG: Checking Backups...
+DEBUG: Governance Checks Done.
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT users.id AS users_id, users.email AS users_email, users.hashed_password AS users_hashed_password, users.full_name AS users_full_name, users.avatar_url AS users_avatar_url, users.is_active AS users_is_active, users.is_superuser AS users_is_superuser, users.role AS users_role, users.organization_id AS users_organization_id, users.created_at AS users_created_at, users.updated_at AS users_updated_at, users.last_login AS users_last_login 
+FROM users 
+WHERE users.email = ?
+ LIMIT ? OFFSET ?
+INFO  [sqlalchemy.engine.Engine] [cached since 3.678s ago] ('admin@otto.com', 1, 0)
+INFO  [sqlalchemy.engine.Engine] ROLLBACK
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT users.id AS users_id, users.email AS users_email, users.hashed_password AS users_hashed_password, users.full_name AS users_full_name, users.avatar_url AS users_avatar_url, users.is_active AS users_is_active, users.is_superuser AS users_is_superuser, users.role AS users_role, users.organization_id AS users_organization_id, users.created_at AS users_created_at, users.updated_at AS users_updated_at, users.last_login AS users_last_login 
+FROM users 
+WHERE users.email = ?
+ LIMIT ? OFFSET ?
+INFO  [sqlalchemy.engine.Engine] [cached since 4.007s ago] ('user_b@otto.com', 1, 0)
+INFO  [sqlalchemy.engine.Engine] ROLLBACK
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT users.id AS users_id, users.email AS users_email, users.hashed_password AS users_hashed_password, users.full_name AS users_full_name, users.avatar_url AS users_avatar_url, users.is_active AS users_is_active, users.is_superuser AS users_is_superuser, users.role AS users_role, users.organization_id AS users_organization_id, users.created_at AS users_created_at, users.updated_at AS users_updated_at, users.last_login AS users_last_login 
+FROM users 
+WHERE users.id = ?
+ LIMIT ? OFFSET ?
+INFO  [sqlalchemy.engine.Engine] [generated in 0.00014s] (1, 1, 0)
+INFO  [sqlalchemy.engine.Engine] INSERT INTO ai_audit_log (organization_id, user_id, action, tool, request_hash, parser_version) VALUES (?, ?, ?, ?, ?, ?) RETURNING id, created_at
+INFO  [sqlalchemy.engine.Engine] [generated in 0.00011s] ('00000000000000000000000000000001', 1, 'contract_extraction', 'pdf_extract', '94247f192ef76839cffa61449ee0588accff10d96195149324bab532e8302146', 'contract_extractor_v1.2.2')
+INFO  [sqlalchemy.engine.Engine] COMMIT
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT ai_audit_log.id, ai_audit_log.organization_id, ai_audit_log.user_id, ai_audit_log.action, ai_audit_log.tool, ai_audit_log.request_hash, ai_audit_log.parser_version, ai_audit_log.created_at 
+FROM ai_audit_log 
+WHERE ai_audit_log.id = ?
+INFO  [sqlalchemy.engine.Engine] [generated in 0.00007s] (1,)
+INFO  [sqlalchemy.engine.Engine] ROLLBACK
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT users.id AS users_id, users.email AS users_email, users.hashed_password AS users_hashed_password, users.full_name AS users_full_name, users.avatar_url AS users_avatar_url, users.is_active AS users_is_active, users.is_superuser AS users_is_superuser, users.role AS users_role, users.organization_id AS users_organization_id, users.created_at AS users_created_at, users.updated_at AS users_updated_at, users.last_login AS users_last_login 
+FROM users 
+WHERE users.id = ?
+ LIMIT ? OFFSET ?
+INFO  [sqlalchemy.engine.Engine] [cached since 0.02444s ago] (2, 1, 0)
+INFO  [sqlalchemy.engine.Engine] INSERT INTO ai_audit_log (organization_id, user_id, action, tool, request_hash, parser_version) VALUES (?, ?, ?, ?, ?, ?) RETURNING id, created_at
+INFO  [sqlalchemy.engine.Engine] [cached since 0.01934s ago] ('000000000000000000000000000000b1', 2, 'contract_extraction', 'pdf_extract', '15aa2dc4c2d5b070daea7d1849e89db752af789ae09443c9d0e2b25152c0716b', 'contract_extractor_v1.2.2')
+INFO  [sqlalchemy.engine.Engine] COMMIT
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT ai_audit_log.id, ai_audit_log.organization_id, ai_audit_log.user_id, ai_audit_log.action, ai_audit_log.tool, ai_audit_log.request_hash, ai_audit_log.parser_version, ai_audit_log.created_at 
+FROM ai_audit_log 
+WHERE ai_audit_log.id = ?
+INFO  [sqlalchemy.engine.Engine] [cached since 0.01785s ago] (2,)
+INFO  [sqlalchemy.engine.Engine] ROLLBACK
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT users.id AS users_id, users.email AS users_email, users.hashed_password AS users_hashed_password, users.full_name AS users_full_name, users.avatar_url AS users_avatar_url, users.is_active AS users_is_active, users.is_superuser AS users_is_superuser, users.role AS users_role, users.organization_id AS users_organization_id, users.created_at AS users_created_at, users.updated_at AS users_updated_at, users.last_login AS users_last_login 
+FROM users 
+WHERE users.id = ?
+ LIMIT ? OFFSET ?
+INFO  [sqlalchemy.engine.Engine] [cached since 0.04613s ago] (1, 1, 0)
+INFO  [sqlalchemy.engine.Engine] INSERT INTO ai_audit_log (organization_id, user_id, action, tool, request_hash, parser_version) VALUES (?, ?, ?, ?, ?, ?) RETURNING id, created_at
+INFO  [sqlalchemy.engine.Engine] [cached since 0.03806s ago] ('00000000000000000000000000000001', 1, 'contract_link_suggest', 'contract_linker:link_suggest_v1.0.0', '443f2843fc41f6849420d8e65cc62ee10e5976ba95d6303269bec407079af45b', 'deterministic_v1')
+INFO  [sqlalchemy.engine.Engine] COMMIT
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT ai_audit_log.id, ai_audit_log.organization_id, ai_audit_log.user_id, ai_audit_log.action, ai_audit_log.tool, ai_audit_log.request_hash, ai_audit_log.parser_version, ai_audit_log.created_at 
+FROM ai_audit_log 
+WHERE ai_audit_log.id = ?
+INFO  [sqlalchemy.engine.Engine] [cached since 0.03644s ago] (3,)
+INFO  [sqlalchemy.engine.Engine] SELECT users.id AS users_id, users.email AS users_email, users.hashed_password AS users_hashed_password, users.full_name AS users_full_name, users.avatar_url AS users_avatar_url, users.is_active AS users_is_active, users.is_superuser AS users_is_superuser, users.role AS users_role, users.organization_id AS users_organization_id, users.created_at AS users_created_at, users.updated_at AS users_updated_at, users.last_login AS users_last_login 
+FROM users 
+WHERE users.id = ?
+INFO  [sqlalchemy.engine.Engine] [generated in 0.00007s] (1,)
+INFO  [sqlalchemy.engine.Engine] ROLLBACK
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT users.id AS users_id, users.email AS users_email, users.hashed_password AS users_hashed_password, users.full_name AS users_full_name, users.avatar_url AS users_avatar_url, users.is_active AS users_is_active, users.is_superuser AS users_is_superuser, users.role AS users_role, users.organization_id AS users_organization_id, users.created_at AS users_created_at, users.updated_at AS users_updated_at, users.last_login AS users_last_login 
+FROM users 
+WHERE users.id = ?
+ LIMIT ? OFFSET ?
+INFO  [sqlalchemy.engine.Engine] [cached since 0.06269s ago] (2, 1, 0)
+INFO  [sqlalchemy.engine.Engine] INSERT INTO ai_audit_log (organization_id, user_id, action, tool, request_hash, parser_version) VALUES (?, ?, ?, ?, ?, ?) RETURNING id, created_at
+INFO  [sqlalchemy.engine.Engine] [cached since 0.05463s ago] ('000000000000000000000000000000b1', 2, 'contract_link_suggest', 'contract_linker:link_suggest_v1.0.0', '8c5826d15dbb9ee04c312f8eae3dffd2972b4c89039a901cce766b00babbfdff', 'deterministic_v1')
+INFO  [sqlalchemy.engine.Engine] COMMIT
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT ai_audit_log.id, ai_audit_log.organization_id, ai_audit_log.user_id, ai_audit_log.action, ai_audit_log.tool, ai_audit_log.request_hash, ai_audit_log.parser_version, ai_audit_log.created_at 
+FROM ai_audit_log 
+WHERE ai_audit_log.id = ?
+INFO  [sqlalchemy.engine.Engine] [cached since 0.05319s ago] (4,)
+INFO  [sqlalchemy.engine.Engine] SELECT users.id AS users_id, users.email AS users_email, users.hashed_password AS users_hashed_password, users.full_name AS users_full_name, users.avatar_url AS users_avatar_url, users.is_active AS users_is_active, users.is_superuser AS users_is_superuser, users.role AS users_role, users.organization_id AS users_organization_id, users.created_at AS users_created_at, users.updated_at AS users_updated_at, users.last_login AS users_last_login 
+FROM users 
+WHERE users.id = ?
+INFO  [sqlalchemy.engine.Engine] [cached since 0.01644s ago] (2,)
+INFO  [sqlalchemy.engine.Engine] ROLLBACK
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT users.id AS users_id, users.email AS users_email, users.hashed_password AS users_hashed_password, users.full_name AS users_full_name, users.avatar_url AS users_avatar_url, users.is_active AS users_is_active, users.is_superuser AS users_is_superuser, users.role AS users_role, users.organization_id AS users_organization_id, users.created_at AS users_created_at, users.updated_at AS users_updated_at, users.last_login AS users_last_login 
+FROM users 
+WHERE users.id = ?
+ LIMIT ? OFFSET ?
+INFO  [sqlalchemy.engine.Engine] [cached since 0.1104s ago] (1, 1, 0)
+INFO  [sqlalchemy.engine.Engine] INSERT INTO ai_audit_log (organization_id, user_id, action, tool, request_hash, parser_version) VALUES (?, ?, ?, ?, ?, ?) RETURNING id, created_at
+INFO  [sqlalchemy.engine.Engine] [cached since 0.1024s ago] ('00000000000000000000000000000001', 1, 'contract_resolution_persist', 'contract_resolver:link_suggest_v1.0.0', 'ab19c6526fe42bea2c740d936e643139cfec11a5a1510cdb7759eb625875981e', 'deterministic_v1')
+INFO  [sqlalchemy.engine.Engine] COMMIT
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT ai_audit_log.id, ai_audit_log.organization_id, ai_audit_log.user_id, ai_audit_log.action, ai_audit_log.tool, ai_audit_log.request_hash, ai_audit_log.parser_version, ai_audit_log.created_at 
+FROM ai_audit_log 
+WHERE ai_audit_log.id = ?
+INFO  [sqlalchemy.engine.Engine] [cached since 0.1008s ago] (5,)
+INFO  [sqlalchemy.engine.Engine] SELECT users.id AS users_id, users.email AS users_email, users.hashed_password AS users_hashed_password, users.full_name AS users_full_name, users.avatar_url AS users_avatar_url, users.is_active AS users_is_active, users.is_superuser AS users_is_superuser, users.role AS users_role, users.organization_id AS users_organization_id, users.created_at AS users_created_at, users.updated_at AS users_updated_at, users.last_login AS users_last_login 
+FROM users 
+WHERE users.id = ?
+INFO  [sqlalchemy.engine.Engine] [cached since 0.06409s ago] (1,)
+INFO  [sqlalchemy.engine.Engine] INSERT INTO ai_contract_resolution_runs (organization_id, user_id, contract_hash, extractor_version, linker_version) VALUES (?, ?, ?, ?, ?) RETURNING id, created_at
+INFO  [sqlalchemy.engine.Engine] [generated in 0.00007s] ('00000000000000000000000000000001', 1, 'TEST_HASH_V3_FINAL_FINAL', 'deterministic_v1', 'link_suggest_v1.0.0')
+INFO  [sqlalchemy.engine.Engine] INSERT INTO ai_contract_resolution_links (run_id, entity_type, entity_id, action, confidence, rationale) VALUES (?, ?, ?, ?, ?, ?) RETURNING id, created_at
+INFO  [sqlalchemy.engine.Engine] [generated in 0.00006s] (1, 'artist', 1, 'link', 100, 'Real resolve proof')
+INFO  [sqlalchemy.engine.Engine] COMMIT
+INFO  [sqlalchemy.engine.Engine] BEGIN (implicit)
+INFO  [sqlalchemy.engine.Engine] SELECT ai_contract_resolution_runs.id, ai_contract_resolution_runs.organization_id, ai_contract_resolution_runs.user_id, ai_contract_resolution_runs.contract_hash, ai_contract_resolution_runs.extractor_version, ai_contract_resolution_runs.linker_version, ai_contract_resolution_runs.created_at 
+FROM ai_contract_resolution_runs 
+WHERE ai_contract_resolution_runs.id = ?
+INFO  [sqlalchemy.engine.Engine] [generated in 0.00009s] (1,)
+INFO  [sqlalchemy.engine.Engine] ROLLBACK
