@@ -1,0 +1,1 @@
+{"detail":[{"type":"missing","loc":["body","contract_hash"],"msg":"Field required","input":{"decisions":[]}},{"type":"missing","loc":["body","extractor_version"],"msg":"Field required","input":{"decisions":[]}},{"type":"missing","loc":["body","linker_version"],"msg":"Field required","input":{"decisions":[]}}]}

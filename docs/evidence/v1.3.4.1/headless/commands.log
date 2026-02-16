@@ -1,0 +1,13 @@
+TAG=v1.3.4.1-contract-resolve-persist-governed
+HOME=/var/folders/5g/c9pt9dzn7rs987kfcprbn2zh0000gp/T/tmp.lWH5KNAKZ5
+APP_ENV=development
+BACKEND_PID=41347
+Mon Feb 16 14:04:28 SAST 2026
+
+{"status":"ok","env":"development"}
+{"contract_title":"Governed Extraction (Deterministic V1)","contract_id":null,"effective_date":null,"start_date":null,"end_date":null,"territory":null,"exclusivity":null,"parties":[],"splits":[{"split_type":"MASTER","party_name":"Unknown Party","party_role":null,"percent":30.0,"notes":"Detected near match: 30 %"},{"split_type":"MASTER","party_name":"Unknown Party","party_role":null,"percent":25.0,"notes":"Detected near match: 25%"},{"split_type":"MASTER","party_name":"Unknown Party","party_role":null,"percent":50.0,"notes":"Detected near match: 50 %"}],"splits_total":105.0,"works_hints":{"artists":[],"tracks":[],"releases":[]},"raw_confidence":0.6,"warnings":["splits_total_mismatch: Computed total is 105.0%"],"parser_version":"deterministic_v1"}
+{"contract_title":"Governed Extraction (Deterministic V1)","contract_id":null,"effective_date":null,"start_date":null,"end_date":null,"territory":null,"exclusivity":null,"parties":[],"splits":[{"split_type":"MASTER","party_name":"Unknown Party","party_role":null,"percent":30.0,"notes":"Detected near match: 30 %"},{"split_type":"MASTER","party_name":"Unknown Party","party_role":null,"percent":25.0,"notes":"Detected near match: 25%"},{"split_type":"MASTER","party_name":"Unknown Party","party_role":null,"percent":50.0,"notes":"Detected near match: 50 %"}],"splits_total":105.0,"works_hints":{"artists":[],"tracks":[],"releases":[]},"raw_confidence":0.6,"warnings":["splits_total_mismatch: Computed total is 105.0%"],"parser_version":"deterministic_v1"}
+{"detail":"Not Found"}
+{"detail":"Not Found"}
+{"detail":[{"type":"missing","loc":["body","contract_hash"],"msg":"Field required","input":{"decisions":[]}},{"type":"missing","loc":["body","extractor_version"],"msg":"Field required","input":{"decisions":[]}},{"type":"missing","loc":["body","linker_version"],"msg":"Field required","input":{"decisions":[]}}]}
+{"detail":[{"type":"missing","loc":["body","contract_hash"],"msg":"Field required","input":{"decisions":[]}},{"type":"missing","loc":["body","extractor_version"],"msg":"Field required","input":{"decisions":[]}},{"type":"missing","loc":["body","linker_version"],"msg":"Field required","input":{"decisions":[]}}]}

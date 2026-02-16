@@ -1,0 +1,13 @@
+DB=/var/folders/5g/c9pt9dzn7rs987kfcprbn2zh0000gp/T/tmp.lWH5KNAKZ5/.otto/data/db/otto.sqlite
+-rw-r--r--@ 1 m2krproduction  staff  843776 Feb 16 14:04 /var/folders/5g/c9pt9dzn7rs987kfcprbn2zh0000gp/T/tmp.lWH5KNAKZ5/.otto/data/db/otto.sqlite
+
+Counts:
+ai_contract_resolution_runs|0
+ai_contract_resolution_links|0
+ai_audit_log|2
+
+Latest audit rows:
+2|000000000000000000000000000000b1|contract_extraction|pdf_extract|contract_extractor_v1.2.2|2026-02-16 12:04:28
+1|00000000000000000000000000000001|contract_extraction|pdf_extract|contract_extractor_v1.2.2|2026-02-16 12:04:28
+
+Resolution runs (latest):
