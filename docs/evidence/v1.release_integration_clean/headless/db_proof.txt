@@ -1,11 +1,4 @@
-# Release Integration DB Proof
-
-Table counts:
-ai_contract_resolution_runs|>0 (2)
-ai_contract_resolution_links|>0 (1)
-
-Core table mutation check (before -> after API attach):
-artists|unchanged (2 -> 2)
-tracks|unchanged (2 -> 2)
-works|unchanged (2 -> 2)
-releases|unchanged (2 -> 2)
+DB=/Users/m2krproduction/.otto/data/db/otto.sqlite
+ai_contract_resolution_runs|40
+ai_contract_resolution_links|5
+ai_audit_log|232

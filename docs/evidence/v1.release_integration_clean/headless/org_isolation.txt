@@ -1,13 +1,2 @@
-# Org Isolation Proof
-
-Org A request -> no Org B data
-(admin organization set to ORG_A / 00000000-0000-0000-0000-00000000238d)
-$ curl -s -i -X POST http://127.0.0.1:8013/api/ai/release-integration/attach -H 'Content-Type: application/json' -d '{"run_id":1,"release_id":2}'
-HTTP/1.1 404 Not Found
-{"detail":"Not Found"}
-
-Org B request -> no Org A data
-(admin organization set to ORG_B / 00000000-0000-0000-0000-00000000238e)
-$ curl -s -i -X POST http://127.0.0.1:8013/api/ai/release-integration/attach -H 'Content-Type: application/json' -d '{"run_id":2,"release_id":1}'
-HTTP/1.1 404 Not Found
-{"detail":"Not Found"}
+=== org isolation note ===
+If you generated /tmp/links_orgA.json and /tmp/links_orgB.json, paste grep no-match outputs here.
