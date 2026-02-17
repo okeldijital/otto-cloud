@@ -135,6 +135,7 @@ from routes import (  # noqa: E402
     ai,
     ai_contracts,
     ai_analytics,
+    ai_release_integration,
 )
 
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
@@ -170,6 +171,11 @@ app.include_router(config.router, prefix="/api", tags=["Configuration"])
 app.include_router(ai.router, prefix="/api/ai", tags=["AI"])
 app.include_router(ai_contracts.router, prefix="/api/ai/contracts", tags=["AI Contracts"])
 app.include_router(ai_analytics.router, prefix="/api/ai/analytics", tags=["AI Analytics"])
+app.include_router(
+    ai_release_integration.router,
+    prefix="/api/ai/release-integration",
+    tags=["AI Release Integration"],
+)
 logging.info("🤖 AI modules mounted")
 
 # -----------------------------

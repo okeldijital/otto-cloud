@@ -23,6 +23,7 @@ from models.office_document import OfficeDocument, OfficeDocumentLink
 from models.reporting import ReportDefinition, ReportRun, ReportArtifact
 from models.governance import StatusQuoItem
 from models.ai import AISession, AIMessage, AIAuditLog, AIContractResolutionRun, AIContractResolutionLink
+from models.contract_intake_links import ContractIntakeReleaseLink
 
 # Aliases for backward compatibility
 Company = Organization
@@ -67,6 +68,7 @@ __all__ = [
     "AIAuditLog",
     "AIContractResolutionRun",
     "AIContractResolutionLink",
+    "ContractIntakeReleaseLink",
     "Contract",
     "ContractParty",
     "ContractAsset",

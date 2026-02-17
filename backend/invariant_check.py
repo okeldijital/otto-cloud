@@ -48,7 +48,8 @@ def check_ai_writes():
     # Approved locations for mediated persistence
     allowed_services = {
         "audit.py",
-        "resolution/persist.py"
+        "resolution/persist.py",
+        "release_integration/service.py",
     }
     allowed_routes = {
         "ai_contracts.py"
@@ -61,7 +62,7 @@ def check_ai_writes():
     }
     
     violations = []
-    forbidden_methods = {"add", "commit", "delete", "execute"}
+    forbidden_methods = {"add", "commit", "delete", "execute", "update"}
     
     # 1. Check AI Services
     for root, dirs, files in os.walk(ai_services_root):
@@ -79,7 +80,9 @@ def check_ai_writes():
             for node in ast.walk(tree):
                 if isinstance(node, ast.Call):
                     if isinstance(node.func, ast.Attribute) and node.func.attr in forbidden_methods:
-                        if not is_allowed:
+                        if node.func.attr == "delete":
+                            violations.append(f"Delete violation in services/ai/{rel_path}: .delete() at line {node.lineno}")
+                        elif not is_allowed:
                             violations.append(f"Write violation in services/ai/{rel_path}: .{node.func.attr}() at line {node.lineno}")
                         
                         # Extra check: Even if in allowed service, must NOT add prohibited models
@@ -114,8 +117,16 @@ def main():
     unscoped_violations = check_ai_unscoped_queries()
     analytics_violations = check_ai_analytics_governance()
     resolve_violations = check_ai_resolve_governance()
+    release_integration_violations = check_release_integration_governance()
     
-    all_violations = drift_violations + write_violations + unscoped_violations + analytics_violations + resolve_violations
+    all_violations = (
+        drift_violations
+        + write_violations
+        + unscoped_violations
+        + analytics_violations
+        + resolve_violations
+        + release_integration_violations
+    )
     
     if all_violations:
         for v in all_violations:
@@ -325,6 +336,119 @@ def check_ai_analytics_governance():
                             model_csv = ",".join(sorted(set(touched_models)))
                             violations.append(
                                 f"Analytics org-scope violation in {rel}: query touches {model_csv} without organization_id == org_id near line {node.lineno}"
+                            )
+
+    return violations
+
+
+def check_release_integration_governance():
+    """
+    Release Integration governance checks:
+      - write operations allowed only in backend/services/ai/release_integration/
+      - block .update() on core models
+      - block .delete() anywhere in release integration service
+      - block mutating raw SQL via db.execute
+      - all Release queries must include organization_id/org_id scope
+    """
+    project_root = Path(__file__).resolve().parent.parent
+    service_root = project_root / "backend/services/ai/release_integration"
+    if not service_root.exists():
+        return []
+
+    violations = []
+    mutating_methods = {"add", "commit", "update", "delete", "execute"}
+    core_models = {"Artist", "Track", "Work", "Release"}
+    allowed_write_models = {
+        "AIContractResolutionRun",
+        "AIContractResolutionLink",
+        "ContractIntakeReleaseLink",
+    }
+
+    for root, _, files in os.walk(service_root):
+        for file in files:
+            if not file.endswith(".py"):
+                continue
+            full_path = Path(root) / file
+            rel = os.path.relpath(full_path, project_root / "backend")
+            tree = get_ast(full_path)
+            if not tree:
+                continue
+
+            with open(full_path, "r") as f:
+                lines = f.readlines()
+
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
+                    continue
+
+                method = node.func.attr
+                if method in mutating_methods:
+                    if method == "delete":
+                        violations.append(
+                            f"Release integration governance violation in {rel}: .delete() at line {node.lineno}"
+                        )
+                    if method == "update":
+                        violations.append(
+                            f"Release integration governance violation in {rel}: .update() at line {node.lineno}"
+                        )
+
+                    if method == "add":
+                        for arg in node.args:
+                            if isinstance(arg, ast.Call) and isinstance(arg.func, ast.Name):
+                                model_name = arg.func.id
+                                if model_name in core_models:
+                                    violations.append(
+                                        f"Release integration governance violation in {rel}: core model add {model_name} at line {node.lineno}"
+                                    )
+                                if model_name not in allowed_write_models:
+                                    violations.append(
+                                        f"Release integration governance violation in {rel}: non-allowed model add {model_name} at line {node.lineno}"
+                                    )
+                            elif isinstance(arg, ast.Name):
+                                var_name = arg.id
+                                for assign in ast.walk(tree):
+                                    if not isinstance(assign, ast.Assign):
+                                        continue
+                                    if len(assign.targets) != 1 or not isinstance(assign.targets[0], ast.Name):
+                                        continue
+                                    if assign.targets[0].id != var_name:
+                                        continue
+                                    if isinstance(assign.value, ast.Call) and isinstance(assign.value.func, ast.Name):
+                                        model_name = assign.value.func.id
+                                        if model_name in core_models:
+                                            violations.append(
+                                                f"Release integration governance violation in {rel}: core model add {model_name} at line {node.lineno}"
+                                            )
+                                        if model_name not in allowed_write_models:
+                                            violations.append(
+                                                f"Release integration governance violation in {rel}: non-allowed model add {model_name} at line {node.lineno}"
+                                            )
+
+                    if method == "execute" and node.args:
+                        arg0 = node.args[0]
+                        sql_text = ""
+                        if isinstance(arg0, ast.Constant) and isinstance(arg0.value, str):
+                            sql_text = arg0.value.lower()
+                        elif isinstance(arg0, ast.Call) and arg0.args:
+                            inner = arg0.args[0]
+                            if isinstance(inner, ast.Constant) and isinstance(inner.value, str):
+                                sql_text = inner.value.lower()
+                        if any(keyword in sql_text for keyword in ("insert", "update", "delete")):
+                            violations.append(
+                                f"Release integration governance violation in {rel}: mutating db.execute SQL at line {node.lineno}"
+                            )
+
+                if method == "query":
+                    touches_release = any(
+                        isinstance(arg, ast.Name) and arg.id == "Release" for arg in node.args
+                    )
+                    if touches_release:
+                        start_l = max(0, node.lineno - 1)
+                        end_l = min(len(lines), node.lineno + 10)
+                        context = "".join(lines[start_l:end_l]).replace(" ", "")
+                        if "organization_id" not in context or "org_id" not in context:
+                            violations.append(
+                                f"Release integration org-scope violation in {rel}: Release query without organization_id/org_id filter near line {node.lineno}"
                             )
 
     return violations

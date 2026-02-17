@@ -1,0 +1,17 @@
+# Release Integration API Proof
+
+curl disabled (AI_RELEASE_INTEGRATION_ENABLED=false):
+$ curl -s -i -X POST http://127.0.0.1:8011/api/ai/release-integration/attach -H 'Content-Type: application/json' -d '{"run_id":1,"release_id":1}'
+HTTP/1.1 404 Not Found
+content-type: application/json
+
+{"detail":"Not Found"}
+
+curl enabled (AI_RELEASE_INTEGRATION_ENABLED=true):
+$ curl -s -i -X POST http://127.0.0.1:8012/api/ai/release-integration/attach -H 'Content-Type: application/json' -d '{"run_id":1,"release_id":1}'
+HTTP/1.1 200 OK
+content-type: application/json
+
+{"status":"attached","org_id":"00000000-0000-0000-0000-00000000238d","run_id":1,"release_id":1,"link_id":1}
+
+org_id visible in response: 00000000-0000-0000-0000-00000000238d
