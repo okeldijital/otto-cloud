@@ -58,6 +58,9 @@ class Settings(BaseSettings):
     AI_ROYALTY_ENABLED: bool = True
     AI_ROYALTY_PERSIST_ENABLED: bool = True
     AI_ANALYTICS_ENABLED: bool = True
+    AI_CORE_WRITE_ENABLED: bool = True
+    AI_CORE_WRITE_APPLY_ENABLED: bool = True
+    AI_CORE_WRITE_REQUIRE_BACKUP: bool = True
     ADMIN_RESTORE_ENABLED: bool = True
 
     def __init__(self, **values):

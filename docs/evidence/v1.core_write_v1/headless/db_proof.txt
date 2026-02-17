@@ -1,0 +1,28 @@
+DB=/Users/m2krproduction/.otto/data/db/core_write_v1_evidence.sqlite
+=== core before ===
+artists=2
+tracks=2
+works=2
+releases=2
+organizations=2
+individuals=2
+contracts=2
+
+=== core after ===
+artists=2
+tracks=2
+works=2
+releases=2
+organizations=2
+individuals=2
+contracts=2
+
+=== ai before ===
+ai_core_write_proposal_runs=1
+ai_core_write_proposal_items=2
+ai_core_write_apply_events=0
+
+=== ai after ===
+ai_core_write_proposal_runs=1
+ai_core_write_proposal_items=2
+ai_core_write_apply_events=1

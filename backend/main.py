@@ -138,6 +138,7 @@ from routes import (  # noqa: E402
     ai_royalty,
     ai_release_integration,
     ai_release_validation,
+    ai_core_write,
 )
 
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
@@ -183,6 +184,11 @@ app.include_router(
     ai_release_validation.router,
     prefix="/api/ai/release_validation",
     tags=["AI Release Validation"],
+)
+app.include_router(
+    ai_core_write.router,
+    prefix="/api/ai/core_write",
+    tags=["AI Core Write"],
 )
 logging.info("🤖 AI modules mounted")
 

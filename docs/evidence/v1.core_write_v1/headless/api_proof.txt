@@ -1,0 +1,59 @@
+=== propose ===
+HTTP_STATUS=200
+{
+  "run_id": 1,
+  "requires_user_review": true,
+  "proposals": [
+    {
+      "item_id": 1,
+      "entity_type": "contract",
+      "entity_id": 1,
+      "operation": "patch",
+      "patch": {
+        "fields": {
+          "territory": "Worldwide"
+        }
+      },
+      "conflicts": [
+        {
+          "field": "territory",
+          "existing": "US",
+          "proposed": "Worldwide"
+        }
+      ],
+      "safe_defaults": [],
+      "requires_user_review": true
+    },
+    {
+      "item_id": 2,
+      "entity_type": "contract_party",
+      "entity_id": null,
+      "operation": "create",
+      "patch": {
+        "contract_id": 1,
+        "entity_type": "External",
+        "external_name": "Core Write Evidence New Org",
+        "role": "Label",
+        "split_percent": null
+      },
+      "conflicts": [],
+      "safe_defaults": [
+        {
+          "field": "external_name",
+          "new_value": "Core Write Evidence New Org"
+        }
+      ],
+      "requires_user_review": true
+    }
+  ]
+}
+
+=== apply without confirm ===
+HTTP_STATUS=422
+{"detail":"confirmation required"}
+=== apply without backup ===
+HTTP_STATUS=409
+{"detail":"backup required before apply"}
+=== apply success ===
+HTTP_STATUS=200
+{"status":"applied","run_id":1,"applied_count":0,"created_count":0,"conflict_count":1,"idempotent_hit":false,"warnings":[]}

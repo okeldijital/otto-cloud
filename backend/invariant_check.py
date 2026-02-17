@@ -51,6 +51,7 @@ def check_ai_writes():
         "resolution/persist.py",
         "release_integration/attach.py",
         "contract_ingest/ingest.py",
+        "core_write/apply.py",
     }
     allowed_routes = {
         "ai_contracts.py"
@@ -61,6 +62,7 @@ def check_ai_writes():
         "Organization", "Individual", "Artist", "Release", "Track", "Work", 
         "Contract", "PRO", "Label", "Publisher", "Royalty"
     }
+    core_write_allowed_core_models = {"Organization", "Individual", "ContractParty", "Contract"}
     
     violations = []
     forbidden_methods = {"add", "commit", "delete", "execute", "update"}
@@ -90,6 +92,8 @@ def check_ai_writes():
                         if node.func.attr == "add":
                             for arg in node.args:
                                 if isinstance(arg, ast.Call) and isinstance(arg.func, ast.Name):
+                                    if rel_path == "core_write/apply.py" and arg.func.id in core_write_allowed_core_models:
+                                        continue
                                     if arg.func.id in forbidden_write_models:
                                         violations.append(f"Integrity violation in services/ai/{rel_path}: AI attempted write to core model {arg.func.id} at line {node.lineno}")
 
@@ -122,6 +126,7 @@ def main():
     release_integration_violations = check_release_integration_governance()
     release_validation_violations = check_release_validation_governance()
     admin_backup_violations = check_admin_backup_governance()
+    core_write_violations = check_ai_core_write_governance()
     
     all_violations = (
         drift_violations
@@ -133,6 +138,7 @@ def main():
         + release_integration_violations
         + release_validation_violations
         + admin_backup_violations
+        + core_write_violations
     )
     
     if all_violations:
@@ -682,6 +688,113 @@ def check_admin_backup_governance():
                     violations.append(
                         f"Admin backup governance violation in {rel}: mutating db.execute SQL at line {node.lineno}"
                     )
+
+    return violations
+
+
+def check_ai_core_write_governance():
+    """
+    Core write governance:
+      - propose.py and routes/ai_core_write.py are read-only
+      - apply.py is the only write allowlist location
+      - apply.py may write AI proposal/apply models and explicit core allowlist
+      - no mutating execute SQL in propose/route files
+    """
+    project_root = Path(__file__).resolve().parent.parent
+    route_path = project_root / "backend/routes/ai_core_write.py"
+    propose_path = project_root / "backend/services/ai/core_write/propose.py"
+    apply_path = project_root / "backend/services/ai/core_write/apply.py"
+
+    violations = []
+    read_only_targets = [route_path, propose_path]
+    forbidden_methods = {"add", "commit", "delete", "update"}
+    mutating_sql = ("insert", "update", "delete", "alter", "drop", "create")
+
+    for path in read_only_targets:
+        if not path.exists():
+            continue
+        tree = get_ast(path)
+        if not tree:
+            continue
+        rel = os.path.relpath(path, project_root / "backend")
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
+                continue
+            if node.func.attr in forbidden_methods:
+                violations.append(
+                    f"Core write governance violation in {rel}: .{node.func.attr}() at line {node.lineno}"
+                )
+            if node.func.attr == "execute" and node.args:
+                arg0 = node.args[0]
+                sql_text = ""
+                if isinstance(arg0, ast.Constant) and isinstance(arg0.value, str):
+                    sql_text = arg0.value.lower()
+                elif isinstance(arg0, ast.Call) and arg0.args and isinstance(arg0.args[0], ast.Constant) and isinstance(arg0.args[0].value, str):
+                    sql_text = arg0.args[0].value.lower()
+                if any(keyword in sql_text for keyword in mutating_sql):
+                    violations.append(
+                        f"Core write governance violation in {rel}: mutating db.execute SQL at line {node.lineno}"
+                    )
+
+    if apply_path.exists():
+        tree = get_ast(apply_path)
+        if tree:
+            rel = os.path.relpath(apply_path, project_root / "backend")
+            allowed_models = {
+                "AICoreWriteProposalRun",
+                "AICoreWriteProposalItem",
+                "AICoreWriteApplyEvent",
+                "ContractParty",
+                "Organization",
+                "Individual",
+            }
+            forbidden_models = {
+                "Artist",
+                "Release",
+                "Track",
+                "Work",
+                "ContractAsset",
+                "ContractSplit",
+                "ContractSplitGroup",
+            }
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
+                    continue
+                if node.func.attr == "add":
+                    for arg in node.args:
+                        model = None
+                        if isinstance(arg, ast.Call) and isinstance(arg.func, ast.Name):
+                            model = arg.func.id
+                        elif isinstance(arg, ast.Name):
+                            for assign in ast.walk(tree):
+                                if (
+                                    isinstance(assign, ast.Assign)
+                                    and len(assign.targets) == 1
+                                    and isinstance(assign.targets[0], ast.Name)
+                                    and assign.targets[0].id == arg.id
+                                    and isinstance(assign.value, ast.Call)
+                                    and isinstance(assign.value.func, ast.Name)
+                                ):
+                                    model = assign.value.func.id
+                        if model in forbidden_models:
+                            violations.append(
+                                f"Core write governance violation in {rel}: forbidden model write {model} via .add() at line {node.lineno}"
+                            )
+                        if model and model not in allowed_models:
+                            violations.append(
+                                f"Core write governance violation in {rel}: non-allowlisted model write {model} via .add() at line {node.lineno}"
+                            )
+                if node.func.attr == "execute" and node.args:
+                    arg0 = node.args[0]
+                    sql_text = ""
+                    if isinstance(arg0, ast.Constant) and isinstance(arg0.value, str):
+                        sql_text = arg0.value.lower()
+                    elif isinstance(arg0, ast.Call) and arg0.args and isinstance(arg0.args[0], ast.Constant) and isinstance(arg0.args[0].value, str):
+                        sql_text = arg0.args[0].value.lower()
+                    if any(keyword in sql_text for keyword in mutating_sql):
+                        violations.append(
+                            f"Core write governance violation in {rel}: mutating db.execute SQL at line {node.lineno}"
+                        )
 
     return violations
 

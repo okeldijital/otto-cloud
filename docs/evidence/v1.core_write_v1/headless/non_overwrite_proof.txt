@@ -1,0 +1,16 @@
+=== non-overwrite proof ===
+territory_before=US
+territory_after=US
+conflict_excerpt:
+{
+  "entity_type": "contract",
+  "operation": "patch",
+  "conflicts": [
+    {
+      "field": "territory",
+      "existing": "US",
+      "proposed": "Worldwide"
+    }
+  ],
+  "safe_defaults": []
+}

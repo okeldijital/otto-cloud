@@ -29,6 +29,11 @@ from models.contract_documents import AIContractDocument, AIContractWorkLink
 from models.ai_royalty import AIRoyaltySimulationRun
 from models.admin_backup import AdminBackupArtifact, AdminRestoreAudit
 from models.admin_backup_restore import AdminBackupRestoreEvent
+from models.ai_core_write import (
+    AICoreWriteApplyEvent,
+    AICoreWriteProposalItem,
+    AICoreWriteProposalRun,
+)
 
 # Aliases for backward compatibility
 Company = Organization
@@ -82,6 +87,9 @@ __all__ = [
     "AdminBackupArtifact",
     "AdminRestoreAudit",
     "AdminBackupRestoreEvent",
+    "AICoreWriteProposalRun",
+    "AICoreWriteProposalItem",
+    "AICoreWriteApplyEvent",
     "Contract",
     "ContractParty",
     "ContractAsset",

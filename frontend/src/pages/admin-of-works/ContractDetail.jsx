@@ -7,6 +7,7 @@ import { CatalogService } from '../../services/catalog';
 import EntityForm from '../../components/EntityForm';
 import EntityTypeahead from '../../components/contracts/EntityTypeahead';
 import aiClient from '../../api/aiClient';
+import aiCoreWriteClient from '../../api/aiCoreWriteClient';
 
 const STATUS_COLORS = {
     Draft: 'neutral',
@@ -73,6 +74,13 @@ const ContractDetail = () => {
     const [releasePickerOpen, setReleasePickerOpen] = useState(false);
     const [releaseOptions, setReleaseOptions] = useState([]);
     const [wizardReleaseId, setWizardReleaseId] = useState('');
+    const [proposalLoading, setProposalLoading] = useState(false);
+    const [applyLoading, setApplyLoading] = useState(false);
+    const [proposalRunId, setProposalRunId] = useState(null);
+    const [coreWriteProposals, setCoreWriteProposals] = useState([]);
+    const [proposalDecisions, setProposalDecisions] = useState({});
+    const [coreWriteError, setCoreWriteError] = useState('');
+    const [coreWriteSuccess, setCoreWriteSuccess] = useState('');
 
     useEffect(() => {
         const load = async () => {
@@ -376,6 +384,90 @@ const ContractDetail = () => {
         }
     };
 
+    const generateCoreWriteSuggestions = async () => {
+        setProposalLoading(true);
+        setCoreWriteError('');
+        setCoreWriteSuccess('');
+        setProposalRunId(null);
+        setCoreWriteProposals([]);
+        setProposalDecisions({});
+        try {
+            const payload = {
+                contract_id: Number(id),
+                contract_document_id: selectedDoc?.id || null,
+                contract_extract: extractionResult || undefined,
+            };
+            const result = await aiCoreWriteClient.propose(payload);
+            if (result?.featureDisabled) {
+                setCoreWriteError('AI core write is currently disabled.');
+                return;
+            }
+
+            const proposals = result?.proposals || [];
+            const decisions = {};
+            proposals.forEach((row) => {
+                decisions[row.item_id] = { decision: 'accept', overwrite: false };
+            });
+
+            setProposalRunId(result.run_id);
+            setCoreWriteProposals(proposals);
+            setProposalDecisions(decisions);
+            setCoreWriteSuccess(`Generated ${proposals.length} proposal(s). Review before apply.`);
+        } catch (err) {
+            console.error(err);
+            setCoreWriteError(err?.response?.data?.detail || err?.message || 'Failed to generate proposals.');
+        } finally {
+            setProposalLoading(false);
+        }
+    };
+
+    const applyApprovedCoreWrite = async () => {
+        if (!proposalRunId) {
+            setCoreWriteError('Generate suggestions first.');
+            return;
+        }
+
+        const selections = coreWriteProposals.map((row) => {
+            const entry = proposalDecisions[row.item_id] || { decision: 'ignore', overwrite: false };
+            return {
+                item_id: Number(row.item_id),
+                decision: entry.decision,
+                overwrite: Boolean(entry.overwrite),
+            };
+        });
+
+        const hasOverwrite = selections.some((row) => row.overwrite);
+        if (hasOverwrite) {
+            const confirmed = window.confirm('Overwrite was selected for at least one field. Continue apply?');
+            if (!confirmed) return;
+        }
+
+        setApplyLoading(true);
+        setCoreWriteError('');
+        setCoreWriteSuccess('');
+        try {
+            const result = await aiCoreWriteClient.apply({
+                run_id: Number(proposalRunId),
+                confirm: true,
+                selections,
+            });
+            if (result?.featureDisabled) {
+                setCoreWriteError('AI core write is currently disabled.');
+                return;
+            }
+            const res = await contractService.getById(id);
+            setContract(res.data || res);
+            setCoreWriteSuccess(
+                `Apply completed. run_id=${result.run_id}, applied=${result.applied_count}, created=${result.created_count}, conflicts=${result.conflict_count}${result.idempotent_hit ? ' (idempotent)' : ''}`
+            );
+        } catch (err) {
+            console.error(err);
+            setCoreWriteError(err?.response?.data?.detail || err?.message || 'Apply failed.');
+        } finally {
+            setApplyLoading(false);
+        }
+    };
+
     if (loading) return <div className="placeholder">Loading contract…</div>;
     if (error || !contract) return <div className="error-banner">{error || 'Not found'}</div>;
 
@@ -593,6 +685,90 @@ const ContractDetail = () => {
                             <h4 className="eyebrow">Royalty Description</h4>
                             <p className="p-notes whitespace-pre-wrap">{contract.royalty_description || 'No royalties defined.'}</p>
                         </div>
+                    </div>
+
+                    <div className="mt-3" style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
+                        <div className="panel-header">
+                            <h3>AI Assist (Propose → Review → Apply)</h3>
+                            <div className="flex-row gap-2">
+                                <button className="btn ghost btn-sm" onClick={generateCoreWriteSuggestions} disabled={proposalLoading}>
+                                    {proposalLoading ? 'Generating…' : 'Generate Suggestions'}
+                                </button>
+                                <button className="btn ghost btn-sm" onClick={applyApprovedCoreWrite} disabled={applyLoading || !proposalRunId}>
+                                    {applyLoading ? 'Applying…' : 'Apply Approved Changes'}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="small muted mb-2">
+                            Non-destructive default: existing populated fields are not overwritten unless explicitly selected and allowlisted.
+                        </div>
+                        {proposalRunId && (
+                            <div className="small muted mb-2">Proposal run_id: <span className="mono">{proposalRunId}</span></div>
+                        )}
+                        {coreWriteError && (
+                            <div className="error-banner mb-2">
+                                <AlertCircle size={14} /> {coreWriteError}
+                            </div>
+                        )}
+                        {coreWriteSuccess && (
+                            <div className="success-banner mb-2">
+                                <CheckCircle size={14} /> {coreWriteSuccess}
+                            </div>
+                        )}
+
+                        {coreWriteProposals.length === 0 ? (
+                            <div className="placeholder">No core-write proposals generated yet.</div>
+                        ) : (
+                            <table className="contracts-table">
+                                <thead>
+                                    <tr>
+                                        <th>Entity</th>
+                                        <th>Operation</th>
+                                        <th>Patch</th>
+                                        <th>Conflicts</th>
+                                        <th>Decision</th>
+                                        <th>Overwrite</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {coreWriteProposals.map((row) => {
+                                        const itemState = proposalDecisions[row.item_id] || { decision: 'accept', overwrite: false };
+                                        return (
+                                            <tr key={row.item_id}>
+                                                <td>{row.entity_type}{row.entity_id ? ` #${row.entity_id}` : ''}</td>
+                                                <td>{row.operation}</td>
+                                                <td className="mono small">{JSON.stringify(row.patch || {})}</td>
+                                                <td className="mono small">{JSON.stringify(row.conflicts || [])}</td>
+                                                <td>
+                                                    <select
+                                                        className="input"
+                                                        value={itemState.decision}
+                                                        onChange={(e) => setProposalDecisions((prev) => ({
+                                                            ...prev,
+                                                            [row.item_id]: { ...itemState, decision: e.target.value },
+                                                        }))}
+                                                    >
+                                                        <option value="accept">accept</option>
+                                                        <option value="ignore">ignore</option>
+                                                    </select>
+                                                </td>
+                                                <td>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={Boolean(itemState.overwrite)}
+                                                        onChange={(e) => setProposalDecisions((prev) => ({
+                                                            ...prev,
+                                                            [row.item_id]: { ...itemState, overwrite: e.target.checked },
+                                                        }))}
+                                                    />
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        )}
                     </div>
                 </div>
             )}

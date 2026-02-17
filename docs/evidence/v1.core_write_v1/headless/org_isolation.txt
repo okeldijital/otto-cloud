@@ -1,0 +1,4 @@
+=== org isolation ===
+org_isolation_http_status=404
+Token=ORG_B_CORE_WRITE_EVIDENCE_TOKEN
+PASS: no org B token in org A propose response
