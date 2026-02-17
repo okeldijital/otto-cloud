@@ -24,6 +24,7 @@ from models.reporting import ReportDefinition, ReportRun, ReportArtifact
 from models.governance import StatusQuoItem
 from models.ai import AISession, AIMessage, AIAuditLog, AIContractResolutionRun, AIContractResolutionLink
 from models.contract_intake_links import ContractIntakeReleaseLink
+from models.release_integration import AIReleaseIntegrationRun, AIReleaseIntegrationLink
 
 # Aliases for backward compatibility
 Company = Organization
@@ -69,6 +70,8 @@ __all__ = [
     "AIContractResolutionRun",
     "AIContractResolutionLink",
     "ContractIntakeReleaseLink",
+    "AIReleaseIntegrationRun",
+    "AIReleaseIntegrationLink",
     "Contract",
     "ContractParty",
     "ContractAsset",

@@ -1,0 +1,26 @@
+DB=/Users/m2krproduction/.otto/data/db/release_integration_attach_evidence.sqlite
+=== core before ===
+artists=2
+tracks=2
+works=2
+releases=2
+organizations=2
+individuals=2
+contracts=1
+
+=== core after ===
+artists=2
+tracks=2
+works=2
+releases=2
+organizations=2
+individuals=2
+contracts=1
+
+=== ai before ===
+ai_release_integration_runs=0
+ai_release_integration_links=0
+
+=== ai after ===
+ai_release_integration_runs=1
+ai_release_integration_links=4

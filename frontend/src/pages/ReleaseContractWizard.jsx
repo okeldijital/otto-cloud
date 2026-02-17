@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { CatalogService } from '../services/catalog';
 import { aiClient } from '../api/aiClient';
-import { plan as integrationPlan } from '../api/aiReleaseIntegrationClient';
+import { attach as attachIntegration, plan as integrationPlan } from '../api/aiReleaseIntegrationClient';
 
 const steps = ['Select Release', 'Extract Contract', 'Integration Plan', 'Ready'];
 
@@ -28,6 +28,8 @@ const ReleaseContractWizard = () => {
     const [selectedFile, setSelectedFile] = useState(null);
     const [extractResult, setExtractResult] = useState(null);
     const [planResult, setPlanResult] = useState(null);
+    const [attachResult, setAttachResult] = useState(null);
+    const [reviewConfirmed, setReviewConfirmed] = useState(false);
 
     useEffect(() => {
         const loadReleases = async () => {
@@ -88,9 +90,45 @@ const ReleaseContractWizard = () => {
                 return;
             }
             setPlanResult(response);
+            setAttachResult(null);
+            setReviewConfirmed(false);
             setActiveStep(4);
         } catch (runError) {
             setError(runError?.response?.data?.detail || runError?.message || 'Integration plan failed.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const runAttach = async () => {
+        if (!releaseId || !planResult) {
+            setError('Run the integration plan before attach.');
+            return;
+        }
+
+        if (planResult?.needs_review && !reviewConfirmed) {
+            setError('You must confirm mismatch review before attach.');
+            return;
+        }
+
+        setLoading(true);
+        setError('');
+        setFeatureDisabled(false);
+
+        try {
+            const response = await attachIntegration({
+                release_id: Number(releaseId),
+                wizard_plan: planResult,
+                contract_extract: extractResult || undefined,
+                reviewed_mismatches: reviewConfirmed,
+            });
+            if (response?.featureDisabled) {
+                setFeatureDisabled(true);
+                return;
+            }
+            setAttachResult(response);
+        } catch (runError) {
+            setError(runError?.response?.data?.detail || runError?.message || 'Attach failed.');
         } finally {
             setLoading(false);
         }
@@ -249,19 +287,47 @@ const ReleaseContractWizard = () => {
                     </section>
 
                     <section style={cardStyle}>
-                        <h3 style={{ marginTop: 0 }}>4) Ready to attach (coming next step)</h3>
+                        <h3 style={{ marginTop: 0 }}>4) Ready to attach</h3>
                         <p style={{ margin: 0, color: 'var(--text-muted)' }}>
-                            Planning is complete. Persistence/attach remains disabled until Step E.
+                            Planning is complete. Attach persists append-only AI-owned references only.
                         </p>
+                        {planResult?.needs_review && (
+                            <div style={{ marginTop: '0.75rem', padding: '0.75rem 1rem', borderRadius: '10px', background: '#fffbeb', color: '#92400e' }}>
+                                Release flagged: missing {missingFlags.length}. Review mismatches before attach.
+                            </div>
+                        )}
+                        {planResult?.needs_review && (
+                            <label style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <input
+                                    type="checkbox"
+                                    checked={reviewConfirmed}
+                                    onChange={(e) => setReviewConfirmed(e.target.checked)}
+                                />
+                                I reviewed mismatches and missing flags.
+                            </label>
+                        )}
+                        <div style={{ marginTop: '0.75rem' }}>
+                            <button
+                                className="btn-primary"
+                                onClick={runAttach}
+                                disabled={loading || !planResult || (planResult?.needs_review && !reviewConfirmed)}
+                            >
+                                {loading ? 'Running...' : 'Attach to Release'}
+                            </button>
+                        </div>
+                        {attachResult && (
+                            <div style={{ marginTop: '0.75rem', color: '#0f766e', fontWeight: 600 }}>
+                                Attached run #{attachResult.run_id} (
+                                {attachResult?.attached_counts?.runs_created || 0} run,{' '}
+                                {attachResult?.attached_counts?.links_created || 0} links)
+                            </div>
+                        )}
                     </section>
                 </div>
 
                 <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.25rem', flexWrap: 'wrap' }}>
                     <button className="btn-secondary" onClick={() => navigate(releaseId ? `/catalog/releases/${releaseId}` : '/catalog/releases')}>
                         Close
-                    </button>
-                    <button className="btn-secondary" disabled style={{ opacity: 0.55, cursor: 'not-allowed' }}>
-                        Attach (Step E)
                     </button>
                 </div>
             </div>

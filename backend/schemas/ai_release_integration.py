@@ -66,3 +66,20 @@ class ReleaseIntegrationPlanResponse(BaseModel):
     missing_flags: List[MissingFlag] = Field(default_factory=list)
     suggested_actions: List[SuggestedAction] = Field(default_factory=list)
     needs_review: bool = True
+
+
+class ReleaseIntegrationAttachRequest(BaseModel):
+    release_id: int
+    wizard_plan: ReleaseIntegrationPlanResponse
+    contract_extract: Optional[ContractExtractionV1] = None
+    extract_id: Optional[int] = None
+    contract_id: Optional[int] = None
+    reviewed_mismatches: bool = False
+
+
+class ReleaseIntegrationAttachResponse(BaseModel):
+    status: Literal["attached"] = "attached"
+    run_id: int
+    attached_counts: dict
+    needs_review: bool
+    warnings: List[str] = Field(default_factory=list)

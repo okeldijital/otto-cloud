@@ -1,0 +1,18 @@
+=== attach disabled ===
+HTTP_STATUS=404
+{"detail":"Not Found"}
+=== plan enabled ===
+HTTP_STATUS=200
+
+=== attach enabled ===
+HTTP_STATUS=200
+{
+  "status": "attached",
+  "run_id": 1,
+  "attached_counts": {
+    "runs_created": 1,
+    "links_created": 4,
+    "existing_links": 0
+  },
+  "needs_review": false
+}

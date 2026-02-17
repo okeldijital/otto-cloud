@@ -27,4 +27,16 @@ export async function health() {
     return response.data;
 }
 
-export default { plan, health };
+export async function attach(payload) {
+    try {
+        const response = await api.post(`${ENDPOINT}/attach`, payload);
+        return response.data;
+    } catch (error) {
+        if (error?.response?.status === 404) {
+            return { featureDisabled: true };
+        }
+        throw error;
+    }
+}
+
+export default { plan, health, attach };

@@ -49,6 +49,7 @@ def check_ai_writes():
     allowed_services = {
         "audit.py",
         "resolution/persist.py",
+        "release_integration/attach.py",
     }
     allowed_routes = {
         "ai_contracts.py"
@@ -349,7 +350,9 @@ def check_release_integration_governance():
       - backend/routes/ai_release_integration.py
       - backend/services/ai/release_integration/*.py
     Block:
-      - .add(), .commit(), .delete(), .update()
+      - .add(), .commit(), .delete(), .update() outside attach.py
+      - in attach.py, .add() may target only AIReleaseIntegrationRun/AIReleaseIntegrationLink
+      - in attach.py, .commit() is allowed
       - mutating db.execute SQL (insert/update/delete/alter/drop/create)
     """
     project_root = Path(__file__).resolve().parent.parent
@@ -364,6 +367,7 @@ def check_release_integration_governance():
     violations = []
     mutating_methods = {"add", "commit", "delete", "update"}
     mutating_sql = ("insert", "update", "delete", "alter", "drop", "create")
+    allowed_attach_writes = {"AIReleaseIntegrationRun", "AIReleaseIntegrationLink"}
 
     for target in targets:
         if not target.exists():
@@ -382,9 +386,34 @@ def check_release_integration_governance():
 
             method = node.func.attr
             if method in mutating_methods:
-                violations.append(
-                    f"Release integration read-only violation in {rel}: .{method}() at line {node.lineno}"
-                )
+                is_attach = rel.endswith("services/ai/release_integration/attach.py")
+                if not is_attach:
+                    violations.append(
+                        f"Release integration read-only violation in {rel}: .{method}() at line {node.lineno}"
+                    )
+                elif method == "add":
+                    for arg in node.args:
+                        if isinstance(arg, ast.Name):
+                            var_name = arg.id
+                            for assign in ast.walk(tree):
+                                if isinstance(assign, ast.Assign) and isinstance(assign.value, ast.Call):
+                                    if (
+                                        len(assign.targets) == 1
+                                        and isinstance(assign.targets[0], ast.Name)
+                                        and assign.targets[0].id == var_name
+                                        and isinstance(assign.value.func, ast.Name)
+                                    ):
+                                        model = assign.value.func.id
+                                        if model not in allowed_attach_writes:
+                                            violations.append(
+                                                f"Release integration attach violation in {rel}: non-allowed model add {model} at line {node.lineno}"
+                                            )
+                        elif isinstance(arg, ast.Call) and isinstance(arg.func, ast.Name):
+                            model = arg.func.id
+                            if model not in allowed_attach_writes:
+                                violations.append(
+                                    f"Release integration attach violation in {rel}: non-allowed model add {model} at line {node.lineno}"
+                                )
 
             if method == "execute" and node.args:
                 arg0 = node.args[0]
