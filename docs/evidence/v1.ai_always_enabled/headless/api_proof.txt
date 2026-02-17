@@ -1,0 +1,24 @@
+=== /api/ai/health ===
+HTTP/1.1 200 OK
+date: Tue, 17 Feb 2026 10:19:20 GMT
+server: uvicorn
+content-length: 48
+content-type: application/json
+
+{"status":"ok","enabled":true,"version":"1.0.0"}
+=== /api/ai/analytics/overview ===
+HTTP/1.1 200 OK
+date: Tue, 17 Feb 2026 10:19:20 GMT
+server: uvicorn
+content-length: 298
+content-type: application/json
+
+{"org_id":"00000000-0000-0000-0000-000000000001","organization_id":"00000000-0000-0000-0000-000000000001","generated_at":"2026-02-17T10:19:21.248042+00:00","analytics_version":"analytics_v1","contracts_processed_count":128,"resolution_runs_count":50,"links_persisted_count":5,"unresolved_count":46}
+=== /api/ai/contracts/intake/start ===
+HTTP/1.1 200 OK
+date: Tue, 17 Feb 2026 10:19:20 GMT
+server: uvicorn
+content-length: 160
+content-type: application/json
+
+{"status":"ready","org_id":"00000000-0000-0000-0000-000000000001","release":{"id":1,"title":"The Dream Spirit EditedThe Dream Spirit (Edited)The Dream Spirit"}}

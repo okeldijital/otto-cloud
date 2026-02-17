@@ -25,6 +25,19 @@ def ensure_ai_contract_intel_enabled():
             detail="AI module disabled"
         )
 
+
+def ensure_ai_contract_intake_enabled():
+    """Dependency to check if contract intake planner is enabled"""
+    if (
+        not settings.AI_ENABLED
+        or not settings.AI_CONTRACT_INTEL_ENABLED
+        or not settings.AI_CONTRACT_INTAKE_ENABLED
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="AI module disabled"
+        )
+
 @router.post("/extract", response_model=ContractExtractionV1, dependencies=[Depends(ensure_ai_contract_intel_enabled)])
 async def extract_contract_endpoint(
     file: UploadFile = File(...),
@@ -173,7 +186,7 @@ def _bucket_suggestions(suggestions: dict) -> dict:
 
 @router.post(
     "/intake/wizard_plan",
-    dependencies=[Depends(ensure_ai_contract_intel_enabled)],
+    dependencies=[Depends(ensure_ai_contract_intake_enabled)],
 )
 async def intake_wizard_plan(
     release_id: int = Form(...),
@@ -228,4 +241,34 @@ async def intake_wizard_plan(
             )
         },
         "rationale": "Read-only wizard plan generated from extraction + org-scoped linker.",
+    }
+
+
+@router.post(
+    "/intake/start",
+    dependencies=[Depends(ensure_ai_contract_intake_enabled)],
+)
+async def intake_start(
+    release_id: int = Form(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    release = (
+        db.query(Release)
+        .filter(
+            Release.id == release_id,
+            Release.organization_id == current_user.organization_id,
+        )
+        .first()
+    )
+    if not release:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not Found")
+
+    return {
+        "status": "ready",
+        "org_id": str(current_user.organization_id),
+        "release": {
+            "id": release.id,
+            "title": release.title,
+        },
     }

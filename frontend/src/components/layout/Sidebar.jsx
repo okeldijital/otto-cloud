@@ -71,24 +71,6 @@ const Sidebar = () => {
     const location = useLocation();
     const { user } = useAuth();
     const isAdmin = user?.role === 'admin' || user?.is_superuser;
-    const [aiEnabled, setAiEnabled] = useState(false);
-
-    // Check if AI is enabled
-    React.useEffect(() => {
-        const checkAiHealth = async () => {
-            try {
-                const response = await fetch('/api/ai/health');
-                if (response.ok) {
-                    const data = await response.json();
-                    setAiEnabled(data.enabled === true);
-                }
-            } catch (error) {
-                // AI not available, keep disabled
-                setAiEnabled(false);
-            }
-        };
-        checkAiHealth();
-    }, []);
 
     const sections = useMemo(() => [
         {
@@ -155,18 +137,14 @@ const Sidebar = () => {
                 ))}
 
                 <div style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
-                    {aiEnabled && (
-                        <Link to="/ai" className={`sidebar-item ${location.pathname === '/ai' ? 'active' : ''}`}>
-                            <Bot size={20} />
-                            <span className="sidebar-label">AI Assistant</span>
-                        </Link>
-                    )}
-                    {aiEnabled && (
-                        <Link to="/ai/analytics" className={`sidebar-item ${location.pathname.startsWith('/ai/analytics') ? 'active' : ''}`}>
-                            <BarChart3 size={20} />
-                            <span className="sidebar-label">AI Analytics</span>
-                        </Link>
-                    )}
+                    <Link to="/ai" className={`sidebar-item ${location.pathname === '/ai' ? 'active' : ''}`}>
+                        <Bot size={20} />
+                        <span className="sidebar-label">AI Assistant</span>
+                    </Link>
+                    <Link to="/ai/analytics" className={`sidebar-item ${location.pathname.startsWith('/ai/analytics') ? 'active' : ''}`}>
+                        <BarChart3 size={20} />
+                        <span className="sidebar-label">AI Analytics</span>
+                    </Link>
                     {isAdmin && (
                         <Link to="/admin" className={`sidebar-item ${location.pathname.startsWith('/admin') ? 'active' : ''}`}>
                             <ShieldCheck size={20} />

@@ -15,7 +15,11 @@ router = APIRouter()
 
 
 def ensure_ai_analytics_enabled():
-    if not settings.AI_ENABLED or not settings.AI_CONTRACT_INTEL_ENABLED:
+    if (
+        not settings.AI_ENABLED
+        or not settings.AI_CONTRACT_INTEL_ENABLED
+        or not settings.AI_ANALYTICS_ENABLED
+    ):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="AI module disabled",

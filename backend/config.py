@@ -47,11 +47,13 @@ class Settings(BaseSettings):
     MUSICBRAINZ_USER_AGENT: Optional[str] = "OTTO/1.0.1"
     
     # AI Features (Phase 1: Read-only)
-    AI_ENABLED: bool = False
-    AI_CONTRACT_INTEL_ENABLED: bool = False
-    AI_CONTRACT_RESOLVE_ENABLED: bool = False
-    AI_RELEASE_INTEGRATION_ENABLED: bool = False
-    AI_RELEASE_VALIDATION_ENABLED: bool = False
+    AI_ENABLED: bool = True
+    AI_CONTRACT_INTEL_ENABLED: bool = True
+    AI_CONTRACT_INTAKE_ENABLED: bool = True
+    AI_CONTRACT_RESOLVE_ENABLED: bool = True
+    AI_RELEASE_INTEGRATION_ENABLED: bool = True
+    AI_RELEASE_VALIDATION_ENABLED: bool = True
+    AI_ANALYTICS_ENABLED: bool = True
 
     def __init__(self, **values):
         super().__init__(**values)
