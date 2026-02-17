@@ -58,6 +58,7 @@ class Settings(BaseSettings):
     AI_ROYALTY_ENABLED: bool = True
     AI_ROYALTY_PERSIST_ENABLED: bool = True
     AI_ANALYTICS_ENABLED: bool = True
+    ADMIN_RESTORE_ENABLED: bool = True
 
     def __init__(self, **values):
         super().__init__(**values)

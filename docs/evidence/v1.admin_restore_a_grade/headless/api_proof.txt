@@ -1,0 +1,20 @@
+=== list backups (before restore) ===
+{"backups":[{"id":1,"filename":"otto_backup_20260217_150447.zip","size_bytes":20858,"sha256":"d56a3fafcbe779ebbdf4e1ee64a534f33e32fdf0a7aa67e00cfad3624caf91af","backup_kind":"manual","is_pre_restore_snapshot":false,"created_at":"2026-02-17T13:04:47+00:00","organization_id":"00000000-0000-0000-0000-000000000001"}]}
+=== restore confirm=false ===
+HTTP/1.1 422 Unprocessable Content
+date: Tue, 17 Feb 2026 15:04:46 GMT
+server: uvicorn
+content-length: 34
+content-type: application/json
+
+{"detail":"confirmation required"}
+=== restore confirm=true ===
+HTTP/1.1 200 OK
+date: Tue, 17 Feb 2026 15:04:46 GMT
+server: uvicorn
+content-length: 183
+content-type: application/json
+
+{"status":"restored","backup_id":1,"pre_restore_snapshot_id":1,"restored_at":"2026-02-17T15:04:47.417368+00:00","organization_id":"00000000-0000-0000-0000-000000000001","warnings":[]}
+=== list backups (after restore) ===
+{"backups":[{"id":1,"filename":"pre_restore_snapshot_20260217_150447.zip","size_bytes":39856,"sha256":"6e0b66dd713face4b421052574b4220aa3dd27b8e9c3b56e9e130bad6dbe5194","backup_kind":"pre_restore_snapshot","is_pre_restore_snapshot":true,"created_at":"2026-02-17T13:04:47+00:00","organization_id":"00000000-0000-0000-0000-000000000001"}]}

@@ -48,6 +48,7 @@ class BackupListItem(BaseModel):
 
 class BackupRestoreRequest(BaseModel):
     backup_id: int
+    confirm: bool = False
 
 
 class BackupRestoreResponse(BaseModel):
@@ -112,7 +113,7 @@ async def admin_upload_backup(
 ):
     try:
         if not file.filename:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Missing filename")
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Missing filename")
         content = await file.read()
         row = upload_backup(
             db=db,
@@ -145,7 +146,7 @@ async def admin_upload_backup(
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Zip archive is empty")
         if code.startswith("unknown_backup_structure"):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unknown backup structure")
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=code)
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=code)
 
 
 @router.post("/admin/backups/restore", response_model=BackupRestoreResponse)
@@ -154,23 +155,41 @@ async def admin_restore_backup(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_admin_user),
 ):
+    if not settings.ADMIN_RESTORE_ENABLED:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not Found")
     try:
         result = restore_backup(
             db=db,
             org_id=current_user.organization_id,
             user_id=current_user.id,
             backup_id=payload.backup_id,
+            confirm=payload.confirm,
         )
         return BackupRestoreResponse(**result)
     except ValueError as exc:
         code = str(exc)
+        if code == "confirmation_required":
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="confirmation required")
         if code == "backup_not_found":
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Backup not found")
-        if code in {"checksum_mismatch", "zip_slip_detected", "empty_zip", "missing_database_in_backup"}:
+        if code in {
+            "checksum_mismatch",
+            "zip_slip_detected",
+            "empty_zip",
+            "missing_database_in_backup",
+            "missing_manifest",
+            "invalid_manifest_json",
+            "invalid_manifest_checksums",
+            "db_integrity_check_failed",
+            "schema_incompatible_missing_alembic_version",
+            "post_restore_integrity_check_failed",
+            "post_restore_missing_alembic_version",
+            "restore_lock_timeout",
+        } or code.startswith("manifest_missing_file:") or code.startswith("manifest_checksum_mismatch:") or code.startswith("post_restore_missing_table:"):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=code)
         if code.startswith("unknown_backup_structure"):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="unknown_backup_structure")
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=code)
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=code)
 
 
 @router.get("/admin/backups/download/{backup_id}")

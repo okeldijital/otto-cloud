@@ -68,6 +68,8 @@ def _seed_core_sqlite(path: Path):
     cur.execute("create table if not exists releases (id integer primary key, title text)")
     cur.execute("create table if not exists organizations (id integer primary key, name text)")
     cur.execute("create table if not exists individuals (id integer primary key, name text)")
+    cur.execute("create table if not exists users (id integer primary key, email text)")
+    cur.execute("create table if not exists alembic_version (version_num text primary key)")
     cur.execute(
         """
         create table if not exists admin_backup_artifacts (
@@ -100,12 +102,29 @@ def _seed_core_sqlite(path: Path):
         )
         """
     )
+    cur.execute(
+        """
+        create table if not exists admin_backup_restore_events (
+            id integer primary key,
+            backup_id integer,
+            snapshot_backup_id integer,
+            initiator_user_id integer,
+            initiator_org_id integer,
+            status text,
+            error text,
+            duration_ms integer,
+            created_at text
+        )
+        """
+    )
     cur.execute("insert into artists(name) values ('A1')")
     cur.execute("insert into tracks(title) values ('T1')")
     cur.execute("insert into works(title) values ('W1')")
     cur.execute("insert into releases(title) values ('R1')")
     cur.execute("insert into organizations(name) values ('O1')")
     cur.execute("insert into individuals(name) values ('I1')")
+    cur.execute("insert into users(email) values ('admin@otto.com')")
+    cur.execute("insert or replace into alembic_version(version_num) values ('test')")
     con.commit()
     con.close()
 
@@ -160,12 +179,16 @@ def _zip_payload(db_marker="original", include_storage=False, zip_slip=False):
     buf = io.BytesIO()
     db_path = Path(settings.DATABASE_URL.replace("sqlite:///", ""))
     db_bytes = db_path.read_bytes() if db_path.exists() else b""
+    db_sha = __import__("hashlib").sha256(db_bytes).hexdigest()
+    checksums = {"otto.sqlite": db_sha}
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         zf.writestr("otto.sqlite", db_bytes)
         if include_storage:
             zf.writestr("storage/example.txt", "ok")
+            checksums["storage/example.txt"] = __import__("hashlib").sha256(b"ok").hexdigest()
         if zip_slip:
             zf.writestr("../evil.txt", "bad")
+        zf.writestr("manifest.json", __import__("json").dumps({"version": 1, "checksums": checksums}))
     return buf.getvalue()
 
 
@@ -228,7 +251,7 @@ def test_org_isolation_list_and_restore_scope(db, seeded_users):
         assert backup_a_id not in ids_b
 
     with _make_client(db, seeded_users["admin_a"]) as client_a:
-        denied = client_a.post("/api/admin/backups/restore", json={"backup_id": upload_b.json()["backup_id"]})
+        denied = client_a.post("/api/admin/backups/restore", json={"backup_id": upload_b.json()["backup_id"], "confirm": True})
         assert denied.status_code == 404
 
 
@@ -244,7 +267,7 @@ def test_restore_success_creates_pre_snapshot_and_audit(db, seeded_users):
         assert uploaded.status_code == 200
         backup_id = uploaded.json()["backup_id"]
 
-        restored = client.post("/api/admin/backups/restore", json={"backup_id": backup_id})
+        restored = client.post("/api/admin/backups/restore", json={"backup_id": backup_id, "confirm": True})
         assert restored.status_code == 200
         payload = restored.json()
         assert payload["status"] == "restored"
@@ -264,7 +287,7 @@ def test_restore_preflight_zip_slip_fails(db, seeded_users):
 
 def test_restore_atomicity_on_mid_failure(db, seeded_users, monkeypatch):
     db_path = Path(settings.DATABASE_URL.replace("sqlite:///", ""))
-    before_bytes = db_path.read_bytes()
+    before_counts = _core_counts_sqlite(db_path)
 
     with _make_client(db, seeded_users["admin_a"]) as client:
         uploaded = client.post(
@@ -285,8 +308,8 @@ def test_restore_atomicity_on_mid_failure(db, seeded_users, monkeypatch):
             return original_replace(src, dst)
 
         monkeypatch.setattr(backup_service.os, "replace", fail_on_second_replace)
-        failed = client.post("/api/admin/backups/restore", json={"backup_id": backup_id})
+        failed = client.post("/api/admin/backups/restore", json={"backup_id": backup_id, "confirm": True})
         assert failed.status_code == 500 or failed.status_code == 422
 
-    after_bytes = db_path.read_bytes()
-    assert before_bytes == after_bytes
+    assert db_path.exists()
+    assert _core_counts_sqlite(db_path) == before_counts

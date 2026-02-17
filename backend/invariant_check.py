@@ -597,7 +597,7 @@ def check_admin_backup_governance():
       - Scope:
         - backend/routes/backup.py
         - backend/services/admin_backup/*.py
-      - Writes allowed only to AdminBackupArtifact and AdminRestoreAudit
+      - Writes allowed only to AdminBackupArtifact, AdminRestoreAudit, and AdminBackupRestoreEvent
       - Block writes to core models
       - Block mutating execute SQL (insert/update/delete/alter/drop/create)
     """
@@ -613,7 +613,7 @@ def check_admin_backup_governance():
     violations = []
     mutating_methods = {"add", "commit", "delete", "update"}
     mutating_sql = ("insert", "update", "delete", "alter", "drop", "create")
-    allowed_models = {"AdminBackupArtifact", "AdminRestoreAudit"}
+    allowed_models = {"AdminBackupArtifact", "AdminRestoreAudit", "AdminBackupRestoreEvent"}
     forbidden_models = {
         "Organization",
         "Individual",

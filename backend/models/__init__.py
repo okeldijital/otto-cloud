@@ -28,6 +28,7 @@ from models.release_integration import AIReleaseIntegrationRun, AIReleaseIntegra
 from models.contract_documents import AIContractDocument, AIContractWorkLink
 from models.ai_royalty import AIRoyaltySimulationRun
 from models.admin_backup import AdminBackupArtifact, AdminRestoreAudit
+from models.admin_backup_restore import AdminBackupRestoreEvent
 
 # Aliases for backward compatibility
 Company = Organization
@@ -80,6 +81,7 @@ __all__ = [
     "AIRoyaltySimulationRun",
     "AdminBackupArtifact",
     "AdminRestoreAudit",
+    "AdminBackupRestoreEvent",
     "Contract",
     "ContractParty",
     "ContractAsset",

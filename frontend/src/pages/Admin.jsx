@@ -18,6 +18,7 @@ const Admin = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isRunningBackup, setIsRunningBackup] = useState(false);
+    const [restoringBackupId, setRestoringBackupId] = useState(null);
     const [editingUser, setEditingUser] = useState(null);
     const [error, setError] = useState(null);
     const fileInputRef = React.useRef(null);
@@ -128,11 +129,16 @@ const Admin = () => {
 
     const handleRestore = async (backup) => {
         if (await confirmAction(`RESTORE SYSTEM from ${backup.filename}? This will overwrite current data.`, 'Restore System')) {
+            setRestoringBackupId(backup.id);
             try {
                 const res = await AdminService.restore(backup.id);
-                alert(res.message || 'System restored successfully');
+                await fetchData();
+                alert(res.message || 'Restore complete — you may need to reload app');
             } catch (error) {
-                alert('Restore failed');
+                console.error('Restore failed:', error);
+                alert(`Restore failed — system rolled back to pre-restore snapshot (${error?.response?.data?.detail || error?.message || 'unknown'})`);
+            } finally {
+                setRestoringBackupId(null);
             }
         }
     };
@@ -257,10 +263,11 @@ const Admin = () => {
                     </button>
                     <button
                         className="btn-restore"
+                        disabled={restoringBackupId === row.id}
                         onClick={() => handleRestore(row)}
                         title="Restore System"
                     >
-                        <RefreshCcw size={14} /> Restore
+                        <RefreshCcw size={14} /> {restoringBackupId === row.id ? 'Restoring…' : 'Restore'}
                     </button>
                 </div>
             )

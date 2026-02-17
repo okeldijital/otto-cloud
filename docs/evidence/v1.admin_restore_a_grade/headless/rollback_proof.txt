@@ -1,0 +1,3 @@
+forced_restore_error= RuntimeError forced_swap_failure
+sentinel_rows_after_forced_failure= before,rollback_after
+rollback_events_count= 1

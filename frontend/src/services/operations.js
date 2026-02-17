@@ -75,7 +75,7 @@ export const AdminService = {
         return response.data?.backups || [];
     },
     restore: async (backupId) => {
-        const response = await api.post('/admin/backups/restore', { backup_id: Number(backupId) });
+        const response = await api.post('/admin/backups/restore', { backup_id: Number(backupId), confirm: true });
         return response.data;
     },
     getStats: async () => {

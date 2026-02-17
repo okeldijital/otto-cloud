@@ -1,0 +1,9 @@
+sentinel_rows_after_restore= before
+restore_events_count= 1
+snapshot_count= 1
+artists_count= 0
+tracks_count= 0
+works_count= 0
+releases_count= 0
+organizations_count= 0
+individuals_count= 0
