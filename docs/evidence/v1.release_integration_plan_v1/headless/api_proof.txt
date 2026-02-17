@@ -1,0 +1,9 @@
+=== GET /api/ai/release_integration/health ===
+HTTP_STATUS=200
+{"enabled_flags":{"AI_ENABLED":true,"AI_CONTRACT_INTEL_ENABLED":true,"AI_CONTRACT_INTAKE_ENABLED":true,"AI_RELEASE_VALIDATION_ENABLED":true},"version":"release_integration_v1"}
+=== POST /api/ai/release_integration/plan ===
+HTTP_STATUS=200
+{
+  "org_id": "00000000-0000-0000-0000-0000000026ad",
+  "missing_flags": []
+}

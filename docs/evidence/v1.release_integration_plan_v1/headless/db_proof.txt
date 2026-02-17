@@ -1,0 +1,32 @@
+DB=/Users/m2krproduction/.otto/data/db/release_integration_plan_evidence.sqlite
+=== before ===
+artists.count=2
+tracks.count=2
+works.count=2
+releases.count=2
+organizations.count=2
+individuals.count=2
+contracts.count=1
+artists.sha256=1470a0c5026e1fc8ef1ce63bcaf875457ad3c74d1b4a384be8eefe8802bacd66
+tracks.sha256=227508a1c5c47e4bc70119cf14992b535e4fb24bec82752370bd7708c842f230
+works.sha256=e64ff9169ae7ddddad7ed4dd908982404c4655d8f7193e74e1d88871c2c12e88
+releases.sha256=d1338cde0083b4c194a7efd11725cbcfe2b91743a59b2bcbd41af05c5fed600e
+organizations.sha256=71a30082d47edb7228e0ec2998984fc6eb7f4f37485ac2dad01b66e731fc71d4
+individuals.sha256=e853e46b9755ac572a65d0cd67e4698dd65ebca9e1b59f377017856faeb35379
+contracts.sha256=bd391594b3055f2fc29b617e7b2054aa5b89e82e3fdefe89245d0409a24b17a4
+
+=== after ===
+artists.count=2
+tracks.count=2
+works.count=2
+releases.count=2
+organizations.count=2
+individuals.count=2
+contracts.count=1
+artists.sha256=1470a0c5026e1fc8ef1ce63bcaf875457ad3c74d1b4a384be8eefe8802bacd66
+tracks.sha256=227508a1c5c47e4bc70119cf14992b535e4fb24bec82752370bd7708c842f230
+works.sha256=e64ff9169ae7ddddad7ed4dd908982404c4655d8f7193e74e1d88871c2c12e88
+releases.sha256=d1338cde0083b4c194a7efd11725cbcfe2b91743a59b2bcbd41af05c5fed600e
+organizations.sha256=71a30082d47edb7228e0ec2998984fc6eb7f4f37485ac2dad01b66e731fc71d4
+individuals.sha256=e853e46b9755ac572a65d0cd67e4698dd65ebca9e1b59f377017856faeb35379
+contracts.sha256=bd391594b3055f2fc29b617e7b2054aa5b89e82e3fdefe89245d0409a24b17a4
