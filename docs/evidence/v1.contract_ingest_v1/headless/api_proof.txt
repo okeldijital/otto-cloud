@@ -1,0 +1,19 @@
+=== ingest disabled ===
+HTTP_STATUS=404
+{"detail":"Not Found"}
+=== ingest enabled ===
+HTTP_STATUS=200
+{
+  "release_id": 1,
+  "contract_document_id": 1,
+  "run_id": 1,
+  "ingest_counts": {
+    "documents_created": 1,
+    "work_links_created": 1
+  },
+  "attached_counts": {
+    "runs_created": 1,
+    "links_created": 2,
+    "existing_links": 0
+  }
+}

@@ -50,6 +50,7 @@ def check_ai_writes():
         "audit.py",
         "resolution/persist.py",
         "release_integration/attach.py",
+        "contract_ingest/ingest.py",
     }
     allowed_routes = {
         "ai_contracts.py"
@@ -349,17 +350,24 @@ def check_release_integration_governance():
     Scope:
       - backend/routes/ai_release_integration.py
       - backend/services/ai/release_integration/*.py
+      - backend/services/ai/contract_ingest/*.py
     Block:
-      - .add(), .commit(), .delete(), .update() outside attach.py
-      - in attach.py, .add() may target only AIReleaseIntegrationRun/AIReleaseIntegrationLink
-      - in attach.py, .commit() is allowed
+      - .add(), .commit(), .delete(), .update() outside attach.py and ingest.py
+      - in attach.py/.ingest.py, .add() may target only AI-owned attach/ingest models
+      - in attach.py/.ingest.py, .commit() is allowed
       - mutating db.execute SQL (insert/update/delete/alter/drop/create)
     """
     project_root = Path(__file__).resolve().parent.parent
     targets = [project_root / "backend/routes/ai_release_integration.py"]
     service_root = project_root / "backend/services/ai/release_integration"
+    ingest_root = project_root / "backend/services/ai/contract_ingest"
     if service_root.exists():
         for root, _, files in os.walk(service_root):
+            for file in files:
+                if file.endswith(".py"):
+                    targets.append(Path(root) / file)
+    if ingest_root.exists():
+        for root, _, files in os.walk(ingest_root):
             for file in files:
                 if file.endswith(".py"):
                     targets.append(Path(root) / file)
@@ -367,7 +375,12 @@ def check_release_integration_governance():
     violations = []
     mutating_methods = {"add", "commit", "delete", "update"}
     mutating_sql = ("insert", "update", "delete", "alter", "drop", "create")
-    allowed_attach_writes = {"AIReleaseIntegrationRun", "AIReleaseIntegrationLink"}
+    allowed_model_writes = {
+        "AIReleaseIntegrationRun",
+        "AIReleaseIntegrationLink",
+        "AIContractDocument",
+        "AIContractWorkLink",
+    }
 
     for target in targets:
         if not target.exists():
@@ -386,8 +399,11 @@ def check_release_integration_governance():
 
             method = node.func.attr
             if method in mutating_methods:
-                is_attach = rel.endswith("services/ai/release_integration/attach.py")
-                if not is_attach:
+                is_allowed_write_file = (
+                    rel.endswith("services/ai/release_integration/attach.py")
+                    or rel.endswith("services/ai/contract_ingest/ingest.py")
+                )
+                if not is_allowed_write_file:
                     violations.append(
                         f"Release integration read-only violation in {rel}: .{method}() at line {node.lineno}"
                     )
@@ -404,13 +420,13 @@ def check_release_integration_governance():
                                         and isinstance(assign.value.func, ast.Name)
                                     ):
                                         model = assign.value.func.id
-                                        if model not in allowed_attach_writes:
+                                        if model not in allowed_model_writes:
                                             violations.append(
                                                 f"Release integration attach violation in {rel}: non-allowed model add {model} at line {node.lineno}"
                                             )
                         elif isinstance(arg, ast.Call) and isinstance(arg.func, ast.Name):
                             model = arg.func.id
-                            if model not in allowed_attach_writes:
+                            if model not in allowed_model_writes:
                                 violations.append(
                                     f"Release integration attach violation in {rel}: non-allowed model add {model} at line {node.lineno}"
                                 )

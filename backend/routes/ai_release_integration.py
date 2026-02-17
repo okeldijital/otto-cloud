@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from config import settings
@@ -8,10 +8,12 @@ from models.user import User
 from schemas.ai_release_integration import (
     ReleaseIntegrationAttachRequest,
     ReleaseIntegrationAttachResponse,
+    ReleaseIntegrationIngestResponse,
     ReleaseIntegrationPlanRequest,
     ReleaseIntegrationPlanResponse,
 )
 from services.ai.audit import log_ai_request
+from services.ai.contract_ingest import ingest_contract_pdf
 from services.ai.release_integration import (
     attach_release_integration_plan,
     build_release_integration_plan,
@@ -47,6 +49,20 @@ def ensure_ai_release_integration_attach_enabled():
         )
 
 
+def ensure_ai_contract_ingest_enabled():
+    if (
+        not settings.AI_ENABLED
+        or not settings.AI_CONTRACT_INTEL_ENABLED
+        or not settings.AI_RELEASE_VALIDATION_ENABLED
+        or not settings.AI_RELEASE_INTEGRATION_ATTACH_ENABLED
+        or not settings.AI_CONTRACT_INGEST_ENABLED
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="AI module disabled",
+        )
+
+
 @router.get("/health")
 async def release_integration_health():
     return {
@@ -56,6 +72,7 @@ async def release_integration_health():
             "AI_CONTRACT_INTAKE_ENABLED": settings.AI_CONTRACT_INTAKE_ENABLED,
             "AI_RELEASE_VALIDATION_ENABLED": settings.AI_RELEASE_VALIDATION_ENABLED,
             "AI_RELEASE_INTEGRATION_ATTACH_ENABLED": settings.AI_RELEASE_INTEGRATION_ATTACH_ENABLED,
+            "AI_CONTRACT_INGEST_ENABLED": settings.AI_CONTRACT_INGEST_ENABLED,
         },
         "version": "release_integration_v1",
     }
@@ -148,5 +165,45 @@ async def release_integration_attach(
             "wizard_plan_org_mismatch",
             "review_confirmation_required",
         }:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=msg)
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=msg)
+
+
+@router.post(
+    "/ingest",
+    response_model=ReleaseIntegrationIngestResponse,
+    dependencies=[Depends(ensure_ai_contract_ingest_enabled)],
+)
+async def release_integration_ingest(
+    release_id: int = Form(...),
+    contract_id: int | None = Form(None),
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        result = ingest_contract_pdf(
+            db=db,
+            org_id=current_user.organization_id,
+            release_id=release_id,
+            file=file,
+            user=current_user,
+            contract_id=contract_id,
+        )
+        log_ai_request(
+            db=db,
+            org_id=current_user.organization_id,
+            user_id=current_user.id,
+            action="contract_ingest",
+            message=f"release={release_id}|doc={result['contract_document_id']}|run={result['run_id']}",
+            tool="contract_ingest",
+            parser_version="release_integration_v1",
+        )
+        return ReleaseIntegrationIngestResponse(**result)
+    except ValueError as exc:
+        msg = str(exc)
+        if msg == "release_not_found":
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not Found")
+        if msg in {"invalid_file_type", "empty_file"}:
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=msg)
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=msg)

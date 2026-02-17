@@ -54,6 +54,7 @@ class Settings(BaseSettings):
     AI_RELEASE_INTEGRATION_ENABLED: bool = True
     AI_RELEASE_VALIDATION_ENABLED: bool = True
     AI_RELEASE_INTEGRATION_ATTACH_ENABLED: bool = True
+    AI_CONTRACT_INGEST_ENABLED: bool = True
     AI_ANALYTICS_ENABLED: bool = True
 
     def __init__(self, **values):

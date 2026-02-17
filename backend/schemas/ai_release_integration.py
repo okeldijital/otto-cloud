@@ -83,3 +83,14 @@ class ReleaseIntegrationAttachResponse(BaseModel):
     attached_counts: dict
     needs_review: bool
     warnings: List[str] = Field(default_factory=list)
+
+
+class ReleaseIntegrationIngestResponse(BaseModel):
+    release_id: int
+    contract_document_id: int
+    run_id: int
+    matches: dict
+    missing_flags: List[dict] = Field(default_factory=list)
+    warnings: List[str] = Field(default_factory=list)
+    attached_counts: dict
+    ingest_counts: dict
