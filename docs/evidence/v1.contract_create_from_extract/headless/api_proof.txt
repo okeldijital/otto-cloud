@@ -1,6 +1,9 @@
-POST /api/contracts/from_extract proof
-- disabled flag returns 404
-- enabled returns 200 with contract_id/title/start_date/pdf_asset_id
+# curl success extract
+curl -i -X POST 'http://127.0.0.1:18001/api/ai/contracts/extract' -F file=@/Users/m2krproduction/otto/KAARGO M2KR Remix Agreement.pdf
+HTTP/1.1 200 OK
+date: Tue, 17 Feb 2026 23:04:19 GMT
+server: uvicorn
+content-length: 828
+content-type: application/json
 
-Sample expected fields:
-{"title":"KAARGO M2KR Remix Agreement","start_date":"2024-03-15","pdf_asset_id":123,"extraction":{"parties":[],"splits":[]}}
+{"contract_title":"KAARGO M2KR Remix Agreement","contract_id":null,"contract_date":null,"effective_date":null,"start_date":null,"expiration_date":null,"end_date":null,"territory":null,"exclusivity":null,"parties":[],"splits":[{"split_type":"MASTER","party_name":"Unknown Party","party_role":null,"percent":30.0,"notes":"Detected near match: 30 %"},{"split_type":"MASTER","party_name":"Unknown Party","party_role":null,"percent":25.0,"notes":"Detected near match: 25%"},{"split_type":"MASTER","party_name":"Unknown Party","party_role":null,"percent":50.0,"notes":"Detected near match: 50 %"}],"splits_total":105.0,"works_hints":{"artists":[],"tracks":[],"releases":[]},"raw_confidence":0.6,"warnings":["splits_total_mismatch: Computed total is 105.0%","contract_title_fallback_from_filename"],"parser_version":"deterministic_v1"}

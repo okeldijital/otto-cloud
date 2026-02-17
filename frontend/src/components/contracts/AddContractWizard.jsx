@@ -8,6 +8,7 @@ export default function AddContractWizard({ isOpen, onClose, onCreated }) {
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [errorId, setErrorId] = useState('');
   const [extraction, setExtraction] = useState(null);
   const [created, setCreated] = useState(null);
   const [form, setForm] = useState({
@@ -23,6 +24,7 @@ export default function AddContractWizard({ isOpen, onClose, onCreated }) {
     setFile(null);
     setLoading(false);
     setError('');
+    setErrorId('');
     setExtraction(null);
     setCreated(null);
     setForm({ contract_type: 'Other', status: 'Draft', user_overrides: { title: '', start_date: null, end_date: null } });
@@ -47,7 +49,13 @@ export default function AddContractWizard({ isOpen, onClose, onCreated }) {
       }));
       setStep(3);
     } catch (e) {
-      setError(e?.response?.data?.detail || e.message || 'Extraction failed');
+      const detail = e?.response?.data?.detail;
+      setError(
+        (typeof detail === 'string' ? detail : detail?.detail) ||
+          e.message ||
+          'Extraction failed'
+      );
+      setErrorId(typeof detail === 'object' ? detail?.error_id || '' : '');
     } finally {
       setLoading(false);
     }
@@ -63,7 +71,13 @@ export default function AddContractWizard({ isOpen, onClose, onCreated }) {
       setStep(5);
       onCreated?.(result);
     } catch (e) {
-      setError(e?.response?.data?.detail || e.message || 'Create failed');
+      const detail = e?.response?.data?.detail;
+      setError(
+        (typeof detail === 'string' ? detail : detail?.detail) ||
+          e.message ||
+          'Create failed'
+      );
+      setErrorId(typeof detail === 'object' ? detail?.error_id || '' : '');
     } finally {
       setLoading(false);
     }
@@ -79,7 +93,12 @@ export default function AddContractWizard({ isOpen, onClose, onCreated }) {
         <div className="warning-banner" style={{ marginBottom: 10 }}>
           Non-destructive mode: this step creates a new contract + attached PDF only.
         </div>
-        {error && <div className="error-banner" style={{ marginBottom: 8 }}>{error}</div>}
+        {error && (
+          <div className="error-banner" style={{ marginBottom: 8 }}>
+            {error}
+            {errorId ? <div className="small mono">error_id: {errorId}</div> : null}
+          </div>
+        )}
 
         {step === 1 && (
           <div>

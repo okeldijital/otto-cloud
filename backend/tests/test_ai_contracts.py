@@ -7,12 +7,18 @@ from fastapi.testclient import TestClient
 from main import app
 from config import settings
 from io import BytesIO
+import PyPDF2
 
 client = TestClient(app)
 
 @pytest.fixture
 def mock_pdf():
-    return BytesIO(b"%PDF-1.4\n1 0 obj\n<<\n/Title (Sample Contract)\n>>\nendobj\ntrailer\n<<\n/Root 1 0 R\n>>\n%%EOF")
+    writer = PyPDF2.PdfWriter()
+    writer.add_blank_page(width=300, height=200)
+    buf = BytesIO()
+    writer.write(buf)
+    buf.seek(0)
+    return buf
 
 class TestAIContractsDisabled:
     def test_extract_returns_404_when_ai_disabled(self, mock_pdf):

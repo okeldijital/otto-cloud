@@ -1,0 +1,9 @@
+# curl bad file
+curl -i -X POST 'http://127.0.0.1:18001/api/ai/contracts/extract' -F file=@/var/folders/5g/c9pt9dzn7rs987kfcprbn2zh0000gp/T/tmp.NuShsmqfiV/bad.txt
+HTTP/1.1 422 Unprocessable Content
+date: Tue, 17 Feb 2026 23:04:19 GMT
+server: uvicorn
+content-length: 78
+content-type: application/json
+
+{"detail":{"detail":"pdf_parse_failed","hint":"only PDF files are supported"}}

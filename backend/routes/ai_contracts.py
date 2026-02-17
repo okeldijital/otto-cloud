@@ -1,3 +1,7 @@
+import logging
+import uuid
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
 from sqlalchemy.orm import Session
 from database import get_db
@@ -16,6 +20,7 @@ from services.ai.matchers.contract_resolver_v1 import resolve_entities
 from services.ai.audit import log_ai_request
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 def ensure_ai_contract_intel_enabled():
     """Dependency to check if contract intelligence is enabled"""
@@ -48,28 +53,59 @@ async def extract_contract_endpoint(
     Upload a PDF contract and extract structured intelligence.
     Writes audit log with file hash.
     """
-    if not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="Only PDF files are supported")
-    
-    content = await file.read()
-    parsed = extract_text_from_pdf(content)
-    
-    extraction = extract_contract_intelligence(parsed["text"])
-    extraction.contract_date = extraction.effective_date or extraction.start_date
-    extraction.expiration_date = extraction.end_date
-    
-    # Audit logging (hash only)
-    log_ai_request(
-        db=db,
-        org_id=current_user.organization_id,
-        user_id=current_user.id,
-        action="contract_extraction",
-        message=f"Extracted PDF: {parsed['sha256']}",
-        tool="pdf_extract",
-        parser_version="contract_extractor_v1.2.2"
-    )
-    
-    return extraction
+    try:
+        if not file.filename.lower().endswith(".pdf"):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={
+                    "detail": "pdf_parse_failed",
+                    "hint": "only PDF files are supported",
+                },
+            )
+
+        content = await file.read()
+        parsed = extract_text_from_pdf(content)
+        parse_text = parsed.get("text", "") or ""
+        if parse_text.startswith("Error during PDF extraction:"):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={
+                    "detail": "pdf_parse_failed",
+                    "hint": "try a different PDF export or scan quality",
+                },
+            )
+
+        extraction = extract_contract_intelligence(parse_text)
+        extraction.contract_date = extraction.effective_date or extraction.start_date
+        extraction.expiration_date = extraction.end_date
+        if (not extraction.contract_title) or extraction.contract_title == "Governed Extraction (Deterministic V1)":
+            extraction.contract_title = Path(file.filename).stem
+            extraction.warnings = list(extraction.warnings or []) + ["contract_title_fallback_from_filename"]
+
+        # Audit logging (hash only)
+        log_ai_request(
+            db=db,
+            org_id=current_user.organization_id,
+            user_id=current_user.id,
+            action="contract_extraction",
+            message=f"Extracted PDF: {parsed['sha256']}",
+            tool="pdf_extract",
+            parser_version=extraction.parser_version or "contract_extractor_v1.2.2",
+        )
+        return extraction
+    except HTTPException:
+        raise
+    except Exception:
+        error_id = str(uuid.uuid4())
+        logger.exception("contract extract failed error_id=%s", error_id)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "detail": "contract_extract_failed",
+                "error_id": error_id,
+                "hint": "try a different PDF export or scan quality",
+            },
+        )
 
 from schemas.ai_linking import (
     ContractLinkSuggestRequestV1,
