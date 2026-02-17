@@ -193,6 +193,7 @@ def build_release_validation_plan(
     release_id: int,
     contract_link_id: Optional[int] = None,
     contract_id: Optional[int] = None,
+    contract_extract: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     release = (
         db.query(Release)

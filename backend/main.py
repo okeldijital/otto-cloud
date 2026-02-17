@@ -174,8 +174,8 @@ app.include_router(ai_contracts.router, prefix="/api/ai/contracts", tags=["AI Co
 app.include_router(ai_analytics.router, prefix="/api/ai/analytics", tags=["AI Analytics"])
 app.include_router(
     ai_release_integration.router,
-    prefix="/api/ai/release-integration",
-    tags=["AI Release Integration"],
+    prefix="/api/ai/release_integration",
+    tags=["ai"],
 )
 app.include_router(
     ai_release_validation.router,
