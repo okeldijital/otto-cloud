@@ -1,0 +1,18 @@
+DB=/Users/m2krproduction/.otto/data/db/royalty_sim_evidence.sqlite
+=== core before ===
+artists=2
+tracks=2
+works=2
+releases=2
+
+=== core after ===
+artists=2
+tracks=2
+works=2
+releases=2
+
+=== ai runs before ===
+ai_royalty_simulation_runs=0
+
+=== ai runs after ===
+ai_royalty_simulation_runs=1

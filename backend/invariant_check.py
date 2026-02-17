@@ -117,6 +117,7 @@ def main():
     write_violations = check_ai_writes()
     unscoped_violations = check_ai_unscoped_queries()
     analytics_violations = check_ai_analytics_governance()
+    royalty_violations = check_ai_royalty_governance()
     resolve_violations = check_ai_resolve_governance()
     release_integration_violations = check_release_integration_governance()
     release_validation_violations = check_release_validation_governance()
@@ -126,6 +127,7 @@ def main():
         + write_violations
         + unscoped_violations
         + analytics_violations
+        + royalty_violations
         + resolve_violations
         + release_integration_violations
         + release_validation_violations
@@ -340,6 +342,89 @@ def check_ai_analytics_governance():
                             violations.append(
                                 f"Analytics org-scope violation in {rel}: query touches {model_csv} without organization_id == org_id near line {node.lineno}"
                             )
+
+    return violations
+
+
+def check_ai_royalty_governance():
+    """
+    Royalty governance checks:
+      - backend/services/ai/royalty/*.py must be read-only
+      - backend/routes/ai_royalty.py may write only AIRoyaltySimulationRun
+      - block mutating execute SQL (update/delete/alter/drop)
+    """
+    project_root = Path(__file__).resolve().parent.parent
+    targets = [project_root / "backend/routes/ai_royalty.py"]
+    service_root = project_root / "backend/services/ai/royalty"
+    if service_root.exists():
+        for root, _, files in os.walk(service_root):
+            for file in files:
+                if file.endswith(".py"):
+                    targets.append(Path(root) / file)
+
+    violations = []
+    forbidden_methods = {"add", "commit", "delete", "update"}
+    mutating_sql = ("update", "delete", "alter", "drop")
+    allowed_route_model = "AIRoyaltySimulationRun"
+
+    for path in targets:
+        if not path.exists():
+            continue
+
+        tree = get_ast(path)
+        if not tree:
+            continue
+
+        rel = os.path.relpath(path, project_root / "backend")
+        is_route = rel == "routes/ai_royalty.py"
+
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
+                continue
+
+            method = node.func.attr
+            if method in forbidden_methods:
+                if not is_route:
+                    violations.append(
+                        f"Royalty read-only violation in {rel}: .{method}() at line {node.lineno}"
+                    )
+                elif method == "add":
+                    for arg in node.args:
+                        if isinstance(arg, ast.Name):
+                            var_name = arg.id
+                            for assign in ast.walk(tree):
+                                if isinstance(assign, ast.Assign) and isinstance(assign.value, ast.Call):
+                                    if (
+                                        len(assign.targets) == 1
+                                        and isinstance(assign.targets[0], ast.Name)
+                                        and assign.targets[0].id == var_name
+                                        and isinstance(assign.value.func, ast.Name)
+                                    ):
+                                        model = assign.value.func.id
+                                        if model != allowed_route_model:
+                                            violations.append(
+                                                f"Royalty route violation in {rel}: non-allowed model add {model} at line {node.lineno}"
+                                            )
+                        elif isinstance(arg, ast.Call) and isinstance(arg.func, ast.Name):
+                            model = arg.func.id
+                            if model != allowed_route_model:
+                                violations.append(
+                                    f"Royalty route violation in {rel}: non-allowed model add {model} at line {node.lineno}"
+                                )
+
+            if method == "execute" and node.args:
+                arg0 = node.args[0]
+                sql_text = ""
+                if isinstance(arg0, ast.Constant) and isinstance(arg0.value, str):
+                    sql_text = arg0.value.lower()
+                elif isinstance(arg0, ast.Call) and arg0.args:
+                    first = arg0.args[0]
+                    if isinstance(first, ast.Constant) and isinstance(first.value, str):
+                        sql_text = first.value.lower()
+                if any(keyword in sql_text for keyword in mutating_sql):
+                    violations.append(
+                        f"Royalty mutation violation in {rel}: mutating db.execute SQL at line {node.lineno}"
+                    )
 
     return violations
 

@@ -1,0 +1,4 @@
+=== org isolation ===
+org_iso_http_status=404
+Token=ORG_B_ROYALTY_EVIDENCE_TOKEN
+PASS: no org B token

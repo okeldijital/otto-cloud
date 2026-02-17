@@ -1,0 +1,19 @@
+=== health ===
+HTTP_STATUS=200
+{"enabled_flags":{"AI_ENABLED":true,"AI_ROYALTY_ENABLED":false,"AI_ROYALTY_PERSIST_ENABLED":true},"version":"royalty_sim_v1_deterministic"}
+=== simulate disabled ===
+HTTP_STATUS=404
+{"detail":"Not Found"}
+=== simulate enabled ===
+HTTP_STATUS=200
+{
+  "royalty_version": "royalty_sim_v1_deterministic",
+  "splits_total": 100.0,
+  "integrity": {
+    "total_equals_100": true,
+    "over_allocated": false,
+    "under_allocated": false
+  },
+  "persisted": true,
+  "run_id": 1
+}
