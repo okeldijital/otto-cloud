@@ -1,0 +1,64 @@
+DB_PATH=sqlite:////Users/m2krproduction/.otto/data/db/otto.sqlite
+
+=== before counts ===
+{
+  "artists": 161,
+  "tracks": 387,
+  "works": 23,
+  "organizations": 26,
+  "individuals": 18,
+  "releases": 102,
+  "contracts": 22,
+  "ai_core_write_proposal_runs": 2,
+  "ai_core_write_proposal_items": 8,
+  "ai_core_write_apply_events": 1
+}
+=== after counts ===
+{
+  "artists": 161,
+  "tracks": 387,
+  "works": 23,
+  "organizations": 26,
+  "individuals": 18,
+  "releases": 102,
+  "contracts": 22,
+  "ai_core_write_proposal_runs": 2,
+  "ai_core_write_proposal_items": 8,
+  "ai_core_write_apply_events": 1,
+  "nonoverwrite_contract_territory_after": null
+}
+=== script1 before counts ===
+{
+  "artists": 161,
+  "tracks": 387,
+  "works": 23,
+  "organizations": 26,
+  "individuals": 18,
+  "releases": 102,
+  "contracts": 22,
+  "ai_core_write_proposal_runs": 2,
+  "ai_core_write_proposal_items": 8,
+  "ai_core_write_apply_events": 1
+}
+=== script1 after counts ===
+{
+  "artists": 161,
+  "tracks": 387,
+  "works": 23,
+  "organizations": 26,
+  "individuals": 18,
+  "releases": 102,
+  "contracts": 22,
+  "ai_core_write_proposal_runs": 2,
+  "ai_core_write_proposal_items": 8,
+  "ai_core_write_apply_events": 1,
+  "contract_apply_after": "US",
+  "contract_nonoverwrite_after": null
+}
+=== non-overwrite proof ===
+{
+  "contract_apply_before": null,
+  "contract_nonoverwrite_before": "US",
+  "contract_apply_after": "US",
+  "contract_nonoverwrite_after": null
+}

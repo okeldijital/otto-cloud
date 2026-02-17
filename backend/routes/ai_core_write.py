@@ -98,7 +98,7 @@ async def core_write_propose(
         msg = str(exc)
         if msg == "contract_not_found":
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not Found")
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=msg)
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=msg)
 
 
 @router.post(
@@ -122,9 +122,9 @@ async def core_write_apply(
     except ValueError as exc:
         msg = str(exc)
         if msg == "confirmation_required":
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="confirmation required")
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="confirmation required")
         if msg == "backup_required_before_apply":
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="backup required before apply")
         if msg in {"run_not_found", "contract_not_found"}:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not Found")
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=msg)
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=msg)

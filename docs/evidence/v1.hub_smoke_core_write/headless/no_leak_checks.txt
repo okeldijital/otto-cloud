@@ -1,0 +1,15 @@
+=== No-leak checks (OrgB tokens absent from OrgA artifacts) ===
+[check] token='Secret Label' in OrgA artifacts
+(no matches)
+[check] token='Jane Hidden' in OrgA artifacts
+(no matches)
+[check] token='GhostArtist' in OrgA artifacts
+(no matches)
+
+=== No-leak checks (OrgA tokens absent from OrgB artifacts) ===
+[check] token='M2KR Records' in OrgB artifacts
+(no matches)
+[check] token='John Producer' in OrgB artifacts
+(no matches)
+[check] token='Oddxperienc' in OrgB artifacts
+(no matches)
