@@ -164,10 +164,21 @@ def ingest_contract_pdf(
     if existing_document is not None:
         warnings.append("idempotent_document_reused")
 
+    links_created_count = int(attach_result["attached_counts"]["links_created"]) + int(work_links_created)
+    idempotent_hit = (
+        int(attach_result["attached_counts"]["runs_created"]) == 0
+        and doc_created == 0
+        and work_links_created == 0
+    )
+
     return {
+        "status": "ingested",
+        "org_id": str(org_id),
         "release_id": release_id,
         "contract_document_id": contract_document_id,
         "run_id": attach_result["run_id"],
+        "links_created_count": links_created_count,
+        "idempotent_hit": idempotent_hit,
         "matches": plan.matches.model_dump(mode="json"),
         "missing_flags": [item.model_dump(mode="json") for item in plan.missing_flags],
         "warnings": warnings,

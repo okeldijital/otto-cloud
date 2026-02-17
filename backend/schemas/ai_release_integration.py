@@ -86,9 +86,13 @@ class ReleaseIntegrationAttachResponse(BaseModel):
 
 
 class ReleaseIntegrationIngestResponse(BaseModel):
+    status: Literal["ingested"] = "ingested"
+    org_id: str
     release_id: int
     contract_document_id: int
     run_id: int
+    links_created_count: int
+    idempotent_hit: bool
     matches: dict
     missing_flags: List[dict] = Field(default_factory=list)
     warnings: List[str] = Field(default_factory=list)

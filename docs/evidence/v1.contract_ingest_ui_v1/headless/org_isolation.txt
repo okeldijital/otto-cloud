@@ -1,0 +1,4 @@
+=== org isolation ===
+org_iso_http_status=404
+Token=ORG_B_UI_INGEST_TOKEN
+PASS: org B token absent in org A output

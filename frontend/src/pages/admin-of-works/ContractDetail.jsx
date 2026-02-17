@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { FileText, Upload, Edit3, Plus, Trash, Download, AlertCircle, CheckCircle, ChevronLeft, Settings } from 'lucide-react';
 import { confirmAction } from '../../lib/tauri';
 import contractService from '../../services/contractService';
+import { CatalogService } from '../../services/catalog';
 import EntityForm from '../../components/EntityForm';
 import EntityTypeahead from '../../components/contracts/EntityTypeahead';
 import aiClient from '../../api/aiClient';
@@ -69,6 +70,9 @@ const ContractDetail = () => {
     const [decisions, setDecisions] = useState({});
     const [resolvedRunId, setResolvedRunId] = useState(null);
     const [currentDocHash, setCurrentDocHash] = useState('');
+    const [releasePickerOpen, setReleasePickerOpen] = useState(false);
+    const [releaseOptions, setReleaseOptions] = useState([]);
+    const [wizardReleaseId, setWizardReleaseId] = useState('');
 
     useEffect(() => {
         const load = async () => {
@@ -226,6 +230,28 @@ const ContractDetail = () => {
         } catch (err) {
             alert('Failed to remove asset');
         }
+    };
+
+    const openIngestWizard = async () => {
+        const releaseAssetIds = (contract?.assets || [])
+            .filter((row) => String(row.asset_type || '').toLowerCase() === 'release')
+            .map((row) => String(row.asset_id))
+            .filter((val) => val);
+
+        const targetDocId = selectedDoc?.id || latestDoc(contract)?.id || '';
+        if (releaseAssetIds.length === 1) {
+            navigate(`/release/${releaseAssetIds[0]}/contract-wizard?contract_id=${contract.id}&doc_id=${targetDocId}`);
+            return;
+        }
+
+        if (releaseOptions.length === 0) {
+            const rows = await CatalogService.getAll('releases', { limit: 2000 });
+            setReleaseOptions(Array.isArray(rows) ? rows : []);
+        }
+        if (releaseAssetIds.length > 0) {
+            setWizardReleaseId(releaseAssetIds[0]);
+        }
+        setReleasePickerOpen(true);
     };
 
     const computeSHA256 = async (buffer) => {
@@ -389,8 +415,45 @@ const ContractDetail = () => {
                     <button className="btn ghost" onClick={runAIReview} disabled={reviewLoading}>
                         <CheckCircle size={16} /> {reviewLoading ? 'Running AI Review…' : 'Run AI Review'}
                     </button>
+                    <button className="btn ghost" onClick={openIngestWizard}>
+                        <Upload size={16} /> Attach to Release (Wizard)
+                    </button>
                 </div>
             </header>
+
+            {releasePickerOpen && (
+                <div className="panel padded" style={{ marginBottom: '1rem' }}>
+                    <h4 style={{ marginTop: 0 }}>Choose Release</h4>
+                    <select
+                        value={wizardReleaseId}
+                        onChange={(e) => setWizardReleaseId(e.target.value)}
+                        className="input"
+                        style={{ maxWidth: '420px' }}
+                    >
+                        <option value="">Select release</option>
+                        {releaseOptions.map((row) => (
+                            <option key={row.id} value={row.id}>
+                                #{row.id} {row.title}
+                            </option>
+                        ))}
+                    </select>
+                    <div className="flex-row gap-2 mt-2">
+                        <button
+                            className="btn orange"
+                            disabled={!wizardReleaseId}
+                            onClick={() => {
+                                const targetDocId = selectedDoc?.id || latestDoc(contract)?.id || '';
+                                navigate(`/release/${wizardReleaseId}/contract-wizard?contract_id=${contract.id}&doc_id=${targetDocId}`);
+                            }}
+                        >
+                            Open Wizard
+                        </button>
+                        <button className="btn ghost" onClick={() => setReleasePickerOpen(false)}>
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            )}
 
             <div className="tabs">
                 {TABS.map((tab) => (

@@ -1,0 +1,22 @@
+=== plan ===
+HTTP_STATUS=200
+
+=== ingest first ===
+HTTP_STATUS=200
+{
+  "status": "ingested",
+  "contract_document_id": 1,
+  "run_id": 1,
+  "idempotent_hit": false,
+  "links_created_count": 3
+}
+
+=== ingest repeat ===
+HTTP_STATUS=200
+{
+  "status": "ingested",
+  "contract_document_id": 1,
+  "run_id": 1,
+  "idempotent_hit": true,
+  "links_created_count": 0
+}

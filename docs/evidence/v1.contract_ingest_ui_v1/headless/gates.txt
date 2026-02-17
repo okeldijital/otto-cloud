@@ -1,0 +1,7 @@
+=== invariant_check.py ===
+🛡️ Running Governed AI Invariant Check (AST)...
+✅ AI invariants pass (No drift, No writes in AI tools to production DB, No unscoped network queries).
+
+=== pytest -q ===
+....................................................                     [100%]
+52 passed in 19.59s
