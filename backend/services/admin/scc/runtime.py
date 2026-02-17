@@ -1,10 +1,11 @@
+import hashlib
 import json
 import os
 import sqlite3
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from alembic.config import Config
 from alembic.script import ScriptDirectory
@@ -17,6 +18,7 @@ from models.user import User
 
 
 ORG_SWITCH_STATE: Dict[int, uuid.UUID] = {}
+SQLITE_MAGIC = b"SQLite format 3\x00"
 
 
 def _utc_now_iso() -> str:
@@ -37,6 +39,44 @@ def _sqlite_path_from_url(database_url: str) -> Optional[Path]:
     if not database_url.startswith("sqlite:///"):
         return None
     return Path(database_url.replace("sqlite:///", "")).expanduser().resolve()
+
+
+def _db_id(path: Path) -> str:
+    canonical = str(path.expanduser().resolve())
+    digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    return f"sha256:{digest}"
+
+
+def sqlite_header_valid(path: Path) -> bool:
+    try:
+        if not path.exists() or not path.is_file():
+            return False
+        with open(path, "rb") as handle:
+            header = handle.read(16)
+        return header.startswith(SQLITE_MAGIC)
+    except Exception:
+        return False
+
+
+def validate_sqlite_candidate(path_like: str) -> Tuple[Optional[Path], Optional[str]]:
+    try:
+        candidate = Path(path_like).expanduser().resolve()
+    except Exception:
+        return None, "invalid sqlite file"
+
+    if not candidate.is_absolute():
+        return None, "invalid sqlite file"
+    if not candidate.exists() or not candidate.is_file():
+        return None, "invalid sqlite file"
+    if not os.access(candidate, os.R_OK):
+        return None, "invalid sqlite file"
+    if candidate.suffix.lower() == ".zip":
+        return None, "invalid sqlite file"
+    if candidate.suffix.lower() not in {".sqlite", ".db"}:
+        return None, "invalid sqlite file"
+    if not sqlite_header_valid(candidate):
+        return None, "invalid sqlite file"
+    return candidate, None
 
 
 def database_writable(database_url: str) -> bool:
@@ -92,27 +132,106 @@ def get_alembic_current(database_url: str) -> Optional[str]:
         return None
 
 
-def inventory_sqlite_files(app_data_dir: Path, current_database_url: str) -> List[Dict]:
-    current_path = _sqlite_path_from_url(current_database_url)
-    files: List[Dict] = []
-    if not app_data_dir.exists():
-        return files
+def _active_source(pointer_file: Path, current_path: Optional[Path]) -> str:
+    if os.getenv("DATABASE_URL") or os.getenv("OTTO_DB_PATH"):
+        return "env"
+    if pointer_file.exists() and current_path is not None:
+        try:
+            payload = json.loads(pointer_file.read_text(encoding="utf-8"))
+            ptr_url = payload.get("database_url")
+            if isinstance(ptr_url, str) and ptr_url.startswith("sqlite:///"):
+                ptr_path = _sqlite_path_from_url(ptr_url)
+                if ptr_path and ptr_path == current_path:
+                    return "pointer"
+        except Exception:
+            pass
+    return "default"
 
-    for candidate in sorted(app_data_dir.rglob("*")):
-        if not candidate.is_file():
+
+def _discover_sqlite_candidates(app_data_dir: Path) -> List[Tuple[Path, List[str]]]:
+    seen: Dict[str, bool] = {}
+    entries: List[Tuple[Path, List[str]]] = []
+    db_root = app_data_dir / "db"
+
+    patterns = [
+        (db_root, "**/*.sqlite", []),
+        (db_root, "**/*.db", []),
+        (app_data_dir, "**/*.sqlite", ["outside_db_folder"]),
+    ]
+
+    for root, pattern, extra_notes in patterns:
+        if not root.exists():
             continue
-        if candidate.suffix.lower() not in {".sqlite", ".db"}:
-            continue
+        for candidate in root.glob(pattern):
+            if not candidate.is_file():
+                continue
+            canonical = str(candidate.resolve())
+            if seen.get(canonical):
+                continue
+            seen[canonical] = True
+            notes = list(extra_notes)
+            if (app_data_dir / "db") in candidate.resolve().parents:
+                notes = [n for n in notes if n != "outside_db_folder"]
+            entries.append((candidate.resolve(), notes))
+
+    def sort_key(item: Tuple[Path, List[str]]):
+        p = item[0]
+        stat = p.stat()
+        return (p.name.lower(), -int(stat.st_mtime))
+
+    return sorted(entries, key=sort_key)
+
+
+def build_db_inventory(*, app_data_dir: Path, current_database_url: str, pointer_file: Path) -> Dict:
+    current_path = _sqlite_path_from_url(current_database_url)
+    source = _active_source(pointer_file=pointer_file, current_path=current_path)
+    warnings: List[str] = []
+
+    options = []
+    for candidate, notes in _discover_sqlite_candidates(app_data_dir):
         stat = candidate.stat()
-        files.append(
-            {
-                "path": str(candidate.resolve()),
-                "size_bytes": stat.st_size,
-                "modified_at": datetime.fromtimestamp(stat.st_mtime, timezone.utc).isoformat(),
-                "is_current": bool(current_path and candidate.resolve() == current_path),
-            }
-        )
-    return files
+        is_sqlite = sqlite_header_valid(candidate)
+        option = {
+            "db_id": _db_id(candidate),
+            "label": candidate.name,
+            "db_path": str(candidate),
+            "size_bytes": stat.st_size,
+            "modified_at": datetime.fromtimestamp(stat.st_mtime, timezone.utc).isoformat(),
+            "is_sqlite": is_sqlite,
+            "is_readable": os.access(candidate, os.R_OK),
+            "is_current": bool(current_path and candidate == current_path),
+            "notes": notes,
+        }
+        if not is_sqlite:
+            option["notes"] = sorted(set(option["notes"] + ["invalid_sqlite_header"]))
+        options.append(option)
+
+    if not options:
+        warnings.append("no_sqlite_files_found_under_app_data_dir")
+
+    active_db_path = str(current_path) if current_path else None
+    active_db_id = _db_id(current_path) if current_path else None
+
+    return {
+        "version": "scc_db_inventory_v1.1",
+        "app_data_dir": str(app_data_dir),
+        "pointer_file": str(pointer_file),
+        "active": {
+            "db_id": active_db_id,
+            "db_path": active_db_path,
+            "source": source,
+            "requires_restart": False,
+        },
+        "options": options,
+        "warnings": warnings,
+    }
+
+
+def option_by_db_id(inventory: Dict, db_id: str) -> Optional[Dict]:
+    for option in inventory.get("options", []):
+        if option.get("db_id") == db_id:
+            return option
+    return None
 
 
 def write_active_db_pointer(*, sqlite_path: Path, updated_by: str) -> Dict:

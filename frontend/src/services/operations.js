@@ -130,8 +130,16 @@ export const AdminService = {
         const response = await api.get('/admin/scc/db/inventory');
         return response.data;
     },
-    switchSCCDB: async (sqlitePath) => {
-        const response = await api.post('/admin/scc/db/switch', { sqlite_path: sqlitePath, confirm: true });
+    switchSCCDB: async (dbId) => {
+        const response = await api.post('/admin/scc/db/switch', { db_id: dbId, confirm: true });
+        return response.data;
+    },
+    switchSCCDBPath: async (dbPath, confirmExternal = false) => {
+        const response = await api.post('/admin/scc/db/switch_path', {
+            db_path: dbPath,
+            confirm: true,
+            confirm_external: !!confirmExternal,
+        });
         return response.data;
     },
     getSCCOrgs: async () => {

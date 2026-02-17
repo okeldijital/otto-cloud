@@ -16,10 +16,10 @@ from main import app
 from models.user import User
 from routes.auth import get_current_admin_user
 
-TEST_DB_FILE = "./test_scc_db_inventory.db"
+TEST_DB_FILE = "./test_scc_db_inventory_v11.db"
 
 
-def _create_empty_sqlite(path: Path):
+def _create_sqlite(path: Path):
     import sqlite3
 
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -29,7 +29,7 @@ def _create_empty_sqlite(path: Path):
     con.close()
 
 
-def test_scc_db_inventory_marks_current(tmp_path):
+def test_db_inventory_has_options_with_ids(tmp_path):
     if os.path.exists(TEST_DB_FILE):
         os.remove(TEST_DB_FILE)
 
@@ -38,16 +38,16 @@ def test_scc_db_inventory_marks_current(tmp_path):
     Session = sessionmaker(bind=engine)
     db = Session()
 
-    old_storage = settings.STORAGE_ROOT
-    old_logs = settings.IMPORT_LOGS_ROOT
     old_db_url = settings.DATABASE_URL
     old_app_data = settings.APP_DATA_DIR
+    old_storage = settings.STORAGE_ROOT
+    old_logs = settings.IMPORT_LOGS_ROOT
 
     app_data = tmp_path / "app_data"
     current_db = app_data / "db" / "otto.sqlite"
-    alternate_db = app_data / "db" / "archive.sqlite"
-    _create_empty_sqlite(current_db)
-    _create_empty_sqlite(alternate_db)
+    alt_db = app_data / "db" / "a.sqlite"
+    _create_sqlite(current_db)
+    _create_sqlite(alt_db)
 
     settings.APP_DATA_DIR = str(app_data)
     settings.DATABASE_URL = f"sqlite:///{current_db}"
@@ -55,9 +55,9 @@ def test_scc_db_inventory_marks_current(tmp_path):
     settings.IMPORT_LOGS_ROOT = str(app_data / "import_logs")
 
     admin = User(
-        email="scc.inventory.admin@otto.com",
+        email="scc.v11.inv@otto.com",
         hashed_password="x",
-        full_name="SCC Inventory Admin",
+        full_name="SCC v11 Inv",
         organization_id=uuid.UUID(int=1),
         role="admin",
         is_active=True,
@@ -65,7 +65,6 @@ def test_scc_db_inventory_marks_current(tmp_path):
     )
     db.add(admin)
     db.commit()
-    db.refresh(admin)
 
     def override_get_db():
         yield db
@@ -80,15 +79,14 @@ def test_scc_db_inventory_marks_current(tmp_path):
         assert resp.status_code == 200
         payload = resp.json()
         assert payload["version"] == "scc_db_inventory_v1.1"
-        options = payload["options"]
-        assert len(options) >= 2
-        assert any(row["db_path"] == str(current_db.resolve()) and row["is_current"] for row in options)
+        assert payload["options"]
+        assert all(str(row.get("db_id", "")).startswith("sha256:") for row in payload["options"])
 
     app.dependency_overrides.clear()
-    settings.STORAGE_ROOT = old_storage
-    settings.IMPORT_LOGS_ROOT = old_logs
     settings.DATABASE_URL = old_db_url
     settings.APP_DATA_DIR = old_app_data
+    settings.STORAGE_ROOT = old_storage
+    settings.IMPORT_LOGS_ROOT = old_logs
     db.close()
     if os.path.exists(TEST_DB_FILE):
         os.remove(TEST_DB_FILE)

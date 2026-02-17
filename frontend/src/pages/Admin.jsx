@@ -3,6 +3,8 @@ import { UsersService, AdminService } from '../services/operations';
 import { confirmAction, isTauriEnv } from '../lib/tauri';
 import DataTable from '../components/DataTable';
 import EntityForm from '../components/EntityForm';
+import DBSelectorCard from '../components/scc/DBSelectorCard';
+import AdvancedSwitchPathAccordion from '../components/scc/AdvancedSwitchPathAccordion';
 import {
     Activity,
     Database,
@@ -36,10 +38,11 @@ const Admin = () => {
 
     const [sccHealth, setSccHealth] = useState(null);
     const [sccRuntime, setSccRuntime] = useState(null);
-    const [sccInventory, setSccInventory] = useState({ files: [] });
+    const [sccInventory, setSccInventory] = useState({ options: [], warnings: [], active: {} });
     const [sccOrgs, setSccOrgs] = useState({ organizations: [] });
-    const [dbSwitchPath, setDbSwitchPath] = useState('');
+    const [selectedDbId, setSelectedDbId] = useState('');
     const [dbSwitchResult, setDbSwitchResult] = useState(null);
+    const [isSwitchingDb, setIsSwitchingDb] = useState(false);
 
     const [formData, setFormData] = useState({
         email: '',
@@ -75,7 +78,13 @@ const Admin = () => {
             } else if (activeTab === 'runtime') {
                 setSccRuntime(await AdminService.getSCCRuntime());
             } else if (activeTab === 'db') {
-                setSccInventory(await AdminService.getSCCDBInventory());
+                const inventory = await AdminService.getSCCDBInventory();
+                setSccInventory(inventory);
+                if (inventory?.active?.db_id) {
+                    setSelectedDbId(inventory.active.db_id);
+                } else if (inventory?.options?.length) {
+                    setSelectedDbId(inventory.options[0].db_id);
+                }
             } else if (activeTab === 'orgs') {
                 setSccOrgs(await AdminService.getSCCOrgs());
             }
@@ -255,22 +264,44 @@ const Admin = () => {
     };
 
     const handleSwitchDB = async () => {
-        if (!dbSwitchPath) {
-            alert('Please provide a sqlite path');
+        if (!selectedDbId) {
+            alert('Please select a database option');
             return;
         }
         const confirmed = await confirmAction(
-            `Set active DB pointer to:\n${dbSwitchPath}\n\nThis does not modify DB content and requires restart.`,
+            `Set active DB pointer to selected option?\n\nThis does not modify DB content and requires restart.`,
             'Switch Active DB'
         );
         if (!confirmed) return;
         try {
-            const response = await AdminService.switchSCCDB(dbSwitchPath);
+            setIsSwitchingDb(true);
+            const response = await AdminService.switchSCCDB(selectedDbId);
             setDbSwitchResult(response);
-            alert(response.restart_required ? 'Active DB pointer updated. Restart required.' : 'Active DB pointer updated.');
+            alert(response?.active?.requires_restart ? 'Active DB pointer updated. Restart required.' : 'Active DB pointer updated.');
             await fetchData();
         } catch (switchErr) {
             alert(switchErr.response?.data?.detail || switchErr.message || 'DB switch failed');
+        } finally {
+            setIsSwitchingDb(false);
+        }
+    };
+
+    const handleSwitchDBPath = async (path, confirmExternal) => {
+        const confirmed = await confirmAction(
+            `Set active DB pointer to:\n${path}\n\nAdvanced mode, pointer-only write. Restart required.`,
+            'Switch Active DB (Advanced)'
+        );
+        if (!confirmed) return;
+        try {
+            setIsSwitchingDb(true);
+            const response = await AdminService.switchSCCDBPath(path, confirmExternal);
+            setDbSwitchResult(response);
+            alert('Active DB pointer updated. Restart required.');
+            await fetchData();
+        } catch (switchErr) {
+            alert(switchErr.response?.data?.detail || switchErr.message || 'DB switch failed');
+        } finally {
+            setIsSwitchingDb(false);
         }
     };
 
@@ -436,37 +467,22 @@ const Admin = () => {
 
                 {activeTab === 'db' && (
                     <>
-                        <div className="stats-board" style={{ marginBottom: '1rem' }}>
-                            <h3><Database size={18} /> Set Active DB Pointer</h3>
-                            <p style={{ color: '#64748b', marginBottom: 12 }}>No DB content is modified. This only updates the active DB pointer and requires restart.</p>
-                            <div style={{ display: 'flex', gap: 8 }}>
-                                <input
-                                    type="text"
-                                    value={dbSwitchPath}
-                                    onChange={(e) => setDbSwitchPath(e.target.value)}
-                                    placeholder="/absolute/path/to/otto.sqlite"
-                                    style={{ flex: 1, padding: '10px 12px', borderRadius: 8, border: '1px solid #e2e8f0' }}
-                                />
-                                <button className="btn-primary" onClick={handleSwitchDB}>Set Active DB</button>
-                            </div>
-                            {dbSwitchResult && (
-                                <div className="stat-pill" style={{ marginTop: 12 }}>
+                        <DBSelectorCard
+                            inventory={sccInventory}
+                            selectedDbId={selectedDbId}
+                            setSelectedDbId={setSelectedDbId}
+                            onSwitch={handleSwitchDB}
+                            loading={isSwitchingDb}
+                        />
+                        <AdvancedSwitchPathAccordion onSwitchPath={handleSwitchDBPath} />
+                        {dbSwitchResult && (
+                            <div className="stats-board" style={{ marginTop: '1rem' }}>
+                                <div className="stat-pill">
                                     <span className="stat-label">Switch Result</span>
-                                    <span className="stat-val">restart_required={String(!!dbSwitchResult.restart_required)}</span>
+                                    <span className="stat-val">restart_required={String(!!dbSwitchResult?.active?.requires_restart)}</span>
                                 </div>
-                            )}
-                        </div>
-                        <div className="stats-board">
-                            <h3><Database size={18} /> DB Inventory</h3>
-                            <p style={{ color: '#64748b', marginBottom: 12 }}>Detected sqlite files under app data directory; current DB is marked.</p>
-                            {sccInventory?.files?.map((row) => (
-                                <div className="stat-pill" key={row.path}>
-                                    <span className="stat-label" style={{ maxWidth: 600, overflowWrap: 'anywhere' }}>{row.path}</span>
-                                    <span className="stat-val">{row.is_current ? 'current' : 'candidate'} | {row.size_bytes} bytes</span>
-                                </div>
-                            ))}
-                            {!sccInventory?.files?.length && !isLoading && <p className="text-muted">No sqlite files found.</p>}
-                        </div>
+                            </div>
+                        )}
                     </>
                 )}
 

@@ -109,10 +109,17 @@ def test_scc_runtime_inventory_switch_no_core_mutation(tmp_path, monkeypatch):
 
     with TestClient(app, raise_server_exceptions=False) as client:
         assert client.get("/api/admin/scc/runtime").status_code == 200
-        assert client.get("/api/admin/scc/db/inventory").status_code == 200
+        inv = client.get("/api/admin/scc/db/inventory")
+        assert inv.status_code == 200
+        candidate_id = None
+        for row in inv.json().get("options", []):
+            if row.get("db_path") == str(candidate_db.resolve()):
+                candidate_id = row.get("db_id")
+                break
+        assert candidate_id is not None
         switched = client.post(
             "/api/admin/scc/db/switch",
-            json={"sqlite_path": str(candidate_db), "confirm": True},
+            json={"db_id": candidate_id, "confirm": True},
         )
         assert switched.status_code == 200
 

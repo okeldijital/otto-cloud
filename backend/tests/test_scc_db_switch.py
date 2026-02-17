@@ -81,25 +81,32 @@ def test_scc_db_switch_contract(tmp_path, monkeypatch):
     main._run_migrations = lambda: None
 
     with TestClient(app, raise_server_exceptions=False) as client:
+        inv = client.get("/api/admin/scc/db/inventory")
+        assert inv.status_code == 200
+        target_option = next(
+            row for row in inv.json()["options"] if row["db_path"] == str(target_db.resolve())
+        )
+        target_db_id = target_option["db_id"]
+
         missing_confirm = client.post(
             "/api/admin/scc/db/switch",
-            json={"sqlite_path": str(target_db), "confirm": False},
+            json={"db_id": target_db_id, "confirm": False},
         )
         assert missing_confirm.status_code == 422
 
         invalid_path = client.post(
             "/api/admin/scc/db/switch",
-            json={"sqlite_path": str(app_data / 'db' / 'missing.sqlite'), "confirm": True},
+            json={"db_id": "sha256:missing", "confirm": True},
         )
-        assert invalid_path.status_code == 422
+        assert invalid_path.status_code == 404
 
         success = client.post(
             "/api/admin/scc/db/switch",
-            json={"sqlite_path": str(target_db), "confirm": True},
+            json={"db_id": target_db_id, "confirm": True},
         )
         assert success.status_code == 200
         payload = success.json()
-        assert payload["restart_required"] is True
+        assert payload["active"]["requires_restart"] is True
         assert Path(settings.ACTIVE_DB_POINTER_FILE).exists()
 
         pointer_data = json.loads(Path(settings.ACTIVE_DB_POINTER_FILE).read_text(encoding="utf-8"))
