@@ -1,0 +1,28 @@
+DB_PATH=/var/folders/5g/c9pt9dzn7rs987kfcprbn2zh0000gp/T/tmp.BNuvkstppf/db/otto.sqlite
+POINTER_FILE=/var/folders/5g/c9pt9dzn7rs987kfcprbn2zh0000gp/T/tmp.BNuvkstppf/runtime/active_db.json
+=== core_counts_before ===
+{
+  "artists": 0,
+  "tracks": 0,
+  "works": 0,
+  "releases": 0,
+  "organizations": 2,
+  "individuals": 0,
+  "contracts": 0
+}
+=== core_counts_after ===
+{
+  "artists": 0,
+  "tracks": 0,
+  "works": 0,
+  "releases": 0,
+  "organizations": 2,
+  "individuals": 0,
+  "contracts": 0
+}
+=== pointer_payload ===
+{
+  "database_url": "sqlite:////private/var/folders/5g/c9pt9dzn7rs987kfcprbn2zh0000gp/T/tmp.BNuvkstppf/db/alt.sqlite",
+  "updated_at": "2026-02-17T18:22:27.910232+00:00",
+  "updated_by": "admin@otto.com"
+}

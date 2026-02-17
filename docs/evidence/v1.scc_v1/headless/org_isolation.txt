@@ -1,0 +1,5 @@
+=== org switch no-leak checks ===
+[check] Org B token should not appear in Org A runtime
+(no matches)
+[check] Org A token should not appear in Org B runtime
+(no matches)

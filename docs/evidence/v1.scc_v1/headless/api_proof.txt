@@ -1,0 +1,40 @@
+=== SCC health ===
+HTTP/1.1 200 OK
+date: Tue, 17 Feb 2026 18:22:27 GMT
+server: uvicorn
+content-length: 168
+content-type: application/json
+
+{"status":"ok","backend_connected":true,"backend_base_url":"http://127.0.0.1:8001","env":"development","build":"1.0.1","server_time":"2026-02-17T18:22:27.527046+00:00"}
+=== SCC runtime ===
+HTTP/1.1 200 OK
+date: Tue, 17 Feb 2026 18:22:27 GMT
+server: uvicorn
+content-length: 1201
+content-type: application/json
+
+{"database_url":"sqlite:////private/var/folders/5g/c9pt9dzn7rs987kfcprbn2zh0000gp/T/tmp.BNuvkstppf/db/otto.sqlite","sqlite_path":"/private/var/folders/5g/c9pt9dzn7rs987kfcprbn2zh0000gp/T/tmp.BNuvkstppf/db/otto.sqlite","db_writable":true,"app_data_dir":"/private/var/folders/5g/c9pt9dzn7rs987kfcprbn2zh0000gp/T/tmp.BNuvkstppf","storage_root":"/var/folders/5g/c9pt9dzn7rs987kfcprbn2zh0000gp/T/tmp.BNuvkstppf/storage","active_db_pointer_file":"/private/var/folders/5g/c9pt9dzn7rs987kfcprbn2zh0000gp/T/tmp.BNuvkstppf/runtime/active_db.json","alembic_current":"6617bcd72266","alembic_head":"c1f4b8d9e211","org_mode":"multi","active_org_id":"00000000-0000-0000-0000-000000000001","active_org_name":null,"last_backup_timestamp":null,"ai_flags":{"AI_ANALYTICS_ENABLED":true,"AI_CONTRACT_INGEST_ENABLED":true,"AI_CONTRACT_INTAKE_ENABLED":true,"AI_CONTRACT_INTEL_ENABLED":true,"AI_CONTRACT_RESOLVE_ENABLED":true,"AI_CORE_WRITE_APPLY_ENABLED":true,"AI_CORE_WRITE_ENABLED":true,"AI_CORE_WRITE_REQUIRE_BACKUP":true,"AI_ENABLED":true,"AI_RELEASE_INTEGRATION_ATTACH_ENABLED":true,"AI_RELEASE_INTEGRATION_ENABLED":true,"AI_RELEASE_VALIDATION_ENABLED":true,"AI_ROYALTY_ENABLED":true,"AI_ROYALTY_PERSIST_ENABLED":true}}
+=== SCC inventory ===
+HTTP/1.1 200 OK
+date: Tue, 17 Feb 2026 18:22:27 GMT
+server: uvicorn
+content-length: 581
+content-type: application/json
+
+{"app_data_dir":"/private/var/folders/5g/c9pt9dzn7rs987kfcprbn2zh0000gp/T/tmp.BNuvkstppf","database_url":"sqlite:////private/var/folders/5g/c9pt9dzn7rs987kfcprbn2zh0000gp/T/tmp.BNuvkstppf/db/otto.sqlite","files":[{"path":"/private/var/folders/5g/c9pt9dzn7rs987kfcprbn2zh0000gp/T/tmp.BNuvkstppf/db/alt.sqlite","size_bytes":12288,"modified_at":"2026-02-17T18:22:27.470954+00:00","is_current":false},{"path":"/private/var/folders/5g/c9pt9dzn7rs987kfcprbn2zh0000gp/T/tmp.BNuvkstppf/db/otto.sqlite","size_bytes":4096,"modified_at":"2026-02-17T18:21:47.295303+00:00","is_current":true}]}
+=== SCC db switch confirm=false (expect 422) ===
+HTTP/1.1 422 Unprocessable Content
+date: Tue, 17 Feb 2026 18:22:27 GMT
+server: uvicorn
+content-length: 34
+content-type: application/json
+
+{"detail":"confirmation required"}
+=== SCC db switch success (expect 200 + restart_required) ===
+HTTP/1.1 200 OK
+date: Tue, 17 Feb 2026 18:22:27 GMT
+server: uvicorn
+content-length: 270
+content-type: application/json
+
+{"status":"switched","database_url":"sqlite:////private/var/folders/5g/c9pt9dzn7rs987kfcprbn2zh0000gp/T/tmp.BNuvkstppf/db/alt.sqlite","pointer_file":"/private/var/folders/5g/c9pt9dzn7rs987kfcprbn2zh0000gp/T/tmp.BNuvkstppf/runtime/active_db.json","restart_required":true}

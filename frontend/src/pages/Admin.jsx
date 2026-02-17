@@ -1,14 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { UsersService, AdminService } from '../services/operations';
-import { BASE_URL } from '../lib/api';
 import { confirmAction, isTauriEnv } from '../lib/tauri';
-import PageHeader from '../components/ui/PageHeader';
 import DataTable from '../components/DataTable';
 import EntityForm from '../components/EntityForm';
-import { Shield, Users, Database, History, RefreshCcw, HardDrive, Settings, Activity, Upload, Download, Timer } from 'lucide-react';
+import {
+    Activity,
+    Database,
+    Download,
+    HardDrive,
+    History,
+    RefreshCcw,
+    Shield,
+    Timer,
+    Upload,
+    Users,
+    Server,
+    Building2,
+} from 'lucide-react';
 
 const Admin = () => {
-    const [activeTab, setActiveTab] = useState('users');
+    const [activeTab, setActiveTab] = useState('status');
     const [users, setUsers] = useState([]);
     const [backups, setBackups] = useState([]);
     const [stats, setStats] = useState(null);
@@ -21,39 +32,55 @@ const Admin = () => {
     const [restoringBackupId, setRestoringBackupId] = useState(null);
     const [editingUser, setEditingUser] = useState(null);
     const [error, setError] = useState(null);
-    const fileInputRef = React.useRef(null);
+    const fileInputRef = useRef(null);
+
+    const [sccHealth, setSccHealth] = useState(null);
+    const [sccRuntime, setSccRuntime] = useState(null);
+    const [sccInventory, setSccInventory] = useState({ files: [] });
+    const [sccOrgs, setSccOrgs] = useState({ organizations: [] });
+    const [dbSwitchPath, setDbSwitchPath] = useState('');
+    const [dbSwitchResult, setDbSwitchResult] = useState(null);
 
     const [formData, setFormData] = useState({
         email: '',
         full_name: '',
         password: '',
         role: 'member',
-        is_active: true
+        is_active: true,
     });
+
+    const backendConnected = !!sccHealth?.backend_connected;
 
     const fetchData = async () => {
         setIsLoading(true);
         try {
             if (activeTab === 'users') {
-                const data = await UsersService.getAll();
-                setUsers(data);
+                setUsers(await UsersService.getAll());
             } else if (activeTab === 'backups') {
                 const [data, scheduleData] = await Promise.all([
                     AdminService.getBackups(),
-                    AdminService.getBackupSchedule()
+                    AdminService.getBackupSchedule(),
                 ]);
                 setBackups(data);
                 setBackupSchedule(scheduleData.frequency);
             } else if (activeTab === 'system') {
                 const [statsData, logsData] = await Promise.all([
                     AdminService.getStats(),
-                    AdminService.getAuditLogs()
+                    AdminService.getAuditLogs(),
                 ]);
                 setStats(statsData);
                 setAuditLogs(logsData);
+            } else if (activeTab === 'status') {
+                setSccHealth(await AdminService.getSCCHealth());
+            } else if (activeTab === 'runtime') {
+                setSccRuntime(await AdminService.getSCCRuntime());
+            } else if (activeTab === 'db') {
+                setSccInventory(await AdminService.getSCCDBInventory());
+            } else if (activeTab === 'orgs') {
+                setSccOrgs(await AdminService.getSCCOrgs());
             }
-        } catch (error) {
-            console.error('Failed to fetch admin data:', error);
+        } catch (fetchError) {
+            console.error('Failed to fetch admin data:', fetchError);
         } finally {
             setIsLoading(false);
         }
@@ -61,7 +88,24 @@ const Admin = () => {
 
     useEffect(() => {
         fetchData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeTab]);
+
+    useEffect(() => {
+        AdminService.getSCCHealth()
+            .then(setSccHealth)
+            .catch(() => setSccHealth({ backend_connected: false }));
+    }, []);
+
+    const handleRetryConnectivity = async () => {
+        try {
+            const next = await AdminService.getSCCHealth();
+            setSccHealth(next);
+        } catch (retryError) {
+            console.error('Connectivity retry failed:', retryError);
+            setSccHealth({ backend_connected: false });
+        }
+    };
 
     const handleCreateUser = () => {
         setEditingUser(null);
@@ -74,9 +118,9 @@ const Admin = () => {
         setFormData({
             email: user.email,
             full_name: user.full_name || '',
-            password: '', // Don't show password
+            password: '',
             role: user.role || 'member',
-            is_active: user.is_active
+            is_active: user.is_active,
         });
         setIsModalOpen(true);
     };
@@ -86,14 +130,14 @@ const Admin = () => {
             try {
                 await UsersService.delete(user.id);
                 fetchData();
-            } catch (error) {
+            } catch (_e) {
                 alert('Failed to delete user');
             }
         }
     };
 
-    const handleSubmitUser = async (e) => {
-        e.preventDefault();
+    const handleSubmitUser = async (event) => {
+        event.preventDefault();
         setIsSubmitting(true);
         setError(null);
         try {
@@ -106,8 +150,8 @@ const Admin = () => {
             }
             setIsModalOpen(false);
             fetchData();
-        } catch (err) {
-            setError(err.response?.data?.detail || 'Failed to save user');
+        } catch (submitErr) {
+            setError(submitErr.response?.data?.detail || 'Failed to save user');
         } finally {
             setIsSubmitting(false);
         }
@@ -119,72 +163,64 @@ const Admin = () => {
             const res = await AdminService.runSystemBackup();
             await fetchData();
             alert(`Backup created: ${res?.filename ?? 'ok'}`);
-        } catch (error) {
-            console.error('Run backup failed:', error);
-            alert(error?.response?.data?.detail || error?.message || 'Backup failed');
+        } catch (backupError) {
+            console.error('Run backup failed:', backupError);
+            alert(backupError?.response?.data?.detail || backupError?.message || 'Backup failed');
         } finally {
             setIsRunningBackup(false);
         }
     };
 
     const handleRestore = async (backup) => {
-        if (await confirmAction(`RESTORE SYSTEM from ${backup.filename}? This will overwrite current data.`, 'Restore System')) {
-            setRestoringBackupId(backup.id);
-            try {
-                const res = await AdminService.restore(backup.id);
-                await fetchData();
-                alert(res.message || 'Restore complete — you may need to reload app');
-            } catch (error) {
-                console.error('Restore failed:', error);
-                alert(`Restore failed — system rolled back to pre-restore snapshot (${error?.response?.data?.detail || error?.message || 'unknown'})`);
-            } finally {
-                setRestoringBackupId(null);
-            }
+        const confirmed = await confirmAction(
+            `RESTORE SYSTEM from ${backup.filename}? This will overwrite current data.`,
+            'Restore System'
+        );
+        if (!confirmed) return;
+        setRestoringBackupId(backup.id);
+        try {
+            const res = await AdminService.restore(backup.id);
+            await fetchData();
+            alert(res.message || 'Restore complete — you may need to reload app');
+        } catch (restoreError) {
+            console.error('Restore failed:', restoreError);
+            alert(
+                `Restore failed — system rolled back to pre-restore snapshot (${restoreError?.response?.data?.detail || restoreError?.message || 'unknown'})`
+            );
+        } finally {
+            setRestoringBackupId(null);
         }
     };
 
     const handleDownload = async (backup) => {
         try {
             await AdminService.downloadBackup(backup.id, backup.filename);
-        } catch (error) {
+        } catch (_e) {
             alert('Download failed');
         }
     };
 
     const handleUploadClick = async () => {
         if (isTauriEnv()) {
-            // Use Tauri file dialog
             try {
                 const { open } = await import('@tauri-apps/plugin-dialog');
                 const { readFile } = await import('@tauri-apps/plugin-fs');
-
                 const filePath = await open({
                     multiple: false,
-                    filters: [{
-                        name: 'Backup Files',
-                        extensions: ['zip']
-                    }]
+                    filters: [{ name: 'Backup Files', extensions: ['zip'] }],
                 });
-
-                if (!filePath) return; // User cancelled
-
-                // Read the file
+                if (!filePath) return;
                 const fileData = await readFile(filePath);
-
-                // Create a File object from the data
                 const fileName = filePath.split('/').pop();
                 const file = new File([fileData], fileName, { type: 'application/zip' });
-
-                // Upload to backend
                 const response = await AdminService.uploadBackup(file);
-                alert(response.message || 'Backup uploaded and restored successfully');
-                window.location.reload();
-            } catch (error) {
-                console.error('Tauri file import failed:', error);
-                alert('Failed to import backup: ' + (error.message || 'Unknown error'));
+                alert(response.message || 'Backup uploaded successfully');
+                await fetchData();
+            } catch (uploadErr) {
+                console.error('Tauri file import failed:', uploadErr);
+                alert(`Failed to import backup: ${uploadErr.message || 'Unknown error'}`);
             }
         } else {
-            // Browser environment - use HTML file input
             fileInputRef.current?.click();
         }
     };
@@ -192,33 +228,67 @@ const Admin = () => {
     const handleFileChange = async (event) => {
         const file = event.target.files[0];
         if (!file) return;
-
         if (!file.name.endsWith('.zip')) {
             alert('Please upload a valid .zip backup file');
             return;
         }
-
         try {
             const response = await AdminService.uploadBackup(file);
-            alert(response.message || 'Backup uploaded and restored successfully');
-            // Reload the page to reflect restored data
-            window.location.reload();
-        } catch (error) {
-            alert('Failed to upload backup: ' + (error.response?.data?.detail || error.message));
+            alert(response.message || 'Backup uploaded successfully');
+            await fetchData();
+        } catch (uploadError) {
+            alert(`Failed to upload backup: ${uploadError.response?.data?.detail || uploadError.message}`);
         }
-        // Reset input
         event.target.value = null;
     };
 
-    const handleScheduleUpdate = async (e) => {
-        const newFreq = e.target.value;
+    const handleScheduleUpdate = async (event) => {
+        const newFreq = event.target.value;
         try {
             await AdminService.updateBackupSchedule(newFreq);
             setBackupSchedule(newFreq);
             alert(`Backup schedule updated to: ${newFreq}`);
-        } catch (error) {
+        } catch (_err) {
             alert('Failed to update schedule');
-            fetchData(); // Revert
+            fetchData();
+        }
+    };
+
+    const handleSwitchDB = async () => {
+        if (!dbSwitchPath) {
+            alert('Please provide a sqlite path');
+            return;
+        }
+        const confirmed = await confirmAction(
+            `Set active DB pointer to:\n${dbSwitchPath}\n\nThis does not modify DB content and requires restart.`,
+            'Switch Active DB'
+        );
+        if (!confirmed) return;
+        try {
+            const response = await AdminService.switchSCCDB(dbSwitchPath);
+            setDbSwitchResult(response);
+            alert(response.restart_required ? 'Active DB pointer updated. Restart required.' : 'Active DB pointer updated.');
+            await fetchData();
+        } catch (switchErr) {
+            alert(switchErr.response?.data?.detail || switchErr.message || 'DB switch failed');
+        }
+    };
+
+    const handleSwitchOrg = async (organizationId) => {
+        const confirmed = await confirmAction(
+            `Switch active org to ${organizationId}?\n\nThis is session-scoped and does not rewrite data.`,
+            'Switch Organization'
+        );
+        if (!confirmed) return;
+        try {
+            const response = await AdminService.switchSCCOrg(organizationId);
+            alert(`Active org switched to ${response.active_org_name || response.active_org_id}`);
+            await fetchData();
+            if (activeTab !== 'runtime') {
+                setActiveTab('runtime');
+            }
+        } catch (switchErr) {
+            alert(switchErr.response?.data?.detail || switchErr.message || 'Org switch failed');
         }
     };
 
@@ -228,37 +298,25 @@ const Admin = () => {
         {
             key: 'role',
             label: 'Role',
-            render: (row) => (
-                <span className={`badge ${row.role === 'admin' ? 'admin' : 'member'}`}>
-                    {row.role}
-                </span>
-            )
+            render: (row) => <span className={`badge ${row.role === 'admin' ? 'admin' : 'member'}`}>{row.role}</span>,
         },
         {
             key: 'is_active',
             label: 'Status',
-            render: (row) => (
-                <span className={`status-pill ${row.is_active ? 'active' : 'inactive'}`}>
-                    {row.is_active ? 'Active' : 'Disabled'}
-                </span>
-            )
-        }
+            render: (row) => <span className={`status-pill ${row.is_active ? 'active' : 'inactive'}`}>{row.is_active ? 'Active' : 'Disabled'}</span>,
+        },
     ];
 
     const backupColumns = [
         { key: 'filename', label: 'Backup Name' },
         { key: 'created_at', label: 'Created At' },
-        { key: 'size_bytes', label: 'Size' },
+        { key: 'size_bytes', label: 'Size (bytes)' },
         {
             key: 'actions',
             label: 'Actions',
             render: (row) => (
                 <div style={{ display: 'flex', gap: '8px' }}>
-                    <button
-                        className="btn-restore"
-                        onClick={() => handleDownload(row)}
-                        title="Download Backup"
-                    >
+                    <button className="btn-restore" onClick={() => handleDownload(row)} title="Download Backup">
                         <Download size={14} /> Download
                     </button>
                     <button
@@ -270,16 +328,42 @@ const Admin = () => {
                         <RefreshCcw size={14} /> {restoringBackupId === row.id ? 'Restoring…' : 'Restore'}
                     </button>
                 </div>
-            )
-        }
+            ),
+        },
     ];
+
+    const runtimeRows = useMemo(() => {
+        if (!sccRuntime) return [];
+        return [
+            ['Backend Base URL', sccHealth?.backend_base_url || 'n/a'],
+            ['Active DB Path', sccRuntime.sqlite_path || 'n/a'],
+            ['Database URL', sccRuntime.database_url || 'n/a'],
+            ['DB Writable', String(!!sccRuntime.db_writable)],
+            ['Active Org ID', sccRuntime.active_org_id || 'n/a'],
+            ['Active Org Name', sccRuntime.active_org_name || 'n/a'],
+            ['Last Backup Timestamp', sccRuntime.last_backup_timestamp || 'none'],
+            ['Alembic Current', sccRuntime.alembic_current || 'n/a'],
+            ['Alembic Head', sccRuntime.alembic_head || 'n/a'],
+            ['App Data Dir', sccRuntime.app_data_dir || 'n/a'],
+            ['Storage Root', sccRuntime.storage_root || 'n/a'],
+        ];
+    }, [sccHealth, sccRuntime]);
 
     return (
         <div className="admin-page">
+            {!backendConnected && (
+                <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 10, padding: '12px 14px', marginBottom: 14 }}>
+                    <strong>Backend connection lost.</strong> Some controls are unavailable.
+                    <button className="btn-secondary" onClick={handleRetryConnectivity} style={{ marginLeft: 12 }}>
+                        Retry
+                    </button>
+                </div>
+            )}
+
             <div className="page-header">
                 <div>
-                    <h1 className="page-title">Admin Control Panel</h1>
-                    <p className="page-subtitle">System governance and infrastructure management</p>
+                    <h1 className="page-title">System Control Center v1</h1>
+                    <p className="page-subtitle">Governed system operations, runtime identity, org scope, and backups</p>
                 </div>
                 {activeTab === 'users' && (
                     <button className="btn-primary" onClick={handleCreateUser}>
@@ -288,13 +372,7 @@ const Admin = () => {
                 )}
                 {activeTab === 'backups' && (
                     <div style={{ display: 'flex', gap: '8px' }}>
-                        <input
-                            type="file"
-                            ref={fileInputRef}
-                            onChange={handleFileChange}
-                            style={{ display: 'none' }}
-                            accept=".zip"
-                        />
+                        <input type="file" ref={fileInputRef} onChange={handleFileChange} style={{ display: 'none' }} accept=".zip" />
                         <button className="btn-secondary" onClick={handleUploadClick}>
                             <Upload size={18} /> Import Backup
                         </button>
@@ -306,56 +384,128 @@ const Admin = () => {
             </div>
 
             <div className="detail-tabs">
-                <button className={`tab-btn ${activeTab === 'users' ? 'active' : ''}`} onClick={() => setActiveTab('users')}>
-                    <Users size={16} /> User Management
+                <button className={`tab-btn ${activeTab === 'status' ? 'active' : ''}`} onClick={() => setActiveTab('status')}>
+                    <Server size={16} /> System Status
+                </button>
+                <button className={`tab-btn ${activeTab === 'runtime' ? 'active' : ''}`} onClick={() => setActiveTab('runtime')}>
+                    <Activity size={16} /> Runtime & Database
+                </button>
+                <button className={`tab-btn ${activeTab === 'db' ? 'active' : ''}`} onClick={() => setActiveTab('db')}>
+                    <Database size={16} /> Database Manager
+                </button>
+                <button className={`tab-btn ${activeTab === 'orgs' ? 'active' : ''}`} onClick={() => setActiveTab('orgs')}>
+                    <Building2 size={16} /> Organizations
                 </button>
                 <button className={`tab-btn ${activeTab === 'backups' ? 'active' : ''}`} onClick={() => setActiveTab('backups')}>
-                    <Database size={16} /> Data Backups
+                    <HardDrive size={16} /> Backups
                 </button>
                 <button className={`tab-btn ${activeTab === 'system' ? 'active' : ''}`} onClick={() => setActiveTab('system')}>
-                    <Activity size={16} /> System Health
+                    <Shield size={16} /> System Health
+                </button>
+                <button className={`tab-btn ${activeTab === 'users' ? 'active' : ''}`} onClick={() => setActiveTab('users')}>
+                    <Users size={16} /> User Management
                 </button>
             </div>
 
             <div className="admin-content">
+                {activeTab === 'status' && (
+                    <div className="stats-board">
+                        <h3><Server size={18} /> Backend Connectivity</h3>
+                        <div className="stat-pill"><span className="stat-label">Connected</span><span className="stat-val">{String(!!sccHealth?.backend_connected)}</span></div>
+                        <div className="stat-pill"><span className="stat-label">Backend Base URL</span><span className="stat-val">{sccHealth?.backend_base_url || 'n/a'}</span></div>
+                        <div className="stat-pill"><span className="stat-label">Environment</span><span className="stat-val">{sccHealth?.env || 'n/a'}</span></div>
+                        <div className="stat-pill"><span className="stat-label">Build</span><span className="stat-val">{sccHealth?.build || 'n/a'}</span></div>
+                        <div className="stat-pill"><span className="stat-label">Server Time</span><span className="stat-val">{sccHealth?.server_time || 'n/a'}</span></div>
+                        <button className="btn-secondary" onClick={handleRetryConnectivity} style={{ marginTop: 12 }}>
+                            <RefreshCcw size={14} /> Retry Connectivity Check
+                        </button>
+                    </div>
+                )}
+
+                {activeTab === 'runtime' && (
+                    <div className="stats-board">
+                        <h3><Activity size={18} /> Runtime Identity</h3>
+                        {runtimeRows.map(([key, value]) => (
+                            <div className="stat-pill" key={key}>
+                                <span className="stat-label">{key}</span>
+                                <span className="stat-val" style={{ maxWidth: 700, overflowWrap: 'anywhere', textAlign: 'right' }}>{value}</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {activeTab === 'db' && (
+                    <>
+                        <div className="stats-board" style={{ marginBottom: '1rem' }}>
+                            <h3><Database size={18} /> Set Active DB Pointer</h3>
+                            <p style={{ color: '#64748b', marginBottom: 12 }}>No DB content is modified. This only updates the active DB pointer and requires restart.</p>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                                <input
+                                    type="text"
+                                    value={dbSwitchPath}
+                                    onChange={(e) => setDbSwitchPath(e.target.value)}
+                                    placeholder="/absolute/path/to/otto.sqlite"
+                                    style={{ flex: 1, padding: '10px 12px', borderRadius: 8, border: '1px solid #e2e8f0' }}
+                                />
+                                <button className="btn-primary" onClick={handleSwitchDB}>Set Active DB</button>
+                            </div>
+                            {dbSwitchResult && (
+                                <div className="stat-pill" style={{ marginTop: 12 }}>
+                                    <span className="stat-label">Switch Result</span>
+                                    <span className="stat-val">restart_required={String(!!dbSwitchResult.restart_required)}</span>
+                                </div>
+                            )}
+                        </div>
+                        <div className="stats-board">
+                            <h3><Database size={18} /> DB Inventory</h3>
+                            <p style={{ color: '#64748b', marginBottom: 12 }}>Detected sqlite files under app data directory; current DB is marked.</p>
+                            {sccInventory?.files?.map((row) => (
+                                <div className="stat-pill" key={row.path}>
+                                    <span className="stat-label" style={{ maxWidth: 600, overflowWrap: 'anywhere' }}>{row.path}</span>
+                                    <span className="stat-val">{row.is_current ? 'current' : 'candidate'} | {row.size_bytes} bytes</span>
+                                </div>
+                            ))}
+                            {!sccInventory?.files?.length && !isLoading && <p className="text-muted">No sqlite files found.</p>}
+                        </div>
+                    </>
+                )}
+
+                {activeTab === 'orgs' && (
+                    <div className="stats-board">
+                        <h3><Building2 size={18} /> Active Organization (Session Scoped)</h3>
+                        <div className="stat-pill"><span className="stat-label">Active Org ID</span><span className="stat-val">{sccOrgs?.active_org_id || 'n/a'}</span></div>
+                        <div className="stat-pill"><span className="stat-label">Active Org Name</span><span className="stat-val">{sccOrgs?.active_org_name || 'n/a'}</span></div>
+                        <div style={{ marginTop: 12 }}>
+                            {sccOrgs?.organizations?.map((org) => (
+                                <div key={`${org.organization_id}-${org.name}`} className="stat-pill">
+                                    <span className="stat-label">{org.name} ({org.organization_id})</span>
+                                    <button className="btn-secondary" onClick={() => handleSwitchOrg(org.organization_id)}>
+                                        Switch
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
                 {activeTab === 'users' && (
-                    <DataTable
-                        columns={userColumns}
-                        data={users}
-                        isLoading={isLoading}
-                        onEdit={handleEditUser}
-                        onDelete={handleDeleteUser}
-                    />
+                    <DataTable columns={userColumns} data={users} isLoading={isLoading} onEdit={handleEditUser} onDelete={handleDeleteUser} />
                 )}
 
                 {activeTab === 'backups' && (
                     <>
-                        <div className="stats-board" style={{ marginBottom: '2rem' }}>
+                        <div className="stats-board" style={{ marginBottom: '1rem' }}>
                             <h3><Timer size={18} /> Auto-Backup Settings</h3>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                                 <span style={{ color: '#64748b', fontSize: '0.9rem' }}>Frequency:</span>
-                                <select
-                                    value={backupSchedule}
-                                    onChange={handleScheduleUpdate}
-                                    style={{
-                                        padding: '8px 12px',
-                                        borderRadius: '8px',
-                                        border: '1px solid #e2e8f0',
-                                        fontSize: '0.9rem',
-                                        minWidth: '150px'
-                                    }}
-                                >
+                                <select value={backupSchedule} onChange={handleScheduleUpdate} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #e2e8f0', minWidth: 180 }}>
                                     <option value="daily">Daily (Midnight)</option>
                                     <option value="weekly">Weekly (Sunday)</option>
                                     <option value="monthly">Monthly (1st)</option>
                                 </select>
                             </div>
                         </div>
-                        <DataTable
-                            columns={backupColumns}
-                            data={backups}
-                            isLoading={isLoading}
-                        />
+                        <DataTable columns={backupColumns} data={backups} isLoading={isLoading} />
                     </>
                 )}
 
@@ -372,11 +522,10 @@ const Admin = () => {
                                 ))}
                             </div>
                         </div>
-
                         <div className="logs-board">
                             <h3><History size={18} /> Security Audit Logs</h3>
                             <div className="logs-list">
-                                {auditLogs.map(log => (
+                                {auditLogs.map((log) => (
                                     <div key={log.id} className="log-item">
                                         <span className="log-time">{new Date(log.created_at).toLocaleString()}</span>
                                         <span className="log-msg"><strong>{log.user_email}</strong>: {log.action} on {log.target_type}</span>
@@ -399,77 +548,36 @@ const Admin = () => {
             >
                 <div className="form-group">
                     <label>Full Name</label>
-                    <input
-                        type="text"
-                        value={formData.full_name}
-                        onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                        required
-                    />
+                    <input type="text" value={formData.full_name} onChange={(e) => setFormData({ ...formData, full_name: e.target.value })} required />
                 </div>
                 <div className="form-group">
                     <label>Email Address</label>
-                    <input
-                        type="email"
-                        value={formData.email}
-                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        required
-                        disabled={editingUser}
-                    />
+                    <input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} required disabled={editingUser} />
                 </div>
                 <div className="form-group">
                     <label>{editingUser ? 'New Password (leave blank to keep current)' : 'Password'}</label>
-                    <input
-                        type="password"
-                        value={formData.password}
-                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                        required={!editingUser}
-                    />
+                    <input type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} required={!editingUser} />
                 </div>
-                <div className="form-row" style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                    <div className="form-group" style={{ flex: 1 }}>
-                        <label>System Role</label>
-                        <select
-                            value={formData.role}
-                            onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                        >
+                <div className="form-row">
+                    <div className="form-group">
+                        <label>Role</label>
+                        <select value={formData.role} onChange={(e) => setFormData({ ...formData, role: e.target.value })}>
                             <option value="member">Member</option>
                             <option value="admin">Admin</option>
                         </select>
                     </div>
-                    <div className="form-group" style={{ flex: 1, display: 'flex', alignItems: 'center', marginTop: '1.2rem' }}>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                            <input
-                                type="checkbox"
-                                checked={formData.is_active}
-                                onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                            />
-                            Account Active
-                        </label>
+                    <div className="form-group">
+                        <label>Status</label>
+                        <select
+                            value={formData.is_active ? 'active' : 'disabled'}
+                            onChange={(e) => setFormData({ ...formData, is_active: e.target.value === 'active' })}
+                        >
+                            <option value="active">Active</option>
+                            <option value="disabled">Disabled</option>
+                        </select>
                     </div>
                 </div>
             </EntityForm>
-
-            <style>{`
-                .admin-page { padding-bottom: 2rem; }
-                .badge { padding: 4px 10px; border-radius: 99px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
-                .badge.admin { background: #fee2e2; color: #991b1b; }
-                .badge.member { background: #e0f2fe; color: #0369a1; }
-                .status-pill { font-size: 0.75rem; display: flex; align-items: center; gap: 4px; }
-                .status-pill.active::before { content: ""; width: 8px; height: 8px; background: #22c55e; border-radius: 50%; }
-                .status-pill.inactive::before { content: ""; width: 8px; height: 8px; background: #94a3b8; border-radius: 50%; }
-                .btn-restore { display: flex; align-items: center; gap: 4px; border: 1px solid #e2e8f0; background: white; padding: 4px 8px; border-radius: 6px; cursor: pointer; color: #64748b; font-size: 0.8125rem; }
-                .btn-restore:hover { border-color: var(--accent-color); color: var(--accent-color); }
-                .system-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 2rem; margin-top: 1rem; }
-                .stats-board, .logs-board { background: white; border-radius: var(--radius); border: 1px solid var(--border-color); padding: 1.5rem; }
-                .stats-board h3, .logs-board h3 { margin-top: 0; font-size: 1rem; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem; }
-                .stats-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-                .stat-pill { background: #f8fafc; border: 1px solid #f1f5f9; padding: 1rem; border-radius: 12px; text-align: center; }
-                .stat-label { display: block; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; }
-                .stat-val { font-size: 1.5rem; font-weight: 700; color: var(--primary-color); }
-                .logs-list { display: flex; flex-direction: column; gap: 0.5rem; max-height: 400px; overflow-y: auto; }
-                .log-item { padding: 0.75rem; border-bottom: 1px solid #f1f5f9; font-size: 0.8125rem; }
-                .log-time { color: var(--text-muted); margin-right: 1rem; font-family: monospace; }
-            `}</style>
         </div>
     );
 };

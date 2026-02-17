@@ -127,6 +127,7 @@ def main():
     release_validation_violations = check_release_validation_governance()
     admin_backup_violations = check_admin_backup_governance()
     core_write_violations = check_ai_core_write_governance()
+    scc_violations = check_scc_governance()
     
     all_violations = (
         drift_violations
@@ -139,6 +140,7 @@ def main():
         + release_validation_violations
         + admin_backup_violations
         + core_write_violations
+        + scc_violations
     )
     
     if all_violations:
@@ -795,6 +797,56 @@ def check_ai_core_write_governance():
                         violations.append(
                             f"Core write governance violation in {rel}: mutating db.execute SQL at line {node.lineno}"
                         )
+
+    return violations
+
+
+def check_scc_governance():
+    """
+    SCC governance:
+      - backend/routes/system_control_center.py is read-only (no ORM writes)
+      - backend/services/admin/scc/*.py is read-only (no ORM writes)
+      - mutating db.execute SQL blocked (insert/update/delete/alter/drop/create)
+      - filesystem pointer writes are allowed (not checked by AST)
+    """
+    project_root = Path(__file__).resolve().parent.parent
+    targets = [project_root / "backend/routes/system_control_center.py"]
+    scc_root = project_root / "backend/services/admin/scc"
+    if scc_root.exists():
+        for root, _, files in os.walk(scc_root):
+            for file in files:
+                if file.endswith(".py"):
+                    targets.append(Path(root) / file)
+
+    violations = []
+    forbidden_methods = {"add", "commit", "delete", "update"}
+    mutating_sql = ("insert", "update", "delete", "alter", "drop", "create")
+
+    for path in targets:
+        if not path.exists():
+            continue
+        tree = get_ast(path)
+        if not tree:
+            continue
+        rel = os.path.relpath(path, project_root / "backend")
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
+                continue
+            if node.func.attr in forbidden_methods:
+                violations.append(
+                    f"SCC governance violation in {rel}: .{node.func.attr}() at line {node.lineno}"
+                )
+            if node.func.attr == "execute" and node.args:
+                arg0 = node.args[0]
+                sql_text = ""
+                if isinstance(arg0, ast.Constant) and isinstance(arg0.value, str):
+                    sql_text = arg0.value.lower()
+                elif isinstance(arg0, ast.Call) and arg0.args and isinstance(arg0.args[0], ast.Constant) and isinstance(arg0.args[0].value, str):
+                    sql_text = arg0.args[0].value.lower()
+                if any(keyword in sql_text for keyword in mutating_sql):
+                    violations.append(
+                        f"SCC governance violation in {rel}: mutating db.execute SQL at line {node.lineno}"
+                    )
 
     return violations
 

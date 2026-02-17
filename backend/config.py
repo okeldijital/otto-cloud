@@ -2,6 +2,7 @@ import os
 import sys
 import platform
 import logging
+import json
 from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Optional
@@ -19,6 +20,8 @@ class Settings(BaseSettings):
     APP_ENV: str = "development"
     
     # Paths (initialized in __init__)
+    APP_DATA_DIR: str = ""
+    ACTIVE_DB_POINTER_FILE: str = ""
     DATABASE_URL: str = ""
     STORAGE_ROOT: str = ""
     IMPORT_LOGS_ROOT: str = ""
@@ -79,12 +82,16 @@ class Settings(BaseSettings):
             self.AUTH_DISABLED = True  # Set to False to re-enable auth
 
         # Resolve Data Directory
-        # Resolve Data Directory
         # UNIVERSAL SINGLE SOURCE OF TRUTH
-        # Always use ~/.otto/data to ensure Dev, Desktop, and Hub share the same state.
-        data_parent = Path.home() / ".otto" / "data"
+        # Resolve app data dir with explicit env override, otherwise ~/.otto/data.
+        app_data_env = os.getenv("OTTO_APP_DATA_DIR")
+        if app_data_env:
+            data_parent = Path(app_data_env).expanduser().resolve()
+        else:
+            data_parent = (Path.home() / ".otto" / "data").resolve()
 
         data_parent.mkdir(parents=True, exist_ok=True)
+        self.APP_DATA_DIR = str(data_parent)
         
         # Create subdirectories
         db_dir = data_parent / "db"
@@ -107,30 +114,45 @@ class Settings(BaseSettings):
         
         logs_dir = data_parent / "logs"
         logs_dir.mkdir(exist_ok=True)
-        
-        # Set DATABASE_URL - respect env override, otherwise use SQLite
-        db_url = os.getenv("DATABASE_URL")
-        if db_url:
-            self.DATABASE_URL = db_url
-        else:
-            # Use otto.sqlite for consistency
-            self.DATABASE_URL = f"sqlite:///{db_dir}/otto.sqlite"
-        
+        runtime_dir = data_parent / "runtime"
+        runtime_dir.mkdir(exist_ok=True)
+        active_db_pointer = runtime_dir / "active_db.json"
+        self.ACTIVE_DB_POINTER_FILE = str(active_db_pointer)
+
+        # Set DATABASE_URL with deterministic priority:
+        # 1) DATABASE_URL env
+        # 2) OTTO_DB_PATH env
+        # 3) runtime active_db pointer file
+        # 4) default ~/.otto/data/db/otto.sqlite
+        database_url_env = os.getenv("DATABASE_URL")
+        db_path_env = os.getenv("OTTO_DB_PATH")
+        resolved_database_url = ""
+        if database_url_env:
+            resolved_database_url = database_url_env
+        elif db_path_env:
+            resolved_database_url = f"sqlite:///{Path(db_path_env).expanduser().resolve()}"
+        elif active_db_pointer.exists():
+            try:
+                pointer_payload = json.loads(active_db_pointer.read_text(encoding="utf-8"))
+                pointer_database_url = pointer_payload.get("database_url")
+                if isinstance(pointer_database_url, str) and pointer_database_url:
+                    resolved_database_url = pointer_database_url
+            except Exception:
+                resolved_database_url = ""
+        if not resolved_database_url:
+            resolved_database_url = f"sqlite:///{db_dir}/otto.sqlite"
+        self.DATABASE_URL = resolved_database_url
+
         # Ensure database path is absolute
-        db_path_check = Path(self.DATABASE_URL.replace('sqlite:///', ''))
-        assert db_path_check.is_absolute(), f"Database path must be absolute: {self.DATABASE_URL}"
+        if self.DATABASE_URL.startswith("sqlite:///"):
+            db_path_check = Path(self.DATABASE_URL.replace("sqlite:///", ""))
+            assert db_path_check.is_absolute(), f"Database path must be absolute: {self.DATABASE_URL}"
             
         self.STORAGE_ROOT = str(storage_dir)
         self.IMPORT_LOGS_ROOT = str(import_logs_dir)
         self.UPLOAD_DIR = str(storage_dir)
         # Required persistent backend log path
         self.LOG_FILE = str(logs_dir / "backend.log")
-
-
-settings = Settings()
-
-
-
 
 
 settings = Settings()

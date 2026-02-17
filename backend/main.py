@@ -139,6 +139,7 @@ from routes import (  # noqa: E402
     ai_release_integration,
     ai_release_validation,
     ai_core_write,
+    system_control_center,
 )
 
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
@@ -168,6 +169,7 @@ app.include_router(office_notes.router, prefix="/api", tags=["Office Notes"])
 app.include_router(office_reports.router, prefix="/api", tags=["Office Reports"])
 app.include_router(office_status_quo.router, prefix="/api", tags=["Office Status Quo"])
 app.include_router(backup.router, prefix="/api", tags=["Backup"])
+app.include_router(system_control_center.router, prefix="/api", tags=["System Control Center"])
 app.include_router(config.router, prefix="/api", tags=["Configuration"])
 
 # AI Router - Always mounted, features gated internally

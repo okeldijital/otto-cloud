@@ -117,5 +117,29 @@ export const AdminService = {
     updateBackupSchedule: async (frequency) => {
         const response = await api.post('/admin/backup/schedule', { frequency });
         return response.data;
-    }
+    },
+    getSCCHealth: async () => {
+        const response = await api.get('/admin/scc/health');
+        return response.data;
+    },
+    getSCCRuntime: async () => {
+        const response = await api.get('/admin/scc/runtime');
+        return response.data;
+    },
+    getSCCDBInventory: async () => {
+        const response = await api.get('/admin/scc/db/inventory');
+        return response.data;
+    },
+    switchSCCDB: async (sqlitePath) => {
+        const response = await api.post('/admin/scc/db/switch', { sqlite_path: sqlitePath, confirm: true });
+        return response.data;
+    },
+    getSCCOrgs: async () => {
+        const response = await api.get('/admin/scc/orgs');
+        return response.data;
+    },
+    switchSCCOrg: async (organizationId) => {
+        const response = await api.post('/admin/scc/orgs/switch', { organization_id: organizationId, confirm: true });
+        return response.data;
+    },
 };
