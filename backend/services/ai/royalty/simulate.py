@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime, timezone
 from typing import Dict, List, Optional, Set
 
 from sqlalchemy.orm import Session
@@ -200,6 +201,10 @@ def simulate_release_royalty(
     release_id: int,
     contract_document_id: Optional[int] = None,
     assume_missing_parties_as_unknown: bool = True,
+    gross_revenue: Optional[float] = None,
+    units: Optional[int] = None,
+    period_start: Optional[str] = None,
+    period_end: Optional[str] = None,
 ) -> RoyaltySimulationResponse:
     release = _load_release(db=db, org_id=org_id, release_id=release_id)
     contract_doc = _load_contract_document(
@@ -246,6 +251,17 @@ def simulate_release_royalty(
         split_rows=split_rows,
     )
 
+    gross = float(gross_revenue) if gross_revenue is not None else 0.0
+    results = [
+        {
+            "party_display_name": item.party_display_name,
+            "percent": item.percent,
+            "amount": round((gross * item.percent) / 100.0, 6) if gross_revenue is not None else None,
+            "rationale": item.source,
+        }
+        for item in computed_splits
+    ]
+
     needs_review = (
         (not total_equals_100)
         or bool(conflicts)
@@ -254,11 +270,25 @@ def simulate_release_royalty(
     )
 
     return RoyaltySimulationResponse(
+        status="ok",
+        simulation_version=ROYALTY_VERSION,
         royalty_version=ROYALTY_VERSION,
+        generated_at=datetime.now(timezone.utc).isoformat(),
         org_id=str(org_id),
         release_id=release.id,
         contract_document_id=contract_doc.id if contract_doc else None,
+        inputs={
+            "release_id": release.id,
+            "contract_document_id": contract_doc.id if contract_doc else None,
+            "mode": "simulate",
+            "assume_missing_parties_as_unknown": assume_missing_parties_as_unknown,
+            "gross_revenue": gross_revenue,
+            "units": units,
+            "period_start": period_start,
+            "period_end": period_end,
+        },
         computed_splits=computed_splits,
+        results=results,
         splits_total=splits_total,
         integrity=IntegrityBlock(
             total_equals_100=total_equals_100,

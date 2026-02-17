@@ -26,6 +26,7 @@ import {
     Share2,
     Users,
     Bot,
+    Calculator,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import Logo from './Logo';
@@ -144,6 +145,10 @@ const Sidebar = () => {
                     <Link to="/ai/analytics" className={`sidebar-item ${location.pathname.startsWith('/ai/analytics') ? 'active' : ''}`}>
                         <BarChart3 size={20} />
                         <span className="sidebar-label">AI Analytics</span>
+                    </Link>
+                    <Link to="/ai/royalties" className={`sidebar-item ${location.pathname.startsWith('/ai/royalties') ? 'active' : ''}`}>
+                        <Calculator size={20} />
+                        <span className="sidebar-label">AI Royalties</span>
                     </Link>
                     {isAdmin && (
                         <Link to="/admin" className={`sidebar-item ${location.pathname.startsWith('/admin') ? 'active' : ''}`}>

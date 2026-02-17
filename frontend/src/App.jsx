@@ -61,6 +61,7 @@ import PlatformDetail from './pages/network/PlatformDetail';
 // AI
 import AI from './pages/AI';
 import AIAnalytics from './pages/AIAnalytics';
+import AIRoyalty from './pages/AIRoyalty';
 
 import './App.css';
 
@@ -409,6 +410,7 @@ function App() {
                     {/* AI Route */}
                     <Route path="/ai" element={<ProtectedRoute><MainLayout><AI /></MainLayout></ProtectedRoute>} />
                     <Route path="/ai/analytics" element={<ProtectedRoute><MainLayout><AIAnalytics /></MainLayout></ProtectedRoute>} />
+                    <Route path="/ai/royalties" element={<ProtectedRoute><MainLayout><AIRoyalty /></MainLayout></ProtectedRoute>} />
 
                     {/* Network Routes */}
                     <Route path="/network" element={<ProtectedRoute><MainLayout><NetworkDashboard /></MainLayout></ProtectedRoute>} />

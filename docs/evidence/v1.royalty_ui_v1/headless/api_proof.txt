@@ -1,0 +1,42 @@
+=== health ===
+HTTP_STATUS=200
+{"enabled_flags":{"AI_ENABLED":true,"AI_ROYALTY_ENABLED":false,"AI_ROYALTY_PERSIST_ENABLED":true},"version":"royalty_sim_v1_deterministic"}
+=== simulate disabled ===
+HTTP_STATUS=404
+{"detail":"Not Found"}
+=== simulate enabled ===
+HTTP_STATUS=200
+{
+  "status": "ok",
+  "org_id": "00000000-0000-0000-0000-000000002653",
+  "generated_at": "2026-02-17T12:26:14.242990+00:00",
+  "simulation_version": "royalty_sim_v1_deterministic",
+  "inputs": {
+    "release_id": 1,
+    "contract_document_id": 1,
+    "mode": "simulate",
+    "assume_missing_parties_as_unknown": true,
+    "gross_revenue": 1000.0,
+    "units": 1000,
+    "period_start": "2026-01-01",
+    "period_end": "2026-01-31"
+  },
+  "results": [
+    {
+      "party_display_name": "Royalty UI Evidence Artist A",
+      "percent": 50.0,
+      "amount": 500.0,
+      "rationale": "release_integration_link"
+    },
+    {
+      "party_display_name": "Royalty UI Evidence Work A",
+      "percent": 50.0,
+      "amount": 500.0,
+      "rationale": "release_integration_link"
+    }
+  ],
+  "warnings": [],
+  "persisted": true,
+  "run_id": 1,
+  "idempotent_hit": false
+}

@@ -49,13 +49,17 @@ async def royalty_simulate(
             release_id=req.release_id,
             contract_document_id=req.contract_document_id,
             assume_missing_parties_as_unknown=req.assume_missing_parties_as_unknown,
+            gross_revenue=req.gross_revenue,
+            units=req.units,
+            period_start=req.period_start,
+            period_end=req.period_end,
         )
     except ValueError as exc:
         if str(exc) in {"release_not_found", "contract_document_not_found"}:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not Found")
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
 
-    if not settings.AI_ROYALTY_PERSIST_ENABLED:
+    if not settings.AI_ROYALTY_PERSIST_ENABLED or not req.persist_result:
         return response
 
     request_payload = {
@@ -64,6 +68,10 @@ async def royalty_simulate(
         "contract_document_id": req.contract_document_id,
         "mode": req.mode,
         "assume_missing_parties_as_unknown": req.assume_missing_parties_as_unknown,
+        "gross_revenue": req.gross_revenue,
+        "units": req.units,
+        "period_start": req.period_start,
+        "period_end": req.period_end,
         "computed_splits": [item.model_dump(mode="json") for item in response.computed_splits],
         "splits_total": response.splits_total,
     }
@@ -84,6 +92,7 @@ async def royalty_simulate(
     if existing:
         response.persisted = True
         response.run_id = existing.id
+        response.idempotent_hit = True
         return response
 
     run = AIRoyaltySimulationRun(
@@ -104,4 +113,5 @@ async def royalty_simulate(
 
     response.persisted = True
     response.run_id = run.id
+    response.idempotent_hit = False
     return response

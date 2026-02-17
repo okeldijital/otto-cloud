@@ -8,6 +8,11 @@ class RoyaltySimulationRequest(BaseModel):
     contract_document_id: Optional[int] = None
     mode: Literal["simulate"] = "simulate"
     assume_missing_parties_as_unknown: bool = True
+    gross_revenue: Optional[float] = None
+    units: Optional[int] = None
+    period_start: Optional[str] = None
+    period_end: Optional[str] = None
+    persist_result: bool = True
 
 
 class ComputedSplit(BaseModel):
@@ -31,11 +36,16 @@ class ConflictItem(BaseModel):
 
 
 class RoyaltySimulationResponse(BaseModel):
+    status: str = "ok"
+    simulation_version: str
     royalty_version: str
+    generated_at: str
     org_id: str
     release_id: int
     contract_document_id: Optional[int] = None
+    inputs: dict = Field(default_factory=dict)
     computed_splits: List[ComputedSplit] = Field(default_factory=list)
+    results: List[dict] = Field(default_factory=list)
     splits_total: float = 0.0
     integrity: IntegrityBlock
     conflicts: List[ConflictItem] = Field(default_factory=list)
@@ -44,3 +54,4 @@ class RoyaltySimulationResponse(BaseModel):
     needs_review: bool = True
     persisted: bool = False
     run_id: Optional[int] = None
+    idempotent_hit: bool = False
