@@ -1,0 +1,9 @@
+AI Analytics UI v1 page path: /ai/analytics
+
+Sections rendered:
+- Overview (KPIs)
+- Contracts Analytics
+- Catalog Analytics
+- Filter bar with optional date range + refresh button
+
+UI screenshots waived (known limitation)

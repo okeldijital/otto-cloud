@@ -85,3 +85,35 @@ def get_analytics_contracts(db: Session, org_id: uuid.UUID, limit: int = 50) -> 
         "analytics_version": ANALYTICS_VERSION,
         "contracts": contracts,
     }
+
+
+def get_analytics_catalog(db: Session, org_id: uuid.UUID) -> dict:
+    link_rows = db.query(
+        AIContractResolutionLink.entity_type,
+        func.count(AIContractResolutionLink.id).label("count"),
+    ).join(
+        AIContractResolutionRun, AIContractResolutionLink.run_id == AIContractResolutionRun.id
+    ).filter(
+        AIContractResolutionRun.organization_id == org_id
+    ).group_by(
+        AIContractResolutionLink.entity_type
+    ).order_by(
+        func.count(AIContractResolutionLink.id).desc()
+    ).all()
+
+    items = []
+    for row in link_rows:
+        items.append(
+            {
+                "entity_type": row.entity_type,
+                "count": int(row.count or 0),
+            }
+        )
+
+    org_str = str(org_id)
+    return {
+        "org_id": org_str,
+        "organization_id": org_str,
+        "analytics_version": ANALYTICS_VERSION,
+        "catalog": items,
+    }

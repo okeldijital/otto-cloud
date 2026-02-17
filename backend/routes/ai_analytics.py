@@ -5,7 +5,11 @@ from config import settings
 from database import get_db
 from dependencies import get_current_user
 from models.user import User
-from services.ai.analytics import get_analytics_contracts, get_analytics_summary
+from services.ai.analytics import (
+    get_analytics_catalog,
+    get_analytics_contracts,
+    get_analytics_summary,
+)
 
 router = APIRouter()
 
@@ -26,6 +30,14 @@ async def analytics_summary(
     return get_analytics_summary(db, current_user.organization_id)
 
 
+@router.get("/overview", dependencies=[Depends(ensure_ai_analytics_enabled)])
+async def analytics_overview(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return get_analytics_summary(db, current_user.organization_id)
+
+
 @router.get("/contracts", dependencies=[Depends(ensure_ai_analytics_enabled)])
 async def analytics_contracts(
     limit: int = Query(default=50, ge=1, le=200),
@@ -33,3 +45,11 @@ async def analytics_contracts(
     current_user: User = Depends(get_current_user),
 ):
     return get_analytics_contracts(db, current_user.organization_id, limit=limit)
+
+
+@router.get("/catalog", dependencies=[Depends(ensure_ai_analytics_enabled)])
+async def analytics_catalog(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return get_analytics_catalog(db, current_user.organization_id)

@@ -1,3 +1,3 @@
-from .queries import get_analytics_contracts, get_analytics_summary
+from .queries import get_analytics_catalog, get_analytics_contracts, get_analytics_summary
 
-__all__ = ["get_analytics_summary", "get_analytics_contracts"]
+__all__ = ["get_analytics_summary", "get_analytics_contracts", "get_analytics_catalog"]

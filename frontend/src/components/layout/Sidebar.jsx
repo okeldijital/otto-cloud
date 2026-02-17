@@ -156,9 +156,15 @@ const Sidebar = () => {
 
                 <div style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
                     {aiEnabled && (
-                        <Link to="/ai" className={`sidebar-item ${location.pathname.startsWith('/ai') ? 'active' : ''}`}>
+                        <Link to="/ai" className={`sidebar-item ${location.pathname === '/ai' ? 'active' : ''}`}>
                             <Bot size={20} />
                             <span className="sidebar-label">AI Assistant</span>
+                        </Link>
+                    )}
+                    {aiEnabled && (
+                        <Link to="/ai/analytics" className={`sidebar-item ${location.pathname.startsWith('/ai/analytics') ? 'active' : ''}`}>
+                            <BarChart3 size={20} />
+                            <span className="sidebar-label">AI Analytics</span>
                         </Link>
                     )}
                     {isAdmin && (
