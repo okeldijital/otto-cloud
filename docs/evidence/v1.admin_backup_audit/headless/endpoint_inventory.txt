@@ -1,0 +1,30 @@
+=== backup endpoint inventory ===
+path: /api/admin/backups
+  method: GET
+  auth: required
+  input_schema: None
+  output_schema: {'200': {'additionalProperties': True, 'type': 'object', 'title': 'Response Admin List Backups Api Admin Backups Get'}}
+  method: POST
+  auth: required
+  input_schema: None
+  output_schema: {'200': {'$ref': '#/components/schemas/BackupUploadResponse'}}
+path: /api/admin/backups/download/{backup_id}
+  method: GET
+  auth: required
+  input_schema: None
+  output_schema: {'200': {}, '422': {'$ref': '#/components/schemas/HTTPValidationError'}}
+path: /api/admin/backups/restore
+  method: POST
+  auth: required
+  input_schema: {'$ref': '#/components/schemas/BackupRestoreRequest'}
+  output_schema: {'200': {'$ref': '#/components/schemas/BackupRestoreResponse'}, '422': {'$ref': '#/components/schemas/HTTPValidationError'}}
+path: /api/admin/backups/upload
+  method: POST
+  auth: required
+  input_schema: {'$ref': '#/components/schemas/Body_admin_upload_backup_api_admin_backups_upload_post'}
+  output_schema: {'200': {'$ref': '#/components/schemas/BackupUploadResponse'}, '422': {'$ref': '#/components/schemas/HTTPValidationError'}}
+path: /api/admin/backups/{backup_id}
+  method: DELETE
+  auth: required
+  input_schema: None
+  output_schema: {'200': {}, '422': {'$ref': '#/components/schemas/HTTPValidationError'}}

@@ -1,0 +1,28 @@
+=== frontend admin endpoint references ===
+/Users/m2krproduction/otto/frontend/src/services/operations.js:70:        const response = await api.post('/admin/backups');
+/Users/m2krproduction/otto/frontend/src/services/operations.js:73:    getBackups: async () => {
+/Users/m2krproduction/otto/frontend/src/services/operations.js:74:        const response = await api.get('/admin/backups');
+/Users/m2krproduction/otto/frontend/src/services/operations.js:77:    restore: async (backupId) => {
+/Users/m2krproduction/otto/frontend/src/services/operations.js:78:        const response = await api.post('/admin/backups/restore', { backup_id: Number(backupId) });
+/Users/m2krproduction/otto/frontend/src/services/operations.js:90:        const response = await api.get(`/admin/backups/download/${backupId}`, {
+/Users/m2krproduction/otto/frontend/src/services/operations.js:103:    uploadBackup: async (file) => {
+/Users/m2krproduction/otto/frontend/src/services/operations.js:106:        const response = await api.post('/admin/backups/upload', formData, {
+/Users/m2krproduction/otto/frontend/src/services/operations.js:114:        const response = await api.get('/admin/backup/schedule');
+/Users/m2krproduction/otto/frontend/src/services/operations.js:118:        const response = await api.post('/admin/backup/schedule', { frequency });
+/Users/m2krproduction/otto/frontend/src/pages/Admin.jsx:40:                    AdminService.getBackups(),
+/Users/m2krproduction/otto/frontend/src/pages/Admin.jsx:127:                const res = await AdminService.restore(backup.id);
+/Users/m2krproduction/otto/frontend/src/pages/Admin.jsx:128:                alert(res.message || 'System restored successfully');
+/Users/m2krproduction/otto/frontend/src/pages/Admin.jsx:168:                const response = await AdminService.uploadBackup(file);
+/Users/m2krproduction/otto/frontend/src/pages/Admin.jsx:169:                alert(response.message || 'Backup uploaded and restored successfully');
+/Users/m2krproduction/otto/frontend/src/pages/Admin.jsx:191:            const response = await AdminService.uploadBackup(file);
+/Users/m2krproduction/otto/frontend/src/pages/Admin.jsx:192:            alert(response.message || 'Backup uploaded and restored successfully');
+/Users/m2krproduction/otto/frontend/src/pages/Admin.jsx:193:            // Reload the page to reflect restored data
+/Users/m2krproduction/otto/frontend/src/pages/Admin.jsx:247:                        className="btn-restore"
+/Users/m2krproduction/otto/frontend/src/pages/Admin.jsx:254:                        className="btn-restore"
+/Users/m2krproduction/otto/frontend/src/pages/Admin.jsx:448:                .btn-restore { display: flex; align-items: center; gap: 4px; border: 1px solid #e2e8f0; background: white; padding: 4px 8px; border-radius: 6px; cursor: pointer; color: #64748b; font-size: 0.8125rem; }
+/Users/m2krproduction/otto/frontend/src/pages/Admin.jsx:449:                .btn-restore:hover { border-color: var(--accent-color); color: var(--accent-color); }
+
+=== list sample ===
+{"backups":[{"id":1,"filename":"admin_backup_upload_20260217_133451.zip","size_bytes":19502,"sha256":"47db12298aaf2dcd5cd95fbb4a9acbc07f22077dad9eef3a26cd5f986aeb58cb","backup_kind":"uploaded","is_pre_restore_snapshot":false,"created_at":"2026-02-17T11:34:51+00:00","organization_id":"00000000-0000-0000-0000-000000000001"}]}
+=== bad upload error sample ===
+{"detail":"Only .zip files are accepted"}

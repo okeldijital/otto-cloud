@@ -1,293 +1,209 @@
-"""Backup and restore functionality for Otto."""
 import os
-import shutil
-import zipfile
-import logging
-from datetime import datetime
+import uuid
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional, List
+from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks, File, UploadFile, Depends
+from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
 from config import settings
-from dependencies import get_current_active_user
+from database import get_db
+from models.admin_backup import AdminBackupArtifact
 from models.user import User
+from routes.auth import get_current_admin_user
+from services.admin_backup.service import (
+    create_manual_backup,
+    delete_backup,
+    list_backups,
+    restore_backup,
+    upload_backup,
+)
 
-logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-class BackupInfo(BaseModel):
-    """Information about a backup file."""
-    id: str
-    name: str
-    path: str
-    size: int
-    created: str
+class BackupUploadResponse(BaseModel):
+    status: str
+    backup_id: int
+    filename: str
+    size_bytes: int
+    sha256: str
+    created_at: str
+    organization_id: str
 
 
-class BackupResponse(BaseModel):
-    """Response for backup creation."""
-    success: bool
-    message: str
-    backup: Optional[BackupInfo] = None
-    timestamp: str
+class BackupListItem(BaseModel):
+    id: int
+    filename: str
+    size_bytes: int
+    sha256: str
+    backup_kind: str
+    is_pre_restore_snapshot: bool
+    created_at: str
+    organization_id: str
 
 
-class RestoreResponse(BaseModel):
-    """Response for restore operation."""
-    success: bool
-    message: str
+class BackupRestoreRequest(BaseModel):
+    backup_id: int
 
 
-def get_backup_dir() -> Path:
-    """Get or create backup directory."""
-    backup_dir = Path(settings.STORAGE_ROOT) / ".backups"
-    backup_dir.mkdir(exist_ok=True, parents=True)
-    return backup_dir
+class BackupRestoreResponse(BaseModel):
+    status: str
+    backup_id: int
+    pre_restore_snapshot_id: int
+    restored_at: str
+    organization_id: str
+    warnings: List[str]
+
+
+def _iso(value: Optional[datetime]) -> str:
+    if value is None:
+        return datetime.now(timezone.utc).isoformat()
+    return value.astimezone(timezone.utc).isoformat()
+
+
+def _artifact_to_item(row: AdminBackupArtifact) -> BackupListItem:
+    return BackupListItem(
+        id=row.id,
+        filename=row.filename,
+        size_bytes=row.size_bytes,
+        sha256=row.sha256,
+        backup_kind=row.backup_kind,
+        is_pre_restore_snapshot=row.is_pre_restore_snapshot,
+        created_at=_iso(row.created_at),
+        organization_id=str(row.organization_id),
+    )
 
 
 @router.get("/admin/backups", response_model=dict)
-async def list_backups(current_user: User = Depends(get_current_active_user)):
-    """List available backups."""
-    try:
-        backup_dir = get_backup_dir()
-        backups: List[BackupInfo] = []
-        
-        if backup_dir.exists():
-            for backup_file in sorted(backup_dir.glob("*.zip"), reverse=True):
-                stat = backup_file.stat()
-                backups.append(BackupInfo(
-                    id=backup_file.stem,  # filename without extension
-                    name=backup_file.name,
-                    path=str(backup_file),
-                    size=stat.st_size,
-                    created=datetime.fromtimestamp(stat.st_mtime).isoformat()
-                ))
-        
-        return {"backups": [b.dict() for b in backups]}
-    except Exception as e:
-        logger.error(f"Error listing backups: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+async def admin_list_backups(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user),
+):
+    rows = list_backups(db=db, org_id=current_user.organization_id)
+    return {"backups": [_artifact_to_item(row).model_dump(mode="json") for row in rows]}
 
 
-@router.post("/admin/backups", response_model=BackupResponse)
-async def create_backup(current_user: User = Depends(get_current_active_user)):
-    """Create a backup of database and storage."""
-    try:
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        backup_dir = get_backup_dir()
-        backup_file = backup_dir / f"otto_backup_{timestamp}.zip"
-        
-        # Create zip file
-        with zipfile.ZipFile(backup_file, 'w', zipfile.ZIP_DEFLATED) as zipf:
-            # Add database file
-            db_path = Path(settings.DATABASE_URL.replace('sqlite:///', ''))
-            if db_path.exists():
-                zipf.write(db_path, arcname='otto.db')
-                logger.info(f"Added database to backup: {db_path}")
-            
-            # Add storage directory
-            storage_path = Path(settings.STORAGE_ROOT)
-            if storage_path.exists():
-                for file_path in storage_path.rglob('*'):
-                    if file_path.is_file() and '.backups' not in file_path.parts:
-                        arcname = file_path.relative_to(storage_path.parent)
-                        zipf.write(file_path, arcname=arcname)
-                logger.info(f"Added storage directory to backup")
-            
-            # Add import logs if they exist
-            import_logs_path = Path(settings.IMPORT_LOGS_ROOT)
-            if import_logs_path.exists():
-                for file_path in import_logs_path.rglob('*'):
-                    if file_path.is_file():
-                        arcname = file_path.relative_to(import_logs_path.parent)
-                        zipf.write(file_path, arcname=arcname)
-                logger.info(f"Added import logs to backup")
-        
-        stat = backup_file.stat()
-        backup_info = BackupInfo(
-            id=backup_file.stem,
-            name=backup_file.name,
-            path=str(backup_file),
-            size=stat.st_size,
-            created=datetime.fromtimestamp(stat.st_mtime).isoformat()
-        )
-        
-        logger.info(f"✅ Backup created: {backup_file}")
-        return BackupResponse(
-            success=True,
-            message=f"Backup created successfully",
-            backup=backup_info,
-            timestamp=timestamp
-        )
-    except Exception as e:
-        logger.error(f"❌ Backup failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+@router.post("/admin/backups", response_model=BackupUploadResponse)
+async def admin_create_backup(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user),
+):
+    row = create_manual_backup(db=db, org_id=current_user.organization_id, user_id=current_user.id)
+    return BackupUploadResponse(
+        status="uploaded",
+        backup_id=row.id,
+        filename=row.filename,
+        size_bytes=row.size_bytes,
+        sha256=row.sha256,
+        created_at=_iso(row.created_at),
+        organization_id=str(row.organization_id),
+    )
 
 
-@router.post("/admin/backups/upload", response_model=BackupResponse)
-async def upload_backup(
+@router.post("/admin/backups/upload", response_model=BackupUploadResponse)
+async def admin_upload_backup(
     file: UploadFile = File(...),
-    current_user: User = Depends(get_current_active_user)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user),
 ):
-    """Upload a backup zip file."""
     try:
-        # Validate file is a zip
-        if not file.filename or not file.filename.endswith('.zip'):
-            raise HTTPException(status_code=400, detail="File must be a .zip file")
-        
-        # Validate filename format (optional but recommended)
-        if not file.filename.startswith('otto_backup_'):
-            logger.warning(f"Uploaded backup has non-standard name: {file.filename}")
-        
-        backup_dir = get_backup_dir()
-        backup_path = backup_dir / file.filename
-        
-        # Check if file already exists
-        if backup_path.exists():
-            raise HTTPException(
-                status_code=409, 
-                detail=f"Backup file '{file.filename}' already exists"
-            )
-        
-        # Save uploaded file
-        with open(backup_path, 'wb') as f:
-            content = await file.read()
-            f.write(content)
-        
-        # Validate it's a valid zip file
-        try:
-            with zipfile.ZipFile(backup_path, 'r') as zipf:
-                # Check if it contains expected files
-                namelist = zipf.namelist()
-                if 'otto.db' not in namelist:
-                    logger.warning(f"Uploaded backup does not contain otto.db")
-        except zipfile.BadZipFile:
-            backup_path.unlink()  # Delete invalid file
-            raise HTTPException(status_code=400, detail="Invalid zip file")
-        
-        stat = backup_path.stat()
-        backup_info = BackupInfo(
-            id=backup_path.stem,
-            name=backup_path.name,
-            path=str(backup_path),
-            size=stat.st_size,
-            created=datetime.fromtimestamp(stat.st_mtime).isoformat()
+        if not file.filename:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Missing filename")
+        content = await file.read()
+        row = upload_backup(
+            db=db,
+            org_id=current_user.organization_id,
+            user_id=current_user.id,
+            filename=file.filename,
+            data=content,
+            max_size_bytes=settings.MAX_UPLOAD_SIZE,
         )
-        
-        logger.info(f"✅ Backup uploaded: {backup_path}")
-        return BackupResponse(
-            success=True,
-            message=f"Backup uploaded successfully",
-            backup=backup_info,
-            timestamp=datetime.now().strftime("%Y%m%d_%H%M%S")
+        return BackupUploadResponse(
+            status="uploaded",
+            backup_id=row.id,
+            filename=row.filename,
+            size_bytes=row.size_bytes,
+            sha256=row.sha256,
+            created_at=_iso(row.created_at),
+            organization_id=str(row.organization_id),
         )
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"❌ Backup upload failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    except OverflowError:
+        raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="Backup upload too large")
+    except ValueError as exc:
+        code = str(exc)
+        if code == "invalid_extension":
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only .zip files are accepted")
+        if code == "invalid_zip_signature":
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid zip signature")
+        if code == "zip_slip_detected":
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Zip contains unsafe paths")
+        if code == "empty_zip":
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Zip archive is empty")
+        if code.startswith("unknown_backup_structure"):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unknown backup structure")
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=code)
 
 
-@router.post("/admin/backups/{backup_id}/restore", response_model=RestoreResponse)
-async def restore_backup(
-    backup_id: str,
-    background_tasks: BackgroundTasks,
-    current_user: User = Depends(get_current_active_user)
+@router.post("/admin/backups/restore", response_model=BackupRestoreResponse)
+async def admin_restore_backup(
+    payload: BackupRestoreRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user),
 ):
-    """Restore from a backup file."""
     try:
-        backup_dir = get_backup_dir()
-        
-        # Find backup file by ID (stem)
-        backup_path = None
-        for candidate in backup_dir.glob(f"{backup_id}.zip"):
-            backup_path = candidate
-            break
-        
-        if not backup_path or not backup_path.exists():
-            raise HTTPException(status_code=404, detail=f"Backup '{backup_id}' not found")
-        
-        # Create a timestamped backup of current state before restoring
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        db_path = Path(settings.DATABASE_URL.replace('sqlite:///', ''))
-        app_data_parent = db_path.parent
-        pre_restore_backup_dir = backup_dir / f"pre_restore_{timestamp}"
-        pre_restore_backup_dir.mkdir(exist_ok=True)
-        
-        # Copy current database
-        if db_path.exists():
-            shutil.copy2(db_path, pre_restore_backup_dir / db_path.name)
-            logger.info(f"Created safety backup at {pre_restore_backup_dir}")
-        
-        # CRITICAL: Close all database connections to unlock the file
-        try:
-            from database import engine
-            engine.dispose()  # Close all connections in the pool
-            logger.info("Closed all database connections")
-        except Exception as e:
-            logger.warning(f"Error closing connections: {e}")
-        
-        # Extract backup to temporary location first
-        temp_extract = app_data_parent / f".restore_tmp_{timestamp}"
-        temp_extract.mkdir(exist_ok=True)
-        
-        try:
-            with zipfile.ZipFile(backup_path, 'r') as zipf:
-                zipf.extractall(temp_extract)
-            
-            # Find the database file in the backup (support both naming conventions)
-            restored_db = None
-            for db_name in ["otto.sqlite", "otto.db"]:
-                candidate = temp_extract / db_name
-                if candidate.exists():
-                    restored_db = candidate
-                    logger.info(f"Found database file: {db_name}")
-                    break
-            
-            if not restored_db:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Backup does not contain a valid database file (otto.sqlite or otto.db)"
-                )
-            
-            # Restore database (atomic copy)
-            shutil.copy2(restored_db, db_path)
-            logger.info(f"Restored database from {restored_db.name} to {db_path}")
-            
-            # Restore storage directory
-            storage_path = Path(settings.STORAGE_ROOT)
-            temp_storage = temp_extract / "storage"
-            if temp_storage.exists():
-                # Backup current storage
-                if storage_path.exists():
-                    shutil.move(str(storage_path), str(pre_restore_backup_dir / "storage"))
-                shutil.copytree(temp_storage, storage_path)
-                logger.info(f"Restored storage directory")
-            
-            # Restore import logs
-            import_logs_path = Path(settings.IMPORT_LOGS_ROOT)
-            temp_import_logs = temp_extract / "import_logs"
-            if temp_import_logs.exists():
-                if import_logs_path.exists():
-                    shutil.move(str(import_logs_path), str(pre_restore_backup_dir / "import_logs"))
-                shutil.copytree(temp_import_logs, import_logs_path)
-                logger.info(f"Restored import logs")
-            
-            logger.info(f"✅ Restore completed successfully from {backup_path.name}")
-            return RestoreResponse(
-                success=True,
-                message=f"Restore completed from {backup_path.name}. Pre-restore backup saved to {pre_restore_backup_dir.name}. Please restart the application to see changes."
-            )
-        finally:
-            # Clean up temp directory
-            if temp_extract.exists():
-                shutil.rmtree(temp_extract, ignore_errors=True)
-            
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"❌ Restore failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        result = restore_backup(
+            db=db,
+            org_id=current_user.organization_id,
+            user_id=current_user.id,
+            backup_id=payload.backup_id,
+        )
+        return BackupRestoreResponse(**result)
+    except ValueError as exc:
+        code = str(exc)
+        if code == "backup_not_found":
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Backup not found")
+        if code in {"checksum_mismatch", "zip_slip_detected", "empty_zip", "missing_database_in_backup"}:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=code)
+        if code.startswith("unknown_backup_structure"):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="unknown_backup_structure")
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=code)
+
+
+@router.get("/admin/backups/download/{backup_id}")
+async def admin_download_backup(
+    backup_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user),
+):
+    row = (
+        db.query(AdminBackupArtifact)
+        .filter(
+            AdminBackupArtifact.id == backup_id,
+            AdminBackupArtifact.organization_id == current_user.organization_id,
+        )
+        .first()
+    )
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Backup not found")
+
+    path = Path(row.file_path)
+    if not path.exists():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Backup file missing")
+    return FileResponse(path=str(path), filename=row.filename, media_type="application/zip")
+
+
+@router.delete("/admin/backups/{backup_id}")
+async def admin_delete_backup(
+    backup_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user),
+):
+    try:
+        delete_backup(db=db, org_id=current_user.organization_id, backup_id=backup_id)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Backup not found")

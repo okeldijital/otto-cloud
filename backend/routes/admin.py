@@ -1,114 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
-import os
-import shutil
-from pathlib import Path
 from pydantic import BaseModel
 
 from database import get_db
 from models.user import User as UserModel
 from models import Artist, Release, Track, Contract, Work, AuditLog
 from routes.auth import get_current_admin_user
-from utils.backup import create_backup, list_backups, restore_backup, BACKUP_DIR
-from utils.activity import log_activity
 from utils.scheduler import get_current_frequency, update_schedule
 
 router = APIRouter()
-
-@router.post("/backup")
-def run_backup(
-    current_user: UserModel = Depends(get_current_admin_user),
-    db: Session = Depends(get_db)
-):
-    """Trigger a manual backup (Admin only)"""
-    try:
-        backup_file = create_backup()
-        log_activity(db, current_user.id, "run_backup", "system", 0, backup_file)
-        return {"status": "success", "file": backup_file}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@router.get("/backups")
-def get_backups(
-    current_user: UserModel = Depends(get_current_admin_user)
-):
-    """List all available backups (Admin only)"""
-    return list_backups()
-
-@router.post("/restore/{filename}")
-def run_restore(
-    filename: str,
-    current_user: UserModel = Depends(get_current_admin_user),
-    db: Session = Depends(get_db)
-):
-    """Restore from a backup (Admin only)"""
-    try:
-        success = restore_backup(filename)
-        if success:
-            log_activity(db, current_user.id, "restore_backup", "system", 0, filename)
-            return {"status": "success", "message": "Restore completed. Please restart the server."}
-        else:
-            raise HTTPException(status_code=404, detail="Backup file not found")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@router.get("/backup/download/{filename}")
-def download_backup(
-    filename: str,
-    current_user: UserModel = Depends(get_current_admin_user)
-):
-    """Download a specific backup file"""
-    file_path = os.path.join(BACKUP_DIR, filename)
-    if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="Backup file not found")
-    
-    return FileResponse(
-        path=file_path,
-        filename=filename,
-        media_type='application/zip'
-    )
-
-@router.post("/backup/upload")
-def upload_backup(
-    file: UploadFile = File(...),
-    current_user: UserModel = Depends(get_current_admin_user),
-    db: Session = Depends(get_db)
-):
-    """Upload a backup file and automatically restore it"""
-    if not file.filename.endswith('.zip'):
-        raise HTTPException(status_code=400, detail="Only .zip files are allowed")
-    
-    if not os.path.exists(BACKUP_DIR):
-        os.makedirs(BACKUP_DIR)
-        
-    file_path = os.path.join(BACKUP_DIR, file.filename)
-    
-    try:
-        # Save the uploaded file
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-            
-        log_activity(db, current_user.id, "upload_backup", "system", 0, file.filename)
-        
-        # Automatically restore the backup
-        success = restore_backup(file.filename)
-        if success:
-            log_activity(db, current_user.id, "restore_backup", "system", 0, file.filename)
-            return {
-                "status": "success", 
-                "filename": file.filename,
-                "message": "Backup uploaded and restored successfully. Please refresh the page."
-            }
-        else:
-            return {
-                "status": "partial",
-                "filename": file.filename,
-                "message": "Backup uploaded but restore failed. You can try restoring manually."
-            }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Could not upload file: {str(e)}")
 
 class ScheduleUpdate(BaseModel):
     frequency: str
@@ -131,7 +32,6 @@ def set_backup_schedule(
         raise HTTPException(status_code=400, detail="Invalid frequency. Must be 'daily', 'weekly', or 'monthly'")
     
     update_schedule(schedule.frequency)
-    log_activity(db, current_user.id, "update_schedule", "system", 0, schedule.frequency)
     return {"status": "success", "frequency": schedule.frequency}
 
 @router.get("/stats")

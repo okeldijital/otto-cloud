@@ -121,10 +121,10 @@ const Admin = () => {
         }
     };
 
-    const handleRestore = async (filename) => {
-        if (await confirmAction(`RESTORE SYSTEM from ${filename}? This will overwrite current data.`, 'Restore System')) {
+    const handleRestore = async (backup) => {
+        if (await confirmAction(`RESTORE SYSTEM from ${backup.filename}? This will overwrite current data.`, 'Restore System')) {
             try {
-                const res = await AdminService.restore(filename);
+                const res = await AdminService.restore(backup.id);
                 alert(res.message || 'System restored successfully');
             } catch (error) {
                 alert('Restore failed');
@@ -132,9 +132,9 @@ const Admin = () => {
         }
     };
 
-    const handleDownload = async (filename) => {
+    const handleDownload = async (backup) => {
         try {
-            await AdminService.downloadBackup(filename);
+            await AdminService.downloadBackup(backup.id, backup.filename);
         } catch (error) {
             alert('Download failed');
         }
@@ -236,8 +236,8 @@ const Admin = () => {
 
     const backupColumns = [
         { key: 'filename', label: 'Backup Name' },
-        { key: 'timestamp', label: 'Created At' },
-        { key: 'size', label: 'Size' },
+        { key: 'created_at', label: 'Created At' },
+        { key: 'size_bytes', label: 'Size' },
         {
             key: 'actions',
             label: 'Actions',
@@ -245,14 +245,14 @@ const Admin = () => {
                 <div style={{ display: 'flex', gap: '8px' }}>
                     <button
                         className="btn-restore"
-                        onClick={() => handleDownload(row.filename)}
+                        onClick={() => handleDownload(row)}
                         title="Download Backup"
                     >
                         <Download size={14} /> Download
                     </button>
                     <button
                         className="btn-restore"
-                        onClick={() => handleRestore(row.filename)}
+                        onClick={() => handleRestore(row)}
                         title="Restore System"
                     >
                         <RefreshCcw size={14} /> Restore

@@ -1,0 +1,23 @@
+before_counts:
+artists|0
+tracks|0
+works|0
+releases|0
+organizations|0
+individuals|0
+before_db_sha256=1a5146b042c82e10dc87bf0dec6c69383b2ca0479be6ae819fe2a02c2d3bc44b
+
+restore_http_status=200
+{"status": "restored", "backup_id": 1, "pre_restore_snapshot_id": 2, "restored_at": "2026-02-17T13:34:52.601574+00:00", "organization_id": "00000000-0000-0000-0000-000000000001", "warnings": []}
+after_counts:
+artists|0
+tracks|0
+works|0
+releases|0
+organizations|0
+individuals|0
+after_db_sha256=baa86798b1ed95c308c69febbfe2cecc32e0fc93472e0af63992ff1a3745f476
+
+pre_restore_snapshot_id=2
+pre_restore_snapshot_files=1
+snapshot_file=/tmp/otto_admin_backup_audit_evidence/storage/backups/00000000-0000-0000-0000-000000000001/pre_restore_snapshot_20260217_133452.zip

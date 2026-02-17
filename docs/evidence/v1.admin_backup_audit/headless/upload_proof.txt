@@ -1,0 +1,5 @@
+upload_http_status=200
+upload_response={"status":"uploaded","backup_id":1,"filename":"admin_backup_upload_20260217_133451.zip","size_bytes":19502,"sha256":"47db12298aaf2dcd5cd95fbb4a9acbc07f22077dad9eef3a26cd5f986aeb58cb","created_at":"2026-02-17T11:34:51+00:00","organization_id":"00000000-0000-0000-0000-000000000001"}
+
+org_scoped_filesystem_listing:
+/tmp/otto_admin_backup_audit_evidence/storage/backups/00000000-0000-0000-0000-000000000001/admin_backup_upload_20260217_133451.zip

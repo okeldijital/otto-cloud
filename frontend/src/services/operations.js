@@ -67,15 +67,15 @@ export const UsersService = createCrudService('users');
 export const AdminService = {
     ...createCrudService('admin'),
     backup: async () => {
-        const response = await api.post('/admin/backup');
+        const response = await api.post('/admin/backups');
         return response.data;
     },
     getBackups: async () => {
         const response = await api.get('/admin/backups');
-        return response.data;
+        return response.data?.backups || [];
     },
-    restore: async (filename) => {
-        const response = await api.post(`/admin/restore/${filename}`);
+    restore: async (backupId) => {
+        const response = await api.post('/admin/backups/restore', { backup_id: Number(backupId) });
         return response.data;
     },
     getStats: async () => {
@@ -86,8 +86,8 @@ export const AdminService = {
         const response = await api.get('/admin/audit-logs');
         return response.data;
     },
-    downloadBackup: async (filename) => {
-        const response = await api.get(`/admin/backup/download/${filename}`, {
+    downloadBackup: async (backupId, filename = 'backup.zip') => {
+        const response = await api.get(`/admin/backups/download/${backupId}`, {
             responseType: 'blob'
         });
         // Trigger download
@@ -103,7 +103,7 @@ export const AdminService = {
     uploadBackup: async (file) => {
         const formData = new FormData();
         formData.append('file', file);
-        const response = await api.post('/admin/backup/upload', formData, {
+        const response = await api.post('/admin/backups/upload', formData, {
             headers: {
                 'Content-Type': 'multipart/form-data',
             },

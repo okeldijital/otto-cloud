@@ -121,6 +121,7 @@ def main():
     resolve_violations = check_ai_resolve_governance()
     release_integration_violations = check_release_integration_governance()
     release_validation_violations = check_release_validation_governance()
+    admin_backup_violations = check_admin_backup_governance()
     
     all_violations = (
         drift_violations
@@ -131,6 +132,7 @@ def main():
         + resolve_violations
         + release_integration_violations
         + release_validation_violations
+        + admin_backup_violations
     )
     
     if all_violations:
@@ -584,6 +586,101 @@ def check_release_validation_governance():
                 if any(keyword in sql_text for keyword in ("insert", "update", "delete")):
                     violations.append(
                         f"Release validation mutation violation in {rel}: db.execute mutating SQL at line {node.lineno}"
+                    )
+
+    return violations
+
+
+def check_admin_backup_governance():
+    """
+    Admin backup governance checks:
+      - Scope:
+        - backend/routes/backup.py
+        - backend/services/admin_backup/*.py
+      - Writes allowed only to AdminBackupArtifact and AdminRestoreAudit
+      - Block writes to core models
+      - Block mutating execute SQL (insert/update/delete/alter/drop/create)
+    """
+    project_root = Path(__file__).resolve().parent.parent
+    targets = [project_root / "backend/routes/backup.py"]
+    service_root = project_root / "backend/services/admin_backup"
+    if service_root.exists():
+        for root, _, files in os.walk(service_root):
+            for file in files:
+                if file.endswith(".py"):
+                    targets.append(Path(root) / file)
+
+    violations = []
+    mutating_methods = {"add", "commit", "delete", "update"}
+    mutating_sql = ("insert", "update", "delete", "alter", "drop", "create")
+    allowed_models = {"AdminBackupArtifact", "AdminRestoreAudit"}
+    forbidden_models = {
+        "Organization",
+        "Individual",
+        "Artist",
+        "Release",
+        "Track",
+        "Work",
+        "Contract",
+        "PRO",
+        "Label",
+        "Publisher",
+        "Royalty",
+        "User",
+    }
+
+    for path in targets:
+        if not path.exists():
+            continue
+        tree = get_ast(path)
+        if not tree:
+            continue
+        rel = os.path.relpath(path, project_root / "backend")
+
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
+                continue
+
+            method = node.func.attr
+            if method in mutating_methods:
+                if method == "add":
+                    for arg in node.args:
+                        model = None
+                        if isinstance(arg, ast.Call) and isinstance(arg.func, ast.Name):
+                            model = arg.func.id
+                        elif isinstance(arg, ast.Name):
+                            var_name = arg.id
+                            for assign in ast.walk(tree):
+                                if isinstance(assign, ast.Assign) and isinstance(assign.value, ast.Call):
+                                    if (
+                                        len(assign.targets) == 1
+                                        and isinstance(assign.targets[0], ast.Name)
+                                        and assign.targets[0].id == var_name
+                                        and isinstance(assign.value.func, ast.Name)
+                                    ):
+                                        model = assign.value.func.id
+                        if model:
+                            if model in forbidden_models:
+                                violations.append(
+                                    f"Admin backup governance violation in {rel}: core model write attempt {model} via .add() at line {node.lineno}"
+                                )
+                            if model not in allowed_models:
+                                violations.append(
+                                    f"Admin backup governance violation in {rel}: non-allowlisted model write {model} via .add() at line {node.lineno}"
+                                )
+
+            if method == "execute" and node.args:
+                arg0 = node.args[0]
+                sql_text = ""
+                if isinstance(arg0, ast.Constant) and isinstance(arg0.value, str):
+                    sql_text = arg0.value.lower()
+                elif isinstance(arg0, ast.Call) and arg0.args:
+                    first = arg0.args[0]
+                    if isinstance(first, ast.Constant) and isinstance(first.value, str):
+                        sql_text = first.value.lower()
+                if any(keyword in sql_text for keyword in mutating_sql):
+                    violations.append(
+                        f"Admin backup governance violation in {rel}: mutating db.execute SQL at line {node.lineno}"
                     )
 
     return violations
