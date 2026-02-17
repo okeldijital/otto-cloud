@@ -17,6 +17,7 @@ const Admin = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isRunningBackup, setIsRunningBackup] = useState(false);
     const [editingUser, setEditingUser] = useState(null);
     const [error, setError] = useState(null);
     const fileInputRef = React.useRef(null);
@@ -112,12 +113,16 @@ const Admin = () => {
     };
 
     const handleBackup = async () => {
+        setIsRunningBackup(true);
         try {
-            await AdminService.backup();
-            fetchData();
-            alert('Backup created successfully');
+            const res = await AdminService.runSystemBackup();
+            await fetchData();
+            alert(`Backup created: ${res?.filename ?? 'ok'}`);
         } catch (error) {
-            alert('Backup failed');
+            console.error('Run backup failed:', error);
+            alert(error?.response?.data?.detail || error?.message || 'Backup failed');
+        } finally {
+            setIsRunningBackup(false);
         }
     };
 
@@ -286,8 +291,8 @@ const Admin = () => {
                         <button className="btn-secondary" onClick={handleUploadClick}>
                             <Upload size={18} /> Import Backup
                         </button>
-                        <button className="btn-primary" onClick={handleBackup}>
-                            <HardDrive size={18} /> Run System Backup
+                        <button className="btn-primary" onClick={handleBackup} disabled={isRunningBackup}>
+                            <HardDrive size={18} /> {isRunningBackup ? 'Running Backup…' : 'Run System Backup'}
                         </button>
                     </div>
                 )}

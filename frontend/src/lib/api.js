@@ -1,13 +1,9 @@
 import axios from 'axios';
 
-// API base URL logic
-// 1. If VITE_API_URL is set (dev), use it.
-// 2. If running in browser (served by backend), use relative path '/api'.
-// 3. Fallback to local dev server (port 8001).
-const isDev = import.meta.env.DEV;
-const DEV_URL = 'http://' + 'localhost' + ':8001';
-export const BASE_URL = import.meta.env.VITE_API_URL || (isDev ? DEV_URL : '');
-export const API_URL = `${BASE_URL}/api`;
+// Always use same-origin relative API paths.
+// In Vite dev this is proxied to backend via vite.config.js.
+export const BASE_URL = '';
+export const API_URL = '/api';
 
 // Create axios instance
 const api = axios.create({

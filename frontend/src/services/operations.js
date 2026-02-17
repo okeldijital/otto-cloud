@@ -66,7 +66,7 @@ export const TasksService = createCrudService('tasks');
 export const UsersService = createCrudService('users');
 export const AdminService = {
     ...createCrudService('admin'),
-    backup: async () => {
+    runSystemBackup: async () => {
         const response = await api.post('/admin/backups');
         return response.data;
     },

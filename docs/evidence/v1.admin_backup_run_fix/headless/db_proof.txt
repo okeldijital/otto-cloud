@@ -1,0 +1,5 @@
+admin_backup_artifacts_before=0
+admin_backup_artifacts_after=1
+increment=1
+latest_file_path=/tmp/otto_admin_backup_run_fix_evidence/storage/backups/00000000-0000-0000-0000-000000000001/otto_backup_20260217_144052.zip
+latest_file_exists=true

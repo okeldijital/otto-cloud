@@ -1,5 +1,6 @@
 import hashlib
 import json
+import logging
 import os
 import shutil
 import tempfile
@@ -19,6 +20,7 @@ from models.admin_backup import AdminBackupArtifact, AdminRestoreAudit
 ZIP_MAGIC = b"PK\x03\x04"
 MAX_RESTORE_SNAPSHOTS_PER_ORG = 5
 ALLOWED_TOP_LEVEL = {"otto.sqlite", "otto.db", "storage", "import_logs"}
+logger = logging.getLogger(__name__)
 
 
 def _now_iso() -> str:
@@ -104,6 +106,8 @@ def _snapshot_zip_for_org(org_id: uuid.UUID, output_zip: Path):
     db_path = _db_path()
     storage_path = Path(settings.STORAGE_ROOT)
     import_logs_path = Path(settings.IMPORT_LOGS_ROOT)
+    backups_root = storage_path / "backups"
+    output_zip_resolved = output_zip.resolve()
 
     with zipfile.ZipFile(output_zip, "w", zipfile.ZIP_DEFLATED) as archive:
         if db_path.exists():
@@ -111,6 +115,15 @@ def _snapshot_zip_for_org(org_id: uuid.UUID, output_zip: Path):
         if storage_path.exists():
             for file_path in storage_path.rglob("*"):
                 if file_path.is_file():
+                    try:
+                        resolved = file_path.resolve()
+                    except Exception:
+                        continue
+                    # Never include backup artifacts while creating a backup.
+                    if resolved == output_zip_resolved:
+                        continue
+                    if backups_root in resolved.parents:
+                        continue
                     rel = file_path.relative_to(storage_path)
                     archive.write(file_path, arcname=str(Path("storage") / rel))
         if import_logs_path.exists():
@@ -168,11 +181,29 @@ def list_backups(db: Session, org_id: uuid.UUID) -> List[AdminBackupArtifact]:
 
 
 def create_manual_backup(db: Session, org_id: uuid.UUID, user_id: int) -> AdminBackupArtifact:
+    logger.info("admin_backup_start org_id=%s user_id=%s", _org_str(org_id), user_id)
     ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     org_dir = _org_backup_dir(org_id)
     target = org_dir / f"otto_backup_{ts}.zip"
-    _snapshot_zip_for_org(org_id=org_id, output_zip=target)
-    return _create_artifact(db=db, org_id=org_id, user_id=user_id, file_path=target, backup_kind="manual")
+    try:
+        _snapshot_zip_for_org(org_id=org_id, output_zip=target)
+        created_artifact = _create_artifact(
+            db=db,
+            org_id=org_id,
+            user_id=user_id,
+            file_path=target,
+            backup_kind="manual",
+        )
+    except Exception:
+        logger.exception("admin_backup_failed org_id=%s user_id=%s", _org_str(org_id), user_id)
+        raise
+    logger.info(
+        "admin_backup_complete org_id=%s user_id=%s backup_id=%s",
+        _org_str(org_id),
+        user_id,
+        created_artifact.id,
+    )
+    return created_artifact
 
 
 def upload_backup(
