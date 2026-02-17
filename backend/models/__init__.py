@@ -34,6 +34,11 @@ from models.ai_core_write import (
     AICoreWriteProposalItem,
     AICoreWriteProposalRun,
 )
+from models.contract_wizard import (
+    AIContractAttachLink,
+    AIContractAttachRun,
+    AIContractDraft,
+)
 
 # Aliases for backward compatibility
 Company = Organization
@@ -90,6 +95,9 @@ __all__ = [
     "AICoreWriteProposalRun",
     "AICoreWriteProposalItem",
     "AICoreWriteApplyEvent",
+    "AIContractDraft",
+    "AIContractAttachRun",
+    "AIContractAttachLink",
     "Contract",
     "ContractParty",
     "ContractAsset",

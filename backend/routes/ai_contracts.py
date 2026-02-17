@@ -55,6 +55,8 @@ async def extract_contract_endpoint(
     parsed = extract_text_from_pdf(content)
     
     extraction = extract_contract_intelligence(parsed["text"])
+    extraction.contract_date = extraction.effective_date or extraction.start_date
+    extraction.expiration_date = extraction.end_date
     
     # Audit logging (hash only)
     log_ai_request(

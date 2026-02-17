@@ -1,0 +1,4 @@
+Org isolation proof
+- Org A creates contract
+- Org B GET /api/contracts/{id} -> 404
+- assertion in test_org_isolation_for_created_contract

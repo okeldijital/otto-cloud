@@ -1,0 +1,5 @@
+DB non-destructive proof
+- artists/tracks/works/releases counts unchanged
+- contracts +1
+- contract_documents +1
+- assertions located in tests/test_contract_create_from_extract.py

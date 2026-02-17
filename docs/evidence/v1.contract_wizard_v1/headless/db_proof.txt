@@ -1,0 +1,4 @@
+DB Proof
+- Core table mutation rule: only contracts + contract_documents are created.
+- Attach write rule: AIContractAttachRun + AIContractAttachLink only.
+- See assertions in backend/tests/test_contract_wizard_flow.py

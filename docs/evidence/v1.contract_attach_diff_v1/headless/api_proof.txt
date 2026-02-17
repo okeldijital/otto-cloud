@@ -1,0 +1,6 @@
+Attach Diff API Proof
+- plan endpoint: POST /api/contracts/{contract_id}/attach/plan -> 200
+- apply endpoint: POST /api/contracts/{contract_id}/attach/apply
+  - confirm=false -> 422
+  - backup required missing -> 409
+  - confirm=true + backup -> 200

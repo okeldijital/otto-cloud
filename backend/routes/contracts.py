@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, Request, status, UploadFile, File, Form
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict
+import json
 import os
 import shutil
 
@@ -27,6 +28,8 @@ from models.label import Label
 from config import settings
 from utils.audit import audit_service
 from services.status_quo import compute_contract_status
+from services.contract_create import create_contract_from_draft
+from services.contracts import create_contract_from_extract
 
 router = APIRouter(
     tags=["Contracts"],
@@ -77,6 +80,11 @@ def inject_status_quo(contract: Optional[Contract]) -> Optional[Contract]:
     return contract
 
 
+def ensure_contract_wizard_enabled():
+    if not settings.AI_ENABLED or not settings.AI_CONTRACT_WIZARD_ENABLED:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="AI module disabled")
+
+
 @router.get("/contracts")
 def list_contracts(
     status_filter: Optional[str] = None,
@@ -117,10 +125,11 @@ def list_contracts(
     return rows
 
 
-@router.post("/contracts", status_code=status.HTTP_201_CREATED, response_model=ContractResponse)
+@router.post("/contracts", status_code=status.HTTP_201_CREATED)
 async def create_contract(
-    title: str = Form(...),
-    contract_number: str = Form(...),
+    request: Request = None,
+    title: str = Form(None),
+    contract_number: str = Form(None),
     status_value: str = Form("Draft"),
     type: str = Form(None),
     start_date: str = Form(None),
@@ -135,6 +144,27 @@ async def create_contract(
     org_id: int = Depends(get_current_organization_id),
     current_user=Depends(get_current_user),
 ):
+    # JSON document-first creation path.
+    content_type = (request.headers.get("content-type") or "").lower()
+    if "application/json" in content_type:
+        payload = await request.json()
+        draft_id = payload.get("draft_id")
+        if not draft_id:
+            raise HTTPException(status_code=422, detail="draft_id is required")
+        overrides = payload.get("overrides") or {}
+        try:
+            return create_contract_from_draft(
+                db=db,
+                org_id=org_id,
+                user_id=current_user.id,
+                draft_id=str(draft_id),
+                overrides=overrides,
+            )
+        except ValueError as exc:
+            if str(exc) == "draft_not_found":
+                raise HTTPException(status_code=404, detail="Not Found")
+            raise HTTPException(status_code=422, detail=str(exc))
+
     # Create contract record
     def parse_date(value: Optional[str]):
         if value in (None, "", "null"):
@@ -144,6 +174,9 @@ async def create_contract(
             return datetime.strptime(value, "%Y-%m-%d").date()
         except Exception:
             return None
+
+    if not title or not contract_number:
+        raise HTTPException(status_code=422, detail="title and contract_number are required")
 
     payload = {
         "title": title,
@@ -207,6 +240,51 @@ async def create_contract(
         audit_service.log(db, "UPLOAD", "ContractDocument", contract.id, current_user.id, changes={"document": file.filename}, organization_id=org_id)
 
     return inject_status_quo(contract_repository.get_with_details(db, contract.id, org_id))
+
+
+@router.post(
+    "/contracts/from_extract",
+    dependencies=[Depends(ensure_contract_wizard_enabled)],
+)
+async def create_contract_via_extract(
+    file: UploadFile = File(...),
+    payload: str = Form(...),
+    db: Session = Depends(get_db),
+    org_id: int = Depends(get_current_organization_id),
+    current_user=Depends(get_current_user),
+):
+    try:
+        parsed_payload = json.loads(payload)
+    except Exception:
+        raise HTTPException(status_code=422, detail="invalid payload json")
+
+    try:
+        content = await file.read()
+        result = create_contract_from_extract(
+            db=db,
+            org_id=org_id,
+            user_id=current_user.id,
+            file_name=file.filename,
+            file_content=content,
+            payload=parsed_payload,
+        )
+        audit_service.log(
+            db,
+            "CREATE",
+            "Contract",
+            result["contract_id"],
+            current_user.id,
+            changes={"path": "/contracts/from_extract", "mode": "governed"},
+            organization_id=org_id,
+        )
+        return result
+    except ValueError as exc:
+        msg = str(exc)
+        if msg == "invalid_file":
+            raise HTTPException(status_code=422, detail="invalid file")
+        if msg in {"invalid_contract_type", "invalid_status"}:
+            raise HTTPException(status_code=422, detail=msg)
+        raise HTTPException(status_code=422, detail=msg)
 
 
 @router.get("/contracts/{contract_id}", response_model=ContractResponse)

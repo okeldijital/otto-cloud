@@ -1,0 +1,6 @@
+POST /api/contracts/from_extract proof
+- disabled flag returns 404
+- enabled returns 200 with contract_id/title/start_date/pdf_asset_id
+
+Sample expected fields:
+{"title":"KAARGO M2KR Remix Agreement","start_date":"2024-03-15","pdf_asset_id":123,"extraction":{"parties":[],"splits":[]}}

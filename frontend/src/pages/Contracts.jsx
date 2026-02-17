@@ -7,6 +7,7 @@ import { formatCreateError } from '../utils/contracts';
 import { isTauriEnv, downloadFile } from '../lib/tauri';
 import EntityForm from '../components/EntityForm';
 import Autocomplete from '../components/Autocomplete';
+import AddContractWizard from '../components/contracts/AddContractWizard';
 
 const STATUS_COLORS = {
     Draft: 'neutral',
@@ -206,7 +207,7 @@ const Contracts = () => {
                 </div>
                 <div className="header-actions">
                     <button className="btn orange" onClick={() => setShowCreate(true)}>
-                        <Plus size={16} /> Upload Contract (PDF)
+                        <Plus size={16} /> Add New Contract
                     </button>
                 </div>
             </header>
@@ -319,138 +320,15 @@ const Contracts = () => {
                 )}
             </div>
 
-            <EntityForm
+            <AddContractWizard
                 isOpen={showCreate}
                 onClose={() => setShowCreate(false)}
-                title="Upload Contract (PDF)"
-                onSubmit={handleCreate}
-            >
-                {createError && <div className="error-banner">{createError}</div>}
-                <div className="form-group">
-                    <label>Contract ID</label>
-                    <input
-                        className="input mono"
-                        value={createForm.contract_number}
-                        onChange={(e) => setCreateForm({ ...createForm, contract_number: e.target.value })}
-                        placeholder="CTR-XXXXX"
-                    />
-                </div>
-                <div className="form-group">
-                    <label>Link Release (Optional)</label>
-                    <Autocomplete
-                        options={releases}
-                        value={createForm.release_id}
-                        onChange={(val) => {
-                            const rel = releases.find(r => r.id === val);
-                            setCreateForm(prev => ({
-                                ...prev,
-                                release_id: val,
-                                title: rel ? `Release - ${rel.title}` : prev.title
-                            }));
-                        }}
-                        placeholder="Select a release to auto-link..."
-                        labelKey="title"
-                    />
-                </div>
-                <div className="form-group">
-                    <label>Title</label>
-                    <input
-                        className="input"
-                        value={createForm.title}
-                        required
-                        onChange={(e) => setCreateForm({ ...createForm, title: e.target.value })}
-                    />
-                </div>
-                <div className="form-row">
-                    <div className="form-group">
-                        <label>Type</label>
-                        <select
-                            className="input"
-                            value={createForm.contract_type}
-                            onChange={(e) => setCreateForm({ ...createForm, contract_type: e.target.value })}
-                        >
-                            {CONTRACT_TYPES.map((t) => (
-                                <option key={t}>{t}</option>
-                            ))}
-                        </select>
-                    </div>
-                    <div className="form-group">
-                        <label>Status</label>
-                        <select
-                            className="input"
-                            value={createForm.status}
-                            onChange={(e) => setCreateForm({ ...createForm, status: e.target.value })}
-                        >
-                            <option>Draft</option>
-                            <option>Active</option>
-                            <option>Expired</option>
-                            <option>Terminated</option>
-                        </select>
-                    </div>
-                </div>
-                <div className="form-row">
-                    <div className="form-group">
-                        <label>Start Date</label>
-                        <input
-                            type="date"
-                            className="input"
-                            value={createForm.start_date}
-                            onChange={(e) => setCreateForm({ ...createForm, start_date: e.target.value })}
-                        />
-                    </div>
-                    <div className="form-group">
-                        <label>End Date</label>
-                        <input
-                            type="date"
-                            className="input"
-                            value={createForm.end_date}
-                            onChange={(e) => setCreateForm({ ...createForm, end_date: e.target.value })}
-                        />
-                    </div>
-                </div>
-                <div className="form-group">
-                    <label>Territory</label>
-                    <input
-                        className="input"
-                        value={createForm.territory}
-                        onChange={(e) => setCreateForm({ ...createForm, territory: e.target.value })}
-                        placeholder="e.g. World, North America"
-                    />
-                </div>
-                <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <input
-                        type="checkbox"
-                        id="exclusivity"
-                        checked={createForm.exclusivity}
-                        onChange={(e) => setCreateForm({ ...createForm, exclusivity: e.target.checked })}
-                    />
-                    <label htmlFor="exclusivity" style={{ marginBottom: 0 }}>Exclusive Contract</label>
-                </div>
-                <div className="form-group">
-                    <label>Notes</label>
-                    <textarea
-                        className="input"
-                        rows={3}
-                        value={createForm.notes}
-                        onChange={(e) => setCreateForm({ ...createForm, notes: e.target.value })}
-                        placeholder="Optional internal notes..."
-                    />
-                </div>
-                <div className="form-group">
-                    <label>Attach PDF {createForm.status === 'Active' ? '(required)' : '(optional for Draft)'}</label>
-                    <input
-                        type="file"
-                        accept="application/pdf"
-                        onChange={(e) => setCreateForm({ ...createForm, file: e.target.files?.[0] || null })}
-                        required={createForm.status === 'Active'}
-                    />
-                    {createForm.status === 'Draft' && !createForm.file && (
-                        <p className="hint-text blue-text mt-1">
-                            💡 Upload a PDF to activate this contract later.
-                        </p>
-                    )}
-                </div>
-            </EntityForm>
+                onCreated={(created) => {
+                    if (created?.contract_id) {
+                        navigate(`/contracts/${created.contract_id}`);
+                    }
+                }}
+            />
         </div>
     );
 };

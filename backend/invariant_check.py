@@ -52,6 +52,8 @@ def check_ai_writes():
         "release_integration/attach.py",
         "contract_ingest/ingest.py",
         "core_write/apply.py",
+        "contract_wizard/draft.py",
+        "contract_attach/apply.py",
     }
     allowed_routes = {
         "ai_contracts.py"
@@ -128,6 +130,8 @@ def main():
     admin_backup_violations = check_admin_backup_governance()
     core_write_violations = check_ai_core_write_governance()
     scc_violations = check_scc_governance()
+    contract_wizard_violations = check_contract_wizard_governance()
+    contract_from_extract_violations = check_contract_create_from_extract_governance()
     
     all_violations = (
         drift_violations
@@ -141,6 +145,8 @@ def main():
         + admin_backup_violations
         + core_write_violations
         + scc_violations
+        + contract_wizard_violations
+        + contract_from_extract_violations
     )
     
     if all_violations:
@@ -847,6 +853,179 @@ def check_scc_governance():
                     violations.append(
                         f"SCC governance violation in {rel}: mutating db.execute SQL at line {node.lineno}"
                     )
+
+    return violations
+
+
+def check_contract_wizard_governance():
+    """
+    Contract wizard governance:
+      - Read-only:
+        - backend/routes/contracts_wizard.py
+        - backend/services/ai/contract_attach/plan.py
+      - Writes allowed only in:
+        - backend/services/ai/contract_wizard/draft.py (AIContractDraft)
+        - backend/services/ai/contract_create/from_draft.py (Contract, ContractDocument)
+        - backend/services/ai/contract_attach/apply.py (AIContractAttachRun, AIContractAttachLink)
+      - Block mutating execute SQL in all these files.
+    """
+    project_root = Path(__file__).resolve().parent.parent
+    targets = [
+        project_root / "backend/routes/contracts_wizard.py",
+        project_root / "backend/services/ai/contract_wizard/draft.py",
+        project_root / "backend/services/contract_create/from_draft.py",
+        project_root / "backend/services/ai/contract_attach/plan.py",
+        project_root / "backend/services/ai/contract_attach/apply.py",
+    ]
+    violations = []
+    forbidden_methods = {"add", "commit", "delete", "update"}
+    mutating_sql = ("insert", "update", "delete", "alter", "drop", "create")
+    model_allowlist = {
+        "services/ai/contract_wizard/draft.py": {"AIContractDraft"},
+        "services/contract_create/from_draft.py": {"Contract", "ContractDocument"},
+        "services/ai/contract_attach/apply.py": {"AIContractAttachRun", "AIContractAttachLink"},
+    }
+    write_allowlist_files = set(model_allowlist.keys())
+
+    for path in targets:
+        if not path.exists():
+            continue
+        tree = get_ast(path)
+        if not tree:
+            continue
+        rel = os.path.relpath(path, project_root / "backend")
+        allow_writes = rel in write_allowlist_files
+        allowed_models = model_allowlist.get(rel, set())
+
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
+                continue
+
+            method = node.func.attr
+            if method in forbidden_methods:
+                if not allow_writes:
+                    violations.append(
+                        f"Contract wizard governance violation in {rel}: .{method}() at line {node.lineno}"
+                    )
+                elif method == "add":
+                    for arg in node.args:
+                        model = None
+                        if isinstance(arg, ast.Call) and isinstance(arg.func, ast.Name):
+                            model = arg.func.id
+                        elif isinstance(arg, ast.Name):
+                            for assign in ast.walk(tree):
+                                if (
+                                    isinstance(assign, ast.Assign)
+                                    and len(assign.targets) == 1
+                                    and isinstance(assign.targets[0], ast.Name)
+                                    and assign.targets[0].id == arg.id
+                                    and isinstance(assign.value, ast.Call)
+                                    and isinstance(assign.value.func, ast.Name)
+                                ):
+                                    model = assign.value.func.id
+                        if model and model not in allowed_models:
+                            violations.append(
+                                f"Contract wizard governance violation in {rel}: non-allowlisted model write {model} via .add() at line {node.lineno}"
+                            )
+
+            if method == "execute" and node.args:
+                arg0 = node.args[0]
+                sql_text = ""
+                if isinstance(arg0, ast.Constant) and isinstance(arg0.value, str):
+                    sql_text = arg0.value.lower()
+                elif isinstance(arg0, ast.Call) and arg0.args and isinstance(arg0.args[0], ast.Constant) and isinstance(arg0.args[0].value, str):
+                    sql_text = arg0.args[0].value.lower()
+                if any(keyword in sql_text for keyword in mutating_sql):
+                    violations.append(
+                        f"Contract wizard governance violation in {rel}: mutating db.execute SQL at line {node.lineno}"
+                    )
+
+    return violations
+
+
+def check_contract_create_from_extract_governance():
+    """
+    Governed create-from-extract checks:
+      - Scope: backend/services/contracts/create_from_extract.py
+      - Must not import linking/resolution/core_write services
+      - ORM writes allowed only to Contract and ContractDocument
+      - Block mutating execute SQL
+    """
+    project_root = Path(__file__).resolve().parent.parent
+    path = project_root / "backend/services/contracts/create_from_extract.py"
+    violations = []
+    if not path.exists():
+        return violations
+
+    tree = get_ast(path)
+    if not tree:
+        return violations
+
+    rel = os.path.relpath(path, project_root / "backend")
+    forbidden_import_tokens = (
+        "services.ai.linking",
+        "services.ai.resolution",
+        "services.ai.core_write",
+    )
+    allowed_models = {"Contract", "ContractDocument"}
+    forbidden_methods = {"delete", "update"}
+    mutating_sql = ("insert", "update", "delete", "alter", "drop", "create")
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if any(token in alias.name for token in forbidden_import_tokens):
+                    violations.append(
+                        f"Contract from_extract governance violation in {rel}: forbidden import {alias.name} at line {node.lineno}"
+                    )
+        elif isinstance(node, ast.ImportFrom):
+            module = node.module or ""
+            if any(token in module for token in forbidden_import_tokens):
+                violations.append(
+                    f"Contract from_extract governance violation in {rel}: forbidden import from {module} at line {node.lineno}"
+                )
+
+        if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
+            continue
+        method = node.func.attr
+
+        if method in forbidden_methods:
+            violations.append(
+                f"Contract from_extract governance violation in {rel}: .{method}() at line {node.lineno}"
+            )
+
+        if method == "add":
+            for arg in node.args:
+                model = None
+                if isinstance(arg, ast.Call) and isinstance(arg.func, ast.Name):
+                    model = arg.func.id
+                elif isinstance(arg, ast.Name):
+                    for assign in ast.walk(tree):
+                        if (
+                            isinstance(assign, ast.Assign)
+                            and len(assign.targets) == 1
+                            and isinstance(assign.targets[0], ast.Name)
+                            and assign.targets[0].id == arg.id
+                            and isinstance(assign.value, ast.Call)
+                            and isinstance(assign.value.func, ast.Name)
+                        ):
+                            model = assign.value.func.id
+                if model and model not in allowed_models:
+                    violations.append(
+                        f"Contract from_extract governance violation in {rel}: non-allowlisted model write {model} via .add() at line {node.lineno}"
+                    )
+
+        if method == "execute" and node.args:
+            arg0 = node.args[0]
+            sql_text = ""
+            if isinstance(arg0, ast.Constant) and isinstance(arg0.value, str):
+                sql_text = arg0.value.lower()
+            elif isinstance(arg0, ast.Call) and arg0.args and isinstance(arg0.args[0], ast.Constant) and isinstance(arg0.args[0].value, str):
+                sql_text = arg0.args[0].value.lower()
+            if any(keyword in sql_text for keyword in mutating_sql):
+                violations.append(
+                    f"Contract from_extract governance violation in {rel}: mutating db.execute SQL at line {node.lineno}"
+                )
 
     return violations
 

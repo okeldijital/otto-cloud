@@ -1,0 +1,3 @@
+Org isolation proof
+- Draft created under Org A cannot be fetched under Org B (404).
+- Verified in test_contract_draft_is_org_scoped

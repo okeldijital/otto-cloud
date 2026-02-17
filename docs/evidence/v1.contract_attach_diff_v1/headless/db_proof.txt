@@ -1,0 +1,4 @@
+DB Proof
+- Attach plan is read-only.
+- Attach apply writes only ai_contract_attach_runs and ai_contract_attach_links.
+- Core mutation flag remains false unless governed core-write is used.

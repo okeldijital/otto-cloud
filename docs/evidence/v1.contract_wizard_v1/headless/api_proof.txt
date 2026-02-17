@@ -1,0 +1,7 @@
+Contract Wizard API Proof
+- draft endpoint: POST /api/contracts/drafts
+- draft fetch endpoint: GET /api/contracts/drafts/{draft_id}
+- create endpoint: POST /api/contracts (json draft_id + overrides)
+
+Sample extracted defaults from tests:
+{"title":"KAARGO M2KR Remix Agreement","contract_date":"2024-03-15","effective_date":"2024-03-15","territory":"Worldwide"}

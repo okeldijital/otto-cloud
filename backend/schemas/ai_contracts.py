@@ -41,8 +41,10 @@ class WorksHintsV1(BaseModel):
 class ContractExtractionV1(BaseModel):
     contract_title: Optional[str] = None
     contract_id: Optional[str] = None
+    contract_date: Optional[date] = None
     effective_date: Optional[date] = None
     start_date: Optional[date] = None
+    expiration_date: Optional[date] = None
     end_date: Optional[date] = None
     territory: Optional[str] = None
     exclusivity: Optional[bool] = None

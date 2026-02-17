@@ -1,0 +1,3 @@
+Org isolation proof
+- Org B cannot access Org A draft artifacts.
+- Attach calls are release+contract org scoped.

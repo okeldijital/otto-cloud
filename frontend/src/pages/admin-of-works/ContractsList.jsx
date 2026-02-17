@@ -5,6 +5,7 @@ import { confirmAction } from '../../lib/tauri';
 import contractService from '../../services/contractService';
 import { formatCreateError } from '../../utils/contracts';
 import EntityForm from '../../components/EntityForm';
+import AddContractWizard from '../../components/contracts/AddContractWizard';
 
 const STATUS_COLORS = {
     Draft: 'neutral',
@@ -224,42 +225,13 @@ const ContractsList = () => {
                 )}
             </div>
 
-            <EntityForm isOpen={showCreate} onClose={() => setShowCreate(false)} title="Add New Contract" onSubmit={handleCreate}>
-                {createError && <div className="error-banner">{createError}</div>}
-                <div className="form-group">
-                    <label>Title</label>
-                    <input className="input" value={createForm.title} onChange={e => setCreateForm({ ...createForm, title: e.target.value })} required />
-                </div>
-                <div className="form-row">
-                    <div className="form-group">
-                        <label>Type</label>
-                        <select className="input" value={createForm.type} onChange={e => setCreateForm({ ...createForm, type: e.target.value })}>
-                            {CONTRACT_TYPES.map(t => <option key={t}>{t}</option>)}
-                        </select>
-                    </div>
-                    <div className="form-group">
-                        <label>Status</label>
-                        <select className="input" value={createForm.status} onChange={e => setCreateForm({ ...createForm, status: e.target.value })}>
-                            <option>Draft</option>
-                            <option>Active</option>
-                        </select>
-                    </div>
-                </div>
-                <div className="form-row">
-                    <div className="form-group">
-                        <label>Start Date</label>
-                        <input type="date" className="input" value={createForm.start_date} onChange={e => setCreateForm({ ...createForm, start_date: e.target.value })} />
-                    </div>
-                    <div className="form-group">
-                        <label>End Date</label>
-                        <input type="date" className="input" value={createForm.end_date} onChange={e => setCreateForm({ ...createForm, end_date: e.target.value })} />
-                    </div>
-                </div>
-                <div className="form-group">
-                    <label>Signed PDF (Optional)</label>
-                    <input type="file" accept="application/pdf" onChange={e => setCreateForm({ ...createForm, file: e.target.files[0] })} />
-                </div>
-            </EntityForm>
+            <AddContractWizard
+                isOpen={showCreate}
+                onClose={() => setShowCreate(false)}
+                onCreated={(created) => {
+                    if (created?.contract_id) navigate(`/admin-of-works/contracts/${created.contract_id}`);
+                }}
+            />
         </div>
     );
 };
