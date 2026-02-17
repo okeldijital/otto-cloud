@@ -136,6 +136,7 @@ from routes import (  # noqa: E402
     ai_contracts,
     ai_analytics,
     ai_release_integration,
+    ai_release_validation,
 )
 
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
@@ -175,6 +176,11 @@ app.include_router(
     ai_release_integration.router,
     prefix="/api/ai/release-integration",
     tags=["AI Release Integration"],
+)
+app.include_router(
+    ai_release_validation.router,
+    prefix="/api/ai/release_validation",
+    tags=["AI Release Validation"],
 )
 logging.info("🤖 AI modules mounted")
 

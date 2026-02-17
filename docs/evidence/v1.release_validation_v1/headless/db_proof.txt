@@ -1,0 +1,16 @@
+DB=/Users/m2krproduction/.otto/data/db/release_validation_evidence.sqlite
+=== counts before ===
+artists=2
+tracks=2
+works=2
+releases=2
+organizations=2
+individuals=2
+
+=== counts after ===
+artists=2
+tracks=2
+works=2
+releases=2
+organizations=2
+individuals=2

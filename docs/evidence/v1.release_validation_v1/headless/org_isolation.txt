@@ -1,0 +1,16 @@
+=== Org A request for Org B release ===
+HTTP/1.1 404 Not Found
+date: Tue, 17 Feb 2026 09:59:12 GMT
+server: uvicorn
+content-length: 22
+content-type: application/json
+
+{"detail":"Not Found"}
+=== Org B request for Org A release ===
+HTTP/1.1 404 Not Found
+date: Tue, 17 Feb 2026 09:59:12 GMT
+server: uvicorn
+content-length: 22
+content-type: application/json
+
+{"detail":"Not Found"}

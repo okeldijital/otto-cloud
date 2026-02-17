@@ -1,0 +1,25 @@
+=== /api/ai/release_validation/health ===
+HTTP/1.1 200 OK
+date: Tue, 17 Feb 2026 09:59:07 GMT
+server: uvicorn
+content-length: 81
+content-type: application/json
+
+{"status":"ok","flags":{"AI_ENABLED":true,"AI_RELEASE_VALIDATION_ENABLED":false}}
+=== /api/ai/release_validation/plan (disabled) ===
+HTTP/1.1 404 Not Found
+date: Tue, 17 Feb 2026 09:59:07 GMT
+server: uvicorn
+content-length: 22
+content-type: application/json
+
+{"detail":"Not Found"}
+
+=== /api/ai/release_validation/plan (enabled) ===
+HTTP/1.1 200 OK
+date: Tue, 17 Feb 2026 09:59:09 GMT
+server: uvicorn
+content-length: 828
+content-type: application/json
+
+{"org_id":"00000000-0000-0000-0000-00000000251d","release_id":1,"validation_plan":{"release_snapshot":{"release":{"id":1,"name":"RV Evidence Release A"},"artists":[{"id":1,"name":"RV Evidence Artist A"}],"tracks":[{"id":1,"name":"RV Evidence Track A"}],"works":[{"id":1,"name":"RV Evidence Work A"}]},"contract_snapshot":{"contract_id":null,"parties":[],"splits":[],"documents_count":0},"diff":{"missing_artists":[1],"missing_tracks":[1],"missing_works":[1],"mismatched_split_totals":[],"missing_attachments":false},"flags":{"needs_contract_review":true,"missing_entities":["artists","tracks","works"]},"recommended_actions":["Review missing entities and map contract assets to release metadata.","Confirm contract split groups total 100% per group.","Attach or verify source contract documents before persistence workflows."]}}

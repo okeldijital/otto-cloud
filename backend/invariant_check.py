@@ -118,6 +118,7 @@ def main():
     analytics_violations = check_ai_analytics_governance()
     resolve_violations = check_ai_resolve_governance()
     release_integration_violations = check_release_integration_governance()
+    release_validation_violations = check_release_validation_governance()
     
     all_violations = (
         drift_violations
@@ -126,6 +127,7 @@ def main():
         + analytics_violations
         + resolve_violations
         + release_integration_violations
+        + release_validation_violations
     )
     
     if all_violations:
@@ -450,6 +452,62 @@ def check_release_integration_governance():
                             violations.append(
                                 f"Release integration org-scope violation in {rel}: Release query without organization_id/org_id filter near line {node.lineno}"
                             )
+
+    return violations
+
+
+def check_release_validation_governance():
+    """
+    Release validation governance checks:
+      - backend/routes/ai_release_validation.py must remain read-only
+      - backend/services/ai/release_validation/*.py must remain read-only
+      - block .add() .commit() .delete() .update()
+      - block mutating db.execute SQL (insert/update/delete)
+    """
+    project_root = Path(__file__).resolve().parent.parent
+    targets = [project_root / "backend/routes/ai_release_validation.py"]
+    service_root = project_root / "backend/services/ai/release_validation"
+    if service_root.exists():
+        for root, _, files in os.walk(service_root):
+            for file in files:
+                if file.endswith(".py"):
+                    targets.append(Path(root) / file)
+
+    violations = []
+    forbidden_methods = {"add", "commit", "delete", "update"}
+
+    for path in targets:
+        if not path.exists():
+            continue
+
+        tree = get_ast(path)
+        if not tree:
+            continue
+
+        rel = os.path.relpath(path, project_root / "backend")
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
+                continue
+
+            method = node.func.attr
+            if method in forbidden_methods:
+                violations.append(
+                    f"Release validation read-only violation in {rel}: .{method}() at line {node.lineno}"
+                )
+
+            if method == "execute" and node.args:
+                arg0 = node.args[0]
+                sql_text = ""
+                if isinstance(arg0, ast.Constant) and isinstance(arg0.value, str):
+                    sql_text = arg0.value.lower()
+                elif isinstance(arg0, ast.Call) and arg0.args:
+                    inner = arg0.args[0]
+                    if isinstance(inner, ast.Constant) and isinstance(inner.value, str):
+                        sql_text = inner.value.lower()
+                if any(keyword in sql_text for keyword in ("insert", "update", "delete")):
+                    violations.append(
+                        f"Release validation mutation violation in {rel}: db.execute mutating SQL at line {node.lineno}"
+                    )
 
     return violations
 

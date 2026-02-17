@@ -51,6 +51,7 @@ class Settings(BaseSettings):
     AI_CONTRACT_INTEL_ENABLED: bool = False
     AI_CONTRACT_RESOLVE_ENABLED: bool = False
     AI_RELEASE_INTEGRATION_ENABLED: bool = False
+    AI_RELEASE_VALIDATION_ENABLED: bool = False
 
     def __init__(self, **values):
         super().__init__(**values)
