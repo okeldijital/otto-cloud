@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
 from sqlalchemy.orm import Session
 from database import get_db
 from models.user import User
+from models.release import Release
 from dependencies import get_current_user
 from config import settings
 from schemas.ai_contracts import (
@@ -137,3 +138,94 @@ async def resolve_contract_get_shim():
     Always returns 404 to keep behavior consistent with 'disabled' state.
     """
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not Found")
+
+
+def _bucket_suggestions(suggestions: dict) -> dict:
+    buckets = {
+        "artists": [],
+        "tracks": [],
+        "works": [],
+        "orgs": [],
+        "individuals": [],
+    }
+
+    for _, rows in (suggestions or {}).items():
+        for item in rows:
+            mapped = {
+                "entity_id": item.entity_id,
+                "display_name": item.display_name,
+                "confidence": item.confidence,
+                "rationale": item.rationale,
+            }
+            if item.entity_type == "artist":
+                buckets["artists"].append(mapped)
+            elif item.entity_type == "track":
+                buckets["tracks"].append(mapped)
+            elif item.entity_type == "work":
+                buckets["works"].append(mapped)
+            elif item.entity_type == "organization":
+                buckets["orgs"].append(mapped)
+            elif item.entity_type == "individual":
+                buckets["individuals"].append(mapped)
+
+    return buckets
+
+
+@router.post(
+    "/intake/wizard_plan",
+    dependencies=[Depends(ensure_ai_contract_intel_enabled)],
+)
+async def intake_wizard_plan(
+    release_id: int = Form(...),
+    file: UploadFile | None = File(None),
+    contract_id: int | None = Form(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    release = (
+        db.query(Release)
+        .filter(
+            Release.id == release_id,
+            Release.organization_id == current_user.organization_id,
+        )
+        .first()
+    )
+    if not release:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not Found")
+
+    extraction = None
+    if file is not None:
+        if not file.filename.lower().endswith(".pdf"):
+            raise HTTPException(status_code=400, detail="Only PDF files are supported")
+        content = await file.read()
+        parsed = extract_text_from_pdf(content)
+        extraction = extract_contract_intelligence(parsed["text"])
+    else:
+        extraction = ContractExtractionV1(
+            contract_title=f"Release {release.title}",
+            works_hints={"artists": [release.artist.name] if release.artist else [], "tracks": [], "releases": [release.title]},
+            warnings=["No PDF provided; generated minimal extraction from release context."],
+            parser_version="wizard_plan_stub_v1",
+        )
+
+    link_response = suggest_links(db, str(current_user.organization_id), extraction)
+    suggestions = _bucket_suggestions(link_response.suggestions)
+
+    return {
+        "release": {
+            "id": release.id,
+            "title": release.title,
+            "artist_id": release.artist_id,
+            "artist_name": release.artist.name if release.artist else None,
+        },
+        "contract_id": contract_id,
+        "extraction": extraction.model_dump(),
+        "suggestions": suggestions,
+        "confidence": {
+            "overall": max(
+                [item["confidence"] for rows in suggestions.values() for item in rows],
+                default=0.0,
+            )
+        },
+        "rationale": "Read-only wizard plan generated from extraction + org-scoped linker.",
+    }

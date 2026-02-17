@@ -1,0 +1,87 @@
+# Release Intake Wizard UI v1 - API Proof
+
+## Disabled state (feature gated)
+
+### wizard_plan disabled (expect 404)
+curl -i -X POST http://127.0.0.1:8131/api/ai/contracts/intake/wizard_plan -F release_id=1
+HTTP/1.1 404 Not Found
+{"detail":"Not Found"}
+
+### release_validation/plan disabled (expect 404)
+curl -i -X POST http://127.0.0.1:8131/api/ai/release_validation/plan -H 'Content-Type: application/json' -d '{"release_id":1}'
+HTTP/1.1 404 Not Found
+{"detail":"Not Found"}
+
+## Enabled state (feature on)
+
+### wizard_plan enabled (expect 200)
+curl -i -X POST http://127.0.0.1:8132/api/ai/contracts/intake/wizard_plan -F release_id=1
+HTTP/1.1 200 OK
+
+Redacted JSON snippet (~30 lines):
+{
+  "release": {
+    "id": 1,
+    "title": "RIW Release",
+    "artist_id": 1,
+    "artist_name": "RIW Artist"
+  },
+  "contract_id": null,
+  "extraction": {
+    "contract_title": "Release RIW Release",
+    "contract_id": null,
+    "parties": [],
+    "splits": [],
+    "works_hints": {
+      "artists": ["RIW Artist"],
+      "tracks": [],
+      "releases": ["RIW Release"]
+    },
+    "warnings": [
+      "No PDF provided; generated minimal extraction from release context."
+    ],
+    "parser_version": "wizard_plan_stub_v1"
+  },
+  "suggestions": {
+    "artists": [],
+    "tracks": [],
+    "works": [],
+    "orgs": [],
+    "individuals": []
+  }
+}
+
+### release_validation/plan enabled (expect 200)
+curl -i -X POST http://127.0.0.1:8132/api/ai/release_validation/plan -H 'Content-Type: application/json' -d '{"release_id":1}'
+HTTP/1.1 200 OK
+
+Redacted JSON snippet (~30 lines):
+{
+  "org_id": "00000000-0000-0000-0000-000000002649",
+  "release_id": 1,
+  "validation_plan": {
+    "release_snapshot": {
+      "release": {"id": 1, "name": "RIW Release"},
+      "artists": [{"id": 1, "name": "RIW Artist"}],
+      "tracks": [{"id": 1, "name": "RIW Track"}],
+      "works": [{"id": 1, "name": "RIW Work"}]
+    },
+    "contract_snapshot": {
+      "contract_id": null,
+      "parties": [],
+      "splits": [],
+      "documents_count": 0
+    },
+    "diff": {
+      "missing_artists": [1],
+      "missing_tracks": [1],
+      "missing_works": [1],
+      "mismatched_split_totals": [],
+      "missing_attachments": false
+    },
+    "flags": {
+      "needs_contract_review": true,
+      "missing_entities": ["artists", "tracks", "works"]
+    }
+  }
+}

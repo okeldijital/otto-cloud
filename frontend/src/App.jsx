@@ -21,6 +21,7 @@ import Artists from './pages/Artists';
 import ArtistDetail from './pages/ArtistDetail';
 import Releases from './pages/Releases';
 import ReleaseDetail from './pages/ReleaseDetail';
+import ReleaseContractWizard from './pages/ReleaseContractWizard';
 import Works from './pages/Works';
 import WorkDetail from './pages/WorkDetail';
 import Tracks from './pages/Tracks';
@@ -189,6 +190,16 @@ function App() {
                         <ProtectedRoute>
                           <MainLayout>
                             <ReleaseDetail />
+                          </MainLayout>
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/release/:id/contract-wizard"
+                      element={
+                        <ProtectedRoute>
+                          <MainLayout>
+                            <ReleaseContractWizard />
                           </MainLayout>
                         </ProtectedRoute>
                       }

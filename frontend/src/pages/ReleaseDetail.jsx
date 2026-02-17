@@ -333,6 +333,13 @@ const ReleaseDetail = () => {
                             >
                                 Export Metadata
                             </button>
+                            <button
+                                className="btn-secondary btn-sm"
+                                style={{ width: '100%', background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', cursor: 'pointer' }}
+                                onClick={() => navigate(`/release/${id}/contract-wizard`)}
+                            >
+                                Contract Wizard
+                            </button>
                         </div>
                     </div>
                 </div>

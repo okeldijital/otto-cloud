@@ -7,6 +7,7 @@ class ReleaseValidationPlanRequest(BaseModel):
     release_id: int
     contract_link_id: Optional[int] = None
     contract_id: Optional[int] = None
+    contract_extract: Optional[Dict[str, Any]] = None
 
 
 class ReleaseValidationPlanResponse(BaseModel):
