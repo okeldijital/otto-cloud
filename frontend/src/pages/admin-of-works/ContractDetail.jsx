@@ -5,6 +5,7 @@ import { confirmAction } from '../../lib/tauri';
 import contractService from '../../services/contractService';
 import EntityForm from '../../components/EntityForm';
 import EntityTypeahead from '../../components/contracts/EntityTypeahead';
+import aiClient from '../../api/aiClient';
 
 const STATUS_COLORS = {
     Draft: 'neutral',
@@ -16,7 +17,7 @@ const STATUS_COLORS = {
 const ROLE_OPTIONS = ['Artist', 'Label', 'Publisher', 'Licensee', 'Licensor', 'Producer', 'Other'];
 const ASSET_TYPES = ['Track', 'Work', 'Release'];
 const SCOPE_TYPES = ['INCLUSION', 'EXCLUSION'];
-const TABS = ['overview', 'parties', 'assets', 'financials', 'documents'];
+const TABS = ['overview', 'parties', 'assets', 'financials', 'documents', 'ai_review'];
 
 const ContractDetail = () => {
     const { id } = useParams();
@@ -59,6 +60,15 @@ const ContractDetail = () => {
     const [uploading, setUploading] = useState(false);
     const [selectedFile, setSelectedFile] = useState(null);
     const [selectedDoc, setSelectedDoc] = useState(null);
+    const [reviewLoading, setReviewLoading] = useState(false);
+    const [persisting, setPersisting] = useState(false);
+    const [reviewError, setReviewError] = useState('');
+    const [reviewSuccess, setReviewSuccess] = useState('');
+    const [extractionResult, setExtractionResult] = useState(null);
+    const [linkSuggestions, setLinkSuggestions] = useState([]);
+    const [decisions, setDecisions] = useState({});
+    const [resolvedRunId, setResolvedRunId] = useState(null);
+    const [currentDocHash, setCurrentDocHash] = useState('');
 
     useEffect(() => {
         const load = async () => {
@@ -218,6 +228,128 @@ const ContractDetail = () => {
         }
     };
 
+    const computeSHA256 = async (buffer) => {
+        if (window.crypto?.subtle) {
+            const hashBuffer = await window.crypto.subtle.digest('SHA-256', buffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+        }
+        return `${contract?.id || 'contract'}_${Date.now()}`;
+    };
+
+    const flattenSuggestions = (suggestionPayload) => {
+        const output = [];
+        Object.entries(suggestionPayload || {}).forEach(([group, list]) => {
+            (list || []).forEach((row, index) => {
+                output.push({
+                    rowId: `${group}_${index}_${row.entity_type || 'entity'}_${row.display_name || 'unknown'}`,
+                    group,
+                    entity_type: row.entity_type || group,
+                    entity_id: row.entity_id ?? null,
+                    display_name: row.display_name || 'Unknown',
+                    confidence: row.confidence ?? null,
+                    rationale: row.rationale || '',
+                });
+            });
+        });
+        return output;
+    };
+
+    const runAIReview = async () => {
+        if (!selectedDoc) {
+            setReviewError('Attach/select a PDF document version first.');
+            return;
+        }
+
+        setReviewLoading(true);
+        setReviewError('');
+        setReviewSuccess('');
+        setResolvedRunId(null);
+        setExtractionResult(null);
+        setLinkSuggestions([]);
+        setDecisions({});
+
+        try {
+            const token = localStorage.getItem('token');
+            const downloadUrl = contractService.buildDownloadUrl(id, selectedDoc.id);
+            const pdfResponse = await fetch(downloadUrl, {
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
+            });
+
+            if (!pdfResponse.ok) {
+                throw new Error(`Failed to download contract PDF (${pdfResponse.status})`);
+            }
+
+            const pdfBlob = await pdfResponse.blob();
+            const pdfArrayBuffer = await pdfBlob.arrayBuffer();
+            const hash = await computeSHA256(pdfArrayBuffer);
+            setCurrentDocHash(hash);
+
+            const pdfFile = new File([pdfBlob], selectedDoc.file_name || `contract_${id}.pdf`, { type: 'application/pdf' });
+            const extraction = await aiClient.extractContract(pdfFile);
+            setExtractionResult(extraction);
+
+            const linkResult = await aiClient.linkSuggest(extraction);
+            const rows = flattenSuggestions(linkResult?.suggestions);
+            setLinkSuggestions(rows);
+
+            const initialDecisions = {};
+            rows.forEach((row) => {
+                initialDecisions[row.rowId] = row.confidence !== null && row.confidence >= 0.9 ? 'link' : 'review';
+            });
+            setDecisions(initialDecisions);
+            setReviewSuccess('AI review completed. Validate row actions and persist decisions.');
+        } catch (err) {
+            console.error(err);
+            setReviewError(err?.response?.data?.detail || err?.message || 'AI review failed.');
+        } finally {
+            setReviewLoading(false);
+        }
+    };
+
+    const persistReviewDecisions = async () => {
+        const selectedRows = linkSuggestions
+            .filter((row) => (decisions[row.rowId] || 'review') !== 'review')
+            .map((row) => ({
+                entity_type: row.entity_type,
+                entity_id: row.entity_id ? Number(row.entity_id) : null,
+                display_name: row.display_name,
+                action: decisions[row.rowId],
+                confidence: row.confidence !== null ? Math.round(Number(row.confidence) * 100) : null,
+                rationale: row.rationale || 'contract_review_ui',
+            }));
+
+        if (selectedRows.length === 0) {
+            setReviewError('Select at least one row as link or ignore before persisting.');
+            return;
+        }
+
+        if (!extractionResult) {
+            setReviewError('Run AI Review first.');
+            return;
+        }
+
+        setPersisting(true);
+        setReviewError('');
+        setReviewSuccess('');
+        try {
+            const payload = {
+                contract_hash: currentDocHash || `${contract?.id || 'contract'}_${Date.now()}`,
+                extractor_version: extractionResult.parser_version || 'deterministic_v1',
+                linker_version: 'link_suggest_v1.0.0',
+                decisions: selectedRows,
+            };
+            const result = await aiClient.resolveContract(payload);
+            setResolvedRunId(result.run_id);
+            setReviewSuccess(`Decisions persisted. run_id=${result.run_id}`);
+        } catch (err) {
+            console.error(err);
+            setReviewError(err?.response?.data?.detail || 'Persist failed.');
+        } finally {
+            setPersisting(false);
+        }
+    };
+
     if (loading) return <div className="placeholder">Loading contract…</div>;
     if (error || !contract) return <div className="error-banner">{error || 'Not found'}</div>;
 
@@ -253,6 +385,9 @@ const ContractDetail = () => {
                     </button>
                     <button className="btn orange" onClick={() => setDocModalOpen(true)}>
                         <Upload size={16} /> New Version
+                    </button>
+                    <button className="btn ghost" onClick={runAIReview} disabled={reviewLoading}>
+                        <CheckCircle size={16} /> {reviewLoading ? 'Running AI Review…' : 'Run AI Review'}
                     </button>
                 </div>
             </header>
@@ -394,6 +529,97 @@ const ContractDetail = () => {
                         <div>
                             <h4 className="eyebrow">Royalty Description</h4>
                             <p className="p-notes whitespace-pre-wrap">{contract.royalty_description || 'No royalties defined.'}</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {activeTab === 'ai_review' && (
+                <div className="panel padded">
+                    <div className="panel-header">
+                        <h3>Governed AI Review</h3>
+                        <div className="flex-row gap-2">
+                            <button className="btn ghost btn-sm" onClick={runAIReview} disabled={reviewLoading}>
+                                {reviewLoading ? 'Running…' : 'Run AI Review'}
+                            </button>
+                            <button className="btn ghost btn-sm" onClick={persistReviewDecisions} disabled={persisting || reviewLoading}>
+                                {persisting ? 'Persisting…' : 'Persist Decisions'}
+                            </button>
+                        </div>
+                    </div>
+
+                    {reviewError && (
+                        <div className="error-banner mb-2">
+                            <AlertCircle size={14} /> {reviewError}
+                        </div>
+                    )}
+                    {reviewSuccess && (
+                        <div className="success-banner mb-2">
+                            <CheckCircle size={14} /> {reviewSuccess}
+                        </div>
+                    )}
+                    {resolvedRunId && (
+                        <div className="small muted mb-2">
+                            Persisted run_id: <span className="mono">{resolvedRunId}</span>
+                        </div>
+                    )}
+
+                    <div className="grid-2">
+                        <div>
+                            <h4 className="eyebrow">Extract Output</h4>
+                            {extractionResult ? (
+                                <>
+                                    {extractionResult.warnings?.length > 0 && (
+                                        <ul className="mb-2">
+                                            {extractionResult.warnings.map((warning, idx) => (
+                                                <li key={`${warning}_${idx}`} className="small muted">{warning}</li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                    <pre className="mono small" style={{ maxHeight: '240px', overflow: 'auto', background: '#f8fafc', padding: '0.75rem', borderRadius: '8px' }}>
+                                        {JSON.stringify(extractionResult, null, 2)}
+                                    </pre>
+                                </>
+                            ) : (
+                                <div className="placeholder">No extraction yet. Run AI Review.</div>
+                            )}
+                        </div>
+                        <div>
+                            <h4 className="eyebrow">Link Suggestions</h4>
+                            {linkSuggestions.length === 0 ? (
+                                <div className="placeholder">No suggestions yet.</div>
+                            ) : (
+                                <table className="contracts-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Type</th>
+                                            <th>Confidence</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {linkSuggestions.map((row) => (
+                                            <tr key={row.rowId}>
+                                                <td>{row.display_name}</td>
+                                                <td>{row.entity_type}</td>
+                                                <td>{row.confidence !== null ? Number(row.confidence).toFixed(2) : '—'}</td>
+                                                <td>
+                                                    <select
+                                                        className="input"
+                                                        value={decisions[row.rowId] || 'review'}
+                                                        onChange={(e) => setDecisions((prev) => ({ ...prev, [row.rowId]: e.target.value }))}
+                                                    >
+                                                        <option value="link">link</option>
+                                                        <option value="ignore">ignore</option>
+                                                        <option value="review">review</option>
+                                                    </select>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
                         </div>
                     </div>
                 </div>

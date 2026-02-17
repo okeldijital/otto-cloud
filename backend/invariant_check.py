@@ -113,8 +113,9 @@ def main():
     write_violations = check_ai_writes()
     unscoped_violations = check_ai_unscoped_queries()
     analytics_violations = check_ai_analytics_governance()
+    resolve_violations = check_ai_resolve_governance()
     
-    all_violations = drift_violations + write_violations + unscoped_violations + analytics_violations
+    all_violations = drift_violations + write_violations + unscoped_violations + analytics_violations + resolve_violations
     
     if all_violations:
         for v in all_violations:
@@ -173,6 +174,81 @@ def check_ai_unscoped_queries():
                             if "organization_id" not in context:
                                 violations.append(f"Unscoped query violation in services/ai/linking/{rel_path}: db.query({model_name}) at line {node.lineno} missing organization_id filter.")
     
+    return violations
+
+
+def check_ai_resolve_governance():
+    """
+    Ensure resolution persistence remains governed:
+      - only ai_contract_resolution_runs / ai_contract_resolution_links writes
+      - no core model writes via ORM add()
+      - no mutating db.execute() SQL
+    """
+    project_root = Path(__file__).resolve().parent.parent
+    target = project_root / "backend/services/ai/resolution/persist.py"
+
+    forbidden_write_models = {
+        "Organization", "Individual", "Artist", "Release", "Track", "Work",
+        "Contract", "PRO", "Label", "Publisher", "Royalty", "User",
+    }
+    allowed_write_models = {"AIContractResolutionRun", "AIContractResolutionLink"}
+
+    violations = []
+    tree = get_ast(target)
+    if not tree:
+        return violations
+
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        if not isinstance(node.func, ast.Attribute):
+            continue
+
+        method = node.func.attr
+        if method == "add":
+            for arg in node.args:
+                if isinstance(arg, ast.Name):
+                    var_name = arg.id
+                    # Resolve variable assignment target where possible
+                    for parent in ast.walk(tree):
+                        if isinstance(parent, ast.Assign) and isinstance(parent.value, ast.Call):
+                            if len(parent.targets) == 1 and isinstance(parent.targets[0], ast.Name) and parent.targets[0].id == var_name:
+                                ctor = parent.value.func
+                                if isinstance(ctor, ast.Name):
+                                    model = ctor.id
+                                    if model in forbidden_write_models:
+                                        violations.append(
+                                            f"Resolve governance violation: core model write attempt {model} via db.add() at line {node.lineno}"
+                                        )
+                                    if model not in allowed_write_models:
+                                        violations.append(
+                                            f"Resolve governance violation: non-allowed model write {model} via db.add() at line {node.lineno}"
+                                        )
+                elif isinstance(arg, ast.Call) and isinstance(arg.func, ast.Name):
+                    model = arg.func.id
+                    if model in forbidden_write_models:
+                        violations.append(
+                            f"Resolve governance violation: core model write attempt {model} via db.add() at line {node.lineno}"
+                        )
+                    if model not in allowed_write_models:
+                        violations.append(
+                            f"Resolve governance violation: non-allowed model write {model} via db.add() at line {node.lineno}"
+                        )
+
+        if method == "execute" and node.args:
+            arg0 = node.args[0]
+            sql_text = ""
+            if isinstance(arg0, ast.Constant) and isinstance(arg0.value, str):
+                sql_text = arg0.value.lower()
+            elif isinstance(arg0, ast.Call) and arg0.args:
+                inner = arg0.args[0]
+                if isinstance(inner, ast.Constant) and isinstance(inner.value, str):
+                    sql_text = inner.value.lower()
+            if any(keyword in sql_text for keyword in ("insert", "update", "delete")):
+                violations.append(
+                    f"Resolve governance violation: mutating db.execute SQL at line {node.lineno}"
+                )
+
     return violations
 
 

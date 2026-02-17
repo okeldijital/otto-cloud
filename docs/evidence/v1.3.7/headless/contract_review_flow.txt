@@ -1,0 +1,24 @@
+Commands used:
+  python3 - <<PY (TestClient script for extract -> link_suggest -> resolve)
+  POST /api/ai/contracts/extract
+  POST /api/ai/contracts/link_suggest
+  POST /api/ai/contracts/resolve
+
+HTTP status + response snippets:
+  extract_status=200
+  extract_snippet={"contract_title": "Governed Extraction (Deterministic V1)", "contract_id": null, "effective_date": null, "start_date": null, "end_date": null, "territory": null, "exclusivity": null, "parties": [], "splits": [], "splits_total": 0.0, "works_hints": {"artists": [], "tracks": [], "
+  link_suggest_status=200
+  link_suggest_snippet={"linker_version": "link_suggest_v1.0.0", "org_id": "00000000-0000-0000-0000-00000000aa01", "suggestions": {"artists": [], "parties": [], "tracks": [], "works": [], "organizations": []}, "warnings": [], "needs_review": true}
+  resolve_status=200
+  resolve_snippet={"status": "persisted", "run_id": 1}
+
+DB counts after resolve:
+  ai_contract_resolution_runs_total=1
+  ai_contract_resolution_links_total=1
+  org_a_runs=1
+  org_a_links=1
+
+Org isolation grep proof:
+  grep "ORG_B_SECRET_NAME" orgA_outputs => (no matches)
+  org_a_link_response_org_id=00000000-0000-0000-0000-00000000aa01
+  org_b_link_response_org_id=00000000-0000-0000-0000-00000000bb01
