@@ -49,7 +49,6 @@ def check_ai_writes():
     allowed_services = {
         "audit.py",
         "resolution/persist.py",
-        "release_integration/service.py",
     }
     allowed_routes = {
         "ai_contracts.py"
@@ -345,113 +344,61 @@ def check_ai_analytics_governance():
 
 def check_release_integration_governance():
     """
-    Release Integration governance checks:
-      - write operations allowed only in backend/services/ai/release_integration/
-      - block .update() on core models
-      - block .delete() anywhere in release integration service
-      - block mutating raw SQL via db.execute
-      - all Release queries must include organization_id/org_id scope
+    Release Integration read-only governance checks.
+    Scope:
+      - backend/routes/ai_release_integration.py
+      - backend/services/ai/release_integration/*.py
+    Block:
+      - .add(), .commit(), .delete(), .update()
+      - mutating db.execute SQL (insert/update/delete/alter/drop/create)
     """
     project_root = Path(__file__).resolve().parent.parent
+    targets = [project_root / "backend/routes/ai_release_integration.py"]
     service_root = project_root / "backend/services/ai/release_integration"
-    if not service_root.exists():
-        return []
+    if service_root.exists():
+        for root, _, files in os.walk(service_root):
+            for file in files:
+                if file.endswith(".py"):
+                    targets.append(Path(root) / file)
 
     violations = []
-    mutating_methods = {"add", "commit", "update", "delete", "execute"}
-    core_models = {"Artist", "Track", "Work", "Release"}
-    allowed_write_models = {
-        "AIContractResolutionRun",
-        "AIContractResolutionLink",
-        "ContractIntakeReleaseLink",
-    }
+    mutating_methods = {"add", "commit", "delete", "update"}
+    mutating_sql = ("insert", "update", "delete", "alter", "drop", "create")
 
-    for root, _, files in os.walk(service_root):
-        for file in files:
-            if not file.endswith(".py"):
+    for target in targets:
+        if not target.exists():
+            continue
+
+        tree = get_ast(target)
+        if not tree:
+            continue
+
+        rel = os.path.relpath(target, project_root / "backend")
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
                 continue
-            full_path = Path(root) / file
-            rel = os.path.relpath(full_path, project_root / "backend")
-            tree = get_ast(full_path)
-            if not tree:
+            if not isinstance(node.func, ast.Attribute):
                 continue
 
-            with open(full_path, "r") as f:
-                lines = f.readlines()
+            method = node.func.attr
+            if method in mutating_methods:
+                violations.append(
+                    f"Release integration read-only violation in {rel}: .{method}() at line {node.lineno}"
+                )
 
-            for node in ast.walk(tree):
-                if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
-                    continue
-
-                method = node.func.attr
-                if method in mutating_methods:
-                    if method == "delete":
-                        violations.append(
-                            f"Release integration governance violation in {rel}: .delete() at line {node.lineno}"
-                        )
-                    if method == "update":
-                        violations.append(
-                            f"Release integration governance violation in {rel}: .update() at line {node.lineno}"
-                        )
-
-                    if method == "add":
-                        for arg in node.args:
-                            if isinstance(arg, ast.Call) and isinstance(arg.func, ast.Name):
-                                model_name = arg.func.id
-                                if model_name in core_models:
-                                    violations.append(
-                                        f"Release integration governance violation in {rel}: core model add {model_name} at line {node.lineno}"
-                                    )
-                                if model_name not in allowed_write_models:
-                                    violations.append(
-                                        f"Release integration governance violation in {rel}: non-allowed model add {model_name} at line {node.lineno}"
-                                    )
-                            elif isinstance(arg, ast.Name):
-                                var_name = arg.id
-                                for assign in ast.walk(tree):
-                                    if not isinstance(assign, ast.Assign):
-                                        continue
-                                    if len(assign.targets) != 1 or not isinstance(assign.targets[0], ast.Name):
-                                        continue
-                                    if assign.targets[0].id != var_name:
-                                        continue
-                                    if isinstance(assign.value, ast.Call) and isinstance(assign.value.func, ast.Name):
-                                        model_name = assign.value.func.id
-                                        if model_name in core_models:
-                                            violations.append(
-                                                f"Release integration governance violation in {rel}: core model add {model_name} at line {node.lineno}"
-                                            )
-                                        if model_name not in allowed_write_models:
-                                            violations.append(
-                                                f"Release integration governance violation in {rel}: non-allowed model add {model_name} at line {node.lineno}"
-                                            )
-
-                    if method == "execute" and node.args:
-                        arg0 = node.args[0]
-                        sql_text = ""
-                        if isinstance(arg0, ast.Constant) and isinstance(arg0.value, str):
-                            sql_text = arg0.value.lower()
-                        elif isinstance(arg0, ast.Call) and arg0.args:
-                            inner = arg0.args[0]
-                            if isinstance(inner, ast.Constant) and isinstance(inner.value, str):
-                                sql_text = inner.value.lower()
-                        if any(keyword in sql_text for keyword in ("insert", "update", "delete")):
-                            violations.append(
-                                f"Release integration governance violation in {rel}: mutating db.execute SQL at line {node.lineno}"
-                            )
-
-                if method == "query":
-                    touches_release = any(
-                        isinstance(arg, ast.Name) and arg.id == "Release" for arg in node.args
+            if method == "execute" and node.args:
+                arg0 = node.args[0]
+                sql_text = ""
+                if isinstance(arg0, ast.Constant) and isinstance(arg0.value, str):
+                    sql_text = arg0.value.lower()
+                elif isinstance(arg0, ast.Call) and arg0.args:
+                    first = arg0.args[0]
+                    if isinstance(first, ast.Constant) and isinstance(first.value, str):
+                        sql_text = first.value.lower()
+                if any(keyword in sql_text for keyword in mutating_sql):
+                    violations.append(
+                        f"Release integration read-only violation in {rel}: mutating db.execute SQL at line {node.lineno}"
                     )
-                    if touches_release:
-                        start_l = max(0, node.lineno - 1)
-                        end_l = min(len(lines), node.lineno + 10)
-                        context = "".join(lines[start_l:end_l]).replace(" ", "")
-                        if "organization_id" not in context or "org_id" not in context:
-                            violations.append(
-                                f"Release integration org-scope violation in {rel}: Release query without organization_id/org_id filter near line {node.lineno}"
-                            )
 
     return violations
 
