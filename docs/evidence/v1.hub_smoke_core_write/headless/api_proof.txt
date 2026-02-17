@@ -1,6 +1,6 @@
 === /api/ai/health ===
 HTTP/1.1 200 OK
-date: Tue, 17 Feb 2026 17:17:41 GMT
+date: Tue, 17 Feb 2026 17:41:14 GMT
 server: uvicorn
 content-length: 48
 content-type: application/json
@@ -8,7 +8,7 @@ content-type: application/json
 {"status":"ok","enabled":true,"version":"1.0.0"}
 === OrgA extract ===
 HTTP/1.1 200 OK
-date: Tue, 17 Feb 2026 17:17:41 GMT
+date: Tue, 17 Feb 2026 17:41:14 GMT
 server: uvicorn
 content-length: 755
 content-type: application/json
@@ -16,57 +16,57 @@ content-type: application/json
 {"contract_title":"Governed Extraction (Deterministic V1)","contract_id":null,"effective_date":null,"start_date":null,"end_date":null,"territory":null,"exclusivity":null,"parties":[],"splits":[{"split_type":"MASTER","party_name":"Unknown Party","party_role":null,"percent":30.0,"notes":"Detected near match: 30 %"},{"split_type":"MASTER","party_name":"Unknown Party","party_role":null,"percent":25.0,"notes":"Detected near match: 25%"},{"split_type":"MASTER","party_name":"Unknown Party","party_role":null,"percent":50.0,"notes":"Detected near match: 50 %"}],"splits_total":105.0,"works_hints":{"artists":[],"tracks":[],"releases":[]},"raw_confidence":0.6,"warnings":["splits_total_mismatch: Computed total is 105.0%"],"parser_version":"deterministic_v1"}
 === OrgA link_suggest ===
 HTTP/1.1 200 OK
-date: Tue, 17 Feb 2026 17:17:41 GMT
+date: Tue, 17 Feb 2026 17:41:14 GMT
 server: uvicorn
 content-length: 206
 content-type: application/json
 
-{"linker_version":"link_suggest_v1.0.0","org_id":"00000000-0000-0000-0000-00000000a100","suggestions":{"artists":[],"parties":[],"tracks":[],"works":[],"organizations":[]},"warnings":[],"needs_review":true}
+{"linker_version":"link_suggest_v1.0.0","org_id":"00000000-0000-0000-0000-7a241ea43d4d","suggestions":{"artists":[],"parties":[],"tracks":[],"works":[],"organizations":[]},"warnings":[],"needs_review":true}
 === core_write propose ===
 HTTP/1.1 200 OK
-date: Tue, 17 Feb 2026 17:17:41 GMT
+date: Tue, 17 Feb 2026 17:41:14 GMT
 server: uvicorn
-content-length: 56
+content-length: 279
 content-type: application/json
 
-{"run_id":13,"proposals":[],"requires_user_review":true}
+{"run_id":3,"proposals":[{"item_id":7,"entity_type":"contract","entity_id":3,"operation":"patch","patch":{"fields":{"territory":"Worldwide"}},"conflicts":[],"safe_defaults":[{"field":"territory","new_value":"Worldwide"}],"requires_user_review":true}],"requires_user_review":true}
 === core_write apply (confirm=false -> 422) ===
-HTTP/1.1 422 Unprocessable Entity
-date: Tue, 17 Feb 2026 17:17:41 GMT
+HTTP/1.1 422 Unprocessable Content
+date: Tue, 17 Feb 2026 17:41:14 GMT
 server: uvicorn
 content-length: 34
 content-type: application/json
 
 {"detail":"confirmation required"}
 === core_write apply (confirm=true no backup -> 409 when required) ===
-HTTP/1.1 200 OK
-date: Tue, 17 Feb 2026 17:17:41 GMT
+HTTP/1.1 409 Conflict
+date: Tue, 17 Feb 2026 17:40:36 GMT
 server: uvicorn
-content-length: 124
+content-length: 41
 content-type: application/json
 
-{"status":"applied","run_id":13,"applied_count":0,"created_count":0,"conflict_count":0,"idempotent_hit":false,"warnings":[]}
+{"detail":"backup required before apply"}
 === backup checkpoint create ===
 HTTP/1.1 200 OK
-date: Tue, 17 Feb 2026 17:17:41 GMT
+date: Tue, 17 Feb 2026 17:41:14 GMT
 server: uvicorn
-content-length: 277
+content-length: 273
 content-type: application/json
 
-{"status":"uploaded","backup_id":4,"filename":"otto_backup_20260217_171742.zip","size_bytes":357263247,"sha256":"97dda211f73832e65c7a5e341e3d0daa632cd993c97018525f9eee51aca16210","created_at":"2026-02-17T15:17:50+00:00","organization_id":"00000000-0000-0000-0000-00000000a100"}
+{"status":"uploaded","backup_id":2,"filename":"otto_backup_20260217_174115.zip","size_bytes":52760,"sha256":"11d3279088c205752e2c4f6ab3c6fe5a0a5044e4d0220ffa63cbd7dcc33f7fe1","created_at":"2026-02-17T15:41:15+00:00","organization_id":"00000000-0000-0000-0000-7a241ea43d4d"}
 === core_write apply success ===
 HTTP/1.1 200 OK
-date: Tue, 17 Feb 2026 17:17:41 GMT
+date: Tue, 17 Feb 2026 17:41:14 GMT
 server: uvicorn
-content-length: 163
+content-length: 123
 content-type: application/json
 
-{"status":"skipped","run_id":13,"applied_count":0,"created_count":0,"conflict_count":0,"idempotent_hit":true,"warnings":["idempotent_apply_reused_existing_event"]}
+{"status":"applied","run_id":3,"applied_count":1,"created_count":0,"conflict_count":0,"idempotent_hit":false,"warnings":[]}
 === final /tmp/extract_orgA.json snippet ===
 {"contract_title":"Governed Extraction (Deterministic V1)","contract_id":null,"effective_date":null,"start_date":null,"end_date":null,"territory":null,"exclusivity":null,"parties":[],"splits":[{"split_type":"MASTER","party_name":"Unknown Party","party_role":null,"percent":30.0,"notes":"Detected near match: 30 %"},{"split_type":"MASTER","party_name":"Unknown Party","party_role":null,"percent":25.0,"notes":"Detected near match: 25%"},{"split_type":"MASTER","party_name":"Unknown Party","party_role":null,"percent":50.0,"notes":"Detected near match: 50 %"}],"splits_total":105.0,"works_hints":{"artists":[],"tracks":[],"releases":[]},"raw_confidence":0.6,"warnings":["splits_total_mismatch: Computed total is 105.0%"],"parser_version":"deterministic_v1"}
 === final /tmp/links_orgA.json snippet ===
-{"linker_version":"link_suggest_v1.0.0","org_id":"00000000-0000-0000-0000-00000000a100","suggestions":{"artists":[],"parties":[],"tracks":[],"works":[],"organizations":[]},"warnings":[],"needs_review":true}
+{"linker_version":"link_suggest_v1.0.0","org_id":"00000000-0000-0000-0000-7a241ea43d4d","suggestions":{"artists":[],"parties":[],"tracks":[],"works":[],"organizations":[]},"warnings":[],"needs_review":true}
 === final /tmp/propose_orgA.json snippet ===
-{"run_id":11,"proposals":[{"item_id":25,"entity_type":"contract","entity_id":12,"operation":"patch","patch":{"fields":{"territory":"Worldwide"}},"conflicts":[],"safe_defaults":[{"field":"territory","new_value":"Worldwide"}],"requires_user_review":true},{"item_id":26,"entity_type":"contract_party","entity_id":null,"operation":"create","patch":{"contract_id":12,"entity_type":"External","external_name":"M2KR Records","role":"Label","split_percent":null},"conflicts":[],"safe_defaults":[{"field":"external_name","new_value":"M2KR Records"}],"requires_user_review":true},{"item_id":27,"entity_type":"contract_party","entity_id":null,"operation":"create","patch":{"contract_id":12,"entity_type":"External","external_name":"John Producer","role":"Producer","split_percent":null},"conflicts":[],"safe_defaults":[{"field":"external_name","new_value":"John Producer"}],"requires_user_review":true},{"item_id":28,"entity_type":"contract_party","entity_id":null,"operation":"create","patch":{"contract_id":12,"entity_type":"External","external_name":"Oddxperienc","role":"Artist","split_percent":null},"conflicts":[],"safe_defaults":[{"field":"external_name","new_value":"Oddxperienc"}],"requires_user_review":true}],"requires_user_review":true}
+{"run_id":1,"proposals":[{"item_id":1,"entity_type":"contract","entity_id":3,"operation":"patch","patch":{"fields":{"territory":"Worldwide"}},"conflicts":[],"safe_defaults":[{"field":"territory","new_value":"Worldwide"}],"requires_user_review":true},{"item_id":2,"entity_type":"contract_party","entity_id":null,"operation":"create","patch":{"contract_id":3,"entity_type":"External","external_name":"M2KR Records","role":"Label","split_percent":null},"conflicts":[],"safe_defaults":[{"field":"external_name","new_value":"M2KR Records"}],"requires_user_review":true},{"item_id":3,"entity_type":"contract_party","entity_id":null,"operation":"create","patch":{"contract_id":3,"entity_type":"External","external_name":"John Producer","role":"Producer","split_percent":null},"conflicts":[],"safe_defaults":[{"field":"external_name","new_value":"John Producer"}],"requires_user_review":true},{"item_id":4,"entity_type":"contract_party","entity_id":null,"operation":"create","patch":{"contract_id":3,"entity_type":"External","external_name":"Oddxperienc","role":"Artist","split_percent":null},"conflicts":[],"safe_defaults":[{"field":"external_name","new_value":"Oddxperienc"}],"requires_user_review":true}],"requires_user_review":true}
 === final /tmp/apply_orgA.json snippet ===
-{"status":"applied","run_id":11,"applied_count":1,"created_count":3,"conflict_count":0,"idempotent_hit":false,"warnings":[]}
+{"status":"applied","run_id":1,"applied_count":1,"created_count":3,"conflict_count":0,"idempotent_hit":false,"warnings":[]}

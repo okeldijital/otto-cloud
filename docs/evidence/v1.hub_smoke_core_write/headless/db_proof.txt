@@ -1,64 +1,64 @@
-DB_PATH=sqlite:////Users/m2krproduction/.otto/data/db/otto.sqlite
+DB_PATH=sqlite:////var/folders/5g/c9pt9dzn7rs987kfcprbn2zh0000gp/T/tmp.QpmTzwzauA/db/otto.sqlite
 
 === before counts ===
 {
-  "artists": 161,
-  "tracks": 387,
-  "works": 23,
-  "organizations": 26,
-  "individuals": 18,
-  "releases": 102,
-  "contracts": 22,
-  "ai_core_write_proposal_runs": 2,
-  "ai_core_write_proposal_items": 8,
+  "artists": 2,
+  "tracks": 2,
+  "works": 2,
+  "organizations": 2,
+  "individuals": 2,
+  "releases": 2,
+  "contracts": 4,
+  "ai_core_write_proposal_runs": 1,
+  "ai_core_write_proposal_items": 4,
   "ai_core_write_apply_events": 1
 }
 === after counts ===
 {
-  "artists": 161,
-  "tracks": 387,
-  "works": 23,
-  "organizations": 26,
-  "individuals": 18,
-  "releases": 102,
-  "contracts": 22,
-  "ai_core_write_proposal_runs": 2,
-  "ai_core_write_proposal_items": 8,
+  "artists": 2,
+  "tracks": 2,
+  "works": 2,
+  "organizations": 2,
+  "individuals": 2,
+  "releases": 2,
+  "contracts": 4,
+  "ai_core_write_proposal_runs": 1,
+  "ai_core_write_proposal_items": 4,
   "ai_core_write_apply_events": 1,
-  "nonoverwrite_contract_territory_after": null
+  "nonoverwrite_contract_territory_after": "US"
 }
 === script1 before counts ===
 {
-  "artists": 161,
-  "tracks": 387,
-  "works": 23,
-  "organizations": 26,
-  "individuals": 18,
-  "releases": 102,
-  "contracts": 22,
-  "ai_core_write_proposal_runs": 2,
-  "ai_core_write_proposal_items": 8,
-  "ai_core_write_apply_events": 1
+  "artists": 2,
+  "tracks": 2,
+  "works": 2,
+  "organizations": 2,
+  "individuals": 2,
+  "releases": 2,
+  "contracts": 2,
+  "ai_core_write_proposal_runs": 0,
+  "ai_core_write_proposal_items": 0,
+  "ai_core_write_apply_events": 0
 }
 === script1 after counts ===
 {
-  "artists": 161,
-  "tracks": 387,
-  "works": 23,
-  "organizations": 26,
-  "individuals": 18,
-  "releases": 102,
-  "contracts": 22,
-  "ai_core_write_proposal_runs": 2,
-  "ai_core_write_proposal_items": 8,
+  "artists": 2,
+  "tracks": 2,
+  "works": 2,
+  "organizations": 2,
+  "individuals": 2,
+  "releases": 2,
+  "contracts": 4,
+  "ai_core_write_proposal_runs": 1,
+  "ai_core_write_proposal_items": 4,
   "ai_core_write_apply_events": 1,
-  "contract_apply_after": "US",
-  "contract_nonoverwrite_after": null
+  "contract_apply_after": "Worldwide",
+  "contract_nonoverwrite_after": "US"
 }
 === non-overwrite proof ===
 {
   "contract_apply_before": null,
   "contract_nonoverwrite_before": "US",
-  "contract_apply_after": "US",
-  "contract_nonoverwrite_after": null
+  "contract_apply_after": "Worldwide",
+  "contract_nonoverwrite_after": "US"
 }

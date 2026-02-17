@@ -5,10 +5,4 @@
 === pytest -q ===
 ........................................................................ [ 92%]
 ......                                                                   [100%]
-=============================== warnings summary ===============================
-tests/test_ai_core_write_apply.py::test_apply_requires_confirm_and_backup_checkpoint
-  /Library/Frameworks/Python.framework/Versions/3.14/lib/python3.14/site-packages/fastapi/routing.py:314: DeprecationWarning: 'HTTP_422_UNPROCESSABLE_ENTITY' is deprecated. Use 'HTTP_422_UNPROCESSABLE_CONTENT' instead.
-    return await dependant.call(**values)
-
--- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-78 passed, 1 warning in 29.65s
+78 passed in 32.50s

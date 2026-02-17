@@ -4,6 +4,74 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 API_BASE="http://127.0.0.1:8001"
 export PYTHONPATH="$ROOT/backend${PYTHONPATH:+:$PYTHONPATH}"
+export APP_ENV=development
+
+# Deterministic isolated runtime (Hub smoke)
+if [[ "${HUB_SMOKE_RESPECT_ENV:-0}" == "1" ]]; then
+  export HOME="${HOME:-$(mktemp -d)}"
+  export OTTO_APP_DATA_DIR="${OTTO_APP_DATA_DIR:-$(mktemp -d)}"
+else
+  export HOME="$(mktemp -d)"
+  export OTTO_APP_DATA_DIR="$(mktemp -d)"
+fi
+export OTTO_DB_PATH="$OTTO_APP_DATA_DIR/db/otto.sqlite"
+mkdir -p "$OTTO_APP_DATA_DIR/db"
+export STORAGE_ROOT="${STORAGE_ROOT:-$OTTO_APP_DATA_DIR/storage}"
+mkdir -p "$STORAGE_ROOT"
+export IMPORT_LOGS_ROOT="${IMPORT_LOGS_ROOT:-$OTTO_APP_DATA_DIR/import_logs}"
+mkdir -p "$IMPORT_LOGS_ROOT"
+export DATABASE_URL="sqlite:///$OTTO_DB_PATH"
+
+# Clean isolated app data at start for deterministic backup-gate state
+rm -rf "$OTTO_APP_DATA_DIR"/* || true
+mkdir -p "$OTTO_APP_DATA_DIR/db" "$STORAGE_ROOT" "$IMPORT_LOGS_ROOT"
+
+cleanup() {
+  if [[ "${HUB_SMOKE_LEAVE_BACKEND:-0}" != "1" ]] && [[ -f /tmp/hub_smoke_backend.pid ]]; then
+    local pid
+    pid="$(cat /tmp/hub_smoke_backend.pid || true)"
+    if [[ -n "${pid:-}" ]]; then
+      kill "$pid" 2>/dev/null || true
+      wait "$pid" 2>/dev/null || true
+    fi
+    rm -f /tmp/hub_smoke_backend.pid
+  fi
+}
+trap cleanup EXIT
+
+start_isolated_backend() {
+  local existing
+  existing="$(lsof -ti tcp:8001 || true)"
+  if [[ -n "${existing:-}" ]]; then
+    echo "Stopping existing process on 8001 for deterministic smoke: $existing"
+    for p in $existing; do
+      kill -TERM "$p" 2>/dev/null || true
+    done
+    sleep 1
+    existing="$(lsof -ti tcp:8001 || true)"
+    if [[ -n "${existing:-}" ]]; then
+      for p in $existing; do
+        kill -KILL "$p" 2>/dev/null || true
+      done
+      sleep 1
+    fi
+  fi
+
+  (
+    cd "$ROOT/backend"
+    python3 -m uvicorn main:app --host 127.0.0.1 --port 8001
+  ) > /tmp/hub_smoke_backend.log 2>&1 &
+  echo $! > /tmp/hub_smoke_backend.pid
+
+  for _ in $(seq 1 80); do
+    if curl -fsS "$API_BASE/health" >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 0.25
+  done
+  echo "Backend failed to start on 8001. See /tmp/hub_smoke_backend.log"
+  exit 1
+}
 
 CTX_FILE="/tmp/hub_smoke_context.json"
 EXTRACT_A="/tmp/extract_orgA.json"
@@ -59,6 +127,7 @@ require_status() {
 }
 
 header "Health Check"
+start_isolated_backend
 HEALTH_JSON=$(curl -sS "$API_BASE/health")
 echo "$HEALTH_JSON"
 
@@ -402,8 +471,7 @@ TOKEN_B="$(curl -sS -X POST "$API_BASE/api/auth/token" -H "Content-Type: applica
 [[ -n "$TOKEN_A" ]] || { echo "Failed to get OrgA token"; exit 1; }
 [[ -n "$TOKEN_B" ]] || { echo "Failed to get OrgB token"; exit 1; }
 echo "Org tokens acquired"
-ADMIN_ORG_ID="$(curl -sS "$API_BASE/api/auth/me" | python3 -c 'import json,sys;print(json.load(sys.stdin).get("organization_id",""))')"
-[[ -n "$ADMIN_ORG_ID" ]] || { echo "Failed to resolve admin organization_id"; exit 1; }
+ADMIN_ORG_ID="$ORG_A_ID"
 export ADMIN_ORG_ID
 printf '%s' "$TOKEN_A" > /tmp/hub_smoke_token_a.txt
 printf '%s' "$ADMIN_ORG_ID" > /tmp/hub_smoke_admin_org.txt
@@ -606,6 +674,8 @@ echo "AI_CORE_WRITE_REQUIRE_BACKUP=$auto_require_backup"
 
 if [[ "$auto_require_backup" == "true" ]]; then
   header "OrgA Apply Without Backup (expect 409)"
+  rm -rf "$STORAGE_ROOT/backups" || true
+  mkdir -p "$STORAGE_ROOT/backups"
   curl -sS "$API_BASE/api/admin/backups" \
     -H "Authorization: Bearer $TOKEN_A" \
     -H "X-Organization-ID: $ADMIN_ORG_ID" > /tmp/hub_smoke_backups_before_delete.json

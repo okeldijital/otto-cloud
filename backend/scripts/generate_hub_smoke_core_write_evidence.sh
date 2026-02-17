@@ -5,6 +5,18 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 EVDIR="$ROOT/docs/evidence/v1.hub_smoke_core_write/headless"
 API_BASE="http://127.0.0.1:8001"
 export PYTHONPATH="$ROOT/backend${PYTHONPATH:+:$PYTHONPATH}"
+export APP_ENV=development
+
+# Deterministic isolated runtime (shared with smoke script)
+export HOME="$(mktemp -d)"
+export OTTO_APP_DATA_DIR="$(mktemp -d)"
+export OTTO_DB_PATH="$OTTO_APP_DATA_DIR/db/otto.sqlite"
+mkdir -p "$OTTO_APP_DATA_DIR/db"
+export STORAGE_ROOT="$OTTO_APP_DATA_DIR/storage"
+mkdir -p "$STORAGE_ROOT"
+export IMPORT_LOGS_ROOT="$OTTO_APP_DATA_DIR/import_logs"
+mkdir -p "$IMPORT_LOGS_ROOT"
+export DATABASE_URL="sqlite:///$OTTO_DB_PATH"
 
 mkdir -p "$EVDIR"
 
@@ -24,10 +36,8 @@ require_status() {
 }
 
 header "Ensure smoke artifacts exist"
-if [[ ! -f /tmp/hub_smoke_context.json || ! -f /tmp/extract_orgA.json || ! -f /tmp/links_orgA.json || ! -f /tmp/propose_orgA.json || ! -f /tmp/apply_orgA.json ]]; then
-  echo "Missing /tmp smoke artifacts. Running e2e_org_isolation_smoke.sh first..."
-  bash "$ROOT/backend/scripts/e2e_org_isolation_smoke.sh"
-fi
+# Always regenerate smoke artifacts in isolated env for deterministic proof
+HUB_SMOKE_RESPECT_ENV=1 HUB_SMOKE_LEAVE_BACKEND=1 bash "$ROOT/backend/scripts/e2e_org_isolation_smoke.sh"
 
 header "Gates"
 {
@@ -374,5 +384,14 @@ header "Write no_leak_checks.txt"
     fi
   done
 } > "$EVDIR/no_leak_checks.txt"
+
+if [[ -f /tmp/hub_smoke_backend.pid ]]; then
+  BACKEND_PID="$(cat /tmp/hub_smoke_backend.pid || true)"
+  if [[ -n "${BACKEND_PID:-}" ]]; then
+    kill "$BACKEND_PID" 2>/dev/null || true
+    wait "$BACKEND_PID" 2>/dev/null || true
+  fi
+  rm -f /tmp/hub_smoke_backend.pid
+fi
 
 echo "Evidence generated at: $EVDIR"
