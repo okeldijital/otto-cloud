@@ -28,6 +28,7 @@ export default function ContractExtractPreview({ extraction }) {
   const splits = extraction.splits || [];
   const terms = extraction.terms || {};
   const worksHints = extraction.works_hints || {};
+  const tracks = extraction.tracks || worksHints.tracks || [];
   const keyTerms = extraction.key_terms || [];
 
   return (
@@ -58,17 +59,18 @@ export default function ContractExtractPreview({ extraction }) {
       <div style={card}>
         <strong>Parties + Roles</strong>
         <div style={{ overflowX: 'auto', marginTop: 6 }}>
-          <table className="contracts-table" style={{ minWidth: 560 }}>
-            <thead><tr><th>Role</th><th>Name</th><th>Confidence</th><th>Source</th></tr></thead>
+          <table className="contracts-table" style={{ minWidth: 680 }}>
+            <thead><tr><th>Role</th><th>Name</th><th>Aka</th><th>Confidence</th><th>Source</th></tr></thead>
             <tbody>
               {parties.length ? parties.map((p, idx) => (
                 <tr key={idx}>
                   <td>{p.role || '-'}</td>
                   <td>{p.display_name || p.name || '-'}</td>
+                  <td>{p.aka || '-'}</td>
                   <td>{Number(p.confidence || 0).toFixed(2)}</td>
                   <td>{p.source || '-'}</td>
                 </tr>
-              )) : <tr><td colSpan={4} className="muted">No parties detected</td></tr>}
+              )) : <tr><td colSpan={5} className="muted">No parties detected</td></tr>}
             </tbody>
           </table>
         </div>
@@ -77,7 +79,7 @@ export default function ContractExtractPreview({ extraction }) {
       <div style={card}>
         <strong>Tracks / Works Hints</strong>
         <div className="small" style={{ marginTop: 6 }}>
-          Tracks: {(worksHints.tracks || []).length ? worksHints.tracks.join(', ') : 'No track references detected'}
+          Tracks: {tracks.length ? tracks.join(', ') : 'No track references detected'}
         </div>
         <div className="small">Artists: {(worksHints.artists || []).length ? worksHints.artists.join(', ') : 'No artist references detected'}</div>
         <div className="small">Works: {(worksHints.works || []).length ? worksHints.works.join(', ') : 'No work references detected'}</div>

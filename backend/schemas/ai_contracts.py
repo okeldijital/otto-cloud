@@ -16,6 +16,7 @@ class ContractSplitV1(BaseModel):
     party_name: str
     party_role: Optional[str] = None
     percent: float = Field(..., ge=0, le=100)
+    scope: Optional[str] = None
     notes: Optional[str] = None
 
 
@@ -32,6 +33,8 @@ class PartyRoleV1(str, Enum):
 class ContractPartyV1(BaseModel):
     display_name: str = Field(validation_alias=AliasChoices("display_name", "name"))
     role: Optional[str] = None
+    aka: Optional[str] = None
+    source: Optional[str] = None
     is_external: bool = True
     confidence: float = Field(default=1.0, ge=0, le=1)
     source_span: Optional[str] = None
@@ -71,6 +74,10 @@ class ContractDatesV2(BaseModel):
 
 
 class ContractTermsV2(BaseModel):
+    term_min_years: Optional[int] = None
+    auto_renew_years: Optional[int] = None
+    reversion_years: Optional[int] = None
+    term_text: Optional[str] = None
     grant_of_rights: Optional[str] = None
     territory: Optional[str] = None
     exclusivity: Optional[str] = None
@@ -116,7 +123,9 @@ class ContractExtractionV1(BaseModel):
     territory: Optional[str] = None
     exclusivity: Optional[bool] = None
     parties: List[ContractPartyV1] = []
+    tracks: List[str] = []
     splits: List[ContractSplitV1] = []
+    royalties: List[ContractSplitV1] = []
     splits_total: float = 0.0
     works_hints: WorksHintsV1 = Field(default_factory=WorksHintsV1)
     raw_confidence: Optional[float] = Field(default=0.0, ge=0, le=1)

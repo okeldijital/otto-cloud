@@ -1065,7 +1065,26 @@ def check_llm_contract_extract_governance():
         rel = os.path.relpath(path, project_root / "backend")
 
         for node in ast.walk(tree):
-            if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
+            if not isinstance(node, ast.Call):
+                continue
+
+            # Raw text persistence guard: log_ai_request message must not include raw text variables.
+            if isinstance(node.func, ast.Name) and node.func.id == "log_ai_request":
+                for kw in node.keywords:
+                    if kw.arg != "message":
+                        continue
+                    if isinstance(kw.value, ast.Name) and kw.value.id in {"text", "parse_text"}:
+                        violations.append(
+                            f"LLM extract governance violation in {rel}: raw text used in audit message at line {node.lineno}"
+                        )
+                    if isinstance(kw.value, ast.JoinedStr):
+                        for val in kw.value.values:
+                            if isinstance(val, ast.FormattedValue) and isinstance(val.value, ast.Name) and val.value.id in {"text", "parse_text"}:
+                                violations.append(
+                                    f"LLM extract governance violation in {rel}: raw text interpolated in audit message at line {node.lineno}"
+                                )
+
+            if not isinstance(node.func, ast.Attribute):
                 continue
             method = node.func.attr
             if method in forbidden_methods:

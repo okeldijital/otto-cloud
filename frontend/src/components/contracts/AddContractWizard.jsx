@@ -119,6 +119,13 @@ export default function AddContractWizard({ isOpen, onClose, onCreated }) {
 
         {step >= 3 && extraction && (
           <>
+            {!!(extraction.warnings || []).length && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                {(extraction.warnings || []).map((w, idx) => (
+                  <span key={idx} className="status-badge amber" style={{ fontSize: 12 }}>{w}</span>
+                ))}
+              </div>
+            )}
             <ContractExtractPreview extraction={extraction} />
             <ContractCreateReviewForm form={form} setForm={setForm} />
             <div className="muted small" style={{ marginBottom: 8 }}>
