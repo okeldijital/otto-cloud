@@ -89,33 +89,33 @@ def test_extract_llm_hybrid_success(client, db, monkeypatch):
 
     monkeypatch.setattr(settings, "AI_ENABLED", True, raising=False)
     monkeypatch.setattr(settings, "AI_CONTRACT_INTEL_ENABLED", True, raising=False)
-    monkeypatch.setattr(settings, "AI_LLM_EXTRACT_ENABLED", True, raising=False)
+    monkeypatch.setattr(settings, "AI_LLM_ENABLED", True, raising=False)
     monkeypatch.setattr(settings, "AI_LLM_API_KEY", "test-key", raising=False)
 
-    def fake_llm_extract_contract(text, filename, settings, trace_id):
+    def fake_llm_extract_contract(text, filename, settings, trace_id, system_prompt=None, user_prompt=None):
         return {
             "json": {
                 "contract_title": "Black Motion Remix Agreement",
-                "contract_type": "remix_agreement",
-                "dates": {"start_date": "2023-07-27", "end_date": None},
+                "effective_date": "2023-07-27",
+                "start_date": "2023-07-27",
+                "end_date": None,
+                "end_date_note": "no end date specified",
                 "parties": [
-                    {"display_name": "BLACK MOTION", "role": "Remixer", "confidence": 0.9, "source": "header"},
-                    {"display_name": "M2KR Records", "role": "Label", "confidence": 0.8, "source": "header"},
+                    {"display_name": "BLACK MOTION", "role": "remixer", "confidence": 0.9, "evidence": ["header"]},
+                    {"display_name": "M2KR Records", "role": "label", "confidence": 0.8, "evidence": ["header"]},
                 ],
                 "splits": [
-                    {"scope": "MASTER", "percent": 30, "party_display_name": "BLACK MOTION", "party_role": "Remixer"}
+                    {"split_type": "master", "percent": 30, "party_name": "BLACK MOTION", "notes": "rate", "evidence": ["30%"]}
                 ],
-                "works_hints": {"tracks": ["ABANGOMA"], "artists": ["BLACK MOTION"], "works": ["ABANGOMA"]},
-                "terms": {"grant_of_rights": "exclusive remix rights", "territory": "Worldwide", "governing_law": "South Africa"},
+                "tracks_mentioned": [{"title": "ABANGOMA", "confidence": 0.8, "evidence": ["title line"]}],
+                "terms": [{"term_type": "territory", "summary": "Worldwide", "confidence": 0.8, "evidence": ["territory clause"]}],
+                "source": {"filename": "BLACK MOTION MADALA KUNENE ABANGOMA.pdf", "file_sha256": "abc", "page_count": 1},
                 "raw_confidence": 0.83,
                 "warnings": [],
             }
         }
 
-    monkeypatch.setattr(
-        "services.ai.extractors.contract_extractor_llm_v1.llm_extract_contract",
-        fake_llm_extract_contract,
-    )
+    monkeypatch.setattr("services.ai.extractors.contract_extractor_v2.llm_extract_contract", fake_llm_extract_contract)
 
     resp = client.post(
         "/api/ai/contracts/extract",
@@ -123,11 +123,13 @@ def test_extract_llm_hybrid_success(client, db, monkeypatch):
     )
     assert resp.status_code == 200
     body = resp.json()
-    assert body.get("parser_version", "").startswith("llm_v1:")
-    assert len(body.get("parties") or []) >= 1
-    assert body.get("dates", {}).get("start_date") == "2023-07-27"
-    assert (body.get("works_hints") or {}).get("tracks")
-    assert (body.get("terms") or {}).get("governing_law") == "South Africa"
+    assert body.get("version") == "v2"
+    data = body.get("data") or {}
+    assert str(data.get("parser_version", "")).startswith("llm_v2:")
+    assert len(data.get("parties") or []) >= 1
+    assert data.get("start_date") == "2023-07-27"
+    assert data.get("tracks_mentioned")
+    assert any((t.get("term_type") == "territory" and "Worldwide" in t.get("summary", "")) for t in (data.get("terms") or []))
 
 
 def test_extract_llm_hybrid_fallback_on_llm_error(client, db, monkeypatch):
@@ -137,16 +139,13 @@ def test_extract_llm_hybrid_fallback_on_llm_error(client, db, monkeypatch):
 
     monkeypatch.setattr(settings, "AI_ENABLED", True, raising=False)
     monkeypatch.setattr(settings, "AI_CONTRACT_INTEL_ENABLED", True, raising=False)
-    monkeypatch.setattr(settings, "AI_LLM_EXTRACT_ENABLED", True, raising=False)
+    monkeypatch.setattr(settings, "AI_LLM_ENABLED", True, raising=False)
     monkeypatch.setattr(settings, "AI_LLM_API_KEY", "test-key", raising=False)
 
-    def fake_llm_raise(text, filename, settings, trace_id):
+    def fake_llm_raise(text, filename, settings, trace_id, system_prompt=None, user_prompt=None):
         raise LLMRequestError("boom")
 
-    monkeypatch.setattr(
-        "services.ai.extractors.contract_extractor_llm_v1.llm_extract_contract",
-        fake_llm_raise,
-    )
+    monkeypatch.setattr("services.ai.extractors.contract_extractor_v2.llm_extract_contract", fake_llm_raise)
 
     resp = client.post(
         "/api/ai/contracts/extract",
@@ -154,6 +153,8 @@ def test_extract_llm_hybrid_fallback_on_llm_error(client, db, monkeypatch):
     )
     assert resp.status_code == 200
     body = resp.json()
-    assert body.get("parser_version") == "deterministic_v1"
-    assert "llm_failed_fallback_deterministic" in (body.get("warnings") or [])
+    assert body.get("version") == "v2"
+    data = body.get("data") or {}
+    assert data.get("parser_version") == "deterministic_v2"
+    assert "llm_failed_fallback_deterministic" in (data.get("warnings") or [])
     assert resp.status_code != 500

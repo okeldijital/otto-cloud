@@ -6,6 +6,9 @@ export async function extract(file) {
   const response = await api.post('/ai/contracts/extract', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
+  if (response.data?.version === 'v2' && response.data?.data) {
+    return { ...response.data.data, __version: 'v2', __legacy: response.data.legacy_v1 || null };
+  }
   return response.data;
 }
 

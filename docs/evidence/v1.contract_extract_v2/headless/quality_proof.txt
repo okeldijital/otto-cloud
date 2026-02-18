@@ -1,0 +1,10 @@
+version: v2
+parties_count: 3
+tracks_count: 2
+terms_count: 2
+end_date: None
+end_date_note: no end date specified
+splits_total: 100.0
+splits_mapped_or_warning: True
+parties_rule: True
+end_date_note_rule: True

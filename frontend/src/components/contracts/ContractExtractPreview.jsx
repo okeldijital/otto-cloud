@@ -1,4 +1,5 @@
 import React from 'react';
+import ContractExtractPreviewV2 from './ContractExtractPreviewV2';
 
 const card = {
   border: '1px solid #e5e7eb',
@@ -21,6 +22,9 @@ function getDates(extraction) {
 
 export default function ContractExtractPreview({ extraction }) {
   if (!extraction) return null;
+  if (Array.isArray(extraction.tracks_mentioned) || extraction.source?.file_sha256) {
+    return <ContractExtractPreviewV2 extraction={extraction} />;
+  }
 
   const warnings = extraction.warnings || [];
   const dates = getDates(extraction);

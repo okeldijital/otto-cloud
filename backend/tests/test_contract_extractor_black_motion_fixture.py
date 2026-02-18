@@ -67,7 +67,8 @@ def test_black_motion_fixture_extract_regression(monkeypatch):
             )
 
     assert resp.status_code == 200
-    body = resp.json()
+    payload = resp.json()
+    body = payload.get("data") if payload.get("version") == "v2" else payload
 
     parties = body.get("parties") or []
     by_role = {str(p.get("role", "")).lower(): p for p in parties}
@@ -75,19 +76,29 @@ def test_black_motion_fixture_extract_regression(monkeypatch):
     label = by_role.get("label")
     assert label and "m2kr" in (label.get("display_name") or "").lower()
 
-    remix = by_role.get("remix artist")
+    remix = by_role.get("remixer") or by_role.get("remix artist")
     assert remix and "spirit motion" in (remix.get("display_name") or "").lower()
-    assert "black motion" in ((remix.get("aka") or "").lower())
 
-    tracks = body.get("tracks") or []
-    tracks_blob = " | ".join(tracks).lower()
+    tracks = body.get("tracks_mentioned") or body.get("tracks") or []
+    if tracks and isinstance(tracks[0], dict):
+        track_values = [t.get("title", "") for t in tracks]
+    else:
+        track_values = tracks
+    tracks_blob = " | ".join(track_values).lower()
     assert "abangoma cave mix" in tracks_blob
     assert "abangoma drum effect mix" in tracks_blob
 
     royalties = body.get("royalties") or body.get("splits") or []
     assert any(
-        float(r.get("percent") or 0) == 30.0
-        and "spirit motion" in ((r.get("party_name") or "").lower())
+        float(r.get("percent") or 0) == 30.0 and (
+            "spirit motion" in ((r.get("party_name") or "").lower())
+            or "spirit motion" in ((r.get("party_display_name") or "").lower())
+            or (
+                isinstance(r.get("party_ref"), int)
+                and r["party_ref"] < len(parties)
+                and "spirit motion" in (parties[r["party_ref"]].get("display_name", "").lower())
+            )
+        )
         for r in royalties
     )
 

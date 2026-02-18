@@ -1043,6 +1043,9 @@ def check_llm_contract_extract_governance():
     targets = [
         project_root / "backend/routes/ai_contracts.py",
         project_root / "backend/services/ai/extractors/contract_extractor_llm_v1.py",
+        project_root / "backend/services/ai/extractors/contract_extractor_v2.py",
+        project_root / "backend/services/ai/extractors/contract_extractor_deterministic_v2.py",
+        project_root / "backend/services/ai/extractors/validators/contract_extract_validator_v2.py",
     ]
 
     llm_root = project_root / "backend/services/ai/llm"

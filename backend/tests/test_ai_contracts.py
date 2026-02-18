@@ -54,6 +54,9 @@ class TestAIContractsEnabled:
             files={"file": ("test.pdf", mock_pdf, "application/pdf")}
         )
         assert response.status_code == 200
+        body = response.json()
+        assert body.get("version") == "v2"
+        assert isinstance(body.get("data"), dict)
 
     def test_resolve_endpoint_exists(self):
         # We expect a 200 if payload is valid and resolver is enabled

@@ -11,14 +11,15 @@ from models.release import Release
 from dependencies import get_current_user
 from config import settings
 from schemas.ai_contracts import (
-    ContractExtractionV1, 
-    ResolvedContractProposalV1, 
-    ResolveRequestV1
+    ContractExtractionV1,
+    ResolvedContractProposalV1,
+    ResolveRequestV1,
 )
+from schemas.ai_contracts_v2 import ContractExtractV2
 from services.ai.parsing.pdf_extract import extract_text_from_pdf
 from services.ai.extractors.contract_extractor_v1 import extract_contract_intelligence
-from services.ai.extractors.contract_extractor_llm_v1 import extract_contract_intelligence_llm_v1
-from services.ai.llm.errors import LLMDisabledError, LLMParseError, LLMRequestError
+from services.ai.extractors.contract_extractor_deterministic_v2 import deterministic_extract_v2
+from services.ai.extractors.contract_extractor_v2 import HybridExtractError, extract_contract_v2_hybrid
 from services.ai.matchers.contract_resolver_v1 import resolve_entities
 from services.ai.audit import log_ai_request
 
@@ -52,7 +53,7 @@ def ensure_ai_contract_intake_enabled():
             detail="AI module disabled"
         )
 
-@router.post("/extract", response_model=ContractExtractionV1, dependencies=[Depends(ensure_ai_contract_intel_enabled)])
+@router.post("/extract", dependencies=[Depends(ensure_ai_contract_intel_enabled)])
 async def extract_contract_endpoint(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
@@ -84,34 +85,38 @@ async def extract_contract_endpoint(
                 },
             )
 
-        extraction = None
-        llm_warning = None
-        if settings.llm_extract_enabled():
-            try:
-                extraction = extract_contract_intelligence_llm_v1(
-                    text=parse_text,
-                    filename=file.filename,
-                    settings=settings,
-                    org_id=current_user.organization_id,
-                    user_id=current_user.id,
-                )
-            except (LLMRequestError, LLMParseError) as llm_exc:
-                logger.warning("contract extract llm failed; fallback deterministic: %s", str(llm_exc))
-                llm_warning = "llm_failed_fallback_deterministic"
-        else:
-            llm_warning = "llm_disabled_fallback"
+        try:
+            extraction_v2: ContractExtractV2 = extract_contract_v2_hybrid(
+                text=parse_text,
+                filename=file.filename,
+                file_sha256=parsed["sha256"],
+                page_count=parsed.get("page_count"),
+                settings=settings,
+                org_id=current_user.organization_id,
+                user_id=current_user.id,
+            )
+        except HybridExtractError as hybrid_exc:
+            # Secondary guard: deterministic v2 should always recover.
+            logger.warning("contract extract hybrid failure; hard fallback deterministic: %s", str(hybrid_exc))
+            extraction_v2 = deterministic_extract_v2(
+                text=parse_text,
+                filename=file.filename,
+                file_sha256=parsed["sha256"],
+                page_count=parsed.get("page_count"),
+            )
+            extraction_v2.warnings = list(extraction_v2.warnings or []) + ["hybrid_orchestrator_failed_fallback_deterministic"]
 
-        if extraction is None:
-            extraction = extract_contract_intelligence(parse_text, filename=file.filename)
-
-        if llm_warning:
-            extraction.warnings = list(extraction.warnings or []) + [llm_warning]
-
-        extraction.contract_date = extraction.effective_date or extraction.start_date or extraction.contract_date
-        extraction.expiration_date = extraction.end_date or extraction.expiration_date
-        if (not extraction.contract_title) or extraction.contract_title == "Governed Extraction (Deterministic V1)":
-            extraction.contract_title = Path(file.filename).stem
-            extraction.warnings = list(extraction.warnings or []) + ["contract_title_fallback_from_filename"]
+        # Optional transitional legacy payload for existing callers.
+        extraction_legacy = extract_contract_intelligence(parse_text, filename=file.filename)
+        extraction_legacy.contract_title = extraction_v2.contract_title or extraction_legacy.contract_title
+        extraction_legacy.parser_version = extraction_v2.parser_version or extraction_legacy.parser_version
+        extraction_legacy.raw_confidence = extraction_v2.raw_confidence
+        extraction_legacy.warnings = list(dict.fromkeys(list(extraction_legacy.warnings or []) + list(extraction_v2.warnings or [])))
+        extraction_legacy.contract_date = extraction_legacy.effective_date or extraction_legacy.start_date or extraction_legacy.contract_date
+        extraction_legacy.expiration_date = extraction_legacy.end_date or extraction_legacy.expiration_date
+        if (not extraction_legacy.contract_title) or extraction_legacy.contract_title == "Governed Extraction (Deterministic V1)":
+            extraction_legacy.contract_title = Path(file.filename).stem
+            extraction_legacy.warnings = list(extraction_legacy.warnings or []) + ["contract_title_fallback_from_filename"]
 
         request_hash = _extract_request_hash(
             current_user.organization_id,
@@ -127,10 +132,16 @@ async def extract_contract_endpoint(
             user_id=current_user.id,
             action="contract_extraction",
             message=f"Extracted PDF hash: {parsed['sha256']} req:{request_hash}",
-            tool="contract_extractor:llm_v1" if extraction.parser_version.startswith("llm_v1:") else "contract_extractor:deterministic",
-            parser_version=extraction.parser_version or "contract_extractor_v1.2.2",
+            tool="contract_extractor:v2_hybrid",
+            parser_version=extraction_v2.parser_version or "deterministic_v2",
         )
-        return extraction
+        legacy_payload = extraction_legacy.model_dump(mode="json")
+        return {
+            **legacy_payload,
+            "version": "v2",
+            "data": extraction_v2.model_dump(mode="json"),
+            "legacy_v1": legacy_payload,
+        }
     except HTTPException:
         raise
     except Exception:

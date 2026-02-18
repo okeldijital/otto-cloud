@@ -119,10 +119,13 @@ export default function AddContractWizard({ isOpen, onClose, onCreated }) {
 
         {step >= 3 && extraction && (
           <>
-            {!!(extraction.warnings || []).length && (
+            {!!((extraction.warnings || []).length || (extraction.errors || []).length) && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
                 {(extraction.warnings || []).map((w, idx) => (
                   <span key={idx} className="status-badge amber" style={{ fontSize: 12 }}>{w}</span>
+                ))}
+                {(extraction.errors || []).map((w, idx) => (
+                  <span key={`err-${idx}`} className="status-badge danger" style={{ fontSize: 12 }}>{w}</span>
                 ))}
               </div>
             )}

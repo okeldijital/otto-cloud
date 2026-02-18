@@ -1,0 +1,9 @@
+db_path: /var/folders/5g/c9pt9dzn7rs987kfcprbn2zh0000gp/T/tmp.4UcmcSCQvI/db/otto.sqlite
+artists|0|0
+tracks|0|0
+works|0|0
+releases|0|0
+organizations|0|0
+individuals|0|0
+contracts|0|0
+ai_audit_log_count: 4

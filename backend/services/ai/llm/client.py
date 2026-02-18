@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import httpx
 
@@ -12,7 +12,14 @@ def _base_url(settings) -> str:
     return "https://api.openai.com"
 
 
-def llm_extract_contract(text: str, filename: str, settings, trace_id: str) -> Dict[str, Any]:
+def llm_extract_contract(
+    text: str,
+    filename: str,
+    settings,
+    trace_id: str,
+    system_prompt: Optional[str] = None,
+    user_prompt: Optional[str] = None,
+) -> Dict[str, Any]:
     if not settings.llm_extract_enabled():
         raise LLMDisabledError("llm_extract_disabled")
 
@@ -22,11 +29,11 @@ def llm_extract_contract(text: str, filename: str, settings, trace_id: str) -> D
         "Authorization": f"Bearer {settings.AI_LLM_API_KEY}",
         "Content-Type": "application/json",
     }
-    system = (
+    system = system_prompt or (
         "You are a contract extraction engine. Return ONLY valid JSON and no markdown. "
         "Extract parties with roles, dates, splits with party attribution, key terms, and works hints."
     )
-    user = (
+    user = user_prompt or (
         f"filename: {filename}\n"
         "Return JSON object fields: contract_title, contract_type, dates, parties, splits, works_hints, terms, raw_confidence, warnings.\n"
         f"contract_text:\n{bounded_text}"
