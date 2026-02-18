@@ -134,6 +134,7 @@ def main():
     contract_wizard_violations = check_contract_wizard_governance()
     contract_from_extract_violations = check_contract_create_from_extract_governance()
     llm_extract_violations = check_llm_contract_extract_governance()
+    contract_track_map_violations = check_contract_track_map_governance()
     
     all_violations = (
         drift_violations
@@ -151,6 +152,7 @@ def main():
         + contract_wizard_violations
         + contract_from_extract_violations
         + llm_extract_violations
+        + contract_track_map_violations
     )
     
     if all_violations:
@@ -1027,7 +1029,7 @@ def check_contract_create_from_extract_governance():
         "services.ai.resolution",
         "services.ai.core_write",
     )
-    allowed_models = {"Contract", "ContractDocument"}
+    allowed_models = {"Contract", "ContractDocument", "ContractTrackLink", "ContractAsset"}
     forbidden_methods = {"delete", "update"}
     mutating_sql = ("insert", "update", "delete", "alter", "drop", "create")
 
@@ -1087,6 +1089,49 @@ def check_contract_create_from_extract_governance():
                     f"Contract from_extract governance violation in {rel}: mutating db.execute SQL at line {node.lineno}"
                 )
 
+    return violations
+
+
+def check_contract_track_map_governance():
+    """
+    Contract track map plan is read-only:
+      - backend/services/ai/track_mapping/*.py
+    """
+    project_root = Path(__file__).resolve().parent.parent
+    targets = []
+    root = project_root / "backend/services/ai/track_mapping"
+    if root.exists():
+        for cur, _, files in os.walk(root):
+            for file in files:
+                if file.endswith(".py"):
+                    targets.append(Path(cur) / file)
+
+    violations = []
+    forbidden_methods = {"add", "commit", "delete", "update"}
+    mutating_sql = ("insert", "update", "delete", "alter", "drop", "create")
+    for path in targets:
+        tree = get_ast(path)
+        if not tree:
+            continue
+        rel = os.path.relpath(path, project_root / "backend")
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
+                continue
+            if node.func.attr in forbidden_methods:
+                violations.append(
+                    f"Contract track map governance violation in {rel}: .{node.func.attr}() at line {node.lineno}"
+                )
+            if node.func.attr == "execute" and node.args:
+                arg0 = node.args[0]
+                sql_text = ""
+                if isinstance(arg0, ast.Constant) and isinstance(arg0.value, str):
+                    sql_text = arg0.value.lower()
+                elif isinstance(arg0, ast.Call) and arg0.args and isinstance(arg0.args[0], ast.Constant) and isinstance(arg0.args[0].value, str):
+                    sql_text = arg0.args[0].value.lower()
+                if any(keyword in sql_text for keyword in mutating_sql):
+                    violations.append(
+                        f"Contract track map governance violation in {rel}: mutating db.execute SQL at line {node.lineno}"
+                    )
     return violations
 
 

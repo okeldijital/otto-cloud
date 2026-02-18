@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import api from '../../lib/api';
 import Autocomplete from '../Autocomplete';
+import contractService from '../../services/contractService';
+import api from '../../lib/api';
 
 /**
  * Thin wrapper around global search to provide association memory style lookup.
@@ -12,6 +13,8 @@ const EntityTypeahead = ({
     onSelect,
     onChange,
     assetType,
+    mode = 'search',
+    partyTypes = 'artist,organization,individual',
 }) => {
     const [options, setOptions] = useState([]);
     const [selected, setSelected] = useState(multiple ? [] : null);
@@ -19,14 +22,45 @@ const EntityTypeahead = ({
 
     useEffect(() => {
         const timer = setTimeout(async () => {
-            if (!query || query.length < 1) {
-                setOptions([]);
-                return;
-            }
             try {
-                // Optional: show a loading state in the results
-                // setOptions([{ id: 'loading', name: 'Searching...', loading: true }]);
-                const res = await api.get(`/search?q=${encodeURIComponent(query)}`);
+                if (mode === 'party') {
+                    if (!query || query.length < 1) {
+                        setOptions([]);
+                        return;
+                    }
+                    const res = await contractService.partyLookup(query, partyTypes, 10);
+                    const rows = (res.data?.results || []).map((r) => ({
+                        id: r.id,
+                        label: r.display_name,
+                        name: r.display_name,
+                        entity_type: (r.entity_type || '').toString(),
+                    }));
+                    setOptions(rows);
+                    return;
+                }
+
+                if (mode === 'asset') {
+                    if (!query || query.length < 1) {
+                        setOptions([]);
+                        return;
+                    }
+                    let res;
+                    const at = (assetType || '').toLowerCase();
+                    if (at === 'track') res = await contractService.lookupTracks(query, 10);
+                    else if (at === 'work') res = await contractService.lookupWorks(query, 10);
+                    else res = await contractService.lookupReleases(query, 10);
+                    const rows = (res.data?.results || []).map((r) => ({
+                        id: r.id,
+                        label: r.title || r.name,
+                        name: r.title || r.name,
+                        entity_type: assetType || 'Asset',
+                    }));
+                    setOptions(rows);
+                    return;
+                }
+
+                // Default global search behavior for existing screens.
+                const res = await api.get(`/search?q=${encodeURIComponent(query || '')}`);
                 const data = res.data || {};
                 const aggregated = [
                     ...(data.artists || []).map((a) => ({ ...a, label: a.name, entity_type: 'Artist' })),
@@ -37,20 +71,14 @@ const EntityTypeahead = ({
                     ...(data.tracks || []).map((t) => ({ ...t, label: t.title, entity_type: 'Track' })),
                     ...(data.works || []).map((w) => ({ ...w, label: w.title, entity_type: 'Work' })),
                 ];
-
-                // Asset filter
-                const filtered =
-                    assetType && ['Work', 'Track', 'Release'].includes(assetType)
-                        ? aggregated.filter((o) => o.entity_type === assetType)
-                        : aggregated;
-                setOptions(filtered);
+                setOptions(aggregated);
             } catch (err) {
                 console.error('Typeahead search failed', err);
             }
         }, 250);
 
         return () => clearTimeout(timer);
-    }, [query, assetType]);
+    }, [query, assetType, mode, partyTypes]);
 
     const optionProps = useMemo(() => {
         const base = options.map((o) => ({
@@ -81,7 +109,7 @@ const EntityTypeahead = ({
                 onChange={(val) => {
                     if (multiple) {
                         // In multiple mode, val is an array of IDs
-                        const mapped = [...(selected || []), ...optionProps].filter((o) => val.includes(o.id));
+                const mapped = [...(selected || []), ...optionProps].filter((o) => val.includes(o.id));
                         // Remove duplicates by ID
                         const unique = Array.from(new Map(mapped.map(m => [m.id, m])).values());
                         setSelected(unique);

@@ -154,6 +154,8 @@ class ContractResponse(ContractBase):
     documents: List[ContractDocumentResponse] = []
     split_groups: List[ContractSplitGroupResponse] = []
     status_quo: Optional[StatusQuoResponse] = None
+    status_quo_reasons: List[str] = []
+    counts: Optional[dict] = None
     status_quo_override: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)

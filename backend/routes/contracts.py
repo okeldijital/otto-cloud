@@ -23,6 +23,7 @@ from models.artist import Artist
 from models.release import Release
 from models.track import Track
 from models.work import Work
+from models.network import Organization, Individual
 from models.publisher import Publisher
 from models.label import Label
 from config import settings
@@ -30,6 +31,7 @@ from utils.audit import audit_service
 from services.status_quo import compute_contract_status
 from services.contract_create import create_contract_from_draft
 from services.contracts import create_contract_from_extract
+import uuid
 
 router = APIRouter(
     tags=["Contracts"],
@@ -55,15 +57,24 @@ def _entity_org_id(obj):
 
 
 def assert_same_org(entity_type: str, entity_id: int, org_id: int, db: Session):
+    et = (entity_type or "").strip().lower()
     model_map = {
+        "artist": Artist,
         "Artist": Artist,
+        "label": Label,
         "Label": Label,
+        "publisher": Publisher,
         "Publisher": Publisher,
+        "release": Release,
         "Release": Release,
+        "track": Track,
         "Track": Track,
+        "work": Work,
         "Work": Work,
+        "organization": Organization,
+        "individual": Individual,
     }
-    model = model_map.get(entity_type)
+    model = model_map.get(et) or model_map.get(entity_type)
     if not model:
         return
     record = db.query(model).filter(model.id == entity_id).first()
@@ -76,8 +87,19 @@ def assert_same_org(entity_type: str, entity_id: int, org_id: int, db: Session):
 
 def inject_status_quo(contract: Optional[Contract]) -> Optional[Contract]:
     if contract:
-        contract.status_quo = compute_contract_status(contract, contract.documents)
+        status = compute_contract_status(contract, contract.documents)
+        contract.status_quo = status
+        contract.status_quo_reasons = status.get("reasons", [])
+        contract.counts = {
+            "parties": len(contract.parties or []),
+            "assets": len(contract.assets or []),
+            "documents": len(contract.documents or []),
+        }
     return contract
+
+
+def _new_entity_id(prefix: str) -> str:
+    return f"{prefix}-{uuid.uuid4().hex[:10].upper()}"
 
 
 def ensure_contract_wizard_enabled():
@@ -106,6 +128,11 @@ def list_contracts(
 
     for c in contracts:
         status_quo = compute_contract_status(c, c.documents or [])
+        counts = {
+            "parties": len(c.parties or []),
+            "assets": len(c.assets or []),
+            "documents": len(c.documents or []),
+        }
         rows.append({
             "id": str(c.id),
             "title": c.title,
@@ -117,7 +144,10 @@ def list_contracts(
             "parties_count": len(c.parties or []),
             "assets_count": len(c.assets or []),
             "documents_count": len(c.documents or []),
-            "status_quo": status_quo,
+            "counts": counts,
+            "status_quo": str((status_quo or {}).get("status", "RED")).lower(),
+            "status_quo_reasons": status_quo.get("reasons", []),
+            "status_quo_detail": status_quo,
             "split_summary": split_summary(c),
         })
 
@@ -282,6 +312,10 @@ async def create_contract_via_extract(
         msg = str(exc)
         if msg == "invalid_file":
             raise HTTPException(status_code=422, detail="invalid file")
+        if msg == "confirmation_required":
+            raise HTTPException(status_code=422, detail="confirmation required")
+        if msg in {"track_not_found_or_forbidden", "invalid_track_ids"}:
+            raise HTTPException(status_code=403, detail="track ids are not accessible for this organization")
         if msg in {"invalid_contract_type", "invalid_status"}:
             raise HTTPException(status_code=422, detail=msg)
         raise HTTPException(status_code=422, detail=msg)
@@ -354,7 +388,23 @@ def add_party(
     # Cross-org guard for system entities
     if party_data.entity_id and party_data.entity_type and party_data.entity_type != "External":
         assert_same_org(party_data.entity_type, party_data.entity_id, org_id, db)
-    contract_repository.add_party(db, contract_id, org_id, party_data.model_dump())
+    if party_data.split_percent is not None and not (0 <= float(party_data.split_percent) <= 100):
+        raise HTTPException(status_code=422, detail="split_percent must be between 0 and 100")
+    party_payload = party_data.model_dump()
+    existing = (
+        db.query(ContractParty)
+        .filter(
+            ContractParty.contract_id == contract_id,
+            ContractParty.organization_id == org_id,
+            ContractParty.entity_type == party_payload.get("entity_type"),
+            ContractParty.entity_id == party_payload.get("entity_id"),
+            ContractParty.external_name == party_payload.get("external_name"),
+            ContractParty.role == party_payload.get("role"),
+        )
+        .first()
+    )
+    if not existing:
+        contract_repository.add_party(db, contract_id, org_id, party_payload)
     audit_service.log(db, "UPDATE", "ContractParty", contract_id, current_user.id, changes={"add_party": party_data.model_dump()}, organization_id=org_id)
     contract_repository.get_with_details(db, contract_id, org_id)
     return inject_status_quo(contract_repository.get_with_details(db, contract_id, org_id))
@@ -391,10 +441,194 @@ def add_asset(
     if not contract:
         raise HTTPException(status_code=404, detail="Contract not found")
     assert_same_org(asset_data.asset_type.capitalize(), asset_data.asset_id, org_id, db)
-    contract_repository.add_asset(db, contract_id, org_id, asset_data.model_dump())
+    asset_payload = asset_data.model_dump()
+    existing = (
+        db.query(ContractAsset)
+        .filter(
+            ContractAsset.contract_id == contract_id,
+            ContractAsset.organization_id == org_id,
+            ContractAsset.asset_type == asset_payload.get("asset_type"),
+            ContractAsset.asset_id == asset_payload.get("asset_id"),
+        )
+        .first()
+    )
+    if not existing:
+        contract_repository.add_asset(db, contract_id, org_id, asset_payload)
     audit_service.log(db, "UPDATE", "ContractAsset", contract_id, current_user.id, changes={"add_asset": asset_data.model_dump()}, organization_id=org_id)
     contract_repository.get_with_details(db, contract_id, org_id)
     return inject_status_quo(contract_repository.get_with_details(db, contract_id, org_id))
+
+
+@router.get("/party_lookup")
+def party_lookup(
+    q: str = "",
+    types: str = "artist,organization,individual",
+    limit: int = 10,
+    db: Session = Depends(get_db),
+    org_id: int = Depends(get_current_organization_id),
+    current_user=Depends(get_current_user),
+):
+    query = (q or "").strip()
+    kinds = set([t.strip().lower() for t in (types or "").split(",") if t.strip()])
+    results = []
+
+    if not query:
+        return {"results": []}
+
+    if "artist" in kinds:
+        rows = (
+            db.query(Artist)
+            .filter(Artist.organization_id == org_id, Artist.name.ilike(f"%{query}%"))
+            .limit(limit)
+            .all()
+        )
+        for r in rows:
+            results.append({"entity_type": "artist", "id": r.id, "display_name": r.name})
+
+    if "organization" in kinds:
+        rows = (
+            db.query(Organization)
+            .filter(Organization.organization_id == org_id, Organization.name.ilike(f"%{query}%"))
+            .limit(limit)
+            .all()
+        )
+        for r in rows:
+            results.append({"entity_type": "organization", "id": r.id, "display_name": r.name})
+
+    if "individual" in kinds:
+        rows = (
+            db.query(Individual)
+            .filter(
+                Individual.organization_id == org_id,
+                ((Individual.first_name + " " + Individual.last_name).ilike(f"%{query}%"))
+                | (Individual.first_name.ilike(f"%{query}%"))
+                | (Individual.last_name.ilike(f"%{query}%")),
+            )
+            .limit(limit)
+            .all()
+        )
+        for r in rows:
+            display = f"{(r.first_name or '').strip()} {(r.last_name or '').strip()}".strip() or r.email or "Unnamed Individual"
+            results.append({"entity_type": "individual", "id": r.id, "display_name": display})
+
+    return {"results": results[:limit]}
+
+
+@router.post("/artists")
+def create_artist_inline(
+    payload: dict,
+    db: Session = Depends(get_db),
+    org_id: int = Depends(get_current_organization_id),
+    current_user=Depends(get_current_user),
+):
+    name = (payload.get("name") or "").strip()
+    if not name:
+        raise HTTPException(status_code=422, detail="name is required")
+    existing = db.query(Artist).filter(Artist.organization_id == org_id, Artist.name == name).first()
+    if existing:
+        return {"id": existing.id, "name": existing.name}
+    row = Artist(organization_id=org_id, artist_id=_new_entity_id("ART"), name=name)
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return {"id": row.id, "name": row.name}
+
+
+@router.post("/organizations")
+def create_organization_inline(
+    payload: dict,
+    db: Session = Depends(get_db),
+    org_id: int = Depends(get_current_organization_id),
+    current_user=Depends(get_current_user),
+):
+    name = (payload.get("name") or "").strip()
+    if not name:
+        raise HTTPException(status_code=422, detail="name is required")
+    existing = db.query(Organization).filter(Organization.organization_id == org_id, Organization.name == name).first()
+    if existing:
+        return {"id": existing.id, "name": existing.name}
+    row = Organization(organization_id=org_id, name=name, org_type=(payload.get("org_type") or "Other"))
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return {"id": row.id, "name": row.name}
+
+
+@router.post("/individuals")
+def create_individual_inline(
+    payload: dict,
+    db: Session = Depends(get_db),
+    org_id: int = Depends(get_current_organization_id),
+    current_user=Depends(get_current_user),
+):
+    name = (payload.get("name") or "").strip()
+    if not name:
+        raise HTTPException(status_code=422, detail="name is required")
+    first, *rest = name.split(" ")
+    last = " ".join(rest).strip()
+    row = Individual(
+        organization_id=org_id,
+        first_name=first,
+        last_name=last or None,
+        email=payload.get("email"),
+        role=payload.get("role") or "Other",
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    display = f"{(row.first_name or '').strip()} {(row.last_name or '').strip()}".strip()
+    return {"id": row.id, "name": display}
+
+
+@router.get("/tracks")
+def lookup_tracks(
+    q: str = "",
+    limit: int = 10,
+    db: Session = Depends(get_db),
+    org_id: int = Depends(get_current_organization_id),
+    current_user=Depends(get_current_user),
+):
+    rows = (
+        db.query(Track)
+        .filter(Track.organization_id == org_id, Track.title.ilike(f"%{(q or '').strip()}%"))
+        .limit(limit)
+        .all()
+    )
+    return {"results": [{"id": r.id, "title": r.title} for r in rows]}
+
+
+@router.get("/works")
+def lookup_works(
+    q: str = "",
+    limit: int = 10,
+    db: Session = Depends(get_db),
+    org_id: int = Depends(get_current_organization_id),
+    current_user=Depends(get_current_user),
+):
+    rows = (
+        db.query(Work)
+        .filter(Work.organization_id == org_id, Work.title.ilike(f"%{(q or '').strip()}%"))
+        .limit(limit)
+        .all()
+    )
+    return {"results": [{"id": r.id, "title": r.title} for r in rows]}
+
+
+@router.get("/releases")
+def lookup_releases(
+    q: str = "",
+    limit: int = 10,
+    db: Session = Depends(get_db),
+    org_id: int = Depends(get_current_organization_id),
+    current_user=Depends(get_current_user),
+):
+    rows = (
+        db.query(Release)
+        .filter(Release.organization_id == org_id, Release.title.ilike(f"%{(q or '').strip()}%"))
+        .limit(limit)
+        .all()
+    )
+    return {"results": [{"id": r.id, "title": r.title} for r in rows]}
 
 
 @router.delete("/contracts/{contract_id}/assets/{asset_id}", response_model=ContractResponse)

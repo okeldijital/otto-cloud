@@ -43,6 +43,7 @@ const ContractDetail = () => {
     const [partyModalOpen, setPartyModalOpen] = useState(false);
     const [partyForm, setPartyForm] = useState({
         party_mode: 'system',
+        entity_type: 'artist',
         role: '',
         entity: null,
         external_name: '',
@@ -161,7 +162,7 @@ const ContractDetail = () => {
         const payload =
             partyForm.party_mode === 'system'
                 ? {
-                    entity_type: partyForm.entity?.entity_type || 'Artist',
+                    entity_type: (partyForm.entity?.entity_type || partyForm.entity_type || 'artist').toString().replace(/^./, (m) => m.toUpperCase()),
                     entity_id: partyForm.entity?.id,
                     role: partyForm.role,
                     split_percent: Number(partyForm.split_percent) || null,
@@ -193,6 +194,7 @@ const ContractDetail = () => {
             setPartyModalOpen(false);
             setPartyForm({
                 party_mode: 'system',
+                entity_type: 'artist',
                 role: '',
                 entity: null,
                 external_name: '',
@@ -245,6 +247,30 @@ const ContractDetail = () => {
         } catch (err) {
             console.error(err);
             alert('Failed to add assets');
+        }
+    };
+
+    const createPartyInline = async () => {
+        if (!partyForm.external_name?.trim()) return;
+        try {
+            let res;
+            if (partyForm.entity_type === 'artist') res = await contractService.createArtistInline(partyForm.external_name.trim());
+            else if (partyForm.entity_type === 'organization') res = await contractService.createOrganizationInline(partyForm.external_name.trim());
+            else res = await contractService.createIndividualInline(partyForm.external_name.trim());
+            const data = res.data || res;
+            setPartyForm({
+                ...partyForm,
+                party_mode: 'system',
+                entity: {
+                    id: data.id,
+                    entity_type: partyForm.entity_type,
+                    name: data.name,
+                    label: data.name,
+                },
+            });
+        } catch (err) {
+            console.error(err);
+            alert('Failed to create entity');
         }
     };
 
@@ -322,9 +348,9 @@ const ContractDetail = () => {
                     <p className="muted mono">{contract.contract_number}</p>
                 </div>
                 <div className="header-actions">
-                    {contract.status_quo && (
-                        <div className={`status - badge ${HEALTH_COLORS[contract.status_quo.status] || 'neutral'} `} title={contract.status_quo.reasons?.join(', ')}>
-                            Health: {contract.status_quo.status}
+                    {(contract.status_quo || contract.status_quo_reasons) && (
+                        <div className={`status - badge ${HEALTH_COLORS[(contract.status_quo?.status || '').toUpperCase()] || 'neutral'} `} title={(contract.status_quo_reasons || contract.status_quo?.reasons || []).join(', ')}>
+                            Health: {contract.status_quo?.status || 'RED'}
                             {contract.status_quo_override && <span style={{ marginLeft: '4px', opacity: 0.7 }}>(Override)</span>}
                         </div>
                     )}
@@ -754,13 +780,41 @@ const ContractDetail = () => {
                     </select>
                 </div>
                 {partyForm.party_mode === 'system' ? (
+                    <>
                     <div className="form-group">
-                        <label>Entity</label>
+                        <label>Entity Type</label>
+                        <select
+                            className="input"
+                            value={partyForm.entity_type}
+                            onChange={(e) => setPartyForm({ ...partyForm, entity_type: e.target.value, entity: null })}
+                        >
+                            <option value="artist">Artist</option>
+                            <option value="organization">Organization</option>
+                            <option value="individual">Individual</option>
+                        </select>
+                    </div>
+                    <div className="form-group">
+                        <label>Entity Lookup</label>
                         <EntityTypeahead
-                            placeholder="Search artists, labels, publishers…"
+                            placeholder="Search org entities…"
+                            mode="party"
+                            partyTypes={partyForm.entity_type}
                             onSelect={(entity) => setPartyForm({ ...partyForm, entity })}
                         />
                     </div>
+                    <div className="form-group">
+                        <label>Create Inline (if not found)</label>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                            <input
+                                className="input"
+                                value={partyForm.external_name}
+                                placeholder="New entity name"
+                                onChange={(e) => setPartyForm({ ...partyForm, external_name: e.target.value })}
+                            />
+                            <button type="button" className="btn" onClick={createPartyInline}>Create</button>
+                        </div>
+                    </div>
+                    </>
                 ) : (
                     <div className="form-group">
                         <label>External Name</label>
@@ -833,6 +887,7 @@ const ContractDetail = () => {
                         onChange={(assets) => setAssetForm({ ...assetForm, assets })}
                         placeholder="Search by title or code"
                         assetType={assetForm.asset_type}
+                        mode="asset"
                     />
                 </div>
                 <div className="form-group">

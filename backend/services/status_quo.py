@@ -9,35 +9,35 @@ def compute_contract_status(contract: Any, documents: List[Any]) -> Dict[str, An
     GREEN: Everything OK.
     """
     reasons = []
-    status = "GREEN"
+    status = "RED"
 
     # Check for manual override
     if getattr(contract, 'status_quo_override', None):
         return {"status": contract.status_quo_override, "reasons": ["Manual override set"]}
 
-    # Rule: If status is not Draft, MUST have at least one document
-    if contract.status != "Draft":
-        if not documents:
-            status = "RED"
-            reasons.append("Active contract missing signed PDF document")
-        else:
-            # Check if any document is a PDF (simplified check)
-            has_pdf = any(doc.mime_type == "application/pdf" or (doc.file_name and doc.file_name.lower().endswith('.pdf')) for doc in documents)
-            if not has_pdf:
-                status = "RED"
-                reasons.append("Active contract missing PDF document (non-PDF found)")
+    try:
+        parties_count = len(getattr(contract, "parties", []) or [])
+        assets_count = len(getattr(contract, "assets", []) or [])
+        documents_count = len(documents or [])
+    except Exception:
+        return {"status": "RED", "reasons": ["unknown_state"]}
 
-    # Rule: Expiration warning (Amber)
-    if contract.status == "Active" and contract.end_date:
-        today = date.today()
-        days_to_end = (contract.end_date - today).days
-        if days_to_end < 0:
-            status = "RED"
-            reasons.append(f"Contract expired on {contract.end_date}")
-        elif days_to_end < 60:
-            if status != "RED":
-                status = "AMBER"
-            reasons.append(f"Contract expiring soon ({days_to_end} days left)")
+    if parties_count <= 0:
+        reasons.append("missing_parties")
+    if assets_count <= 0:
+        reasons.append("missing_assets")
+    if documents_count <= 0:
+        reasons.append("missing_documents")
+
+    if parties_count > 0 and assets_count > 0 and documents_count > 0:
+        status = "GREEN"
+        reasons = []
+    elif documents_count > 0 and (parties_count <= 0 or assets_count <= 0):
+        status = "AMBER"
+
+    if not isinstance(reasons, list):
+        status = "RED"
+        reasons = ["unknown_state"]
 
     return {"status": status, "reasons": reasons}
 

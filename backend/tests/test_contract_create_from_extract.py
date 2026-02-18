@@ -189,7 +189,7 @@ def test_disabled_flags_404_and_ai_health_200(client, db, monkeypatch):
     health_res = client.get("/api/ai/health")
     assert health_res.status_code == 200
 
-    payload = {"contract_type": "Remix", "status": "Draft", "user_overrides": {"title": "x"}}
+    payload = {"contract_type": "Remix", "status": "Draft", "confirm_non_destructive": True, "user_overrides": {"title": "x"}}
     res = client.post(
         "/api/contracts/from_extract",
         files={"file": ("x.pdf", b"%PDF-1.4 abc", "application/pdf")},
@@ -209,6 +209,7 @@ def test_create_from_extract_and_core_counts(client, db, monkeypatch):
     payload = {
         "contract_type": "Remix",
         "status": "Draft",
+        "confirm_non_destructive": True,
         "user_overrides": {
             "title": "KAARGO M2KR Remix Agreement",
             "start_date": "2024-03-15",
@@ -247,6 +248,7 @@ def test_org_isolation_for_created_contract(client, db, monkeypatch):
     payload = {
         "contract_type": "Recording",
         "status": "Draft",
+        "confirm_non_destructive": True,
         "user_overrides": {"title": "Org A Private Contract"},
     }
     create_res = client.post(

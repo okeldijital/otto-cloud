@@ -38,6 +38,16 @@ const contractService = {
     },
     buildFileUrl: (filePath) => `${BASE_URL}${filePath}`,
     buildDownloadUrl: (contractId, docId) => `${BASE_URL}${ENDPOINT}/${contractId}/documents/${docId}/download`,
+
+    // Lookup + inline create
+    partyLookup: (q, types = 'artist,organization,individual', limit = 10) =>
+        api.get('/party_lookup', { params: { q, types, limit } }),
+    lookupTracks: (q, limit = 10) => api.get('/tracks', { params: { q, limit } }),
+    lookupWorks: (q, limit = 10) => api.get('/works', { params: { q, limit } }),
+    lookupReleases: (q, limit = 10) => api.get('/releases', { params: { q, limit } }),
+    createArtistInline: (name) => api.post('/artists', { name }),
+    createOrganizationInline: (name) => api.post('/organizations', { name }),
+    createIndividualInline: (name) => api.post('/individuals', { name }),
 };
 
 export default contractService;

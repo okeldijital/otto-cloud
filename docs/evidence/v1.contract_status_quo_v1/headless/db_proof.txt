@@ -1,0 +1,3 @@
+before {'contracts': 1, 'contract_parties': 0, 'contract_assets': 0, 'contract_documents': 0}
+after {'contracts': 1, 'contract_parties': 1, 'contract_assets': 1, 'contract_documents': 1}
+delta {'contracts': 0, 'contract_parties': 1, 'contract_assets': 1, 'contract_documents': 1}

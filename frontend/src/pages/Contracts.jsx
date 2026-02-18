@@ -16,6 +16,12 @@ const STATUS_COLORS = {
     Terminated: 'danger',
 };
 
+const HEALTH_COLORS = {
+    red: 'danger',
+    amber: 'warning',
+    green: 'success',
+};
+
 const CONTRACT_TYPES = ['Recording', 'Publishing', 'Remix', 'License'];
 const EXPIRING_BUCKETS = [
     { label: 'Any time', value: 0 },
@@ -296,13 +302,18 @@ const Contracts = () => {
                                         <div className="muted mono small">{c.contract_number || '—'}</div>
                                     </td>
                                     <td title={partyTooltip(c)}>
-                                        {c.parties?.length ?? c.party_count ?? 0} parties
+                                        {(c.counts?.parties ?? c.parties?.length ?? c.party_count ?? 0)} parties
                                     </td>
-                                    <td>{c.assets?.length ?? c.asset_count ?? 0} assets</td>
+                                    <td>{(c.counts?.assets ?? c.assets?.length ?? c.asset_count ?? 0)} assets</td>
                                     <td>
                                         <span className="doc-chip">
-                                            <FileText size={14} /> {c.documents?.length ? `v${c.documents.length}` : c.primary_document_id ? 'PDF' : '—'}
+                                            <FileText size={14} /> {(c.counts?.documents ?? c.documents?.length) ? `v${c.counts?.documents ?? c.documents?.length}` : c.primary_document_id ? 'PDF' : '—'}
                                         </span>
+                                        <div style={{ marginTop: 4 }}>
+                                            <span className={`status-badge ${HEALTH_COLORS[c.status_quo] || 'neutral'}`}>
+                                                {(c.status_quo || 'red').toUpperCase()}
+                                            </span>
+                                        </div>
                                     </td>
                                     <td className={isExpired(c.end_date) ? 'danger-text' : ''}>
                                         {(c.start_date || '—')} → {(c.end_date || '—')}
