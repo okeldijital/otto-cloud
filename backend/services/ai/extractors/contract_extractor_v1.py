@@ -1,72 +1,83 @@
 import re
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional
+
 from schemas.ai_contracts import (
-    ContractExtractionV1, 
-    ContractSplitV1, 
-    ContractPartyV1, 
-    SplitTypeV1, 
-    PartyRoleV1,
-    WorksHintsV1
+    ContractDatesV2,
+    ContractExtractionV1,
+    ContractPartyV1,
+    ContractSplitV1,
+    ContractTermsV2,
+    SplitTypeV1,
 )
-from services.ai.engine import get_ai_engine, AIError
 from services.ai.parsing.rules.remix_agreement_v1 import (
     extract_parties_from_text,
     extract_splits_governed,
-    extract_work_hints
+    extract_work_hints,
 )
 
-def deterministic_extract(text: str) -> ContractExtractionV1:
-    """
-    Governed structured extraction using deterministic rules.
-    """
+
+def _to_date(raw: Optional[str]):
+    if not raw:
+        return None
+    for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d.%m.%Y"):
+        try:
+            return datetime.strptime(raw, fmt).date()
+        except Exception:
+            continue
+    return None
+
+
+def deterministic_extract(text: str, filename: Optional[str] = None) -> ContractExtractionV1:
     warnings = []
     parser_version = "deterministic_v1"
-    
-    # 1. Extract Parties
+
     raw_parties = extract_parties_from_text(text)
     parties = [ContractPartyV1(**p) for p in raw_parties]
-    
-    # 2. Extract Splits
+    if not parties:
+        warnings.append("no_parties_detected")
+
     raw_splits = extract_splits_governed(text, raw_parties)
     splits = [ContractSplitV1(**s) for s in raw_splits]
-    
-    # Associate splits with known parties if still "Unknown Party"
-    if parties:
-        for s in splits:
-            if s.party_name == "Unknown Party":
-                # If we only have one party, maybe it's them? 
-                # (Simple logic: if one party and one split, associate)
-                if len(parties) == 1:
-                    s.party_name = parties[0].display_name
-                    s.party_role = parties[0].role
-                else:
-                    s.notes = (s.notes or "") + " [UNASSIGNED]"
-    
-    # 3. Compute Splits Total
-    splits_total = sum(s.percent for s in splits)
-    if abs(splits_total - 100.0) > 0.05:
-        warnings.append(f"splits_total_mismatch: Computed total is {splits_total}%")
-    
-    # 4. Extract Work Hints
-    hints_dict = extract_work_hints(text)
-    works_hints = WorksHintsV1(**hints_dict)
-    
-    # 5. Extract Basic Date (fallback)
-    date_pattern = r'(\d{4}-\d{2}-\d{2})|(\d{2}/\d{2}/\d{4})'
-    dates = re.findall(date_pattern, text)
-    effective_date = None
-    if dates:
-        d_str = dates[0][0] or dates[0][1]
-        try:
-            if '-' in d_str:
-                effective_date = datetime.strptime(d_str, '%Y-%m-%d').date()
-            else:
-                effective_date = datetime.strptime(d_str, '%d/%m/%Y').date()
-        except:
-            pass
 
-    # Confidence depends on whether we found parties/splits
+    if parties:
+        for split in splits:
+            if split.party_name == "Unknown Party" and len(parties) == 1:
+                split.party_name = parties[0].display_name
+                split.party_role = parties[0].role
+
+    splits_total = round(sum(s.percent for s in splits), 3)
+    if abs(splits_total - 100.0) > 0.05 and splits_total > 0:
+        warnings.append(f"splits_total_mismatch: Computed total is {splits_total}%")
+
+    hints_dict = extract_work_hints(text)
+
+    date_match = re.search(r"(\d{4}-\d{2}-\d{2}|\d{2}/\d{2}/\d{4}|\d{2}\.\d{2}\.\d{4})", text or "")
+    effective_date = _to_date(date_match.group(1)) if date_match else None
+
+    if not effective_date:
+        warnings.append("effective_date_not_specified")
+    warnings.append("no_end_date_specified")
+
+    title = None
+    if filename:
+        title = re.sub(r"\.pdf$", "", filename, flags=re.IGNORECASE)
+
+    terms = ContractTermsV2(
+        governing_law="South Africa" if "south africa" in (text or "").lower() else None,
+        term_summary="term-based agreement" if re.search(r"\b\d+\s+years?\b", text or "", re.IGNORECASE) else None,
+    )
+
+    dates = ContractDatesV2(
+        contract_date=effective_date.isoformat() if effective_date else None,
+        effective_date=effective_date.isoformat() if effective_date else None,
+        start_date=effective_date.isoformat() if effective_date else None,
+        end_date=None,
+        expiration_date=None,
+        end_date_specified=False,
+        source="deterministic",
+    )
+
     confidence = 0.5
     if parties and splits:
         confidence = 0.8
@@ -74,46 +85,24 @@ def deterministic_extract(text: str) -> ContractExtractionV1:
         confidence = 0.6
 
     return ContractExtractionV1(
-        contract_title="Governed Extraction (Deterministic V1)",
+        contract_title=title or "Governed Extraction (Deterministic V1)",
+        contract_date=effective_date,
         effective_date=effective_date,
+        start_date=effective_date,
         parties=parties,
         splits=splits,
         splits_total=splits_total,
-        works_hints=works_hints,
+        works_hints=hints_dict,
         raw_confidence=confidence,
         warnings=warnings,
-        parser_version=parser_version
+        parser_version=parser_version,
+        dates=dates,
+        terms=terms,
+        key_terms=[
+            {"key": "governing_law", "value": terms.governing_law or "", "source": "deterministic"},
+        ],
     )
 
-from config import settings
 
-def extract_contract_intelligence(text: str) -> ContractExtractionV1:
-    """
-    Main entry point for Phase 2 contract extraction.
-    Tries AI engine first if enabled, falls back to deterministic rules.
-    """
-    engine = None
-    if settings.AI_ENABLED and getattr(settings, "AI_CONTRACT_INTEL_ENABLED", False):
-        try:
-            # Lazy import here if preferred, or use the global import
-            from services.ai.engine import get_ai_engine
-            engine = get_ai_engine()
-            
-            # Additional check: if engine is NullEngine or something similar, it might still fail gracefully
-            system_prompt = "You are a legal contract analyzer. Extract structured metadata from the provided text."
-            user_prompt = f"Analyze this contract text and return valid JSON:\n\n{text[:5000]}" # Limit size for safety
-            
-            extraction = engine.complete_json(
-                schema=ContractExtractionV1,
-                system=system_prompt,
-                user=user_prompt
-            )
-            if extraction:
-                extraction.parser_version = "ai_v1"
-                return extraction
-        except Exception:
-            # Fallback silently or log if needed
-            pass
-    
-    # Fallback to deterministic if engine is disabled, NullEngine, or fails
-    return deterministic_extract(text)
+def extract_contract_intelligence(text: str, filename: Optional[str] = None) -> ContractExtractionV1:
+    return deterministic_extract(text, filename=filename)

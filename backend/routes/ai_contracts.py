@@ -1,5 +1,6 @@
 import logging
 import uuid
+import hashlib
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
@@ -16,11 +17,19 @@ from schemas.ai_contracts import (
 )
 from services.ai.parsing.pdf_extract import extract_text_from_pdf
 from services.ai.extractors.contract_extractor_v1 import extract_contract_intelligence
+from services.ai.extractors.contract_extractor_llm_v1 import extract_contract_intelligence_llm_v1
+from services.ai.llm.errors import LLMDisabledError, LLMParseError, LLMRequestError
 from services.ai.matchers.contract_resolver_v1 import resolve_entities
 from services.ai.audit import log_ai_request
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+
+def _extract_request_hash(org_id, user_id, filename: str, text: str) -> str:
+    sample = (text or "")[:2048]
+    payload = f"{org_id}|{user_id}|{filename}|{sample}"
+    return hashlib.sha256(payload.encode()).hexdigest()
 
 def ensure_ai_contract_intel_enabled():
     """Dependency to check if contract intelligence is enabled"""
@@ -75,12 +84,41 @@ async def extract_contract_endpoint(
                 },
             )
 
-        extraction = extract_contract_intelligence(parse_text)
-        extraction.contract_date = extraction.effective_date or extraction.start_date
-        extraction.expiration_date = extraction.end_date
+        extraction = None
+        llm_warning = None
+        if settings.llm_extract_enabled():
+            try:
+                extraction = extract_contract_intelligence_llm_v1(
+                    text=parse_text,
+                    filename=file.filename,
+                    settings=settings,
+                    org_id=current_user.organization_id,
+                    user_id=current_user.id,
+                )
+            except (LLMRequestError, LLMParseError) as llm_exc:
+                logger.warning("contract extract llm failed; fallback deterministic: %s", str(llm_exc))
+                llm_warning = "llm_failed_fallback_deterministic"
+        else:
+            llm_warning = "llm_disabled_fallback"
+
+        if extraction is None:
+            extraction = extract_contract_intelligence(parse_text, filename=file.filename)
+
+        if llm_warning:
+            extraction.warnings = list(extraction.warnings or []) + [llm_warning]
+
+        extraction.contract_date = extraction.effective_date or extraction.start_date or extraction.contract_date
+        extraction.expiration_date = extraction.end_date or extraction.expiration_date
         if (not extraction.contract_title) or extraction.contract_title == "Governed Extraction (Deterministic V1)":
             extraction.contract_title = Path(file.filename).stem
             extraction.warnings = list(extraction.warnings or []) + ["contract_title_fallback_from_filename"]
+
+        request_hash = _extract_request_hash(
+            current_user.organization_id,
+            current_user.id,
+            file.filename,
+            parse_text,
+        )
 
         # Audit logging (hash only)
         log_ai_request(
@@ -88,8 +126,8 @@ async def extract_contract_endpoint(
             org_id=current_user.organization_id,
             user_id=current_user.id,
             action="contract_extraction",
-            message=f"Extracted PDF: {parsed['sha256']}",
-            tool="pdf_extract",
+            message=f"Extracted PDF hash: {parsed['sha256']} req:{request_hash}",
+            tool="contract_extractor:llm_v1" if extraction.parser_version.startswith("llm_v1:") else "contract_extractor:deterministic",
             parser_version=extraction.parser_version or "contract_extractor_v1.2.2",
         )
         return extraction

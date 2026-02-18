@@ -1,0 +1,16 @@
+# disabled -> 404
+HTTP/1.1 404 Not Found
+date: Wed, 18 Feb 2026 04:57:08 GMT
+server: uvicorn
+content-length: 22
+content-type: application/json
+
+{"detail":"Not Found"}
+# enabled -> 200
+HTTP/1.1 200 OK
+date: Wed, 18 Feb 2026 04:57:10 GMT
+server: uvicorn
+content-length: 1376
+content-type: application/json
+
+{"contract_title":"KAARGO M2KR Remix Agreement","contract_id":null,"contract_date":null,"effective_date":null,"start_date":null,"expiration_date":null,"end_date":null,"territory":null,"exclusivity":null,"parties":[],"splits":[{"split_type":"MASTER","party_name":"Unknown Party","party_role":null,"percent":30.0,"notes":"Detected near match: 30 %"},{"split_type":"MASTER","party_name":"Unknown Party","party_role":null,"percent":25.0,"notes":"Detected near match: 25%"},{"split_type":"MASTER","party_name":"Unknown Party","party_role":null,"percent":50.0,"notes":"Detected near match: 50 %"}],"splits_total":105.0,"works_hints":{"artists":[],"tracks":[],"releases":[]},"raw_confidence":0.6,"warnings":["no_parties_detected","splits_total_mismatch: Computed total is 105.0%","effective_date_not_specified","no_end_date_specified","llm_disabled_fallback"],"parser_version":"deterministic_v1","contract_type":null,"dates":{"contract_date":null,"effective_date":null,"start_date":null,"end_date":null,"expiration_date":null,"end_date_specified":false,"source":"deterministic"},"terms":{"grant_of_rights":null,"territory":null,"exclusivity":null,"term_summary":"term-based agreement","renewal":null,"reversion":null,"governing_law":"South Africa","delivery":null,"royalty_basis":null,"notes":[]},"key_terms":[{"key":"governing_law","value":"South Africa","source":"deterministic"}]}

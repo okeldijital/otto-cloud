@@ -68,7 +68,25 @@ class Settings(BaseSettings):
     AI_CONTRACT_ATTACH_PLAN_ENABLED: bool = True
     AI_CONTRACT_ATTACH_APPLY_ENABLED: bool = True
     AI_ATTACH_REQUIRE_BACKUP: bool = True
+    AI_LLM_EXTRACT_ENABLED: bool = False
+    AI_LLM_PROVIDER: str = "openai_compatible"
+    AI_LLM_API_BASE: str = ""
+    AI_LLM_API_KEY: str = ""
+    AI_LLM_MODEL: str = "gpt-4.1-mini"
+    AI_LLM_TIMEOUT_S: int = 45
+    AI_LLM_MAX_INPUT_CHARS: int = 120000
+    AI_LLM_MAX_PAGES: int = 6
+    AI_LLM_TEMPERATURE: float = 0.0
+    AI_LLM_FORCE_JSON: bool = True
     ADMIN_RESTORE_ENABLED: bool = True
+
+    def llm_extract_enabled(self) -> bool:
+        return (
+            self.AI_ENABLED
+            and self.AI_CONTRACT_INTEL_ENABLED
+            and self.AI_LLM_EXTRACT_ENABLED
+            and bool(self.AI_LLM_API_KEY)
+        )
 
     def __init__(self, **values):
         super().__init__(**values)

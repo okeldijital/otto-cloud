@@ -120,7 +120,11 @@ def build_core_write_proposals(
                         "contract_id": contract.id,
                         "entity_type": "External",
                         "external_name": display,
-                        "role": party.role.value if party.role else "Other",
+                        "role": (
+                            party.role.value
+                            if hasattr(party.role, "value")
+                            else (party.role if party.role else "Other")
+                        ),
                         "split_percent": None,
                     },
                     conflicts=[],

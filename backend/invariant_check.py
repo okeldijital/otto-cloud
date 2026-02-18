@@ -132,6 +132,7 @@ def main():
     scc_violations = check_scc_governance()
     contract_wizard_violations = check_contract_wizard_governance()
     contract_from_extract_violations = check_contract_create_from_extract_governance()
+    llm_extract_violations = check_llm_contract_extract_governance()
     
     all_violations = (
         drift_violations
@@ -147,6 +148,7 @@ def main():
         + scc_violations
         + contract_wizard_violations
         + contract_from_extract_violations
+        + llm_extract_violations
     )
     
     if all_violations:
@@ -1026,6 +1028,66 @@ def check_contract_create_from_extract_governance():
                 violations.append(
                     f"Contract from_extract governance violation in {rel}: mutating db.execute SQL at line {node.lineno}"
                 )
+
+    return violations
+
+
+def check_llm_contract_extract_governance():
+    """
+    LLM hybrid extraction must remain read-only in:
+      - backend/routes/ai_contracts.py (extract path)
+      - backend/services/ai/llm/*
+      - backend/services/ai/extractors/contract_extractor_llm_v1.py
+    """
+    project_root = Path(__file__).resolve().parent.parent
+    targets = [
+        project_root / "backend/routes/ai_contracts.py",
+        project_root / "backend/services/ai/extractors/contract_extractor_llm_v1.py",
+    ]
+
+    llm_root = project_root / "backend/services/ai/llm"
+    if llm_root.exists():
+        for root, _, files in os.walk(llm_root):
+            for file in files:
+                if file.endswith(".py"):
+                    targets.append(Path(root) / file)
+
+    violations = []
+    forbidden_methods = {"add", "commit", "delete", "update"}
+    mutating_sql = ("insert", "update", "delete", "alter", "drop", "create")
+
+    for path in targets:
+        if not path.exists():
+            continue
+        tree = get_ast(path)
+        if not tree:
+            continue
+        rel = os.path.relpath(path, project_root / "backend")
+
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
+                continue
+            method = node.func.attr
+            if method in forbidden_methods:
+                violations.append(
+                    f"LLM extract governance violation in {rel}: .{method}() at line {node.lineno}"
+                )
+            if method == "execute" and node.args:
+                arg0 = node.args[0]
+                sql_text = ""
+                if isinstance(arg0, ast.Constant) and isinstance(arg0.value, str):
+                    sql_text = arg0.value.lower()
+                elif (
+                    isinstance(arg0, ast.Call)
+                    and arg0.args
+                    and isinstance(arg0.args[0], ast.Constant)
+                    and isinstance(arg0.args[0].value, str)
+                ):
+                    sql_text = arg0.args[0].value.lower()
+                if any(k in sql_text for k in mutating_sql):
+                    violations.append(
+                        f"LLM extract governance violation in {rel}: mutating db.execute SQL at line {node.lineno}"
+                    )
 
     return violations
 

@@ -1,0 +1,14 @@
+db_path /var/folders/5g/c9pt9dzn7rs987kfcprbn2zh0000gp/T/tmp.qOzcAEuMBl/db/otto.sqlite
+# core table counts
+artists|0
+tracks|0
+works|0
+releases|0
+contracts|0
+# ai_audit_log latest
+4|contract_extraction|contract_extractor:deterministic|e0cdc4156c509fa1c2dbead208131377dee67dd2959bab9f19b59135167dc6a1|deterministic_v1
+3|contract_extraction|contract_extractor:deterministic|e0cdc4156c509fa1c2dbead208131377dee67dd2959bab9f19b59135167dc6a1|deterministic_v1
+2|contract_resolution_persist|contract_resolver:v1|e8c9ff577104c425ec2d22a0e70e2d1109e1f358d3243a330fad4e536779054f|v1
+# ai_audit_log columns
+id,organization_id,user_id,action,tool,request_hash,parser_version,created_at
+has_raw_text_column False

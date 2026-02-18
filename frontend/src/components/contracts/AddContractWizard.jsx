@@ -37,14 +37,15 @@ export default function AddContractWizard({ isOpen, onClose, onCreated }) {
     setError('');
     try {
       const data = await contractsWizardClient.extract(file);
+      const dates = data?.dates || {};
       setExtraction(data);
       setForm((prev) => ({
         ...prev,
         user_overrides: {
           ...prev.user_overrides,
           title: data.contract_title || file.name.replace(/\.pdf$/i, ''),
-          start_date: data.contract_date || data.effective_date || data.start_date || null,
-          end_date: data.expiration_date || data.end_date || null,
+          start_date: dates.start_date || dates.effective_date || dates.contract_date || data.contract_date || data.effective_date || data.start_date || null,
+          end_date: dates.end_date || dates.expiration_date || data.expiration_date || data.end_date || null,
         },
       }));
       setStep(3);
@@ -85,7 +86,11 @@ export default function AddContractWizard({ isOpen, onClose, onCreated }) {
 
   return (
     <div className="modal-overlay" onClick={reset}>
-      <div className="entity-form-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 860 }}>
+      <div
+        className="entity-form-modal"
+        onClick={(e) => e.stopPropagation()}
+        style={{ maxWidth: 920, maxHeight: '88vh', overflowY: 'auto' }}
+      >
         <div className="entity-form-header">
           <h2>Add Contract Wizard</h2>
           <button className="btn ghost" onClick={reset}>Close</button>
@@ -116,6 +121,11 @@ export default function AddContractWizard({ isOpen, onClose, onCreated }) {
           <>
             <ContractExtractPreview extraction={extraction} />
             <ContractCreateReviewForm form={form} setForm={setForm} />
+            <div className="muted small" style={{ marginBottom: 8 }}>
+              {form.user_overrides.start_date ? `Start date prefilled: ${form.user_overrides.start_date}` : 'Start date: Not specified'}
+              {' | '}
+              {form.user_overrides.end_date ? `End date prefilled: ${form.user_overrides.end_date}` : 'No end date specified'}
+            </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button className="btn" onClick={() => setStep(1)}>Back</button>
               <button className="btn orange" disabled={loading || !form.user_overrides.title} onClick={createContract}>

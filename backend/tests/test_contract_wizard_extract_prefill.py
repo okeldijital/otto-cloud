@@ -102,6 +102,8 @@ def test_extract_prefill_happy_path(client, db, monkeypatch):
     assert body.get("parser_version")
     assert "warnings" in body
     assert "raw_confidence" in body
+    assert "dates" in body
+    assert "terms" in body
 
 
 def test_extract_prefill_non_pdf_returns_422(client, db, monkeypatch):
