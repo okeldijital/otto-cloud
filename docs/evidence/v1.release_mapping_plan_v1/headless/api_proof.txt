@@ -1,0 +1,94 @@
+=== GET /api/ai/release_integration/health ===
+HTTP/1.1 200
+{
+  "enabled_flags": {
+    "AI_ENABLED": true,
+    "AI_CONTRACT_INTEL_ENABLED": true,
+    "AI_CONTRACT_INTAKE_ENABLED": true,
+    "AI_RELEASE_VALIDATION_ENABLED": true,
+    "AI_RELEASE_INTEGRATION_ATTACH_ENABLED": true,
+    "AI_CONTRACT_INGEST_ENABLED": true
+  },
+  "version": "release_integration_v1"
+}
+
+=== POST /api/ai/release_integration/map_plan (enabled => 200) ===
+HTTP/1.1 200
+{
+  "status": "ok",
+  "mapping_version": "map_plan_v1",
+  "org_id": "00000000-0000-0000-0000-0000000032c9",
+  "release": {
+    "id": 1,
+    "title": "Map Release Evidence A"
+  },
+  "matches": {
+    "artists": [
+      {
+        "extract_name": "Map Artist",
+        "matched_entity": {
+          "entity_type": "artist",
+          "id": 1,
+          "display_name": "Map Artist"
+        },
+        "confidence": 1.0,
+        "strategy": "exact"
+      }
+    ],
+    "organizations": [
+      {
+        "extract_name": "Map Org A",
+        "matched_entity": {
+          "entity_type": "organization",
+          "id": 1,
+          "display_name": "Map Org A"
+        },
+        "confidence": 1.0,
+        "strategy": "exact"
+      }
+    ],
+    "individuals": [],
+    "tracks": [
+      {
+        "extract_title": "Map Track",
+        "matched_entity": {
+          "entity_type": "track",
+          "id": 1,
+          "display_name": "Map Track"
+        },
+        "confidence": 1.0,
+        "strategy": "exact"
+      }
+    ],
+    "works": []
+  },
+  "missing": {
+    "artists": [
+      "Map Org A"
+    ],
+    "organizations": [
+      "Map Artist"
+    ],
+    "individuals": [
+      "Map Artist",
+      "Map Org A"
+    ],
+    "tracks": [],
+    "works": [
+      "Map Track"
+    ]
+  },
+  "release_validation_flags": [
+    "missing_artwork"
+  ],
+  "notes": [
+    "unbound_split_party"
+  ],
+  "needs_review": true
+}
+
+=== POST /api/ai/release_integration/map_plan (disabled => 404) ===
+HTTP/1.1 404
+{
+  "detail": "Not Found"
+}

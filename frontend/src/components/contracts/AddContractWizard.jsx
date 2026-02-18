@@ -1,7 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import contractsWizardClient from '../../api/contractsWizardClient';
+import aiReleaseMappingClient from '../../api/aiReleaseMappingClient';
+import { CatalogService } from '../../services/catalog';
 import ContractExtractPreview from './ContractExtractPreview';
 import ContractCreateReviewForm from './ContractCreateReviewForm';
+import ReleasePickerInline from './ReleasePickerInline';
+import ContractReleaseMapper from './ContractReleaseMapper';
 
 export default function AddContractWizard({ isOpen, onClose, onCreated }) {
   const [step, setStep] = useState(1);
@@ -11,11 +15,34 @@ export default function AddContractWizard({ isOpen, onClose, onCreated }) {
   const [errorId, setErrorId] = useState('');
   const [extraction, setExtraction] = useState(null);
   const [created, setCreated] = useState(null);
+  const [releases, setReleases] = useState([]);
+  const [selectedReleaseId, setSelectedReleaseId] = useState('');
+  const [mapLoading, setMapLoading] = useState(false);
+  const [mapError, setMapError] = useState('');
+  const [mapResult, setMapResult] = useState(null);
   const [form, setForm] = useState({
     contract_type: 'Other',
     status: 'Draft',
     user_overrides: { title: '', start_date: null, end_date: null },
   });
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let alive = true;
+    CatalogService.getAll('releases', { limit: 2000 })
+      .then((rows) => {
+        if (!alive) return;
+        setReleases(Array.isArray(rows) ? rows : []);
+      })
+      .catch(() => {
+        if (!alive) return;
+        setReleases([]);
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -27,6 +54,10 @@ export default function AddContractWizard({ isOpen, onClose, onCreated }) {
     setErrorId('');
     setExtraction(null);
     setCreated(null);
+    setSelectedReleaseId('');
+    setMapLoading(false);
+    setMapError('');
+    setMapResult(null);
     setForm({ contract_type: 'Other', status: 'Draft', user_overrides: { title: '', start_date: null, end_date: null } });
     onClose?.();
   };
@@ -39,6 +70,8 @@ export default function AddContractWizard({ isOpen, onClose, onCreated }) {
       const data = await contractsWizardClient.extract(file);
       const dates = data?.dates || {};
       setExtraction(data);
+      setMapResult(null);
+      setMapError('');
       setForm((prev) => ({
         ...prev,
         user_overrides: {
@@ -59,6 +92,59 @@ export default function AddContractWizard({ isOpen, onClose, onCreated }) {
       setErrorId(typeof detail === 'object' ? detail?.error_id || '' : '');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const runMapPlan = async () => {
+    if (!selectedReleaseId || !extraction) return;
+    setMapLoading(true);
+    setMapError('');
+    try {
+      const extractV2 = {
+        contract_title: extraction.contract_title || null,
+        effective_date: extraction.effective_date || extraction?.dates?.effective_date || null,
+        expiration_date: extraction.expiration_date || extraction?.dates?.expiration_date || extraction.end_date || null,
+        expiration_label:
+          extraction.expiration_date || extraction?.dates?.expiration_date || extraction.end_date
+            ? 'date_specified'
+            : 'no_end_date_specified',
+        parties: (extraction.parties || []).map((p) => ({
+          display_name: p.display_name || p.name || '',
+          role: p.role || null,
+          confidence: Number(p.confidence || 0),
+        })),
+        splits: (extraction.splits || []).map((s) => ({
+          split_type: s.split_type || s.scope || 'OTHER',
+          party_display_name: s.party_display_name || s.party_name || null,
+          percent: Number(s.percent || 0),
+          basis: s.basis || null,
+          notes: s.notes || null,
+        })),
+        terms: Array.isArray(extraction.terms)
+          ? extraction.terms.map((t) => ({ term_type: t.term_type || 'other', text: t.text || t.summary || '' }))
+          : Object.entries(extraction.terms || {})
+              .filter(([, v]) => !!v)
+              .map(([k, v]) => ({ term_type: k, text: String(v) })),
+        tracks: Array.isArray(extraction.tracks_mentioned)
+          ? extraction.tracks_mentioned.map((t) => ({ title: t.title || '', artist: null, confidence: Number(t.confidence || 0) }))
+          : (extraction.tracks || []).map((title) => ({ title, artist: null, confidence: 0.6 })),
+        warnings: extraction.warnings || [],
+        raw_confidence: Number(extraction.raw_confidence || 0),
+        parser_version: extraction.parser_version || null,
+      };
+
+      const result = await aiReleaseMappingClient.mapPlan(Number(selectedReleaseId), extractV2);
+      if (result?.featureDisabled) {
+        setMapError('Release mapping is disabled by feature flags.');
+        setMapResult(null);
+      } else {
+        setMapResult(result);
+      }
+    } catch (e) {
+      setMapError(e?.response?.data?.detail || e?.message || 'Release map plan failed');
+      setMapResult(null);
+    } finally {
+      setMapLoading(false);
     }
   };
 
@@ -89,14 +175,14 @@ export default function AddContractWizard({ isOpen, onClose, onCreated }) {
       <div
         className="entity-form-modal"
         onClick={(e) => e.stopPropagation()}
-        style={{ maxWidth: 920, maxHeight: '88vh', overflowY: 'auto' }}
+        style={{ maxWidth: 980, maxHeight: '88vh', overflowY: 'auto' }}
       >
         <div className="entity-form-header">
           <h2>Add Contract Wizard</h2>
           <button className="btn ghost" onClick={reset}>Close</button>
         </div>
         <div className="warning-banner" style={{ marginBottom: 10 }}>
-          Non-destructive mode: this step creates a new contract + attached PDF only.
+          Non-destructive mode: review extraction + mapping first. No core overwrite happens in this step.
         </div>
         {error && (
           <div className="error-banner" style={{ marginBottom: 8 }}>
@@ -130,6 +216,25 @@ export default function AddContractWizard({ isOpen, onClose, onCreated }) {
               </div>
             )}
             <ContractExtractPreview extraction={extraction} />
+
+            <ReleasePickerInline
+              releases={releases}
+              value={selectedReleaseId}
+              onChange={(value) => {
+                setSelectedReleaseId(value);
+                setMapResult(null);
+                setMapError('');
+              }}
+            />
+
+            <div style={{ marginBottom: 10 }}>
+              <button className="btn" disabled={!selectedReleaseId || mapLoading} onClick={runMapPlan}>
+                {mapLoading ? 'Mapping...' : 'Map to Release'}
+              </button>
+            </div>
+
+            <ContractReleaseMapper result={mapResult} loading={mapLoading} error={mapError} />
+
             <ContractCreateReviewForm form={form} setForm={setForm} />
             <div className="muted small" style={{ marginBottom: 8 }}>
               {form.user_overrides.start_date ? `Start date prefilled: ${form.user_overrides.start_date}` : 'Start date: Not specified'}

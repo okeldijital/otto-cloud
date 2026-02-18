@@ -137,6 +137,7 @@ from routes import (  # noqa: E402
     ai_analytics,
     ai_royalty,
     ai_release_integration,
+    ai_release_mapping,
     ai_release_validation,
     ai_core_write,
     system_control_center,
@@ -183,6 +184,11 @@ app.include_router(
     ai_release_integration.router,
     prefix="/api/ai/release_integration",
     tags=["ai"],
+)
+app.include_router(
+    ai_release_mapping.router,
+    prefix="/api/ai/release_integration",
+    tags=["AI Release Mapping"],
 )
 app.include_router(
     ai_release_validation.router,
