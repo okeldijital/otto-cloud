@@ -50,7 +50,7 @@ def seed(db):
     org_b = uuid.UUID(int=12002)
 
     user_a = upsert_user(db, "map_plan_a@example.com", org_a)
-    _ = upsert_user(db, "map_plan_b@example.com", org_b)
+    user_b = upsert_user(db, "map_plan_b@example.com", org_b)
 
     label = db.query(Label).filter(Label.label_id == "LBL-MAP-001").first()
     if not label:
@@ -218,7 +218,9 @@ def seed(db):
         "org_a": org_a,
         "org_b": org_b,
         "user_a": user_a,
+        "user_b": user_b,
         "release_a": release_a,
+        "release_b": release_b,
     }
 
 
@@ -248,6 +250,32 @@ def extract_payload_v2():
     }
 
 
+def extract_payload_v2_org_b():
+    return {
+        "contract_title": "Map Plan Contract Org B",
+        "effective_date": "2024-03-15",
+        "expiration_date": None,
+        "expiration_label": "no_end_date_specified",
+        "parties": [
+            {"display_name": "Map Artist ORG_B_TOKEN", "role": "artist", "confidence": 0.9},
+            {"display_name": "Map Org B ORG_B_TOKEN", "role": "label", "confidence": 0.85},
+        ],
+        "splits": [
+            {"split_type": "MASTER", "party_display_name": "Map Artist ORG_B_TOKEN", "percent": 50.0, "basis": "net", "notes": "sample"},
+            {"split_type": "MASTER", "party_display_name": None, "percent": 50.0, "basis": "net", "notes": "unbound"},
+        ],
+        "terms": [
+            {"term_type": "territory", "text": "Worldwide"},
+        ],
+        "tracks": [
+            {"title": "Map Track ORG_B_TOKEN", "artist": "Map Artist ORG_B_TOKEN", "confidence": 0.8},
+        ],
+        "warnings": [],
+        "raw_confidence": 0.75,
+        "parser_version": "deterministic_v2",
+    }
+
+
 def core_counts(db):
     return {
         "artists": db.query(Artist).count(),
@@ -258,6 +286,14 @@ def core_counts(db):
         "individuals": db.query(Individual).count(),
         "contracts": db.query(Contract).count(),
     }
+
+
+def _contains_string_value(payload, target: str) -> bool:
+    if isinstance(payload, dict):
+        return any(_contains_string_value(v, target) for v in payload.values())
+    if isinstance(payload, list):
+        return any(_contains_string_value(v, target) for v in payload)
+    return isinstance(payload, str) and payload == target
 
 
 def _client_with_db(db):
@@ -321,19 +357,42 @@ def test_release_mapping_plan_enabled_200_org_isolation_and_non_destructive(monk
     before = core_counts(db)
 
     with _client_with_db(db) as client:
-        response = client.post(
+        response_a = client.post(
             "/api/ai/release_integration/map_plan",
             json={"release_id": seeded["release_a"].id, "extract_v2": extract_payload_v2()},
         )
+        app.dependency_overrides[get_current_user] = lambda: seeded["user_b"]
+        response_b = client.post(
+            "/api/ai/release_integration/map_plan",
+            json={"release_id": seeded["release_b"].id, "extract_v2": extract_payload_v2_org_b()},
+        )
 
-    assert response.status_code == 200
-    payload = response.json()
-    assert payload["mapping_version"] == "map_plan_v1"
-    assert payload["org_id"] == str(seeded["org_a"])
-    assert payload["release"]["id"] == seeded["release_a"].id
+    assert response_a.status_code == 200
+    payload_a = response_a.json()
+    assert payload_a["mapping_version"] == "map_plan_v1"
+    assert payload_a["org_id"] == str(seeded["org_a"])
+    assert payload_a["release"]["id"] == seeded["release_a"].id
 
-    blob = str(payload)
-    assert "ORG_B_TOKEN" not in blob
+    assert response_b.status_code == 200
+    payload_b = response_b.json()
+    assert payload_b["mapping_version"] == "map_plan_v1"
+    assert payload_b["org_id"] == str(seeded["org_b"])
+    assert payload_b["release"]["id"] == seeded["release_b"].id
+
+    # Missing bucket correctness (no swapped types)
+    assert "Map Artist" not in (payload_a["missing"]["organizations"] or [])
+    assert "Map Org A" not in (payload_a["missing"]["artists"] or [])
+
+    # Bidirectional org isolation (exact value checks avoid substring false positives)
+    assert not _contains_string_value(payload_a, "Map Artist ORG_B_TOKEN")
+    assert not _contains_string_value(payload_a, "Map Org B ORG_B_TOKEN")
+    assert not _contains_string_value(payload_a, "Map Release B ORG_B_TOKEN")
+    assert not _contains_string_value(payload_a, "Map Track ORG_B_TOKEN")
+
+    assert not _contains_string_value(payload_b, "Map Artist")
+    assert not _contains_string_value(payload_b, "Map Org A")
+    assert not _contains_string_value(payload_b, "Map Release A")
+    assert not _contains_string_value(payload_b, "Map Track")
 
     after = core_counts(db)
     assert before == after

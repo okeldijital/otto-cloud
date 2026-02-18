@@ -1,2 +1,7 @@
-Org token search in Org A response (expect no matches):
+OrgB tokens searched in OrgA response (expect no matches):
+command: rg -n 'ORG_B_TOKEN|Map Artist ORG_B_TOKEN|Map Org B ORG_B_TOKEN|Map Track ORG_B_TOKEN' <org_a_response>
+(no matches)
+
+OrgA tokens searched in OrgB response (expect no matches):
+command: rg -n 'Map Artist|Map Org A|Map Track|Map Release A' <org_b_response>
 (no matches)

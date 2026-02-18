@@ -1,3 +1,6 @@
+note_frontend_build_missing=true
+note_backups_dir_missing=true
+
 === GET /api/ai/release_integration/health ===
 HTTP/1.1 200
 {
@@ -12,7 +15,7 @@ HTTP/1.1 200
   "version": "release_integration_v1"
 }
 
-=== POST /api/ai/release_integration/map_plan (enabled => 200) ===
+=== POST /api/ai/release_integration/map_plan (OrgA enabled => 200) ===
 HTTP/1.1 200
 {
   "status": "ok",
@@ -20,7 +23,7 @@ HTTP/1.1 200
   "org_id": "00000000-0000-0000-0000-0000000032c9",
   "release": {
     "id": 1,
-    "title": "Map Release Evidence A"
+    "title": "Map Release A"
   },
   "matches": {
     "artists": [
@@ -63,20 +66,90 @@ HTTP/1.1 200
     "works": []
   },
   "missing": {
-    "artists": [
-      "Map Org A"
-    ],
-    "organizations": [
-      "Map Artist"
-    ],
-    "individuals": [
-      "Map Artist",
-      "Map Org A"
-    ],
+    "artists": [],
+    "organizations": [],
+    "individuals": [],
     "tracks": [],
     "works": [
       "Map Track"
     ]
+  },
+  "release_validation_flags": [
+    "missing_artwork"
+  ],
+  "notes": [
+    "unbound_split_party"
+  ],
+  "needs_review": true
+}
+
+=== POST /api/ai/release_integration/map_plan (OrgB enabled => 200) ===
+HTTP/1.1 200
+{
+  "status": "ok",
+  "mapping_version": "map_plan_v1",
+  "org_id": "00000000-0000-0000-0000-0000000032ca",
+  "release": {
+    "id": 2,
+    "title": "Map Release B ORG_B_TOKEN"
+  },
+  "matches": {
+    "artists": [
+      {
+        "extract_name": "Map Artist ORG_B_TOKEN",
+        "matched_entity": {
+          "entity_type": "artist",
+          "id": 2,
+          "display_name": "Map Artist ORG_B_TOKEN"
+        },
+        "confidence": 1.0,
+        "strategy": "exact"
+      }
+    ],
+    "organizations": [
+      {
+        "extract_name": "Map Org B ORG_B_TOKEN",
+        "matched_entity": {
+          "entity_type": "organization",
+          "id": 2,
+          "display_name": "Map Org B ORG_B_TOKEN"
+        },
+        "confidence": 1.0,
+        "strategy": "exact"
+      }
+    ],
+    "individuals": [],
+    "tracks": [
+      {
+        "extract_title": "Map Track ORG_B_TOKEN",
+        "matched_entity": {
+          "entity_type": "track",
+          "id": 2,
+          "display_name": "Map Track ORG_B_TOKEN"
+        },
+        "confidence": 1.0,
+        "strategy": "exact"
+      }
+    ],
+    "works": [
+      {
+        "extract_title": "Map Track ORG_B_TOKEN",
+        "matched_entity": {
+          "entity_type": "work",
+          "id": 2,
+          "display_name": "Map Work ORG_B_TOKEN"
+        },
+        "confidence": 0.7333333333333333,
+        "strategy": "token_overlap"
+      }
+    ]
+  },
+  "missing": {
+    "artists": [],
+    "organizations": [],
+    "individuals": [],
+    "tracks": [],
+    "works": []
   },
   "release_validation_flags": [
     "missing_artwork"

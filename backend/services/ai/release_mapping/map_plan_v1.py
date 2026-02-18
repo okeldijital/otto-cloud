@@ -31,6 +31,10 @@ _ALLOWED_FLAGS = {
     "splits_total_mismatch",
 }
 
+_ARTIST_ROLE_TOKENS = {"artist", "remixer", "producer", "dj"}
+_ORG_ROLE_TOKENS = {"label", "publisher", "organization", "company"}
+_INDIVIDUAL_ROLE_TOKENS = {"individual", "person", "composer", "writer", "author"}
+
 
 def _normalize_name(name: str) -> str:
     if not name:
@@ -133,6 +137,20 @@ def _coerce_release_flags(release: Release, extract_warnings: list[str]) -> list
     return deduped
 
 
+def _party_source_bucket(role: Optional[str]) -> Optional[str]:
+    role_norm = _normalize_name(role or "")
+    if not role_norm:
+        return None
+    tokens = set(role_norm.split(" "))
+    if tokens.intersection(_ARTIST_ROLE_TOKENS):
+        return "artist"
+    if tokens.intersection(_ORG_ROLE_TOKENS):
+        return "organization"
+    if tokens.intersection(_INDIVIDUAL_ROLE_TOKENS):
+        return "individual"
+    return None
+
+
 def build_release_map_plan(
     db: Session,
     org_id: uuid.UUID,
@@ -158,56 +176,61 @@ def build_release_map_plan(
 
     for party in (extract_v2.parties or []):
         q = party.display_name
-        best_artist, conf_a, strat_a = _pick_best(q, artists, lambda r: r.name)
-        if best_artist is not None and conf_a is not None and strat_a is not None:
-            matches.artists.append(
-                ArtistMatch(
-                    extract_name=q,
-                    matched_entity=MatchedEntityRef(
-                        entity_type="artist",
-                        id=best_artist.id,
-                        display_name=best_artist.name,
-                    ),
-                    confidence=float(conf_a),
-                    strategy=strat_a,
-                )
-            )
-        else:
-            missing.artists.append(q)
+        source_bucket = _party_source_bucket(getattr(party, "role", None))
 
-        best_org, conf_o, strat_o = _pick_best(q, organizations, lambda r: r.name)
-        if best_org is not None and conf_o is not None and strat_o is not None:
-            matches.organizations.append(
-                OrganizationMatch(
-                    extract_name=q,
-                    matched_entity=MatchedEntityRef(
-                        entity_type="organization",
-                        id=best_org.id,
-                        display_name=best_org.name,
-                    ),
-                    confidence=float(conf_o),
-                    strategy=strat_o,
+        if source_bucket == "artist":
+            best_artist, conf_a, strat_a = _pick_best(q, artists, lambda r: r.name)
+            if best_artist is not None and conf_a is not None and strat_a is not None:
+                matches.artists.append(
+                    ArtistMatch(
+                        extract_name=q,
+                        matched_entity=MatchedEntityRef(
+                            entity_type="artist",
+                            id=best_artist.id,
+                            display_name=best_artist.name,
+                        ),
+                        confidence=float(conf_a),
+                        strategy=strat_a,
+                    )
                 )
-            )
-        else:
-            missing.organizations.append(q)
+            else:
+                missing.artists.append(q)
 
-        best_ind, conf_i, strat_i = _pick_best(q, individuals, _individual_name)
-        if best_ind is not None and conf_i is not None and strat_i is not None:
-            matches.individuals.append(
-                IndividualMatch(
-                    extract_name=q,
-                    matched_entity=MatchedEntityRef(
-                        entity_type="individual",
-                        id=best_ind.id,
-                        display_name=_individual_name(best_ind),
-                    ),
-                    confidence=float(conf_i),
-                    strategy=strat_i,
+        elif source_bucket == "organization":
+            best_org, conf_o, strat_o = _pick_best(q, organizations, lambda r: r.name)
+            if best_org is not None and conf_o is not None and strat_o is not None:
+                matches.organizations.append(
+                    OrganizationMatch(
+                        extract_name=q,
+                        matched_entity=MatchedEntityRef(
+                            entity_type="organization",
+                            id=best_org.id,
+                            display_name=best_org.name,
+                        ),
+                        confidence=float(conf_o),
+                        strategy=strat_o,
+                    )
                 )
-            )
-        else:
-            missing.individuals.append(q)
+            else:
+                missing.organizations.append(q)
+
+        elif source_bucket == "individual":
+            best_ind, conf_i, strat_i = _pick_best(q, individuals, _individual_name)
+            if best_ind is not None and conf_i is not None and strat_i is not None:
+                matches.individuals.append(
+                    IndividualMatch(
+                        extract_name=q,
+                        matched_entity=MatchedEntityRef(
+                            entity_type="individual",
+                            id=best_ind.id,
+                            display_name=_individual_name(best_ind),
+                        ),
+                        confidence=float(conf_i),
+                        strategy=strat_i,
+                    )
+                )
+            else:
+                missing.individuals.append(q)
 
     # Convert v2 tracks to strings and try both track/work mapping.
     for entry in (extract_v2.tracks or []):
