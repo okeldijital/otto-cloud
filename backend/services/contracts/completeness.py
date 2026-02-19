@@ -19,21 +19,27 @@ def compute_contract_completeness(
     term_present: bool,
 ) -> ContractCompleteness:
     """Deterministic completeness score. Pure function, no DB access."""
-    score = 100
+    score = 0
     reasons: List[CompletenessReason] = []
 
     def penalize(code, message, weight):
         nonlocal score
-        score -= weight
         reasons.append(CompletenessReason(code=code, message=message, weight=weight))
 
-    if documents_count <= 0:
-        penalize("missing_documents", "No contract documents attached", 40)
-    if tracks_count <= 0:
-        penalize("missing_tracks", "No tracks linked", 30)
-    if parties_count <= 0:
-        penalize("missing_parties", "No parties linked", 30)
+    if tracks_count > 0:
+        score += 40
+    else:
+        penalize("missing_tracks", "No tracks linked", 40)
+    if parties_count > 0:
+        score += 40
+    else:
+        penalize("missing_parties", "No parties linked", 40)
+    if documents_count > 0:
+        score += 20
+    else:
+        penalize("missing_documents", "No contract documents attached", 20)
 
+    # Keep non-scoring diagnostics without affecting completeness score.
     if not territory:
         penalize("missing_territory", "Territory not set", 10)
     if not effective_date_present:

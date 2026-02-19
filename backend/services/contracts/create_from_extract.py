@@ -4,15 +4,17 @@ import os
 import random
 from datetime import datetime
 from pathlib import Path
+from types import SimpleNamespace
 
 from sqlalchemy.orm import Session
 
 from config import settings
-from models.contract import Contract, ContractDocument, ContractAsset
+from models.contract import Contract, ContractDocument, ContractAsset, ContractParty
 from models.contract_track_links import ContractTrackLink
 from models.track import Track
 from services.ai.extractors.contract_extractor_v1 import deterministic_extract
 from services.ai.parsing.pdf_extract import extract_text_from_pdf
+from services.contracts.save_parties import save_parties
 
 _ALLOWED_TYPES = {"recording", "publishing", "license", "other", "unknown", "remix", "master"}
 _ALLOWED_STATUS = {"draft", "active", "expired", "archived"}
@@ -99,21 +101,37 @@ def _iso_or_none(value):
 
 def _build_completeness(*, documents: int, tracks: int, parties: int, effective_date: bool, end_date_known: bool, territory: bool, term_present: bool):
     reasons = []
-    if documents < 1:
+    score = 0
+    if tracks > 0:
+        score += 40
+    else:
+        reasons.append({"code": "missing_tracks", "message": "No linked tracks", "weight": 40})
+    if parties > 0:
+        score += 40
+    else:
+        reasons.append({"code": "missing_parties", "message": "No parties linked", "weight": 40})
+    if documents > 0:
+        score += 20
+    else:
         reasons.append({"code": "missing_documents", "message": "No attached document", "weight": 20})
-    if tracks < 1:
-        reasons.append({"code": "missing_tracks", "message": "No linked tracks", "weight": 25})
-    if parties < 1:
-        reasons.append({"code": "missing_parties", "message": "No parties linked", "weight": 30})
 
-    score = max(0, 100 - sum(r["weight"] for r in reasons))
+    # Keep non-scoring metadata warnings for UI diagnostics.
+    if not territory:
+        reasons.append({"code": "missing_territory", "message": "Territory not set", "weight": 10})
+    if not effective_date:
+        reasons.append({"code": "missing_effective_date", "message": "Effective date not set", "weight": 5})
+    if not term_present:
+        reasons.append({"code": "missing_term", "message": "Term not set", "weight": 5})
+
+    score = max(0, min(100, score))
     missing = [r["code"] for r in reasons]
-    if ("missing_tracks" in missing) or ("missing_parties" in missing) or score < 70:
+    if ("missing_tracks" in missing) or ("missing_parties" in missing) or score < 60:
         status_quo = "red"
     elif score == 100:
         status_quo = "green"
     else:
         status_quo = "amber"
+
     notes = []
     if "missing_parties" in missing:
         notes.append("no_parties_linked")
@@ -139,6 +157,49 @@ def _build_completeness(*, documents: int, tracks: int, parties: int, effective_
             "term_present": term_present,
         },
     }
+
+
+def _normalize_party_links(raw_links) -> list[dict]:
+    normalized = []
+    if not isinstance(raw_links, list):
+        return normalized
+    for row in raw_links:
+        if not isinstance(row, dict):
+            continue
+        entity_type = str(row.get("entity_type") or "").strip().lower()
+        role = str(row.get("role") or "other").strip().lower()
+        split_percent = row.get("split_percent")
+        notes = row.get("notes")
+        external_name = str(row.get("external_name") or "").strip()
+        entity_id = row.get("entity_id")
+        if entity_type in {"artist", "organization", "individual"}:
+            try:
+                entity_id = int(entity_id)
+            except Exception:
+                continue
+            normalized.append(
+                {
+                    "entity_type": entity_type,
+                    "entity_id": entity_id,
+                    "external_name": None,
+                    "role": role,
+                    "split_percent": split_percent,
+                    "notes": notes,
+                }
+            )
+            continue
+        if entity_type == "external" and external_name:
+            normalized.append(
+                {
+                    "entity_type": "external",
+                    "entity_id": None,
+                    "external_name": external_name,
+                    "role": role,
+                    "split_percent": split_percent,
+                    "notes": notes,
+                }
+            )
+    return normalized
 
 
 def create_contract_from_extract(
@@ -200,7 +261,14 @@ def create_contract_from_extract(
             raise ValueError("idempotency_conflict")
         docs = db.query(ContractDocument).filter(ContractDocument.organization_id == org_id, ContractDocument.contract_id == existing.id).count()
         tracks = db.query(ContractTrackLink).filter(ContractTrackLink.organization_id == org_id, ContractTrackLink.contract_id == existing.id).count()
-        parties = 0
+        parties = (
+            db.query(ContractParty)
+            .filter(
+                ContractParty.organization_id == org_id,
+                ContractParty.contract_id == existing.id,
+            )
+            .count()
+        )
         completeness = _build_completeness(
             documents=docs,
             tracks=tracks,
@@ -290,6 +358,8 @@ def create_contract_from_extract(
         missing_ids = [tid for tid in track_ids if tid not in valid_ids]
         if missing_ids:
             raise ValueError("invalid_track_ids:" + ",".join(str(x) for x in missing_ids))
+
+    requested_party_links = _normalize_party_links(payload.get("party_links") or [])
 
     warnings = []
     if not extract_dates.get("effective_date"):
@@ -395,11 +465,48 @@ def create_contract_from_extract(
         linked_tracks_count += 1
     db.commit()
 
-    parties_linked = 0
+    parties_payload = []
+    for link in requested_party_links:
+        if link["entity_type"] == "external":
+            parties_payload.append(
+                {
+                    "role": link["role"],
+                    "entity_type": "external",
+                    "display_name": link["external_name"],
+                    "split_percent": link.get("split_percent"),
+                    "notes": link.get("notes"),
+                }
+            )
+        else:
+            parties_payload.append(
+                {
+                    "role": link["role"],
+                    "entity_type": link["entity_type"],
+                    "entity_id": link["entity_id"],
+                    "split_percent": link.get("split_percent"),
+                    "notes": link.get("notes"),
+                }
+            )
+    parties_linked = save_parties(
+        db=db,
+        user=SimpleNamespace(organization_id=org_id),
+        contract_id=contract.id,
+        parties=parties_payload,
+        confirm=True,
+    )
+    parties_count = (
+        db.query(ContractParty)
+        .filter(
+            ContractParty.organization_id == org_id,
+            ContractParty.contract_id == contract.id,
+        )
+        .count()
+    )
+
     completeness = _build_completeness(
         documents=1,
         tracks=linked_tracks_count,
-        parties=parties_linked,
+        parties=parties_count,
         effective_date=bool(contract.start_date),
         end_date_known=bool(contract.end_date) or (meta.get("end_date_specified") is False),
         territory=bool(contract.territory),

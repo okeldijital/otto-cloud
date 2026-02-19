@@ -208,7 +208,15 @@ export function useBulkController(state: BulkBatchState, dispatch: (a: BulkActio
           data: item.extract?.data || {},
         },
         track_ids: item.selected_track_ids,
-        create_parties: false,
+        create_parties: Boolean(item.parties?.length),
+        party_links: (item.parties || []).map((p: any) => ({
+          role: p.role || 'other',
+          entity_type: p.entity_type || 'external',
+          entity_id: p.entity_id ?? null,
+          external_name: p.external_name || (!p.entity_id ? p.display_name : null),
+          split_percent: p.split_percent ?? null,
+          notes: p.notes ?? null,
+        })),
       };
 
       const form = new FormData();

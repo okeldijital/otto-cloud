@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { tracksClient } from '../../api/tracksClient';
 
 function useDebounced(value, delayMs = 250) {
@@ -17,15 +17,60 @@ export default function TrackMultiSelect({
   createTrackPath = '/catalog/tracks',
 }) {
   const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState([]);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const inputRef = useRef(null);
+  const containerRef = useRef(null);
   const debounced = useDebounced(query);
 
   const selectedSet = useMemo(
     () => new Set((selectedIds || []).map((id) => Number(id))),
     [selectedIds],
   );
+
+  useEffect(() => {
+    if (!query.trim()) {
+      setOpen(false);
+      setActiveIndex(-1);
+      return;
+    }
+    setOpen(true);
+  }, [query]);
+
+  useEffect(() => {
+    const onDocMouseDown = (e) => {
+      if (!containerRef.current?.contains(e.target)) {
+        setOpen(false);
+        setActiveIndex(-1);
+      }
+    };
+    document.addEventListener('mousedown', onDocMouseDown);
+    return () => document.removeEventListener('mousedown', onDocMouseDown);
+  }, []);
+
+  function closeDropdown() {
+    setOpen(false);
+    setActiveIndex(-1);
+  }
+
+  function onSelect(track) {
+    const numeric = Number(track?.id);
+    if (!Number.isFinite(numeric)) return;
+    const next = new Set(selectedSet);
+    next.add(numeric);
+    onChange?.(Array.from(next));
+    setQuery('');
+    closeDropdown();
+    requestAnimationFrame(() => inputRef.current?.blur());
+  }
+
+  function onInputBlur() {
+    window.setTimeout(() => {
+      closeDropdown();
+    }, 120);
+  }
 
   useEffect(() => {
     let alive = true;
@@ -62,7 +107,12 @@ export default function TrackMultiSelect({
   }
 
   function onInputKeyDown(e) {
-    if (!results.length) return;
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      closeDropdown();
+      return;
+    }
+    if (!open || !results.length) return;
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       setActiveIndex((idx) => (idx + 1) % results.length);
@@ -71,18 +121,23 @@ export default function TrackMultiSelect({
       setActiveIndex((idx) => (idx <= 0 ? results.length - 1 : idx - 1));
     } else if (e.key === 'Enter' && activeIndex >= 0) {
       e.preventDefault();
-      toggle(results[activeIndex].id);
+      onSelect(results[activeIndex]);
     }
   }
 
   return (
-    <div className="min-w-0">
+    <div className="min-w-0" ref={containerRef}>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
         <input
+          ref={inputRef}
           className="input"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={onInputKeyDown}
+          onBlur={onInputBlur}
+          onFocus={() => {
+            if (query.trim()) setOpen(true);
+          }}
           placeholder={placeholder}
           aria-label="Track search"
         />
@@ -101,6 +156,7 @@ export default function TrackMultiSelect({
         </div>
       )}
 
+      {open ? (
       <div style={{ marginTop: 8, border: '1px solid #e5e7eb', borderRadius: 10, maxHeight: 220, overflowY: 'auto' }}>
         {loading && <div className="muted small" style={{ padding: 10 }}>Searching...</div>}
         {!loading && query.trim() && results.length === 0 && (
@@ -108,7 +164,6 @@ export default function TrackMultiSelect({
             No results. <a href={`#${createTrackPath}`}>Create Track</a>
           </div>
         )}
-        {!loading && !query.trim() && <div className="muted small" style={{ padding: 10 }}>Type to search tracks.</div>}
         {!loading && results.map((row, idx) => {
           const active = idx === activeIndex;
           const checked = selectedSet.has(Number(row.id));
@@ -117,7 +172,7 @@ export default function TrackMultiSelect({
               key={row.id}
               type="button"
               onMouseEnter={() => setActiveIndex(idx)}
-              onClick={() => toggle(row.id)}
+              onClick={() => onSelect(row)}
               style={{
                 width: '100%',
                 textAlign: 'left',
@@ -139,6 +194,7 @@ export default function TrackMultiSelect({
           );
         })}
       </div>
+      ) : null}
     </div>
   );
 }

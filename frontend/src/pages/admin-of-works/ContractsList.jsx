@@ -69,7 +69,13 @@ const ContractsList = () => {
         notes: '',
         file: null,
     });
-    const contracts = Array.isArray(data?.contracts) ? data.contracts : [];
+    const contracts = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.items)
+            ? data.items
+            : Array.isArray(data?.contracts)
+                ? data.contracts
+                : [];
     const counts = data?.counts ?? {};
 
     useEffect(() => {

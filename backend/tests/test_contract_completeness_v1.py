@@ -30,7 +30,7 @@ def test_create_with_missing_parties_stays_red():
         term_present=True,
     )
     assert c.status_quo == "red"
-    assert c.score == 65
+    assert c.score == 60
     assert any(r.code == "missing_parties" for r in c.reasons)
 
 

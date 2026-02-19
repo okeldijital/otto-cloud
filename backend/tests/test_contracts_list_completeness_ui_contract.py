@@ -67,7 +67,6 @@ def _seed(db):
     db.add(amber)
     db.commit()
     db.refresh(amber)
-    db.add(ContractDocument(contract_id=amber.id, organization_id=org, file_path="/uploads/amber.pdf", file_name="amber.pdf", version=1, uploaded_by=user.id))
     db.add(ContractAsset(contract_id=amber.id, organization_id=org, asset_type="Track", asset_id=track.id, scope_type="INCLUSION"))
     db.add(ContractTrackLink(contract_id=amber.id, organization_id=org, track_id=track.id))
     db.add(ContractParty(contract_id=amber.id, organization_id=org, entity_type="External", external_name="Party A", role="Licensor"))

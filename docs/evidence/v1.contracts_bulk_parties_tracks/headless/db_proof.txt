@@ -1,0 +1,8 @@
+artists|before=1|after=1
+organizations|before=0|after=0
+contract_documents|before=0|after=1
+contract_parties|before=0|after=1
+contract_track_links|before=0|after=1
+tracks|before=2|after=2
+
+Only contract/link tables should increment for this flow.

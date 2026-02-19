@@ -1,0 +1,39 @@
+Org A search for ORG_B_TOKEN (expect no matches):
+{
+  "status": "ok",
+  "org_id": "00000000-0000-0000-0000-00000000d73d",
+  "runtime": {
+    "db_id": "active",
+    "db_path_hint": "/Users/m2krproduction/.otto/data/db/otto.sqlite"
+  },
+  "items": [],
+  "limit": 20,
+  "offset": 0,
+  "total_estimate": 0
+}
+
+Org B search for ORG_B_TOKEN (expect matches):
+{
+  "status": "ok",
+  "org_id": "00000000-0000-0000-0000-00000000d73e",
+  "runtime": {
+    "db_id": "active",
+    "db_path_hint": "/Users/m2krproduction/.otto/data/db/otto.sqlite"
+  },
+  "items": [
+    {
+      "id": 2,
+      "display_name": "Evidence PT Track B ORG_B_TOKEN",
+      "title": "Evidence PT Track B ORG_B_TOKEN",
+      "artist": null,
+      "release": null,
+      "artists": [],
+      "version": null,
+      "isrc": null,
+      "artist_display": null
+    }
+  ],
+  "limit": 20,
+  "offset": 0,
+  "total_estimate": 1
+}

@@ -1,0 +1,145 @@
+=== GET /api/contracts ===
+HTTP/1.1 200
+{
+  "contracts": [],
+  "counts": {
+    "total": 0,
+    "by_status": {}
+  },
+  "meta": {
+    "limit": 50,
+    "offset": 0,
+    "total": 0
+  },
+  "items": [],
+  "page": {
+    "limit": 50,
+    "offset": 0,
+    "total": 0
+  },
+  "total": 0
+}
+
+=== GET /api/tracks/search ===
+HTTP/1.1 200
+{
+  "status": "ok",
+  "org_id": "00000000-0000-0000-0000-00000000d73d",
+  "runtime": {
+    "db_id": "active",
+    "db_path_hint": "/Users/m2krproduction/.otto/data/db/otto.sqlite"
+  },
+  "items": [
+    {
+      "id": 1,
+      "display_name": "Evidence PT Track A",
+      "title": "Evidence PT Track A",
+      "artist": null,
+      "release": null,
+      "artists": [],
+      "version": null,
+      "isrc": null,
+      "artist_display": null
+    }
+  ],
+  "limit": 20,
+  "offset": 0,
+  "total_estimate": 1
+}
+
+=== GET /api/contracts/party_search ===
+HTTP/1.1 200
+{
+  "status": "ok",
+  "org_id": "00000000-0000-0000-0000-00000000d73d",
+  "items": [
+    {
+      "entity_type": "artist",
+      "id": 1,
+      "display_name": "Evidence PT Artist"
+    }
+  ]
+}
+
+=== POST /api/contracts/from_extract (tracks + parties in payload) ===
+HTTP/1.1 200
+{
+  "status": "ok",
+  "created": true,
+  "idempotent_hit": false,
+  "org_id": "00000000-0000-0000-0000-00000000d73d",
+  "contract": {
+    "id": 1,
+    "org_id": "00000000-0000-0000-0000-00000000d73d",
+    "status": "draft",
+    "title": "Evidence Parties/Tracks Contract",
+    "type": "recording",
+    "territory": null,
+    "effective_date": null,
+    "end_date": null,
+    "end_date_specified": false,
+    "created_at": "2026-02-19T07:00:02",
+    "updated_at": "2026-02-19T07:00:02",
+    "overview": {
+      "type": "recording",
+      "territory": null,
+      "effective_date": null,
+      "end_date": null,
+      "end_date_note": "no_end_date_specified"
+    }
+  },
+  "contract_id": 1,
+  "links": {
+    "documents_created": 1,
+    "tracks_linked": 1,
+    "parties_linked": 1
+  },
+  "document": {
+    "id": 1,
+    "filename": "evidence.pdf"
+  },
+  "linked_tracks_count": 1,
+  "warnings": [
+    "missing_effective_date",
+    "no_end_date_specified",
+    "missing_territory"
+  ],
+  "completeness": {
+    "version": "v1",
+    "score": 100,
+    "status_quo": "green",
+    "color": "green",
+    "missing": [
+      "missing_territory",
+      "missing_effective_date",
+      "missing_term"
+    ],
+    "notes": [],
+    "reasons": [
+      {
+        "code": "missing_territory",
+        "message": "Territory not set",
+        "weight": 10
+      },
+      {
+        "code": "missing_effective_date",
+        "message": "Effective date not set",
+        "weight": 5
+      },
+      {
+        "code": "missing_term",
+        "message": "Term not set",
+        "weight": 5
+      }
+    ],
+    "signals": {
+      "documents": 1,
+      "tracks": 1,
+      "parties": 1,
+      "effective_date": false,
+      "end_date_known": true,
+      "territory": false,
+      "term_present": false
+    }
+  }
+}
