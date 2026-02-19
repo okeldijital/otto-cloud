@@ -96,7 +96,7 @@ def assert_same_org(entity_type: str, entity_id: int, org_id: int, db: Session):
         raise HTTPException(status_code=400, detail="cross_org_link_forbidden")
 
 
-def inject_status_quo(contract: Optional[Contract]) -> Optional[Contract]:
+def inject_status_quo(contract: Optional[Contract], db: Session = None) -> Optional[Contract]:
     if contract:
         counts = _contract_counts(contract)
         completeness = _build_completeness_payload(contract, counts)
@@ -499,7 +499,7 @@ async def create_contract(
     if file:
         audit_service.log(db, "UPLOAD", "ContractDocument", contract.id, current_user.id, changes={"document": file.filename}, organization_id=org_id)
 
-    return inject_status_quo(contract_repository.get_with_details(db, contract.id, org_id))
+    return inject_status_quo(contract_repository.get_with_details(db, contract.id, org_id), db=db)
 
 
 @router.post(
@@ -657,7 +657,7 @@ def update_contract(
 
     updated = contract_repository.update(db, contract, contract_dict)
     audit_service.log(db, "UPDATE", "Contract", contract.id, current_user.id, changes=contract_data.model_dump(exclude_unset=True), organization_id=org_id)
-    return inject_status_quo(contract_repository.get_with_details(db, contract_id, org_id))
+    return inject_status_quo(contract_repository.get_with_details(db, contract_id, org_id), db=db)
 
 
 @router.delete("/contracts/{contract_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -750,7 +750,7 @@ def add_party(
             saved_count += 1
 
         full = contract_repository.get_with_details(db, contract_id, org_id)
-        full = inject_status_quo(full)
+        full = inject_status_quo(full, db=db)
         completeness = getattr(full, "completeness", {}) or {}
         score = int(completeness.get("score", 0))
         status_quo = str(completeness.get("color") or completeness.get("status_quo") or "red").lower()
@@ -790,7 +790,7 @@ def add_party(
     if not existing:
         contract_repository.add_party(db, contract_id, org_id, party_payload)
     audit_service.log(db, "UPDATE", "ContractParty", contract_id, current_user.id, changes={"add_party": legacy.model_dump()}, organization_id=org_id)
-    return inject_status_quo(contract_repository.get_with_details(db, contract_id, org_id))
+    return inject_status_quo(contract_repository.get_with_details(db, contract_id, org_id), db=db)
 
 
 @router.post("/contracts/parties/save", response_model=SavePartiesResponse)
@@ -824,7 +824,7 @@ def remove_party(
     db.commit()
     audit_service.log(db, "UPDATE", "ContractParty", contract_id, current_user.id, changes={"remove_party": str(party_id)}, organization_id=org_id)
     contract_repository.get_with_details(db, contract_id, org_id)
-    return inject_status_quo(contract_repository.get_with_details(db, contract_id, org_id))
+    return inject_status_quo(contract_repository.get_with_details(db, contract_id, org_id), db=db)
 
 
 # Assets
@@ -855,7 +855,7 @@ def add_asset(
         contract_repository.add_asset(db, contract_id, org_id, asset_payload)
     audit_service.log(db, "UPDATE", "ContractAsset", contract_id, current_user.id, changes={"add_asset": asset_data.model_dump()}, organization_id=org_id)
     contract_repository.get_with_details(db, contract_id, org_id)
-    return inject_status_quo(contract_repository.get_with_details(db, contract_id, org_id))
+    return inject_status_quo(contract_repository.get_with_details(db, contract_id, org_id), db=db)
 
 
 @router.get("/party_lookup")
@@ -1173,7 +1173,7 @@ def get_contract(
     for a in contract.assets:
         a.asset_title = _build_asset_title(a, db)
         
-    return inject_status_quo(contract)
+    return inject_status_quo(contract, db=db)
 
 
 @router.post("/contracts/{contract_id}/parties/batch_set")
@@ -1240,7 +1240,7 @@ def contracts_parties_batch_set(
         updated_count += 1
 
     db.commit()
-    full = inject_status_quo(contract_repository.get_with_details(db, contract_id, org_id))
+    full = inject_status_quo(contract_repository.get_with_details(db, contract_id, org_id), db=db)
     completeness = getattr(full, "completeness", {}) or {}
     return {
         "status": "ok",
@@ -1333,7 +1333,7 @@ def contracts_tracks_batch_set(
             )
     db.commit()
 
-    full = inject_status_quo(contract_repository.get_with_details(db, contract_id, org_id))
+    full = inject_status_quo(contract_repository.get_with_details(db, contract_id, org_id), db=db)
     completeness = getattr(full, "completeness", {}) or {}
     return {
         "status": "ok",
@@ -1557,7 +1557,7 @@ def remove_asset(
     db.commit()
     audit_service.log(db, "UPDATE", "ContractAsset", contract_id, current_user.id, changes={"remove_asset": str(asset_id)}, organization_id=org_id)
     contract_repository.get_with_details(db, contract_id, org_id)
-    return inject_status_quo(contract_repository.get_with_details(db, contract_id, org_id))
+    return inject_status_quo(contract_repository.get_with_details(db, contract_id, org_id), db=db)
 
 
 # Documents
@@ -1582,7 +1582,7 @@ async def upload_document(
     )
     audit_service.log(db, "UPLOAD", "ContractDocument", contract_id, current_user.id, changes={"document": file.filename}, organization_id=org_id)
     contract_repository.get_with_details(db, contract_id, org_id)
-    return inject_status_quo(contract_repository.get_with_details(db, contract_id, org_id))
+    return inject_status_quo(contract_repository.get_with_details(db, contract_id, org_id), db=db)
 
 
 @router.get("/contracts/{contract_id}/documents/{doc_id}/download")
@@ -1630,7 +1630,7 @@ def add_split_group(
     contract_repository.add_split_group(db, contract_id, org_id, group_data.model_dump())
     audit_service.log(db, "UPDATE", "ContractSplitGroup", contract_id, current_user.id, changes={"add_split_group": group_data.model_dump()}, organization_id=org_id)
     contract_repository.get_with_details(db, contract_id, org_id)
-    return inject_status_quo(contract_repository.get_with_details(db, contract_id, org_id))
+    return inject_status_quo(contract_repository.get_with_details(db, contract_id, org_id), db=db)
 
 
 @router.delete("/contracts/{contract_id}/split-groups/{group_id}", response_model=ContractResponse)
@@ -1648,7 +1648,7 @@ def remove_split_group(
     db.commit()
     audit_service.log(db, "UPDATE", "ContractSplitGroup", contract_id, current_user.id, changes={"remove_split_group": str(group_id)}, organization_id=org_id)
     contract_repository.get_with_details(db, contract_id, org_id)
-    return inject_status_quo(contract_repository.get_with_details(db, contract_id, org_id))
+    return inject_status_quo(contract_repository.get_with_details(db, contract_id, org_id), db=db)
 
 
 # Splits
@@ -1667,7 +1667,7 @@ def add_split(
     contract_repository.add_split(db, group_id, org_id, split_data.model_dump())
     audit_service.log(db, "UPDATE", "ContractSplit", contract_id, current_user.id, changes={"add_split": split_data.model_dump()}, organization_id=org_id)
     contract_repository.get_with_details(db, contract_id, org_id)
-    return inject_status_quo(contract_repository.get_with_details(db, contract_id, org_id))
+    return inject_status_quo(contract_repository.get_with_details(db, contract_id, org_id), db=db)
 
 
 @router.delete("/contracts/{contract_id}/split-groups/{group_id}/splits/{split_id}", response_model=ContractResponse)
@@ -1691,4 +1691,4 @@ def remove_split(
     db.commit()
     audit_service.log(db, "UPDATE", "ContractSplit", contract_id, current_user.id, changes={"remove_split": str(split_id)}, organization_id=org_id)
     contract_repository.get_with_details(db, contract_id, org_id)
-    return inject_status_quo(contract_repository.get_with_details(db, contract_id, org_id))
+    return inject_status_quo(contract_repository.get_with_details(db, contract_id, org_id), db=db)
