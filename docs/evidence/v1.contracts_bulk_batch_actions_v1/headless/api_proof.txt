@@ -1,0 +1,19 @@
+POST /api/contracts/parties/save (confirm false)
+status=422
+{
+  "detail": "confirm_non_destructive required"
+}
+
+POST /api/contracts/parties/save (cross-org)
+status=404
+{
+  "detail": "Not Found"
+}
+
+POST /api/contracts/parties/save (success)
+status=200
+{
+  "contract_id": 1,
+  "parties_saved_count": 2,
+  "status": "ok"
+}

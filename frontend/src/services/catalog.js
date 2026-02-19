@@ -70,5 +70,15 @@ export const CatalogService = {
             params: { entity_type: 'Artist', entity_id: artistId }
         });
         return response.data;
+    },
+
+    addGroupMember: async (artistId, data) => {
+        const response = await api.post(`/catalog/artists/${artistId}/members`, data);
+        return response.data;
+    },
+
+    removeGroupMember: async (artistId, memberId) => {
+        const response = await api.delete(`/catalog/artists/${artistId}/members/${memberId}`);
+        return response.data;
     }
 };

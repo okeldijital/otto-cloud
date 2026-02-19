@@ -1,0 +1,207 @@
+=== POST /api/ai/contracts/extract ===
+HTTP/1.1 200
+{
+  "contract_title": "wiz",
+  "contract_id": null,
+  "contract_date": null,
+  "effective_date": null,
+  "start_date": null,
+  "expiration_date": null,
+  "end_date": null,
+  "territory": null,
+  "exclusivity": null,
+  "parties": [],
+  "tracks": [],
+  "splits": [],
+  "royalties": [],
+  "splits_total": 0.0,
+  "works_hints": {
+    "artists": [],
+    "tracks": [],
+    "releases": []
+  },
+  "raw_confidence": 0.45,
+  "warnings": [
+    "no_parties_detected",
+    "effective_date_not_specified",
+    "dates_not_found_fallback_filename",
+    "no_end_date_specified",
+    "llm_disabled_fallback",
+    "parties_missing",
+    "terms_missing",
+    "tracks_missing"
+  ],
+  "parser_version": "deterministic_v2",
+  "contract_type": "Remix",
+  "dates": {
+    "contract_date": null,
+    "effective_date": null,
+    "start_date": null,
+    "end_date": null,
+    "expiration_date": null,
+    "end_date_specified": false,
+    "source": "deterministic_template_v1.1"
+  },
+  "terms": {
+    "term_min_years": null,
+    "auto_renew_years": null,
+    "reversion_years": null,
+    "term_text": null,
+    "grant_of_rights": null,
+    "territory": null,
+    "exclusivity": null,
+    "term_summary": null,
+    "renewal": null,
+    "reversion": null,
+    "governing_law": null,
+    "delivery": null,
+    "royalty_basis": null,
+    "notes": []
+  },
+  "key_terms": [],
+  "version": "v2",
+  "data": {
+    "contract_title": "wiz",
+    "dates": {
+      "effective_date": null,
+      "end_date": null,
+      "end_date_specified": false
+    },
+    "parties": [],
+    "tracks": [],
+    "splits": [],
+    "key_terms": {
+      "territory": null,
+      "term_text": null,
+      "grant_of_rights": null
+    },
+    "warnings": [
+      "no_parties_detected",
+      "effective_date_not_specified",
+      "dates_not_found_fallback_filename",
+      "no_end_date_specified",
+      "llm_disabled_fallback",
+      "parties_missing",
+      "terms_missing",
+      "tracks_missing"
+    ],
+    "effective_date": null,
+    "start_date": null,
+    "end_date": null,
+    "end_date_note": "no end date specified",
+    "terms": [],
+    "tracks_mentioned": [],
+    "splits_total": null,
+    "raw_confidence": 0.45,
+    "parser_version": "deterministic_v2",
+
+
+=== POST /api/ai/contracts/track_map_plan ===
+HTTP/1.1 200
+{
+  "status": "ok",
+  "org_id": "00000000-0000-0000-0000-000000003a99",
+  "mapping_version": "track_map_v1",
+  "candidates": [
+    {
+      "extract_track": {
+        "raw_mention": "ABANGOMA DRUM EFFECT MIX TO BE RELEASED",
+        "normalized_title": null,
+        "version_hint": null,
+        "confidence": 0.0
+      },
+      "matches": [
+        {
+          "track": {
+            "id": 1,
+            "title": "ABANGOMA DRUM EFFECT MIX TO BE RELEASED",
+            "artist_display": null
+          },
+          "confidence": 1.0,
+          "strategy": "exact"
+        }
+      ],
+      "needs_review": true
+    }
+  ],
+  "missing_tracks": [],
+  "notes": [],
+  "release_validation_flags": []
+}
+
+=== POST /api/contracts/from_extract ===
+HTTP/1.1 200
+{
+  "status": "created",
+  "contract_id": 1,
+  "contract_document_id": 1,
+  "title": "Wizard Track Contract",
+  "type": "Remix",
+  "contract_status": "Draft",
+  "start_date": null,
+  "end_date": null,
+  "pdf_asset_id": 1,
+  "linked_tracks_count": 1,
+  "warnings": [
+    "no_parties_detected",
+    "effective_date_not_specified",
+    "dates_not_found_fallback_filename",
+    "no_end_date_specified"
+  ],
+  "extraction": {
+    "contract_title": "Governed Extraction (Deterministic V1)",
+    "contract_id": null,
+    "contract_date": null,
+    "effective_date": null,
+    "start_date": null,
+    "expiration_date": null,
+    "end_date": null,
+    "territory": null,
+    "exclusivity": null,
+    "parties": [],
+    "tracks": [],
+    "splits": [],
+    "royalties": [],
+    "splits_total": 0.0,
+    "works_hints": {
+      "artists": [],
+      "tracks": [],
+      "releases": []
+    },
+    "raw_confidence": 0.45,
+    "warnings": [
+      "no_parties_detected",
+      "effective_date_not_specified",
+      "dates_not_found_fallback_filename",
+      "no_end_date_specified"
+    ],
+    "parser_version": "deterministic_v1",
+    "contract_type": "Remix",
+    "dates": {
+      "contract_date": null,
+      "effective_date": null,
+      "start_date": null,
+      "end_date": null,
+      "expiration_date": null,
+      "end_date_specified": false,
+      "source": "deterministic_template_v1.1"
+    },
+    "terms": {
+      "term_min_years": null,
+      "auto_renew_years": null,
+      "reversion_years": null,
+      "term_text": null,
+      "grant_of_rights": null,
+      "territory": null,
+      "exclusivity": null,
+      "term_summary": null,
+      "renewal": null,
+      "reversion": null,
+      "governing_law": null,
+      "delivery": null,
+      "royalty_basis": null,
+      "notes": []
+    },
+    "key_terms": []
+  }
+}

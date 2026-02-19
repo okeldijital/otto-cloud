@@ -67,7 +67,8 @@ class TestAILinkSuggest:
     def override_user(self, org_id_str):
         uid = 1
         oid = uuid.UUID(org_id_str)
-        app.dependency_overrides[get_current_user] = lambda: type('User', (), {'id': uid, 'organization_id': oid})
+        UserMock = type('UserMock', (), {'id': uid, 'organization_id': oid, 'is_active': True})
+        app.dependency_overrides[get_current_user] = lambda: UserMock()
 
     def test_link_suggest_disabled_returns_404(self):
         settings.AI_CONTRACT_INTEL_ENABLED = False

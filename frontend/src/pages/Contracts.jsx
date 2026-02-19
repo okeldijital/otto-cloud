@@ -188,10 +188,15 @@ const Contracts = () => {
     }, [contracts, search, statusFilter, typeFilter, expiring]);
 
     const partyTooltip = (contract) => {
-        if (!contract.parties || contract.parties.length === 0) return '';
-        return contract.parties
-            .map((p) => p.display_name || p.external_name || p.name || `${p.entity_type || 'Party'} ${p.entity_id || ''}`.trim())
-            .join(', ');
+        const items = contract.parties_summary?.items;
+        if (!items || items.length === 0) return '';
+        return items.map((p) => {
+            let line = p.display || p.name || `${p.party_type || 'Party'} #${p.entity_id || ''}`;
+            if (p.kind === 'group' && p.member_preview?.length) {
+                line += `\nMembers: ${p.member_preview.map(m => m.name).join(', ')}`;
+            }
+            return line;
+        }).join('\n');
     };
 
     const isExpired = (endDate) => {
@@ -321,8 +326,20 @@ const Contracts = () => {
                                         </button>
                                         <div className="muted mono small">{c.contract_number || '—'}</div>
                                     </td>
-                                    <td title={partyTooltip(c)}>
-                                        {(c.counts?.parties ?? c.parties?.length ?? c.party_count ?? 0)} parties
+                                    <td title={partyTooltip(c)} style={{ cursor: c.parties_summary?.count ? 'help' : 'default' }}>
+                                        {c.parties_summary?.count > 0 ? (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                                {c.parties_summary.items.slice(0, 3).map((p, idx) => (
+                                                    <span key={idx} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                                        <span className="truncate" style={{ maxWidth: 180 }}>{p.name}</span>
+                                                        {p.kind === 'group' && <span className="status-badge success" style={{ fontSize: '0.6rem', padding: '1px 4px' }}>GROUP</span>}
+                                                    </span>
+                                                ))}
+                                                {c.parties_summary.count > 3 && <span className="muted small">+{c.parties_summary.count - 3} more</span>}
+                                            </div>
+                                        ) : (
+                                            <span className="muted">{(c.counts?.parties ?? 0)} parties</span>
+                                        )}
                                     </td>
                                     <td>{(c.counts?.tracks ?? c.counts?.assets ?? c.assets?.length ?? c.asset_count ?? 0)} tracks</td>
                                     <td>

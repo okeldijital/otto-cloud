@@ -781,39 +781,39 @@ const ContractDetail = () => {
                 </div>
                 {partyForm.party_mode === 'system' ? (
                     <>
-                    <div className="form-group">
-                        <label>Entity Type</label>
-                        <select
-                            className="input"
-                            value={partyForm.entity_type}
-                            onChange={(e) => setPartyForm({ ...partyForm, entity_type: e.target.value, entity: null })}
-                        >
-                            <option value="artist">Artist</option>
-                            <option value="organization">Organization</option>
-                            <option value="individual">Individual</option>
-                        </select>
-                    </div>
-                    <div className="form-group">
-                        <label>Entity Lookup</label>
-                        <EntityTypeahead
-                            placeholder="Search org entities…"
-                            mode="party"
-                            partyTypes={partyForm.entity_type}
-                            onSelect={(entity) => setPartyForm({ ...partyForm, entity })}
-                        />
-                    </div>
-                    <div className="form-group">
-                        <label>Create Inline (if not found)</label>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                            <input
+                        <div className="form-group">
+                            <label>Entity Type</label>
+                            <select
                                 className="input"
-                                value={partyForm.external_name}
-                                placeholder="New entity name"
-                                onChange={(e) => setPartyForm({ ...partyForm, external_name: e.target.value })}
-                            />
-                            <button type="button" className="btn" onClick={createPartyInline}>Create</button>
+                                value={partyForm.entity_type}
+                                onChange={(e) => setPartyForm({ ...partyForm, entity_type: e.target.value, entity: null })}
+                            >
+                                <option value="artist">Artist</option>
+                                <option value="organization">Organization</option>
+                                <option value="individual">Individual</option>
+                            </select>
                         </div>
-                    </div>
+                        <div className="form-group">
+                            <label>Entity Lookup</label>
+                            <EntityTypeahead
+                                placeholder="Search org entities…"
+                                mode="party"
+                                partyTypes={partyForm.entity_type}
+                                onSelect={(entity) => setPartyForm({ ...partyForm, entity })}
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label>Create Inline (if not found)</label>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                                <input
+                                    className="input"
+                                    value={partyForm.external_name}
+                                    placeholder="New entity name"
+                                    onChange={(e) => setPartyForm({ ...partyForm, external_name: e.target.value })}
+                                />
+                                <button type="button" className="btn" onClick={createPartyInline}>Create</button>
+                            </div>
+                        </div>
                     </>
                 ) : (
                     <div className="form-group">

@@ -1,8 +1,8 @@
 import api from '../lib/api';
 
 const partyClient = {
-  async search(q, limit = 20) {
-    const response = await api.get('/contracts/party_search', { params: { q, limit } });
+  async search(q, limit = 20, types = 'artist,organization,individual,label') {
+    const response = await api.get('/contracts/party_search', { params: { q, limit, types } });
     return response.data;
   },
 

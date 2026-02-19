@@ -9,11 +9,14 @@ from datetime import datetime
 
 class TrackRepository:
     @staticmethod
-    def get_all(db: Session, organization_id: Any = None, skip: int = 0, limit: int = 100) -> List[Track]:
-        query = db.query(Track)
+    def get_all(db: Session, organization_id: Any = None, query: str = None, skip: int = 0, limit: int = 100) -> List[Track]:
+        q = db.query(Track)
         if organization_id:
-            query = query.filter(Track.organization_id == organization_id)
-        return query.offset(skip).limit(limit).all()
+            q = q.filter(Track.organization_id == organization_id)
+        if query:
+            search = f"%{query}%"
+            q = q.filter(Track.title.ilike(search))
+        return q.offset(skip).limit(limit).all()
 
     @staticmethod
     def get_by_id(db: Session, track_id: int, organization_id: Any = None) -> Optional[Track]:

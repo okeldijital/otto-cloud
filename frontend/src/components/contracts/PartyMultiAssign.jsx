@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import partyClient from '../../api/partyClient';
+import CreatePartyModal from './CreatePartyModal';
 
 const ROLE_OPTIONS = [
   'label',
@@ -8,12 +9,6 @@ const ROLE_OPTIONS = [
   'remixer',
   'publisher',
   'other',
-];
-
-const CREATE_TYPES = [
-  { value: 'artist', label: 'Artist' },
-  { value: 'individual', label: 'Individual' },
-  { value: 'organization', label: 'Organization' },
 ];
 
 function useDebounced(value, delayMs = 250) {
@@ -30,6 +25,7 @@ function groupByType(rows = []) {
     artist: [],
     individual: [],
     organization: [],
+    label: [],
   };
   for (const row of rows) {
     const type = String(row?.entity_type || '').toLowerCase();
@@ -49,10 +45,7 @@ export default function PartyMultiAssign({
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [showCreateInline, setShowCreateInline] = useState(false);
-  const [createType, setCreateType] = useState('artist');
-  const [createName, setCreateName] = useState('');
-  const [creating, setCreating] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const debounced = useDebounced(query);
 
   const grouped = useMemo(() => groupByType(results), [results]);
@@ -63,14 +56,18 @@ export default function PartyMultiAssign({
       const q = debounced.trim();
       if (!q) {
         setResults([]);
-        setShowCreateInline(false);
         return;
       }
       setLoading(true);
       try {
-        const data = await partyClient.search(q, 20);
+        // Always search ALL types so the user sees every matching entity.
+        const data = await partyClient.search(q, 20, 'artist,organization,individual,label');
         if (!alive) return;
-        setResults(Array.isArray(data?.items) ? data.items : []);
+        const items = Array.isArray(data?.results || data?.items || data) ? (data.results || data.items || data) : [];
+        setResults(items);
+      } catch (err) {
+        console.error('[PartyMultiAssign] search failed:', err);
+        if (alive) setResults([]);
       } finally {
         if (alive) setLoading(false);
       }
@@ -87,15 +84,18 @@ export default function PartyMultiAssign({
       {
         entity_type: String(entity.entity_type || '').toLowerCase(),
         entity_id: Number(entity.id),
-        display_name: entity.display_name,
+        display_name: entity.display_name || entity.name,
         role,
         split_percent: null,
+        // Carry over kind if adding directly
+        kind: entity.artist_type || entity.kind || entity.artist_kind,
+        member_preview: entity.members_preview || entity.members || [],
       },
     ];
     onChangeRows?.(next);
     setQuery('');
     setResults([]);
-    setShowCreateInline(false);
+    setIsModalOpen(false);
   }
 
   function updateRow(index, patch) {
@@ -108,18 +108,11 @@ export default function PartyMultiAssign({
     onChangeRows?.(next);
   }
 
-  async function createInline() {
-    const name = createName.trim();
-    if (!name) return;
-    setCreating(true);
-    try {
-      const created = await partyClient.create({ entity_type: createType, display_name: name });
-      addRow(created);
-      setCreateName('');
-    } finally {
-      setCreating(false);
-    }
-  }
+  // Only show type groups that actually have results
+  const typesToShow = ['artist', 'label', 'individual', 'organization'].filter(
+    (type) => (grouped[type] || []).length > 0
+  );
+  const hasAnyResults = typesToShow.length > 0;
 
   return (
     <div className="min-w-0" style={{ display: 'grid', gap: 8 }}>
@@ -130,15 +123,7 @@ export default function PartyMultiAssign({
         <input
           className="input"
           value={query}
-          onChange={(e) => {
-            const v = e.target.value;
-            setQuery(v);
-            if (v.trim()) {
-              setCreateName(v);
-            } else {
-              setShowCreateInline(false);
-            }
-          }}
+          onChange={(e) => setQuery(e.target.value)}
           placeholder="Search parties..."
         />
       </div>
@@ -148,24 +133,37 @@ export default function PartyMultiAssign({
         {!loading && !query.trim() && <div className="small muted" style={{ padding: 8 }}>Type to search parties.</div>}
         {!loading && query.trim() && (
           <div style={{ display: 'grid' }}>
-            {(['artist', 'individual', 'organization']).map((type) => {
+            {!hasAnyResults && (
+              <div className="small muted" style={{ padding: 8 }}>No matches found for "{query}"</div>
+            )}
+            {typesToShow.map((type) => {
               const rowsForType = grouped[type] || [];
-              const title = type === 'artist' ? 'Artists' : type === 'individual' ? 'Individuals' : 'Organizations';
+              const title = type === 'artist' ? 'Artists' : type === 'individual' ? 'Individuals' : type === 'label' ? 'Labels' : 'Organizations';
               return (
                 <div key={type}>
                   <div className="small muted" style={{ padding: '8px 8px 4px' }}>{title}</div>
-                  {rowsForType.length === 0 ? (
-                    <div className="small muted" style={{ padding: '0 8px 8px' }}>No matches</div>
-                  ) : rowsForType.map((entity) => (
+                  {rowsForType.map((entity) => (
                     <button
                       key={`${entity.entity_type}:${entity.id}`}
                       type="button"
                       className="ghost-btn"
                       style={{ justifyContent: 'space-between', borderRadius: 0, borderTop: '1px solid #f1f5f9' }}
                       onClick={() => addRow(entity)}
+                      title={(entity.kind === 'group' || entity.artist_type === 'group') && (entity.members_preview || entity.member_preview)?.length
+                        ? `Members: ${(entity.members_preview || entity.member_preview || []).map(m => m.display_name || m.name).join(', ')}`
+                        : undefined}
                     >
-                      <span className="break-words">{entity.display_name}</span>
-                      <span className="small muted">Add</span>
+                      <span className="break-words" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        {entity.display || entity.display_name || entity.subtitle}
+                        {(entity.kind === 'group' || entity.artist_type === 'group') && (
+                          <span className="status-badge success" style={{ fontSize: '0.55rem', padding: '1px 4px', lineHeight: 1.2 }}>GROUP</span>
+                        )}
+                        {/* Member count support */}
+                        {(entity.member_count > 0 && !(entity.members_preview?.length)) && (
+                          <span className="small muted">({entity.member_count} members)</span>
+                        )}
+                      </span>
+                      <span className="small muted">Add as {role}</span>
                     </button>
                   ))}
                 </div>
@@ -173,35 +171,13 @@ export default function PartyMultiAssign({
             })}
 
             <div style={{ borderTop: '1px solid #e5e7eb', padding: 8 }}>
-              {!showCreateInline ? (
-                <button
-                  type="button"
-                  className="ghost-btn"
-                  onClick={() => {
-                    setShowCreateInline(true);
-                    setCreateName(query.trim());
-                  }}
-                >
-                  Create "{query.trim()}"...
-                </button>
-              ) : (
-                <div style={{ display: 'grid', gap: 8 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr auto', gap: 8 }}>
-                    <select className="input" value={createType} onChange={(e) => setCreateType(e.target.value)}>
-                      {CREATE_TYPES.map((x) => <option key={x.value} value={x.value}>{x.label}</option>)}
-                    </select>
-                    <input
-                      className="input"
-                      value={createName}
-                      onChange={(e) => setCreateName(e.target.value)}
-                      placeholder="Party name"
-                    />
-                    <button type="button" className="btn" disabled={!createName.trim() || creating} onClick={createInline}>
-                      {creating ? 'Creating...' : 'Create'}
-                    </button>
-                  </div>
-                </div>
-              )}
+              <button
+                type="button"
+                className="ghost-btn"
+                onClick={() => setIsModalOpen(true)}
+              >
+                Create "{query.trim()}"...
+              </button>
             </div>
           </div>
         )}
@@ -211,7 +187,10 @@ export default function PartyMultiAssign({
         {!rows.length ? <div className="small muted">No parties assigned yet.</div> : null}
         {rows.map((row, idx) => (
           <div key={`${row.entity_type}:${row.entity_id}:${idx}`} style={{ display: 'grid', gridTemplateColumns: '1fr 170px 110px auto', gap: 8 }}>
-            <div className="input break-words" style={{ background: '#f8fafc' }}>{row.display_name}</div>
+            <div className="input break-words" style={{ background: '#f8fafc', display: 'flex', alignItems: 'center', gap: 6 }}>
+              {row.display_name}
+              {(row.kind === 'group' || row.artist_type === 'group') && <span className="status-badge success" style={{ fontSize: '0.5rem', padding: '1px 3px' }}>GROUP</span>}
+            </div>
             <select
               className="input"
               value={row.role || 'other'}
@@ -241,6 +220,15 @@ export default function PartyMultiAssign({
           {isPersisting ? 'Saving...' : 'Save Parties'}
         </button>
       </div>
+
+      {isModalOpen && (
+        <CreatePartyModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onCreated={addRow}
+          initialName={query.trim()}
+        />
+      )}
     </div>
   );
 }

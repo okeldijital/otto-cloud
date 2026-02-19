@@ -264,5 +264,6 @@ def build_release_integration_plan(
         ),
         missing_flags=missing_flags,
         suggested_actions=suggested_actions,
+        suggestions=link_response.suggestions,
         needs_review=needs_review,
     )

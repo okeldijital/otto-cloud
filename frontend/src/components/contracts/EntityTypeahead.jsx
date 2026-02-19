@@ -14,7 +14,7 @@ const EntityTypeahead = ({
     onChange,
     assetType,
     mode = 'search',
-    partyTypes = 'artist,organization,individual',
+    partyTypes = 'artist,organization,individual,label',
 }) => {
     const [options, setOptions] = useState([]);
     const [selected, setSelected] = useState(multiple ? [] : null);
@@ -81,18 +81,23 @@ const EntityTypeahead = ({
     }, [query, assetType, mode, partyTypes]);
 
     const optionProps = useMemo(() => {
-        const base = options.map((o) => ({
-            ...o,
-            id: o.id,
-            name: `${o.label || o.name || o.title} • ${o.entity_type}`,
-        }));
+        const base = options.map((o) => {
+            // Use the backend-provided display string for groups, otherwise format normally
+            const displayName = o.display || o.label || o.name || o.title;
+            const kindBadge = o.kind === 'group' ? ' [GROUP]' : '';
+            return {
+                ...o,
+                id: o.id,
+                name: `${displayName} • ${o.entity_type}${kindBadge}`,
+            };
+        });
 
         // Ensure selected items are in the options list so the Autocomplete can display them
         const selectedList = multiple ? (selected || []) : (selected ? [selected] : []);
         const selectedProps = selectedList.map(s => ({
             ...s,
             id: s.id,
-            name: `${s.label || s.name || s.title} • ${s.entity_type}`
+            name: `${s.display || s.label || s.name || s.title} • ${s.entity_type}`
         }));
 
         // Merge and unique by ID
@@ -109,7 +114,7 @@ const EntityTypeahead = ({
                 onChange={(val) => {
                     if (multiple) {
                         // In multiple mode, val is an array of IDs
-                const mapped = [...(selected || []), ...optionProps].filter((o) => val.includes(o.id));
+                        const mapped = [...(selected || []), ...optionProps].filter((o) => val.includes(o.id));
                         // Remove duplicates by ID
                         const unique = Array.from(new Map(mapped.map(m => [m.id, m])).values());
                         setSelected(unique);

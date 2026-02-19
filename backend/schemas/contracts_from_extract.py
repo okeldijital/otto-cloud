@@ -49,6 +49,7 @@ class CreateFromExtractRequest(BaseModel):
 
     create_parties: bool = False
     party_links: List[dict] = Field(default_factory=list)
+    parties: List[dict] = Field(default_factory=list)
 
 
 class ContractOut(BaseModel):

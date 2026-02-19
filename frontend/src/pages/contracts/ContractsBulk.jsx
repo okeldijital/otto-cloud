@@ -40,7 +40,7 @@ export default function ContractsBulk() {
           <input id="bulk-contract-files" type="file" multiple accept=".pdf,application/pdf" onChange={onChooseFiles} />
 
           <button type="button" className="btn orange" disabled={!selectedIds.length || state.is_busy} onClick={onRunExtract}>
-            {state.status === 'extracting' ? 'Extracting...' : 'Run Bulk Extract'}
+            {state.status === 'extracting' ? 'Extracting...' : state.status === 'uploading' ? 'Uploading...' : 'Run Bulk Extract'}
           </button>
 
           <div style={{ maxHeight: 420, overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: 10 }}>

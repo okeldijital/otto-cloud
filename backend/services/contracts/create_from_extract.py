@@ -166,12 +166,13 @@ def _normalize_party_links(raw_links) -> list[dict]:
     for row in raw_links:
         if not isinstance(row, dict):
             continue
-        entity_type = str(row.get("entity_type") or "").strip().lower()
+        entity_type = str(row.get("entity_type") or row.get("party_type") or "").strip().lower()
         role = str(row.get("role") or "other").strip().lower()
         split_percent = row.get("split_percent")
         notes = row.get("notes")
         external_name = str(row.get("external_name") or "").strip()
-        entity_id = row.get("entity_id")
+        entity_id = row.get("entity_id") or row.get("artist_id") or row.get("organization_id") or row.get("individual_id")
+
         if entity_type in {"artist", "organization", "individual"}:
             try:
                 entity_id = int(entity_id)
@@ -359,7 +360,7 @@ def create_contract_from_extract(
         if missing_ids:
             raise ValueError("invalid_track_ids:" + ",".join(str(x) for x in missing_ids))
 
-    requested_party_links = _normalize_party_links(payload.get("party_links") or [])
+    requested_party_links = _normalize_party_links((payload.get("party_links") or []) + (payload.get("parties") or []))
 
     warnings = []
     if not extract_dates.get("effective_date"):

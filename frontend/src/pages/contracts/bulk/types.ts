@@ -13,6 +13,7 @@ export type Completeness = {
 export type BulkJobStatus =
   | 'idle'
   | 'selecting_files'
+  | 'uploading'
   | 'extracting'
   | 'extracted_partial'
   | 'extracted_complete'

@@ -1,0 +1,215 @@
+=== POST /api/ai/contracts/extract_bulk ===
+HTTP/1.1 200
+{
+  "version": "bulk_extract_v1",
+  "org_id": "00000000-0000-0000-0000-000000007531",
+  "results": [
+    {
+      "client_file_id": "bulk_a.pdf",
+      "sha256": "62e881fca6d2304015fa1f951656a7d45d9a6b69171a5ae766704341fdc9f00e",
+      "status": "ok",
+      "extract": {
+        "version": "v2",
+        "parser": {
+          "name": "hybrid_conservative_v2",
+          "llm_used": false,
+          "parser_version": "deterministic_v2",
+          "confidence": 0.95
+        },
+        "data": {
+          "title": "bulk_a",
+          "type": "unknown",
+          "dates": {
+            "contract_date": null,
+            "effective_date": null,
+            "end_date": null,
+            "end_date_specified": false
+          },
+          "parties": [
+            {
+              "name": "M2KR MELT 2000 Revisited",
+              "role": "label",
+              "entity_hint": "organization",
+              "confidence": 0.9,
+              "evidence": "agreement_header"
+            },
+            {
+              "name": "SPIRIT MOTION PTY LTD",
+              "role": "remixer",
+              "entity_hint": "unknown",
+              "confidence": 0.9,
+              "evidence": "agreement_header"
+            },
+            {
+              "name": "MADALA KUNENE",
+              "role": "artist",
+              "entity_hint": "artist",
+              "confidence": 0.8,
+              "evidence": "body_original_artist"
+            }
+          ],
+          "tracks": {
+            "mentioned_titles": [
+              "ABANGOMA CAVE MIX TO GO ON THE BLACK MOTION ALBUM REBIRTH of the DRUMS",
+              "ABANGOMA DRUM EFFECT MIX TO BE RELEASED"
+            ]
+          },
+          "splits": [
+            {
+              "scope": "master",
+              "percent": 30.0,
+              "party_name": "SPIRIT MOTION PTY LTD",
+              "role": "remixer",
+              "notes": "remixer_royalty_rate",
+              "evidence": "remixer_royalty_rate"
+            },
+            {
+              "scope": "master",
+              "percent": 70.0,
+              "party_name": "M2KR MELT 2000 Revisited",
+              "role": "label",
+              "notes": "inferred_complement",
+              "evidence": "inferred_complement"
+            }
+          ],
+          "key_terms": {
+            "territory": "Worldwide",
+            "governing_law": null,
+            "term_text": "minimum 15 years; auto-
+
+=== POST /api/ai/contracts/track_map_plan ===
+HTTP/1.1 200
+{
+  "status": "ok",
+  "org_id": "00000000-0000-0000-0000-000000007531",
+  "mapping_version": "track_map_v1",
+  "candidates": [
+    {
+      "extract_track": {
+        "raw_mention": "ABANGOMA DRUM EFFECT MIX TO BE RELEASED",
+        "normalized_title": null,
+        "version_hint": null,
+        "confidence": 0.0
+      },
+      "matches": [
+        {
+          "track": {
+            "id": 1,
+            "title": "ABANGOMA DRUM EFFECT MIX TO BE RELEASED",
+            "artist_display": null
+          },
+          "confidence": 1.0,
+          "strategy": "exact"
+        }
+      ],
+      "needs_review": true
+    }
+  ],
+  "missing_tracks": [],
+  "notes": [],
+  "release_validation_flags": []
+}
+
+=== POST /api/contracts/from_extract ===
+HTTP/1.1 200
+{
+  "status": "ok",
+  "created": true,
+  "idempotent_hit": false,
+  "org_id": "00000000-0000-0000-0000-000000007531",
+  "contract": {
+    "id": 1,
+    "org_id": "00000000-0000-0000-0000-000000007531",
+    "status": "draft",
+    "title": "bulk_a",
+    "type": "unknown",
+    "territory": "Worldwide",
+    "effective_date": null,
+    "end_date": null,
+    "end_date_specified": false,
+    "created_at": "2026-02-18T16:24:49",
+    "updated_at": "2026-02-18T16:24:49"
+  },
+  "links": {
+    "documents_created": 1,
+    "tracks_linked": 1,
+    "parties_linked": 0
+  },
+  "completeness": {
+    "version": "v1",
+    "score": 70,
+    "status_quo": "red",
+    "reasons": [
+      {
+        "code": "missing_parties",
+        "message": "No parties linked",
+        "weight": 30
+      }
+    ],
+    "signals": {
+      "documents": 1,
+      "tracks": 1,
+      "parties": 0,
+      "effective_date": false,
+      "end_date_known": true,
+      "territory": true,
+      "term_present": true
+    }
+  }
+}
+
+=== GET /api/contracts ===
+HTTP/1.1 200
+{
+  "items": [
+    {
+      "id": 1,
+      "org_id": "00000000-0000-0000-0000-000000007531",
+      "status": "draft",
+      "title": "bulk_a",
+      "type": "unknown",
+      "territory": "Worldwide",
+      "effective_date": null,
+      "end_date": null,
+      "end_date_specified": false,
+      "created_at": "2026-02-18T16:24:49",
+      "updated_at": "2026-02-18T16:24:49",
+      "counts": {
+        "documents": 1,
+        "tracks": 1,
+        "parties": 0
+      },
+      "completeness": {
+        "version": "v1",
+        "score": 65,
+        "status_quo": "red",
+        "reasons": [
+          {
+            "code": "missing_parties",
+            "message": "No parties linked",
+            "weight": 30
+          },
+          {
+            "code": "missing_effective_date",
+            "message": "Effective date not set",
+            "weight": 5
+          }
+        ],
+        "signals": {
+          "documents": 1,
+          "tracks": 1,
+          "parties": 0,
+          "effective_date": false,
+          "end_date_known": true,
+          "territory": true,
+          "term_present": true
+        }
+      }
+    }
+  ],
+  "page": {
+    "limit": 50,
+    "offset": 0,
+    "total": 1
+  }
+}

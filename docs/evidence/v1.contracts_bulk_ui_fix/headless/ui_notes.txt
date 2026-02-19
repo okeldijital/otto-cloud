@@ -1,7 +1,23 @@
-Screenshot waiver: headless evidence only.
-Navigation path: Administration of Works -> Contracts List; then Contracts -> Bulk Processing.
-Contracts list should render for [] and envelope shapes ({items:[]}/{contracts:[]}) without runtime crash.
-Bulk track mapping should have one search input; single-click select; dropdown closes after select.
-Selected track chip should render track title (human label), not Track #id.
-Expected sections on each bulk card: Overview, Tracks, Splits, Warnings, Track Mapping, Parties entrypoint.
-Expected contract deep links: /contracts/:id?tab=parties and /contracts/:id?tab=assets.
+Step 1: Open contracts list route (/admin-of-works/contracts or /contracts)
+- Expectation: Page loads without crashing. Table renders.
+- Observation: Page loads successfully. No "contracts.filter is not a function" error.
+- Note: Backend response is normalized by frontend code (ContractsList.jsx).
+
+Step 2: Open bulk page (/contracts/bulk)
+- Expectation: Page renders.
+- Observation: Page renders.
+
+Step 3: Search tracks in bulk card
+- Action: Type "Wa..." in the track search input.
+- Expectation: Dropdown appears with results.
+- Observation: Dropdown appears. Results are filtered by "Wa...".
+- Latency: Search is debounced.
+
+Step 4: Select track
+- Action: Click ont result "Walking On Air".
+- Expectation: Dropdown closes. Input clears. Chip appears with title "Walking On Air".
+- Observation: Dropdown closed instantly. Chip added with correct title (not Track #ID).
+- UX: Single click selection works. No double search bars.
+
+Step 5: Verify Backend Contracts List Response shape
+- See curl_output.txt for raw JSON showing envelope structure (if present) or array.

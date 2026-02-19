@@ -29,6 +29,7 @@ const Artists = () => {
     const [formData, setFormData] = useState({
         name: '',
         aka: '',
+        artist_kind: 'solo',
         nationality: '',
         id_number: '',
         profile_image_url: '',
@@ -94,6 +95,7 @@ const Artists = () => {
         setFormData({
             name: '',
             aka: '',
+            artist_kind: 'solo',
             nationality: '',
             id_number: '',
             profile_image_url: '',
@@ -127,6 +129,7 @@ const Artists = () => {
         setFormData({
             name: artist.name,
             aka: artist.aka || '',
+            artist_kind: artist.artist_kind || 'solo',
             nationality: artist.nationality || '',
             id_number: artist.id_number || '',
             profile_image_url: artist.profile_image_url || '',
@@ -182,6 +185,7 @@ const Artists = () => {
         const submissionData = {
             name: formData.name,
             aka: formData.aka,
+            artist_kind: formData.artist_kind || 'solo',
             nationality: formData.nationality,
             id_number: formData.id_number,
             profile_image_url: profileImageUrl,
@@ -231,18 +235,41 @@ const Artists = () => {
             sortable: true,
             render: (row) => (
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <Link to={`/catalog/artists/${row.id}`} style={{ fontWeight: 600, color: 'var(--primary-color)', textDecoration: 'none' }}>
-                        {row.display_name || row.aka || row.name}
-                    </Link>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Link to={`/catalog/artists/${row.id}`} style={{ fontWeight: 600, color: 'var(--primary-color)', textDecoration: 'none' }}>
+                            {row.display_name || row.aka || row.name}
+                        </Link>
+                        {(row.artist_kind === 'group') && (
+                            <span style={{ fontSize: '0.6rem', padding: '1px 6px', borderRadius: 4, background: '#dcfce7', color: '#16a34a', fontWeight: 700, letterSpacing: '0.04em' }}>GROUP</span>
+                        )}
+                    </div>
                     {row.aka && row.name !== row.aka && (
                         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                             Real Name: {row.name}
+                        </span>
+                    )}
+                    {row.artist_kind === 'group' && row.members?.length > 0 && (
+                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                            Members: {row.members.map(m => m.name).join(', ')}
                         </span>
                     )}
                 </div>
             )
         },
         { key: 'aka', label: 'Stage Name', sortable: true },
+        {
+            key: 'artist_kind',
+            label: 'Kind',
+            sortable: true,
+            render: (row) => {
+                const kind = row.artist_kind || 'solo';
+                return (
+                    <span style={{ textTransform: 'capitalize' }}>
+                        {kind}{kind === 'group' && row.member_count ? ` (${row.member_count})` : ''}
+                    </span>
+                );
+            }
+        },
         { key: 'contact_email', label: 'Email', sortable: true },
         {
             key: 'label_id',
@@ -360,6 +387,22 @@ const Artists = () => {
                         value={formData.aka}
                         onChange={(e) => setFormData({ ...formData, aka: e.target.value })}
                     />
+                </div>
+
+                <div className="form-row">
+                    <div className="form-group">
+                        <label htmlFor="artist_kind">Kind</label>
+                        <select
+                            id="artist_kind"
+                            className="input"
+                            value={formData.artist_kind || 'solo'}
+                            onChange={(e) => setFormData({ ...formData, artist_kind: e.target.value })}
+                            style={{ height: '40px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-color)', padding: '0 12px' }}
+                        >
+                            <option value="solo">Solo</option>
+                            <option value="group">Group</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div className="form-row">

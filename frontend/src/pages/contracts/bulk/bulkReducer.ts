@@ -25,20 +25,20 @@ export type BulkAction =
   | { type: 'BATCH/APPLY_PARTIES_TO_SELECTED'; parties: PartyRowInput[] }
 
   | {
-      type: 'FILES/ADD';
-      batch_id: UUID;
-      files: Array<{ file_id: string; filename: string; file: File }>;
-    }
+    type: 'FILES/ADD';
+    batch_id: UUID;
+    files: Array<{ file_id: string; filename: string; file: File }>;
+  }
   | { type: 'FILES/REMOVE'; file_id: string }
   | { type: 'FILES/CLEAR_ALL' }
 
   | { type: 'EXTRACT/START'; file_ids: string[] }
   | {
-      type: 'EXTRACT/RESULT_OK';
-      file_id: string;
-      extract: ContractExtractV2;
-      extracted_at?: string | null;
-    }
+    type: 'EXTRACT/RESULT_OK';
+    file_id: string;
+    extract: ContractExtractV2;
+    extracted_at?: string | null;
+  }
   | { type: 'EXTRACT/RESULT_ERR'; file_id: string; error: BulkItemError }
   | { type: 'EXTRACT/FINISH' }
 
@@ -49,23 +49,23 @@ export type BulkAction =
 
   | { type: 'DRAFT/START'; file_id: string }
   | {
-      type: 'DRAFT/SUCCESS';
-      file_id: string;
-      created_contract_id: number;
-      created_document_id: number;
-      linked_tracks_count: number;
-      completeness: Completeness;
-      created_at?: string | null;
-    }
+    type: 'DRAFT/SUCCESS';
+    file_id: string;
+    created_contract_id: number;
+    created_document_id: number;
+    linked_tracks_count: number;
+    completeness: Completeness;
+    created_at?: string | null;
+  }
   | { type: 'DRAFT/ERROR'; file_id: string; error: BulkItemError }
 
   | { type: 'PARTIES/START'; file_id: string }
   | {
-      type: 'PARTIES/SUCCESS';
-      file_id: string;
-      saved_count: number;
-      completeness: Completeness;
-    }
+    type: 'PARTIES/SUCCESS';
+    file_id: string;
+    saved_count: number;
+    completeness: Completeness;
+  }
   | { type: 'PARTIES/ERROR'; file_id: string; error: BulkItemError };
 
 export const initialBulkState: BulkBatchState = {
@@ -101,6 +101,7 @@ function updateItem(
 function setBusyFromStatus(status: BulkJobStatus): boolean {
   return (
     status === 'selecting_files' ||
+    status === 'uploading' ||
     status === 'extracting' ||
     status === 'creating_draft' ||
     status === 'saving_parties'

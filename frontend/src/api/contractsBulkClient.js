@@ -2,9 +2,12 @@ import api from '../lib/api';
 
 const contractsBulkClient = {
   extractBulk: async (formData) => {
-    const response = await api.post('/ai/contracts/extract_bulk', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    const response = await api.post('/ai/contracts/extract_bulk', formData);
+    return response.data;
+  },
+
+  getBulkStatus: async (jobId) => {
+    const response = await api.get(`/ai/contracts/extract_bulk/status/${jobId}`);
     return response.data;
   },
 
@@ -14,9 +17,7 @@ const contractsBulkClient = {
   },
 
   createFromExtract: async (formData) => {
-    const response = await api.post('/contracts/from_extract', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    const response = await api.post('/contracts/from_extract', formData);
     return response.data;
   },
 

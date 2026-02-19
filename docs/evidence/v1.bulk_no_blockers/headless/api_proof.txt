@@ -1,0 +1,14 @@
+=== extract_bulk request ===
+status_code: 200
+result_status: ok
+extract_version: v2
+extract_warnings: ["tracks_missing", "parties_missing", "dates_missing"]
+
+=== from_extract request (no track_ids, no parties) ===
+status_code: 200
+created: True
+contract_id: 1
+linked_tracks_count: 0
+completeness_score: 20
+completeness_status: red
+completeness_missing: ["missing_tracks", "missing_parties", "missing_territory", "missing_effective_date", "missing_term"]

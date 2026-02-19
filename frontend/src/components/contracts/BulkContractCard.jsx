@@ -27,9 +27,37 @@ export default function BulkContractCard({
   const title = extractData.title || item.filename;
   const parties = Array.isArray(extractData.parties) ? extractData.parties : [];
   const assignedParties = Array.isArray(item?.parties) ? item.parties : [];
-  const selectedTracks = item?.selected_track_ids || [];
-  const canCreate = Boolean(item?.extract) && selectedTracks.length > 0 && Boolean(item?.confirm_non_destructive);
+  const selectedTracks = Array.isArray(item?.selected_track_ids) ? item.selected_track_ids : [];
+  const hasTracksSelected = selectedTracks.length > 0 || Number(item?.linked_tracks_count || 0) > 0;
+  const hasPartiesSelected = assignedParties.length > 0;
+  const missingTracks = !hasTracksSelected;
+  const missingParties = !hasPartiesSelected;
+  const hasOptionalDates = Boolean(extractData?.dates?.contract_date || extractData?.dates?.effective_date || extractData?.dates?.expiration_date || extractData?.dates?.end_date);
+  const canCreate = Boolean(item?.extract) && Boolean(item?.confirm_non_destructive);
   const isDraftCreated = Boolean(item?.created_contract_id);
+  const baseCompleteness = item?.completeness || {
+    score: 0,
+    status: 'red',
+    missing: [],
+  };
+  const incomingMissing = Array.isArray(baseCompleteness?.missing)
+    ? baseCompleteness.missing
+    : Array.isArray(baseCompleteness?.reasons)
+      ? baseCompleteness.reasons
+      : [];
+  const filteredMissing = incomingMissing.filter((m) => {
+    if ((m === 'missing_tracks' || m === 'tracks_missing') && hasTracksSelected) return false;
+    if ((m === 'missing_parties' || m === 'parties_missing') && hasPartiesSelected) return false;
+    return true;
+  });
+  const completeness = {
+    ...baseCompleteness,
+    missing: filteredMissing,
+  };
+  const checklist = [];
+  if (missingTracks) checklist.push('add tracks');
+  if (missingParties) checklist.push('add parties');
+  if (!hasOptionalDates) checklist.push('add dates (optional)');
 
   return (
     <article className="panel min-w-0" style={{ padding: 12, gap: 10 }}>
@@ -38,8 +66,17 @@ export default function BulkContractCard({
           <div className="strong break-words">{title}</div>
           <div className="small muted break-words">{item.filename}</div>
         </div>
-        <CompletenessBadge completeness={item.completeness || { score: 0, status: 'red', missing: ['missing_tracks', 'missing_parties'] }} />
+        <CompletenessBadge completeness={completeness} />
       </div>
+      {checklist.length > 0 ? (
+        <div className="small muted break-words">
+          To improve completeness: {checklist.join(', ')}.
+        </div>
+      ) : (
+        <div className="small" style={{ color: '#15803d' }}>
+          Completeness requirements resolved.
+        </div>
+      )}
 
       <div className="small break-words">
         Effective: {dateLabel(extractData, 'effective_date')} | Contract Date: {dateLabel(extractData, 'contract_date')} | Expiration: {dateLabel(extractData, 'expiration_date')}
@@ -47,10 +84,16 @@ export default function BulkContractCard({
       <div className="small break-words">
         Parties: {parties.length ? parties.map((p) => p.display_name || p.name).filter(Boolean).join(', ') : 'No parties extracted'}
       </div>
+      {item?.error ? (
+        <div className="error-banner small break-words">
+          {`${item.phase === 'draft_failed' ? 'Create failed' : item.phase === 'extract_failed' ? 'Extract failed' : 'Request failed'} (${item.error.code || 'error'}): ${item.error.message}`}
+          {item.error.error_id ? ` [error_id: ${item.error.error_id}]` : ''}
+        </div>
+      ) : null}
 
-      <ExtractPreviewSections extract={item.extract} />
+      <ExtractPreviewSections extract={item.extract} hasTracks={hasTracksSelected} hasParties={hasPartiesSelected} />
 
-      <section className="panel min-w-0" style={{ padding: 10 }}>
+      <section className="panel min-w-0" style={{ padding: 10, overflow: 'visible' }}>
         <div className="strong" style={{ marginBottom: 6 }}>Track Mapping</div>
         <TrackMultiSelect selectedIds={selectedTracks} onChange={onUpdateTracks} />
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
@@ -65,7 +108,7 @@ export default function BulkContractCard({
         </div>
       </section>
 
-      <section className="panel min-w-0" style={{ padding: 10 }}>
+      <section className="panel min-w-0" style={{ padding: 10, overflow: 'visible' }}>
         <div className="strong" style={{ marginBottom: 6 }}>Parties</div>
         <PartyMultiAssign
           rows={assignedParties}

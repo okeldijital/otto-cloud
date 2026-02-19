@@ -931,7 +931,7 @@ const ContractDetail = () => {
                 </div>
                 <div className="form-group">
                     <label>Search Assets</label>
-                    <EntityTypeahead multiple onChange={(assets) => setAssetForm({ ...assetForm, assets })} placeholder="Search by title..." assetType={assetForm.asset_type} />
+                    <EntityTypeahead multiple mode="asset" onChange={(assets) => setAssetForm({ ...assetForm, assets })} placeholder="Search by title..." assetType={assetForm.asset_type} />
                 </div>
             </EntityForm>
 
@@ -976,7 +976,7 @@ const ContractDetail = () => {
                 {partyForm.party_mode === 'system' ? (
                     <div className="form-group">
                         <label>Lookup Entity</label>
-                        <EntityTypeahead onSelect={(entity) => setPartyForm({ ...partyForm, entity })} />
+                        <EntityTypeahead mode="party" onSelect={(entity) => setPartyForm({ ...partyForm, entity })} />
                     </div>
                 ) : (
                     <div className="form-group">

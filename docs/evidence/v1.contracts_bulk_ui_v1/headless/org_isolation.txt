@@ -1,0 +1,7 @@
+OrgB tokens searched in OrgA response (expect no matches):
+command: rg -n 'ORG_B_TOKEN|Hidden Org B Track ORG_B_TOKEN' <org_a_response>
+(no matches)
+
+OrgA tokens searched in OrgB response (expect no matches):
+command: rg -n 'ABANGOMA DRUM EFFECT MIX TO BE RELEASED|Bulk Release A|Bulk Artist A' <org_b_response>
+(no matches)

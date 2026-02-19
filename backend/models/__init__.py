@@ -6,6 +6,7 @@ from models.pro import PRO
 from models.label import Label
 from models.publisher import Publisher
 from models.artist import Artist
+from models.artist_membership import ArtistMembership
 from models.release import Release
 from models.track import Track
 from models.work import Work
@@ -108,4 +109,5 @@ __all__ = [
     "ContractTrackLink",
     "WorksAdmin",
     "WorksAdminDocument",
+    "ArtistMembership",
 ]

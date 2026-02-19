@@ -142,6 +142,7 @@ from routes import (  # noqa: E402
     ai_core_write,
     system_control_center,
     contracts_wizard,
+    groups,
 )
 
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
@@ -150,6 +151,7 @@ app.include_router(catalog.router, prefix="/api/catalog", tags=["Catalog"])
 # You had contracts mounted at /api (router defines its own prefixes)
 app.include_router(contracts.router, prefix="/api", tags=["Contracts"])
 app.include_router(contracts_wizard.router, prefix="/api", tags=["Contracts Wizard"])
+app.include_router(groups.router, prefix="/api", tags=["Groups"])
 
 app.include_router(network.router, prefix="/api", tags=["Network"])
 app.include_router(royalties.router, prefix="/api/royalties", tags=["Royalties"])

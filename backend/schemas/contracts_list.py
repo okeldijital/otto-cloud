@@ -62,6 +62,27 @@ class ContractCounts(BaseModel):
     parties: int = Field(ge=0)
 
 
+class PartyMemberPreview(BaseModel):
+    id: int
+    name: str
+
+
+class PartyPreview(BaseModel):
+    party_type: Optional[str] = None
+    entity_id: Optional[int] = None
+    artist_id: Optional[int] = None
+    kind: Optional[str] = "solo"
+    role: Optional[str] = None
+    name: str = ""
+    display: str = ""
+    member_preview: List[PartyMemberPreview] = Field(default_factory=list)
+
+
+class PartiesSummary(BaseModel):
+    count: int = 0
+    items: List[PartyPreview] = Field(default_factory=list)
+
+
 class ContractListItem(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -80,6 +101,7 @@ class ContractListItem(BaseModel):
     counts: ContractCounts
     completeness: ContractCompleteness
     dates: Optional[dict] = None
+    parties_summary: Optional[PartiesSummary] = None
 
 
 class PageMeta(BaseModel):

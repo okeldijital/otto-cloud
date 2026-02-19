@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { CatalogService } from '../services/catalog';
 import { DocumentsService } from '../services/operations';
@@ -7,6 +7,7 @@ import { BASE_URL } from '../lib/api';
 import { confirmAction } from '../lib/tauri';
 import { User, Disc, FileText, Music, Link as LinkIcon, Instagram, Twitter, DollarSign, Edit, Camera, ChevronLeft, Trash2 } from 'lucide-react';
 import EntityForm from '../components/EntityForm';
+import GroupMembersManager from '../components/catalog/GroupMembersManager';
 
 const API_URL = BASE_URL;
 
@@ -51,37 +52,37 @@ const ArtistDetail = () => {
         youtube_url: ''
     });
 
-    useEffect(() => {
-        const fetchArtistData = async () => {
-            setIsLoading(true);
-            try {
-                const [artistData, releasesData, worksData, contractsData, labelsData, publishersData, prosData] = await Promise.all([
-                    CatalogService.getById('artists', id),
-                    CatalogService.getArtistReleases(id),
-                    CatalogService.getArtistWorks(id),
-                    CatalogService.getArtistContracts(id),
-                    CatalogService.getAll('labels'),
-                    CatalogService.getAll('publishers'),
-                    CatalogService.getAll('pros')
-                ]);
-                setArtist(artistData);
-                setReleases(releasesData);
-                setWorks(worksData);
-                setContracts(contractsData);
-                setLabels(labelsData);
-                setPublishers(publishersData);
-                setPros(prosData);
-            } catch (error) {
-                console.error('Failed to fetch artist details:', error);
-            } finally {
-                setIsLoading(false);
-            }
-        };
+    const fetchArtistData = useCallback(async (silent = false) => {
+        if (!silent) setIsLoading(true);
+        try {
+            const [artistData, releasesData, worksData, contractsData, labelsData, publishersData, prosData] = await Promise.all([
+                CatalogService.getById('artists', id),
+                CatalogService.getArtistReleases(id),
+                CatalogService.getArtistWorks(id),
+                CatalogService.getArtistContracts(id),
+                CatalogService.getAll('labels'),
+                CatalogService.getAll('publishers'),
+                CatalogService.getAll('pros')
+            ]);
+            setArtist(artistData);
+            setReleases(releasesData);
+            setWorks(worksData);
+            setContracts(contractsData);
+            setLabels(labelsData);
+            setPublishers(publishersData);
+            setPros(prosData);
+        } catch (error) {
+            console.error('Failed to fetch artist details:', error);
+        } finally {
+            if (!silent) setIsLoading(false);
+        }
+    }, [id]);
 
+    useEffect(() => {
         if (id) {
             fetchArtistData();
         }
-    }, [id]);
+    }, [fetchArtistData, id]);
 
     const handleEditClick = () => {
         if (!artist) return;
@@ -209,7 +210,12 @@ const ArtistDetail = () => {
                 </div>
                 <div className="artist-info-main">
                     <div className="artist-header-top">
-                        <h1 className="artist-name">{artist.name}</h1>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <h1 className="artist-name">{artist.name}</h1>
+                            {(artist.artist_kind === 'group') && (
+                                <span style={{ fontSize: '0.7rem', padding: '3px 10px', borderRadius: 6, background: '#dcfce7', color: '#16a34a', fontWeight: 700, letterSpacing: '0.04em' }}>GROUP</span>
+                            )}
+                        </div>
                         <div className="flex gap-2">
                             <button className="btn-secondary btn-sm text-red-600 hover:bg-red-50 hover:border-red-200" onClick={async () => {
                                 if (await confirmAction(`Are you sure you want to delete ${artist.name}?`, 'Delete Artist')) {
@@ -351,6 +357,11 @@ const ArtistDetail = () => {
                                         </div>
                                     </div>
                                 </div>
+
+                                {/* Members Section (Groups only) */}
+                                {artist.artist_kind === 'group' && (
+                                    <GroupMembersManager artist={artist} onUpdate={() => fetchArtistData(true)} />
+                                )}
                             </div>
                         )}
 

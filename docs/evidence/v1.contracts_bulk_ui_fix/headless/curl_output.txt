@@ -1,0 +1,76 @@
+=== TEST 1: Track Search (GET /api/tracks/search?q=Wal) ===
+Status: 200
+{
+  "status": "ok",
+  "org_id": "00000000-0000-0000-0000-000000000001",
+  "runtime": {
+    "db_id": "active",
+    "db_path_hint": "/Users/m2krproduction/.otto/data/db/otto.sqlite"
+  },
+  "items": [
+    {
+      "id": 1,
+      "display_name": "Walking On Air",
+      "title": "Walking On Air",
+      "artist": null,
+      "release": null,
+      "artists": [],
+      "version": null,
+      "isrc": null,
+      "artist_display": null
+    }
+  ],
+  "limit": 20,
+  "offset": 0,
+  "total_estimate": 1
+}
+
+=== TEST 2: Track By IDs (POST /api/tracks/by_ids) ===
+Status: 200
+{
+  "items": [
+    {
+      "id": 1,
+      "title": "Walking On Air"
+    },
+    {
+      "id": 2,
+      "title": "Wanderlust"
+    }
+  ]
+}
+
+=== TEST 3: Contracts List (GET /api/contracts) ===
+Status: 200
+Format: Envelope {contracts: [...], ...}
+=== TEST 4: Party Search (GET /api/contracts/party_search) ===
+4a. Search 'Artist', type='artist':
+{
+  "status": "ok",
+  "org_id": "00000000-0000-0000-0000-000000000001",
+  "items": [
+    {
+      "entity_type": "artist",
+      "id": 1,
+      "display_name": "Artist One"
+    }
+  ]
+}
+4b. Search 'Artist', type='organization':
+{
+  "status": "ok",
+  "org_id": "00000000-0000-0000-0000-000000000001",
+  "items": []
+}
+4c. Search 'Label', type='organization':
+{
+  "status": "ok",
+  "org_id": "00000000-0000-0000-0000-000000000001",
+  "items": [
+    {
+      "entity_type": "organization",
+      "id": 1,
+      "display_name": "Label One"
+    }
+  ]
+}

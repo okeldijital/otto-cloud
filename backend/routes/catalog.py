@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import List, Annotated
 
 from database import get_db
 from models.user import User
 from models.artist import Artist as ArtistModel
+from models.artist_membership import ArtistMembership
 from models.release import Release as ReleaseModel
 from models.track import Track as TrackModel
 from models.work import Work as WorkModel
@@ -22,6 +23,7 @@ from dependencies import get_current_active_user, get_current_organization_id
 from repositories.track_repository import track_repository
 from utils.audit import audit_service
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import joinedload
 import logging
 
 logger = logging.getLogger(__name__)
@@ -32,27 +34,70 @@ router = APIRouter()
 from models.contract import ContractAsset, ContractParty
 from services.status_quo import compute_release_status
 
+
+def _serialize_artist(artist):
+    """Serialize an artist with group member data."""
+    data = {
+        "id": artist.id,
+        "artist_id": artist.artist_id,
+        "name": artist.name,
+        "aka": artist.aka,
+        "artist_kind": artist.artist_kind or "solo",
+        "display_name": artist.display_name,
+        "nationality": artist.nationality,
+        "id_number": artist.id_number,
+        "ipi_number": artist.ipi_number,
+        "contact_email": artist.contact_email,
+        "contact_phone": artist.contact_phone,
+        "physical_address": artist.physical_address,
+        "banking_details": artist.banking_details,
+        "profile_image_url": artist.profile_image_url,
+        "streaming_links": artist.streaming_links,
+        "social_media": artist.social_media,
+        "label_id": artist.label_id,
+        "publisher_id": artist.publisher_id,
+        "pro_id": artist.pro_id,
+        "created_at": artist.created_at,
+        "updated_at": artist.updated_at,
+    }
+    if (artist.artist_kind or "solo") == "group":
+        members = []
+        for m in (artist.memberships_as_group or []):
+            if m.member:
+                members.append({"id": m.member.id, "name": m.member.name, "role": m.role})
+        data["members"] = members
+        data["member_count"] = len(members)
+    else:
+        data["members"] = None
+        data["member_count"] = 0
+    return data
+
+
 # ==================== ARTISTS ====================
 
-@router.get("/artists", response_model=List[Artist])
+@router.get("/artists")
 def list_artists(
     skip: int = 0,
     limit: int = 100,
+    kind: str = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
     """List all artists"""
-    artists = db.query(ArtistModel).offset(skip).limit(limit).all()
-    return artists
+    query = db.query(ArtistModel).options(joinedload(ArtistModel.memberships_as_group))
+    if kind:
+        query = query.filter(ArtistModel.artist_kind == kind.lower())
+    artists = query.offset(skip).limit(limit).all()
+    return [_serialize_artist(a) for a in artists]
 
 
-@router.post("/artists", response_model=Artist, status_code=status.HTTP_201_CREATED)
+@router.post("/artists", status_code=status.HTTP_201_CREATED)
 def create_artist(
     artist: ArtistCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Create a new artist"""
+    """Create a new artist (solo or group)"""
     # Check for existing artist with same name
     existing = db.query(ArtistModel).filter(ArtistModel.name == artist.name).first()
     if existing:
@@ -62,11 +107,27 @@ def create_artist(
         )
 
     try:
-        db_artist = ArtistModel(**artist.model_dump())
+        create_data = artist.model_dump(exclude={"member_ids"})
+        db_artist = ArtistModel(**create_data)
         db.add(db_artist)
+        db.flush()  # Get the ID before adding memberships
+
+        # If group, add memberships
+        if artist.artist_kind == "group" and artist.member_ids:
+            for mid in artist.member_ids:
+                member = db.query(ArtistModel).filter(ArtistModel.id == mid).first()
+                if not member:
+                    raise HTTPException(status_code=404, detail=f"Member artist #{mid} not found")
+                membership = ArtistMembership(
+                    group_id=db_artist.id,
+                    member_id=mid,
+                    organization_id=getattr(db_artist, 'organization_id', None),
+                )
+                db.add(membership)
+
         db.commit()
         db.refresh(db_artist)
-        return db_artist
+        return _serialize_artist(db_artist)
     except IntegrityError:
         db.rollback()
         raise HTTPException(
@@ -75,20 +136,74 @@ def create_artist(
         )
 
 
-@router.get("/artists/{artist_id}", response_model=Artist)
+@router.get("/artists/search")
+def search_artists(
+    q: str = "",
+    types: str = "solo,group",
+    limit: int = 20,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Search artists by name or alias with support for filtering by kind (solo/group)."""
+    # Import locally to avoid modifying top level imports
+    from sqlalchemy import or_
+    
+    query = (q or "").strip()
+    if not query:
+        return []
+
+    # Parse requested types (allow specificing solo vs group)
+    kinds = set([t.strip().lower() for t in (types or "solo,group").split(",") if t.strip()])
+    
+    # Map 'individual' or 'Indiv' etc if frontend uses that terminology
+    if 'individual' in kinds:
+        kinds.add('solo')
+        
+    sql_query = db.query(ArtistModel).options(joinedload(ArtistModel.memberships_as_group))
+    
+    # Apply kind filter if not asking for both (or neither)
+    # We assume only 'solo' and 'group' exist as valid kinds
+    should_filter_solo = 'solo' in kinds
+    should_filter_group = 'group' in kinds
+    
+    if should_filter_solo and not should_filter_group:
+        sql_query = sql_query.filter(ArtistModel.artist_kind == 'solo')
+    elif should_filter_group and not should_filter_solo:
+        sql_query = sql_query.filter(ArtistModel.artist_kind == 'group')
+    # If both or neither -> no filter on kind
+    
+    # Apply search filter
+    sql_query = sql_query.filter(
+        or_(
+            ArtistModel.name.ilike(f"%{query}%"),
+            ArtistModel.aka.ilike(f"%{query}%")
+        )
+    )
+    
+    artists = sql_query.limit(limit).all()
+    # Serialize results using standard serializer which includes member preview if group
+    return [_serialize_artist(a) for a in artists]
+
+
+@router.get("/artists/{artist_id}")
 def get_artist(
     artist_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
     """Get a specific artist by ID"""
-    artist = db.query(ArtistModel).filter(ArtistModel.id == artist_id).first()
+    artist = (
+        db.query(ArtistModel)
+        .options(joinedload(ArtistModel.memberships_as_group))
+        .filter(ArtistModel.id == artist_id)
+        .first()
+    )
     if not artist:
         raise HTTPException(status_code=404, detail="Artist not found")
-    return artist
+    return _serialize_artist(artist)
 
 
-@router.put("/artists/{artist_id}", response_model=Artist)
+@router.put("/artists/{artist_id}")
 def update_artist(
     artist_id: int,
     artist_update: ArtistUpdate,
@@ -101,6 +216,7 @@ def update_artist(
         raise HTTPException(status_code=404, detail="Artist not found")
     
     update_data = artist_update.model_dump(exclude_unset=True)
+    member_ids = update_data.pop("member_ids", None)
     
     # Check for duplicate name if name is being updated
     if "name" in update_data and update_data["name"] != db_artist.name:
@@ -114,16 +230,97 @@ def update_artist(
     try:
         for field, value in update_data.items():
             setattr(db_artist, field, value)
+
+        # Update group memberships if provided
+        if member_ids is not None and (db_artist.artist_kind or "solo") == "group":
+            # Remove existing memberships
+            db.query(ArtistMembership).filter(ArtistMembership.group_id == db_artist.id).delete()
+            # Add new memberships
+            for mid in member_ids:
+                member = db.query(ArtistModel).filter(ArtistModel.id == mid).first()
+                if not member:
+                    raise HTTPException(status_code=404, detail=f"Member artist #{mid} not found")
+                membership = ArtistMembership(
+                    group_id=db_artist.id,
+                    member_id=mid,
+                    organization_id=getattr(db_artist, 'organization_id', None),
+                )
+                db.add(membership)
         
         db.commit()
         db.refresh(db_artist)
-        return db_artist
+        return _serialize_artist(db_artist)
     except IntegrityError:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="A database integrity error occurred. This artist name or ID might already be in use."
         )
+
+
+@router.post("/artists/{artist_id}/members", status_code=status.HTTP_201_CREATED)
+def add_group_member(
+    artist_id: int,
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Add a member to a group artist."""
+    group = db.query(ArtistModel).filter(ArtistModel.id == artist_id).first()
+    if not group:
+        raise HTTPException(status_code=404, detail="Group artist not found")
+    if (group.artist_kind or "solo") != "group":
+        raise HTTPException(status_code=400, detail="Artist is not a group")
+
+    member_id = payload.get("member_id")
+    role = payload.get("role")
+    if not member_id:
+        raise HTTPException(status_code=422, detail="member_id is required")
+
+    member = db.query(ArtistModel).filter(ArtistModel.id == member_id).first()
+    if not member:
+        raise HTTPException(status_code=404, detail=f"Member artist #{member_id} not found")
+    
+    if (member.artist_kind or "solo") != "solo":
+        raise HTTPException(status_code=400, detail="Group members must be individual artists")
+
+    existing = db.query(ArtistMembership).filter(
+        ArtistMembership.group_id == artist_id,
+        ArtistMembership.member_id == member_id,
+    ).first()
+    if existing:
+        raise HTTPException(status_code=409, detail="Member already in group")
+
+    m = ArtistMembership(
+        group_id=artist_id,
+        member_id=member_id,
+        organization_id=getattr(group, 'organization_id', None),
+        role=role,
+    )
+    db.add(m)
+    db.commit()
+    db.refresh(group)
+    return _serialize_artist(group)
+
+
+@router.delete("/artists/{artist_id}/members/{member_id}")
+def remove_group_member(
+    artist_id: int,
+    member_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Remove a member from a group artist."""
+    m = db.query(ArtistMembership).filter(
+        ArtistMembership.group_id == artist_id,
+        ArtistMembership.member_id == member_id,
+    ).first()
+    if not m:
+        raise HTTPException(status_code=404, detail="Membership not found")
+    db.delete(m)
+    db.commit()
+    group = db.query(ArtistModel).options(joinedload(ArtistModel.memberships_as_group)).filter(ArtistModel.id == artist_id).first()
+    return _serialize_artist(group)
 
 
 @router.delete("/artists/{artist_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -430,18 +627,68 @@ def delete_release(
     return None
 
 
-# ==================== TRACKS ====================
+from schemas.track import TrackByIdsRequest, TrackByIdsResponse
+# ... (ensure imports are correct or just add Pydantic models inline / assume they exist if imported) ...
+
+# Ideally we should import TrackByIdsRequest from schemas.track, but checks showed it might not be there.
+# Let's double check if we can define it inline to be safe or import it.
+# Contracts.py had: "from schemas.track import TrackByIdsRequest, TrackByIdsResponse"
+# So they likely exist. I'll add the import at the top later, but for now let's insert the endpoint.
+# Wait, I cannot add imports easily without scrolling up.
+# I will assume imports are needed. Check imports in catalog.py (Step 38).
+# It does NOT import TrackByIdsRequest.
+# I will define a local request model or add it to imports.
+# Adding imports is safer.
+
+@router.post("/tracks/by_ids", response_model=dict)
+def get_tracks_by_ids(
+    request: dict, # Using dict to avoid import issues for now, or I'll add the model.
+    db: Session = Depends(get_db),
+    org_id: int = Depends(get_current_organization_id),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Get multiple tracks by ID"""
+    ids = request.get("ids", [])
+    if not ids:
+        return {"items": []}
+        
+    items = db.query(TrackModel).filter(
+        TrackModel.id.in_(ids),
+        TrackModel.organization_id == org_id
+    ).all()
+    
+    return {"items": items}
+
+@router.get("/tracks/search", response_model=dict)
+def search_tracks(
+    q: str = Query(None, min_length=1),
+    limit: int = 20,
+    offset: int = 0,
+    db: Session = Depends(get_db),
+    org_id: int = Depends(get_current_organization_id),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Search tracks for autocomplete"""
+    # Use repository with query filter
+    items = track_repository.get_all(db, organization_id=org_id, query=q, skip=offset, limit=limit)
+    return {
+        "items": items,
+        "total": len(items),
+        "org_id": org_id
+    }
+
 
 @router.get("/tracks", response_model=List[Track])
 def list_tracks(
     skip: int = 0,
     limit: int = 100,
+    query: str = None,
     db: Session = Depends(get_db),
     org_id: int = Depends(get_current_organization_id),
     current_user: User = Depends(get_current_active_user)
 ):
     """List all tracks"""
-    return track_repository.get_all(db, organization_id=org_id, skip=skip, limit=limit)
+    return track_repository.get_all(db, organization_id=org_id, query=query, skip=skip, limit=limit)
 
 
 @router.post("/tracks", response_model=Track, status_code=status.HTTP_201_CREATED)

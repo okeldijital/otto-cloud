@@ -171,7 +171,9 @@ def test_extract_bulk_contract(client, db, monkeypatch):
         "/api/ai/contracts/extract_bulk",
         files=[("files", ("x.txt", b"hello", "text/plain"))],
     )
-    assert bad.status_code == 422
+    assert bad.status_code == 200
+    res_bad = bad.json()
+    assert res_bad["results"][0]["status"] == "error"
 
     if not FIXTURE.exists():
         pytest.skip("fixture missing")

@@ -69,13 +69,13 @@ const ContractsList = () => {
         notes: '',
         file: null,
     });
-    const contracts = Array.isArray(data)
-        ? data
-        : Array.isArray(data?.items)
-            ? data.items
-            : Array.isArray(data?.contracts)
-                ? data.contracts
-                : [];
+    const contracts = useMemo(() => {
+        if (Array.isArray(data?.items)) return data.items;
+        if (Array.isArray(data?.contracts)) return data.contracts;
+        if (Array.isArray(data?.results)) return data.results;
+        if (Array.isArray(data)) return data;
+        return [];
+    }, [data]);
     const counts = data?.counts ?? {};
 
     useEffect(() => {
@@ -233,10 +233,26 @@ const ContractsList = () => {
                                         </span>
                                     </td>
                                     <td className="strong">{c.title} <div className="muted small mono">{c.contract_number}</div></td>
-                                    <td>
-                                        <div title={c.parties?.map(p => p.external_name || p.display_name).join(', ')}>
-                                            {(c.counts?.parties ?? c.parties?.length ?? 0)} parties
-                                        </div>
+                                    <td title={c.parties_summary?.items?.map(p =>
+                                        p.kind === 'group' && p.member_preview?.length
+                                            ? `${p.display}\nMembers: ${p.member_preview.map(m => m.name).join(', ')}`
+                                            : (p.display || p.name)
+                                    ).join('\n') || ''}
+                                        style={{ cursor: c.parties_summary?.count ? 'help' : 'default' }}
+                                    >
+                                        {c.parties_summary?.count > 0 ? (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                                {c.parties_summary.items.slice(0, 3).map((p, idx) => (
+                                                    <span key={idx} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                                        <span style={{ maxWidth: 160 }} className="truncate">{p.name}</span>
+                                                        {p.kind === 'group' && <span className={`status-badge success`} style={{ fontSize: '0.55rem', padding: '1px 4px' }}>GROUP</span>}
+                                                    </span>
+                                                ))}
+                                                {c.parties_summary.count > 3 && <span className="muted small">+{c.parties_summary.count - 3} more</span>}
+                                            </div>
+                                        ) : (
+                                            <span className="muted">{(c.counts?.parties ?? 0)} parties</span>
+                                        )}
                                     </td>
                                     <td>
                                         {(c.counts?.tracks ?? c.counts?.assets ?? c.assets?.length ?? 0)} tracks
@@ -251,7 +267,7 @@ const ContractsList = () => {
                                         {(() => {
                                             const cv = getCompletenessView(c);
                                             return (
-                                        <span className={`status-badge ${COMPLETENESS_COLOR_CLASS[cv.color] || 'neutral'}`}>
+                                                <span className={`status-badge ${COMPLETENESS_COLOR_CLASS[cv.color] || 'neutral'}`}>
                                                     {cv.color.toUpperCase()} {cv.score}%
                                                 </span>
                                             );

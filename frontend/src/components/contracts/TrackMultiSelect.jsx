@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { tracksClient } from '../../api/tracksClient';
+import { X, Search, Check } from 'lucide-react';
 
 function useDebounced(value, delayMs = 250) {
   const [out, setOut] = useState(value);
@@ -11,11 +12,9 @@ function useDebounced(value, delayMs = 250) {
 }
 
 export default function TrackMultiSelect({
-  tracks = [],
   selectedIds = [],
   onChange,
   placeholder = 'Search tracks...',
-  createTrackPath = '/catalog/tracks',
 }) {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
@@ -23,256 +22,239 @@ export default function TrackMultiSelect({
   const [results, setResults] = useState([]);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [selectedItems, setSelectedItems] = useState([]);
+
   const inputRef = useRef(null);
   const containerRef = useRef(null);
-  const debounced = useDebounced(query);
+  const debounced = useDebounced(query, 300);
 
-  const tracksById = useMemo(() => {
-    const map = new Map();
-    for (const row of tracks || []) {
-      const id = Number(row?.id);
-      if (!Number.isFinite(id)) continue;
-      map.set(id, row);
+  // Sync selectedIds prop to internal selectedItems state (fetching details if needed)
+  useEffect(() => {
+    const incomingIds = (selectedIds || []).map(Number).filter(n => n > 0);
+    const existingMap = new Map(selectedItems.map(i => [i.id, i]));
+
+    // Identify IDs that we don't have full objects for yet
+    const missingIds = incomingIds.filter(id => !existingMap.has(id));
+
+    // Build the new list of items
+    const newItems = incomingIds.map(id => {
+      return existingMap.get(id) || { id, title: `Track #${id}`, isPlaceholder: true };
+    });
+
+    // Update state only if changed to avoid loops
+    // Simplified comparison: join IDs
+    const currentIdsStr = selectedItems.map(x => x.id).join(',');
+    const newIdsStr = newItems.map(x => x.id).join(',');
+
+    if (currentIdsStr !== newIdsStr || newItems.some(x => x.isPlaceholder && !existingMap.get(x.id)?.isPlaceholder && existingMap.has(x.id))) {
+      // If we have placeholders but we actually know them?
+      // Let's just blindly update if IDs changed, or if we need to hydrate.
+      setSelectedItems(newItems);
     }
-    return map;
-  }, [tracks]);
 
-  const selectedSet = useMemo(() => new Set(selectedItems.map((x) => Number(x.id))), [selectedItems]);
-
-  function normalizeTrack(row) {
-    const id = Number(row?.id);
-    if (!Number.isFinite(id)) return null;
-    const label = row?.title || row?.name || row?.display_name || row?.filename || `Track #${id}`;
-    return {
-      id,
-      label,
-      artist: row?.artist || null,
-      release: row?.release || null,
-    };
-  }
-
-  useEffect(() => {
-    const incoming = Array.isArray(selectedIds) ? selectedIds : [];
-    const normalized = [];
-    for (const row of incoming) {
-      if (typeof row === 'number' || typeof row === 'string') {
-        const id = Number(row);
-        if (!Number.isFinite(id)) continue;
-        const known = tracksById.get(id);
-        normalized.push(normalizeTrack({ id, ...known }) || { id, label: `Track #${id}` });
-      } else if (row && typeof row === 'object') {
-        const n = normalizeTrack(row);
-        if (n) normalized.push(n);
-      }
+    // Fetch missing
+    if (missingIds.length > 0) {
+      tracksClient.byIds(missingIds).then(res => {
+        if (res.items && res.items.length) {
+          setSelectedItems(prev => prev.map(p => {
+            const found = res.items.find(x => x.id === p.id);
+            return found ? { ...found, isPlaceholder: false } : p;
+          }));
+        }
+      }).catch(err => console.error('Failed to fetch selected track details', err));
     }
-    const deduped = Array.from(new Map(normalized.map((x) => [x.id, x])).values());
-    setSelectedItems(deduped);
-  }, [selectedIds, tracksById]);
+  }, [selectedIds]); // Only run when prop changes. Use internal logic to avoid infinite loop with onChange.
 
+  // API Search
   useEffect(() => {
-    const missing = selectedItems.filter((x) => String(x.label || '').startsWith('Track #')).map((x) => x.id);
-    if (!missing.length) return;
-    let alive = true;
-    (async () => {
-      try {
-        const data = await tracksClient.byIds(missing);
-        if (!alive) return;
-        const byId = new Map((data?.items || []).map((x) => [Number(x.id), x.title || `Track #${x.id}`]));
-        setSelectedItems((prev) => prev.map((item) => {
-          const label = byId.get(Number(item.id));
-          return label ? { ...item, label } : item;
-        }));
-      } catch {
-        // best effort
-      }
-    })();
-    return () => {
-      alive = false;
-    };
-  }, [selectedItems]);
-
-  useEffect(() => {
-    if (!query.trim()) {
-      setOpen(false);
-      setActiveIndex(-1);
+    if (!debounced.trim()) {
+      setResults([]);
       return;
     }
-    setOpen(true);
-  }, [query]);
+    setLoading(true);
+    let alive = true;
+    tracksClient.search({ q: debounced, limit: 20 })
+      .then(res => {
+        if (!alive) return;
+        setResults(res.items || []);
+        setActiveIndex(res.items?.length ? 0 : -1);
+      })
+      .catch(err => {
+        console.error('Search failed', err);
+        if (alive) setResults([]);
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
+      });
 
+    return () => { alive = false; };
+  }, [debounced]);
+
+  // Click outside to close
   useEffect(() => {
     const onDocMouseDown = (e) => {
-      if (!containerRef.current?.contains(e.target)) {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
         setOpen(false);
-        setActiveIndex(-1);
       }
     };
     document.addEventListener('mousedown', onDocMouseDown);
     return () => document.removeEventListener('mousedown', onDocMouseDown);
   }, []);
 
-  function closeDropdown() {
-    setOpen(false);
-    setActiveIndex(-1);
-  }
-
-  function onSelect(track) {
-    const normalized = normalizeTrack(track);
-    if (!normalized) return;
-    setSelectedItems((prev) => {
-      const map = new Map(prev.map((x) => [x.id, x]));
-      map.set(normalized.id, normalized);
-      const arr = Array.from(map.values());
-      onChange?.(arr.map((x) => Number(x.id)));
-      return arr;
-    });
-    setQuery('');
-    closeDropdown();
-    requestAnimationFrame(() => inputRef.current?.focus());
-  }
-
-  function onInputBlur() {
-    window.setTimeout(() => {
-      closeDropdown();
-    }, 120);
-  }
-
-  useEffect(() => {
-    let alive = true;
-    async function run() {
-      const q = debounced.trim();
-      if (!q) {
-        setResults([]);
-        setActiveIndex(-1);
-        return;
-      }
-      setLoading(true);
-      try {
-        const data = await tracksClient.search({ q, limit: 20 });
-        if (!alive) return;
-        const rows = (Array.isArray(data?.items) ? data.items : []).map((row) => normalizeTrack(row)).filter(Boolean);
-        setResults(rows);
-        setActiveIndex(rows.length ? 0 : -1);
-      } finally {
-        if (alive) setLoading(false);
-      }
-    }
-    run();
-    return () => {
-      alive = false;
-    };
-  }, [debounced]);
-
-  function toggle(id) {
-    const numeric = Number(id);
-    setSelectedItems((prev) => {
-      const exists = prev.some((x) => Number(x.id) === numeric);
-      const next = exists ? prev.filter((x) => Number(x.id) !== numeric) : [...prev, { id: numeric, label: `Track #${numeric}` }];
-      onChange?.(next.map((x) => Number(x.id)));
-      return next;
-    });
-  }
-
-  function onInputKeyDown(e) {
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      closeDropdown();
+  const handleSelect = (track) => {
+    // Check if already selected
+    if (selectedItems.some(x => x.id === track.id)) {
+      setQuery('');
+      setOpen(false);
       return;
     }
-    if (!open || !results.length) return;
+
+    const newItem = { ...track, isPlaceholder: false };
+    const nextItems = [...selectedItems, newItem];
+
+    // Optimistic update
+    setSelectedItems(nextItems);
+    onChange?.(nextItems.map(x => x.id));
+
+    setQuery('');
+    setOpen(false);
+    inputRef.current?.focus();
+  };
+
+  const handleRemove = (id) => {
+    const nextItems = selectedItems.filter(x => x.id !== id);
+    setSelectedItems(nextItems);
+    onChange?.(nextItems.map(x => x.id));
+  };
+
+  const handleKeyDown = (e) => {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setActiveIndex((idx) => (idx + 1) % results.length);
+      if (results.length) setActiveIndex(i => (i + 1) % results.length);
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      setActiveIndex((idx) => (idx <= 0 ? results.length - 1 : idx - 1));
-    } else if (e.key === 'Enter' && activeIndex >= 0) {
+      if (results.length) setActiveIndex(i => (i - 1 + results.length) % results.length);
+    } else if (e.key === 'Enter') {
       e.preventDefault();
-      onSelect(results[activeIndex]);
+      if (open && results[activeIndex]) {
+        handleSelect(results[activeIndex]);
+      } else {
+        // Maybe open search?
+        if (!open && query.trim()) setOpen(true);
+      }
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      setOpen(false);
+    } else if (e.key === 'Backspace' && !query && selectedItems.length > 0) {
+      // Optional: remove last item on backspace if query empty
+      handleRemove(selectedItems[selectedItems.length - 1].id);
     }
-  }
+  };
 
   return (
-    <div className="min-w-0" ref={containerRef}>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+    <div className="track-multi-select" ref={containerRef} style={{ position: 'relative' }}>
+      <div className="input-box" style={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: 6,
+        padding: '6px 8px',
+        border: '1px solid #e5e7eb',
+        borderRadius: 6,
+        background: 'white',
+        minHeight: 38
+      }}>
+        {selectedItems.map(item => (
+          <span key={item.id} className="chip" style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+            padding: '2px 6px',
+            borderRadius: 4,
+            background: '#f1f5f9',
+            fontSize: '0.85rem'
+          }}>
+            <span className="truncate" style={{ maxWidth: 200 }}>{item.title}{item.artist ? ` (${item.artist})` : ''}</span>
+            <button
+              type="button"
+              onClick={() => handleRemove(item.id)}
+              style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, display: 'flex' }}
+            >
+              <X size={12} className="muted" />
+            </button>
+          </span>
+        ))}
+
         <input
           ref={inputRef}
-          className="input"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={onInputKeyDown}
-          onBlur={onInputBlur}
-          onFocus={() => {
-            if (query.trim()) setOpen(true);
+          onChange={e => {
+            setQuery(e.target.value);
+            if (!open && e.target.value.trim()) setOpen(true);
           }}
-          placeholder={placeholder}
-          aria-label="Track search"
+          onFocus={() => { if (query.trim()) setOpen(true); }}
+          onKeyDown={handleKeyDown}
+          placeholder={selectedItems.length ? '' : placeholder}
+          style={{
+            border: 'none',
+            outline: 'none',
+            flex: 1,
+            minWidth: 120,
+            fontSize: '0.9rem',
+            background: 'transparent'
+          }}
         />
-        <button
-          type="button"
-          className="ghost-btn"
-          disabled={!selectedSet.size}
-          onClick={() => {
-            setSelectedItems([]);
-            onChange?.([]);
-          }}
-        >
-          Clear
-        </button>
+        {loading && <div className="muted small" style={{ alignSelf: 'center' }}>...</div>}
+      </div>
+      <div className="small" style={{ marginTop: 6, color: selectedItems.length > 0 ? '#15803d' : '#64748b' }}>
+        {selectedItems.length > 0 ? `${selectedItems.length} track${selectedItems.length === 1 ? '' : 's'} selected` : 'No tracks selected'}
       </div>
 
-      {selectedSet.size > 0 && (
-        <div style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {selectedItems.map((row) => (
-            <button key={row.id} type="button" className="ghost-btn" onClick={() => toggle(row.id)}>
-              {row.label} x
-            </button>
-          ))}
+      {open && (query.trim() || results.length > 0) && (
+        <div className="dropdown-menu" style={{
+          position: 'absolute',
+          zIndex: 50,
+          marginTop: 4,
+          width: '100%',
+          maxWidth: 500, // Constrain width if container is wide
+          background: 'white',
+          border: '1px solid #e5e7eb',
+          borderRadius: 6,
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+          maxHeight: 240,
+          overflowY: 'auto'
+        }}>
+          {results.length === 0 && !loading && (
+            <div style={{ padding: 12, color: '#64748b' }} className="small">No tracks found for "{query}"</div>
+          )}
+          {results.map((track, idx) => {
+            const isSelected = selectedItems.some(x => x.id === track.id);
+            return (
+              <div
+                key={track.id}
+                className={`dropdown-item ${idx === activeIndex ? 'active' : ''}`}
+                onMouseDown={(e) => { e.preventDefault(); handleSelect(track); }}
+                onMouseEnter={() => setActiveIndex(idx)}
+                style={{
+                  padding: '8px 12px',
+                  cursor: 'pointer',
+                  background: idx === activeIndex ? '#f8fafc' : 'white',
+                  borderBottom: '1px solid #f8fafc',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}
+              >
+                <div style={{ overflow: 'hidden' }}>
+                  <div className="strong truncate">{track.title}</div>
+                  <div className="small muted truncate">
+                    {track.artist || 'Unknown Artist'} {track.release ? `• ${track.release}` : ''}
+                  </div>
+                </div>
+                {isSelected && <Check size={14} className="success" />}
+              </div>
+            );
+          })}
         </div>
       )}
-
-      {open ? (
-      <div style={{ marginTop: 8, border: '1px solid #e5e7eb', borderRadius: 10, maxHeight: 220, overflowY: 'auto' }}>
-        {loading && <div className="muted small" style={{ padding: 10 }}>Searching...</div>}
-        {!loading && query.trim() && results.length === 0 && (
-          <div style={{ padding: 10 }} className="small">
-            No results. <a href={`#${createTrackPath}`}>Create Track</a>
-          </div>
-        )}
-        {!loading && results.map((row, idx) => {
-          const active = idx === activeIndex;
-          const checked = selectedSet.has(Number(row.id));
-          return (
-            <button
-              key={row.id}
-              type="button"
-              onMouseEnter={() => setActiveIndex(idx)}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                onSelect(row);
-              }}
-              style={{
-                width: '100%',
-                textAlign: 'left',
-                border: 'none',
-                background: active ? '#f8fafc' : 'white',
-                borderBottom: '1px solid #f1f5f9',
-                padding: '8px 10px',
-                cursor: 'pointer',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                <div className="strong break-words">{row.label}</div>
-                {checked ? <span className="status-badge success">Selected</span> : null}
-              </div>
-              <div className="muted small break-words">
-                {row.artist || 'Unknown artist'}{row.release ? ` • ${row.release}` : ''}
-              </div>
-            </button>
-          );
-        })}
-      </div>
-      ) : null}
     </div>
   );
 }

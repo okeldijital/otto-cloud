@@ -1,4 +1,4 @@
-from typing import List, Literal, Optional
+from typing import Dict, List, Literal, Optional, Any
 
 from pydantic import BaseModel, Field
 
@@ -65,6 +65,7 @@ class ReleaseIntegrationPlanResponse(BaseModel):
     matches: MatchBlock
     missing_flags: List[MissingFlag] = Field(default_factory=list)
     suggested_actions: List[SuggestedAction] = Field(default_factory=list)
+    suggestions: Dict[str, List[Any]] = Field(default_factory=dict) # Raw suggestions for UI/Compatibility
     needs_review: bool = True
 
 

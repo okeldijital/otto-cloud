@@ -1,0 +1,7 @@
+db_path=/var/folders/5g/c9pt9dzn7rs987kfcprbn2zh0000gp/T/contracts-bulk-batch-actions-68oxlp39.db
+core_before={"artists": 0, "releases": 0, "tracks": 0, "works": 0}
+core_after={"artists": 0, "releases": 0, "tracks": 0, "works": 0}
+contract_party_rows_before=0
+contract_party_rows_after=2
+core_tables_unchanged=True
+contract_party_rows_incremented=True

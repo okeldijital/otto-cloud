@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import type { BulkBatchState } from './types';
 import type { BulkAction } from './bulkReducer';
-import { canCreateDraft, canSaveParties } from './bulkReducer';
+import { canSaveParties } from './bulkReducer';
 import contractsBulkClient from '../../../api/contractsBulkClient';
 
 function stableUuid() {
@@ -15,7 +15,7 @@ function toUiError(e: any) {
   const data = e?.response?.data;
 
   const error_id = data?.error_id ?? null;
-  const detail = data?.detail ?? data?.message ?? 'Request failed';
+  const detail = data?.detail ?? data?.message ?? e?.message ?? 'Request failed';
 
   return {
     code: String(data?.code ?? status ?? 'error'),
@@ -79,58 +79,55 @@ export function useBulkController(state: BulkBatchState, dispatch: (a: BulkActio
     const items = state.items.filter((x) => file_ids.includes(x.file_id));
     if (items.length === 0) return;
 
+    // Check if files are real File objects
+    const hasFiles = items.every((x) => x.file instanceof File);
+    if (!hasFiles) {
+      dispatch({ type: 'BULK/SET_BANNER_ERROR', message: "Internal Error: Selected items logic invalid (missing File objects)." });
+      return;
+    }
+
     dispatch({ type: 'EXTRACT/START', file_ids });
+    dispatch({ type: 'BULK/SET_STATUS', status: 'uploading' });
 
     try {
-      const form = new FormData();
-      if (state.batch_id) form.append('batch_id', state.batch_id);
-      form.append('tracks_only', 'true');
-      form.append('options', JSON.stringify({ mode: 'tracks_only', extract_version: 'v2', llm_mode: 'hybrid_conservative', max_files: 50 }));
-
-      for (const it of items) {
-        if (it.file) form.append('files', it.file, it.filename);
-      }
-
-      const resp = await contractsBulkClient.extractBulk(form);
-      const results = Array.isArray(resp?.results) ? resp.results : [];
-      const byKey = new Map<string, any>();
-      for (const r of results) {
-        if (r?.file_id) byKey.set(r.file_id, r);
-        if (r?.filename) byKey.set(r.filename, r);
-        if (r?.client_file_id) byKey.set(r.client_file_id, r);
-      }
-
-      for (const it of items) {
-        const r = byKey.get(it.file_id) || byKey.get(it.filename);
-        if (!r) {
-          dispatch({
-            type: 'EXTRACT/RESULT_ERR',
-            file_id: it.file_id,
-            error: {
-              code: 'extract_missing_result',
-              message: 'No extraction result returned for this file.',
-              error_id: null,
-            },
-          });
-          continue;
+      const formData = new FormData();
+      for (const item of items) {
+        if (item.file) {
+          formData.append("files", item.file, item.filename);
         }
+      }
 
-        if (r.ok || r.status === 'ok') {
-          const extract = normalizeExtract(r);
-          if (extract) {
+      const resp = await contractsBulkClient.extractBulk(formData);
+
+      const results = Array.isArray(resp?.results) ? resp.results : [];
+      if (!results.length) {
+        throw new Error('No extraction results returned by backend');
+      }
+
+      const filenameToFileId = new Map<string, string>();
+      for (const item of items) {
+        filenameToFileId.set(item.filename, item.file_id);
+      }
+
+      for (const r of results) {
+        const fileId = filenameToFileId.get(r.filename);
+        if (!fileId) continue;
+
+        if (r.status === 'ok' || r.ok) {
+          if (r.extract) {
             dispatch({
               type: 'EXTRACT/RESULT_OK',
-              file_id: it.file_id,
-              extract,
+              file_id: fileId,
+              extract: normalizeExtract(r),
               extracted_at: new Date().toISOString(),
             });
           } else {
             dispatch({
               type: 'EXTRACT/RESULT_ERR',
-              file_id: it.file_id,
+              file_id: fileId,
               error: {
                 code: 'extract_missing_payload',
-                message: 'Extraction payload missing in response.',
+                message: 'Extraction payload missing.',
                 error_id: null,
               },
             });
@@ -138,17 +135,21 @@ export function useBulkController(state: BulkBatchState, dispatch: (a: BulkActio
         } else {
           dispatch({
             type: 'EXTRACT/RESULT_ERR',
-            file_id: it.file_id,
+            file_id: fileId,
             error: {
-              code: r?.error?.code || 'extract_failed',
-              message: r?.error?.message || 'Extraction failed',
-              error_id: r?.error?.error_id ?? null,
+              code: r.error?.code || 'extract_failed',
+              message: r.error?.message || 'Extraction failed',
+              error_id: null,
             },
           });
         }
       }
     } catch (e) {
-      dispatch({ type: 'BULK/SET_BANNER_ERROR', message: toUiError(e).message });
+      const err = toUiError(e);
+      dispatch({
+        type: 'BULK/SET_BANNER_ERROR',
+        message: `Extract failed (${err.code}): ${err.message}${err.error_id ? ` [error_id: ${err.error_id}]` : ''}`,
+      });
     } finally {
       dispatch({ type: 'EXTRACT/FINISH' });
     }
@@ -187,11 +188,13 @@ export function useBulkController(state: BulkBatchState, dispatch: (a: BulkActio
       }
       return;
     }
-    const gate = canCreateDraft(item);
-    if (!gate.ok) {
+    const missing: string[] = [];
+    if (!item?.extract || item.extract.version !== 'v2') missing.push('run extract');
+    if (!item?.confirm_non_destructive) missing.push('confirm non-destructive');
+    if (missing.length > 0) {
       dispatch({
         type: 'BULK/SET_BANNER_ERROR',
-        message: `Cannot create draft: ${gate.missing.join(', ')}`,
+        message: `Cannot create draft: ${missing.join(', ')}`,
       });
       return;
     }
@@ -224,17 +227,20 @@ export function useBulkController(state: BulkBatchState, dispatch: (a: BulkActio
       form.append('file', item.file, item.filename);
 
       const resp = await contractsBulkClient.createFromExtract(form);
+      const contractId = Number(resp?.contract?.id ?? resp?.contract_id);
+      if (!Number.isFinite(contractId) || contractId <= 0) {
+        throw new Error('Create returned no contract_id');
+      }
 
       dispatch({
         type: 'DRAFT/SUCCESS',
         file_id,
-        created_contract_id: Number(resp?.contract?.id ?? resp?.contract_id),
+        created_contract_id: contractId,
         created_document_id: Number(resp?.document?.id ?? resp?.contract_document_id ?? 0),
         linked_tracks_count: Number(resp?.linked_tracks_count ?? resp?.links?.tracks_linked ?? 0),
         completeness: normalizeCompleteness(resp),
         created_at: new Date().toISOString(),
       });
-      const contractId = Number(resp?.contract?.id ?? resp?.contract_id);
       if (contractId) {
         const tracksResp = await contractsBulkClient.batchSetTracks(contractId, {
           confirm_non_destructive: true,
@@ -263,7 +269,12 @@ export function useBulkController(state: BulkBatchState, dispatch: (a: BulkActio
       dispatch({ type: 'BULK/SET_BANNER_NOTICE', message: 'Draft created successfully.' });
       dispatch({ type: 'BULK/SET_BANNER_ERROR', message: null });
     } catch (e) {
-      dispatch({ type: 'DRAFT/ERROR', file_id, error: toUiError(e) });
+      const err = toUiError(e);
+      dispatch({ type: 'DRAFT/ERROR', file_id, error: err });
+      dispatch({
+        type: 'BULK/SET_BANNER_ERROR',
+        message: `Create failed (${err.code}): ${err.message}${err.error_id ? ` [error_id: ${err.error_id}]` : ''}`,
+      });
     }
   }, [dispatch, state.items, state.batch_id]);
 

@@ -33,6 +33,7 @@ from models.work import Work
 from models.network import Organization, Individual
 from models.publisher import Publisher
 from models.label import Label
+from models.artist_membership import ArtistMembership
 from config import settings
 from utils.audit import audit_service
 from services.status_quo import compute_contract_status
@@ -40,6 +41,7 @@ from services.contracts.completeness import compute_contract_completeness
 from services.contract_create import create_contract_from_draft
 from services.contracts import create_contract_from_extract
 from services.contracts.save_parties import save_parties
+from sqlalchemy.orm import joinedload
 import uuid
 
 router = APIRouter(
@@ -161,7 +163,57 @@ def _build_completeness_payload(contract: Contract, counts: Dict[str, int]):
     )
 
 
-def _serialize_contract_item(contract: Contract) -> Dict[str, Any]:
+def _build_party_summary(party, db):
+    """Build a single party summary dict with group/member info."""
+    display_name = party.external_name or ""
+    kind = "solo"
+    member_preview = []
+    artist_id = None
+
+    if party.entity_id and party.entity_type:
+        etype = party.entity_type.lower()
+        if etype == "artist":
+            artist = db.query(Artist).options(
+                joinedload(Artist.memberships_as_group)
+            ).filter(Artist.id == party.entity_id).first()
+            if artist:
+                display_name = artist.display_name
+                artist_id = artist.id
+                kind = artist.artist_kind or "solo"
+                if kind == "group":
+                    for m in (artist.memberships_as_group or []):
+                        if m.member:
+                            member_preview.append({"id": m.member.id, "name": m.member.name})
+                    display_name = artist.display_with_members
+        elif etype == "label":
+            label = db.query(Label).filter(Label.id == party.entity_id).first()
+            if label:
+                display_name = label.name
+        elif etype == "organization":
+            org = db.query(Organization).filter(Organization.id == party.entity_id).first()
+            if org:
+                display_name = org.name
+        elif etype == "individual":
+            ind = db.query(Individual).filter(Individual.id == party.entity_id).first()
+            if ind:
+                display_name = f"{(ind.first_name or '').strip()} {(ind.last_name or '').strip()}".strip() or ind.email or "Unnamed"
+
+    if not display_name:
+        display_name = f"{party.entity_type} #{party.entity_id}" if party.entity_id else "Unknown"
+
+    return {
+        "party_type": party.entity_type,
+        "entity_id": party.entity_id,
+        "artist_id": artist_id,
+        "kind": kind,
+        "role": party.role,
+        "name": display_name.split(" (")[0] if " (" in display_name else display_name,
+        "display": display_name,
+        "member_preview": member_preview if kind == "group" else [],
+    }
+
+
+def _serialize_contract_item(contract: Contract, db=None) -> Dict[str, Any]:
     def _as_datetime(value):
         if value is None:
             return None
@@ -185,7 +237,14 @@ def _serialize_contract_item(contract: Contract) -> Dict[str, Any]:
         type_value = "unknown"
     effective_date = _as_datetime(contract.start_date)
     expiration_date = _as_datetime(contract.end_date)
-    return {
+
+    # Build parties summary
+    parties_items = []
+    if db and contract.parties:
+        for party in contract.parties:
+            parties_items.append(_build_party_summary(party, db))
+
+    result = {
         "id": contract.id,
         "org_id": contract.organization_id,
         "status": status_value,
@@ -208,7 +267,12 @@ def _serialize_contract_item(contract: Contract) -> Dict[str, Any]:
             parties=counts["parties"],
         ).model_dump(mode="json"),
         "completeness": completeness.model_dump(mode="json"),
+        "parties_summary": {
+            "count": len(parties_items),
+            "items": parties_items,
+        },
     }
+    return result
 
 
 def _new_entity_id(prefix: str) -> str:
@@ -256,7 +320,7 @@ def list_contracts(
             if query_text in ((c.title or "").lower() + " " + (c.contract_number or "").lower())
         ]
 
-    rows = [_serialize_contract_item(c) for c in all_contracts]
+    rows = [_serialize_contract_item(c, db) for c in all_contracts]
     allowed_orders = {
         "created_at_desc",
         "created_at_asc",
@@ -766,7 +830,7 @@ def add_asset(
 @router.get("/party_lookup")
 def party_lookup(
     q: str = "",
-    types: str = "artist,organization,individual",
+    types: str = "artist,organization,individual,label",
     limit: int = 10,
     db: Session = Depends(get_db),
     org_id: int = Depends(get_current_organization_id),
@@ -782,12 +846,21 @@ def party_lookup(
     if "artist" in kinds:
         rows = (
             db.query(Artist)
+            .options(joinedload(Artist.memberships_as_group))
             .filter(Artist.organization_id == org_id, Artist.name.ilike(f"%{query}%"))
             .limit(limit)
             .all()
         )
         for r in rows:
-            results.append({"entity_type": "artist", "id": r.id, "display_name": r.name})
+            kind = r.artist_kind or "solo"
+            member_preview = []
+            if kind == "group":
+                member_preview = [{"id": m.member.id, "name": m.member.name} for m in (r.memberships_as_group or []) if m.member]
+            display = r.display_with_members if kind == "group" else r.display_name
+            results.append({
+                "entity_type": "artist", "id": r.id, "display_name": r.name,
+                "kind": kind, "display": display, "member_preview": member_preview,
+            })
 
     if "organization" in kinds:
         rows = (
@@ -798,6 +871,16 @@ def party_lookup(
         )
         for r in rows:
             results.append({"entity_type": "organization", "id": r.id, "display_name": r.name})
+
+    if "label" in kinds:
+        rows = (
+            db.query(Label)
+            .filter(Label.name.ilike(f"%{query}%"))
+            .limit(limit)
+            .all()
+        )
+        for r in rows:
+            results.append({"entity_type": "label", "id": r.id, "display_name": r.name})
 
     if "individual" in kinds:
         rows = (
@@ -868,6 +951,7 @@ def parties_search(
 @router.get("/contracts/party_search")
 def contracts_party_search(
     q: str = "",
+    types: str = "artist,organization,individual,label",
     limit: int = 20,
     db: Session = Depends(get_db),
     org_id: int = Depends(get_current_organization_id),
@@ -876,35 +960,61 @@ def contracts_party_search(
     query = (q or "").strip()
     if not query:
         raise HTTPException(status_code=422, detail="q is required")
-
+        
+    kinds = set([t.strip().lower() for t in (types or "").split(",") if t.strip()])
     out = []
-    for r in (
-        db.query(Artist)
-        .filter(Artist.organization_id == org_id, Artist.name.ilike(f"%{query}%"))
-        .limit(limit)
-        .all()
-    ):
-        out.append({"entity_type": "artist", "id": r.id, "display_name": r.name})
-    for r in (
-        db.query(Organization)
-        .filter(Organization.organization_id == org_id, Organization.name.ilike(f"%{query}%"))
-        .limit(limit)
-        .all()
-    ):
-        out.append({"entity_type": "organization", "id": r.id, "display_name": r.name})
-    for r in (
-        db.query(Individual)
-        .filter(
-            Individual.organization_id == org_id,
-            ((Individual.first_name + " " + Individual.last_name).ilike(f"%{query}%"))
-            | (Individual.first_name.ilike(f"%{query}%"))
-            | (Individual.last_name.ilike(f"%{query}%")),
-        )
-        .limit(limit)
-        .all()
-    ):
-        display = f"{(r.first_name or '').strip()} {(r.last_name or '').strip()}".strip() or r.email or "Unnamed Individual"
-        out.append({"entity_type": "individual", "id": r.id, "display_name": display})
+    
+    if "artist" in kinds:
+        for r in (
+            db.query(Artist)
+            .options(joinedload(Artist.memberships_as_group))
+            .filter(Artist.organization_id == org_id, Artist.name.ilike(f"%{query}%"))
+            .limit(limit)
+            .all()
+        ):
+            kind = r.artist_kind or "solo"
+            member_preview = []
+            if kind == "group":
+                member_preview = [{"id": m.member.id, "name": m.member.name} for m in (r.memberships_as_group or []) if m.member]
+            display = r.display_with_members if kind == "group" else r.display_name
+            out.append({
+                "entity_type": "artist", "id": r.id, "display_name": r.name,
+                "kind": kind, "display": display, "member_preview": member_preview,
+            })
+            
+    if "organization" in kinds:
+        for r in (
+            db.query(Organization)
+            .filter(Organization.organization_id == org_id, Organization.name.ilike(f"%{query}%"))
+            .limit(limit)
+            .all()
+        ):
+            out.append({"entity_type": "organization", "id": r.id, "display_name": r.name})
+
+    if "label" in kinds:
+        for r in (
+            db.query(Label)
+            .filter(Label.name.ilike(f"%{query}%"))
+            .limit(limit)
+            .all()
+        ):
+            out.append({"entity_type": "label", "id": r.id, "display_name": r.name})
+            
+    if "individual" in kinds:
+        for r in (
+            db.query(Individual)
+            .filter(
+                Individual.organization_id == org_id,
+                ((Individual.first_name + " " + Individual.last_name).ilike(f"%{query}%"))
+                | (Individual.first_name.ilike(f"%{query}%"))
+                | (Individual.last_name.ilike(f"%{query}%")),
+            )
+            .limit(limit)
+            .all()
+        ):
+            display = f"{(r.first_name or '').strip()} {(r.last_name or '').strip()}".strip() or r.email or "Unnamed Individual"
+            out.append({"entity_type": "individual", "id": r.id, "display_name": display})
+            
     return {"status": "ok", "org_id": str(org_id), "items": out[:limit]}
 
 
@@ -976,11 +1086,16 @@ def contracts_party_create(
         existing = db.query(Artist).filter(Artist.organization_id == org_id, Artist.name == display_name).first()
         if existing:
             return {"status": "created", "entity_type": "artist", "id": existing.id, "display_name": existing.name}
-        row = Artist(organization_id=org_id, artist_id=_new_entity_id("ART"), name=display_name)
+        
+        artist_kind = str(payload.get("artist_kind") or "solo").strip().lower()
+        if artist_kind not in {"solo", "group"}:
+            artist_kind = "solo"
+            
+        row = Artist(organization_id=org_id, artist_id=_new_entity_id("ART"), name=display_name, artist_kind=artist_kind)
         db.add(row)
         db.commit()
         db.refresh(row)
-        return {"status": "created", "entity_type": "artist", "id": row.id, "display_name": row.name}
+        return {"status": "created", "entity_type": "artist", "id": row.id, "display_name": row.name, "kind": row.artist_kind}
 
     if entity_type == "organization":
         existing = db.query(Organization).filter(Organization.organization_id == org_id, Organization.name == display_name).first()
