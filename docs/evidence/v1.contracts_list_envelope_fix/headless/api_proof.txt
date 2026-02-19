@@ -1,0 +1,192 @@
+=== GET /api/contracts ===
+HTTP/1.1 200
+curl -sS /api/contracts | jq '.contracts|type' => "array"
+{
+  "contracts": [
+    {
+      "id": 1,
+      "org_id": "00000000-0000-0000-0000-000000009ca5",
+      "status": "draft",
+      "title": "Envelope Evidence Contract",
+      "type": "unknown",
+      "territory": null,
+      "effective_date": null,
+      "end_date": null,
+      "end_date_specified": false,
+      "created_at": "2026-02-19T05:53:30",
+      "updated_at": "2026-02-19T05:53:30",
+      "counts": {
+        "documents": 0,
+        "tracks": 0,
+        "parties": 0
+      },
+      "completeness": {
+        "version": "v1",
+        "score": 0,
+        "status_quo": "red",
+        "color": "red",
+        "missing": [
+          "missing_documents",
+          "missing_tracks",
+          "missing_parties",
+          "missing_territory",
+          "missing_effective_date",
+          "missing_term"
+        ],
+        "notes": [
+          "no_parties_linked",
+          "no_tracks_linked",
+          "no_documents_attached"
+        ],
+        "reasons": [
+          {
+            "code": "missing_documents",
+            "message": "No contract documents attached",
+            "weight": 40
+          },
+          {
+            "code": "missing_tracks",
+            "message": "No tracks linked",
+            "weight": 30
+          },
+          {
+            "code": "missing_parties",
+            "message": "No parties linked",
+            "weight": 30
+          },
+          {
+            "code": "missing_territory",
+            "message": "Territory not set",
+            "weight": 10
+          },
+          {
+            "code": "missing_effective_date",
+            "message": "Effective date not set",
+            "weight": 5
+          },
+          {
+            "code": "missing_term",
+            "message": "Term not set",
+            "weight": 5
+          }
+        ],
+        "signals": {
+          "documents": 0,
+          "tracks": 0,
+          "parties": 0,
+          "effective_date": false,
+          "end_date_known": true,
+          "territory": false,
+          "term_present": false
+        }
+      },
+      "dates": {
+        "effective_date": null,
+        "contract_date": null,
+        "expiration_date": null
+      }
+    }
+  ],
+  "counts": {
+    "total": 1,
+    "by_status": {
+      "draft": 1
+    }
+  },
+  "meta": {
+    "limit": 50,
+    "offset": 0,
+    "total": 1
+  },
+  "items": [
+    {
+      "id": 1,
+      "org_id": "00000000-0000-0000-0000-000000009ca5",
+      "status": "draft",
+      "title": "Envelope Evidence Contract",
+      "type": "unknown",
+      "territory": null,
+      "effective_date": null,
+      "end_date": null,
+      "end_date_specified": false,
+      "created_at": "2026-02-19T05:53:30",
+      "updated_at": "2026-02-19T05:53:30",
+      "counts": {
+        "documents": 0,
+        "tracks": 0,
+        "parties": 0
+      },
+      "completeness": {
+        "version": "v1",
+        "score": 0,
+        "status_quo": "red",
+        "color": "red",
+        "missing": [
+          "missing_documents",
+          "missing_tracks",
+          "missing_parties",
+          "missing_territory",
+          "missing_effective_date",
+          "missing_term"
+        ],
+        "notes": [
+          "no_parties_linked",
+          "no_tracks_linked",
+          "no_documents_attached"
+        ],
+        "reasons": [
+          {
+            "code": "missing_documents",
+            "message": "No contract documents attached",
+            "weight": 40
+          },
+          {
+            "code": "missing_tracks",
+            "message": "No tracks linked",
+            "weight": 30
+          },
+          {
+            "code": "missing_parties",
+            "message": "No parties linked",
+            "weight": 30
+          },
+          {
+            "code": "missing_territory",
+            "message": "Territory not set",
+            "weight": 10
+          },
+          {
+            "code": "missing_effective_date",
+            "message": "Effective date not set",
+            "weight": 5
+          },
+          {
+            "code": "missing_term",
+            "message": "Term not set",
+            "weight": 5
+          }
+        ],
+        "signals": {
+          "documents": 0,
+          "tracks": 0,
+          "parties": 0,
+          "effective_date": false,
+          "end_date_known": true,
+          "territory": false,
+          "term_present": false
+        }
+      },
+      "dates": {
+        "effective_date": null,
+        "contract_date": null,
+        "expiration_date": null
+      }
+    }
+  ],
+  "page": {
+    "limit": 50,
+    "offset": 0,
+    "total": 1
+  },
+  "total": 1
+}

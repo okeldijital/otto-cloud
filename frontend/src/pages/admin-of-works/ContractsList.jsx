@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, Search, Filter, FileText, Download, AlertCircle, Trash2 } from 'lucide-react';
 import { confirmAction } from '../../lib/tauri';
 import contractService from '../../services/contractService';
+import { getContracts } from '../../services/operations';
 import { formatCreateError } from '../../utils/contracts';
 import EntityForm from '../../components/EntityForm';
 import AddContractWizard from '../../components/contracts/AddContractWizard';
@@ -44,7 +45,7 @@ function getCompletenessView(contract) {
 
 const ContractsList = () => {
     const navigate = useNavigate();
-    const [contracts, setContracts] = useState([]);
+    const [data, setData] = useState({ contracts: [], counts: {}, meta: {} });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
@@ -68,13 +69,15 @@ const ContractsList = () => {
         notes: '',
         file: null,
     });
+    const contracts = Array.isArray(data?.contracts) ? data.contracts : [];
+    const counts = data?.counts ?? {};
 
     useEffect(() => {
         const load = async () => {
             setLoading(true);
             try {
-                const res = await contractService.getAll();
-                setContracts(res.data || res || []);
+                const res = await getContracts();
+                setData(res);
             } catch (e) {
                 console.error(e);
                 setError('Unable to load contracts.');
@@ -127,8 +130,8 @@ const ContractsList = () => {
 
         return contracts.filter((c) => {
             const matchesSearch = `${c.title || ''} ${c.contract_number || ''}`.toLowerCase().includes(search.toLowerCase());
-            const matchesStatus = statusFilter === 'All' || c.status === statusFilter;
-            const matchesType = typeFilter === 'All' || c.type === typeFilter;
+            const matchesStatus = statusFilter === 'All' || String(c.status || '').toLowerCase() === statusFilter.toLowerCase();
+            const matchesType = typeFilter === 'All' || String(c.type || '').toLowerCase() === typeFilter.toLowerCase();
             const matchesExpiring = !showExpiringSoon || (c.end_date && new Date(c.end_date) <= sixtyDaysOut && new Date(c.end_date) >= now);
 
             return matchesSearch && matchesStatus && matchesType && matchesExpiring;
@@ -147,7 +150,10 @@ const ContractsList = () => {
         if (!(await confirmAction('Are you sure you want to delete this contract? This action cannot be undone.', 'Delete Contract'))) return;
         try {
             await contractService.delete(id);
-            setContracts(prev => prev.filter(c => c.id !== id));
+            setData((prev) => {
+                const current = Array.isArray(prev?.contracts) ? prev.contracts : [];
+                return { ...prev, contracts: current.filter(c => c.id !== id) };
+            });
         } catch (err) {
             console.error(err);
             alert('Failed to delete contract: ' + (err.response?.data?.detail || err.message));
@@ -239,11 +245,12 @@ const ContractsList = () => {
                                         {(() => {
                                             const cv = getCompletenessView(c);
                                             return (
-                                                <span className={`status-badge ${COMPLETENESS_COLOR_CLASS[cv.color] || 'neutral'}`}>
+                                        <span className={`status-badge ${COMPLETENESS_COLOR_CLASS[cv.color] || 'neutral'}`}>
                                                     {cv.color.toUpperCase()} {cv.score}%
                                                 </span>
                                             );
                                         })()}
+                                        {counts?.total ? <div className="small muted">Total: {counts.total}</div> : null}
                                     </td>
                                     <td className="actions">
                                         <button className="ghost-btn" onClick={(e) => { e.stopPropagation(); navigate(`/contracts/${c.id}`); }}>View</button>

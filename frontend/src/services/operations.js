@@ -1,5 +1,35 @@
 import api from '../lib/api';
 
+export function normalizeContractsListResponse(payload) {
+    // Preferred envelope shape
+    if (payload && Array.isArray(payload.contracts)) {
+        return payload;
+    }
+
+    // Current backend shape compatibility
+    if (payload && Array.isArray(payload.items)) {
+        return {
+            contracts: payload.items,
+            counts: payload.counts || {},
+            meta: payload.meta || payload.page || {},
+            ...payload,
+        };
+    }
+
+    // Legacy shape: bare list
+    if (Array.isArray(payload)) {
+        return { contracts: payload, counts: {}, meta: {} };
+    }
+
+    // Defensive fallback
+    return { contracts: [], counts: {}, meta: {} };
+}
+
+export async function getContracts(params) {
+    const res = await api.get('/contracts', { params });
+    return normalizeContractsListResponse(res.data);
+}
+
 const createCrudService = (resource) => ({
     getAll: async () => {
         const response = await api.get(`/${resource}`);

@@ -268,9 +268,16 @@ def list_contracts(
     offset = max(0, int(offset or 0))
     total = len(rows)
     rows = rows[offset:offset + limit]
+    status_counts: Dict[str, int] = {}
+    for row in rows:
+        st = str(row.get("status") or "draft").lower()
+        status_counts[st] = status_counts.get(st, 0) + 1
 
     audit_service.log(db, "VIEW_LIST", "contract", 0, current_user.id, organization_id=org_id)
     return {
+        "contracts": rows,
+        "counts": {"total": total, "by_status": status_counts},
+        "meta": {"limit": limit, "offset": offset, "total": total},
         "items": rows,
         "page": {"limit": limit, "offset": offset, "total": total},
         "total": total,

@@ -93,6 +93,9 @@ class PageMeta(BaseModel):
 class ContractsListResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    contracts: List[ContractListItem] = Field(default_factory=list)
+    counts: dict = Field(default_factory=dict)
+    meta: dict = Field(default_factory=dict)
     items: List[ContractListItem]
     page: PageMeta
     total: Optional[int] = None
