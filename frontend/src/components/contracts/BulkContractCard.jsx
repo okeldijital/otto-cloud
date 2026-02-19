@@ -11,8 +11,11 @@ import PartyMultiAssign from './PartyMultiAssign';
  *   onUpdateTracks(trackIds)
  *   onUpdateParties(parties)
  *   onCreateDraft()
+ *   onUpdateTerms(terms)
+ *   onUpdateDetails(details)
  *   onSaveTracks()
  *   onSaveParties()
+ *   onSaveTerms()
  *   onRemove()
  */
 
@@ -21,6 +24,7 @@ export default function BulkContractCard({
   onUpdateTracks,
   onUpdateParties,
   onUpdateTerms,
+  onUpdateDetails,
   onCreateDraft,
   onSaveTracks,
   onSaveParties,
@@ -30,7 +34,8 @@ export default function BulkContractCard({
   if (!item) return null;
 
   const data = item.extract?.data || {};
-  const title = data.contract_title || data.title || item.filename;
+  let title = data.title || data.contract_title;
+  if (!title) title = item.filename;
   const parties = Array.isArray(data.parties) ? data.parties : [];
   const dates = data.dates || {};
   const isCreated = Boolean(item.contractId);
@@ -94,6 +99,64 @@ export default function BulkContractCard({
               {unmatchedCount > 0 && <span style={{ color: '#b45309' }}>{unmatchedCount} unmatched (manual review needed)</span>}
             </div>
           )}
+
+          {/* Details */}
+          <section style={{ border: '1px solid #e5e7eb', borderRadius: 10, padding: 12 }}>
+            <div className="strong" style={{ marginBottom: 8 }}>Contract Details</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="small muted strong">Title</label>
+                <input
+                  className="input"
+                  value={title || ''}
+                  onChange={e => onUpdateDetails?.({ title: e.target.value })}
+                  disabled={isCreated}
+                  style={{ marginTop: 4 }}
+                />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="small muted strong">Type</label>
+                <select
+                  className="input"
+                  value={data.type || 'unknown'}
+                  onChange={e => onUpdateDetails?.({ type: e.target.value })}
+                  disabled={isCreated}
+                  style={{ marginTop: 4 }}
+                >
+                  <option value="unknown">Unknown</option>
+                  <option value="recording">Recording</option>
+                  <option value="publishing">Publishing</option>
+                  <option value="license">License</option>
+                  <option value="remix">Remix</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="small muted strong">Effective Date</label>
+                <input
+                  type="date"
+                  className="input"
+                  value={dates.effective_date || dates.start_date || dates.contract_date || ''}
+                  onChange={e => onUpdateDetails?.({ dates: { ...dates, effective_date: e.target.value } })}
+                  disabled={isCreated}
+                  style={{ marginTop: 4 }}
+                />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="small muted strong">End Date</label>
+                <input
+                  type="date"
+                  className="input"
+                  value={dates.end_date || dates.expiration_date || ''}
+                  onChange={e => onUpdateDetails?.({ dates: { ...dates, end_date: e.target.value } })}
+                  disabled={isCreated}
+                  style={{ marginTop: 4 }}
+                />
+              </div>
+            </div>
+          </section>
 
           {/* Terms */}
           <section style={{ border: '1px solid #e5e7eb', borderRadius: 10, padding: 12 }}>
