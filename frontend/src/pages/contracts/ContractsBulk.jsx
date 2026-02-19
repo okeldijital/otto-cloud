@@ -46,14 +46,23 @@ function makeItem(file) {
     id: uid(),
     filename: file.name,
     file,
-    status: 'idle',         // idle | extracting | extracted | creating | created | error
-    extract: null,           // raw extraction data from backend
-    trackIds: [],            // selected track IDs (pre-filled from auto-match)
-    parties: [],             // party rows (pre-filled from auto-match)
-    contractId: null,        // created contract ID
+    status: 'extracted',
+    extract: {
+      data: {
+        title: file.name.replace(/\.pdf$/i, ''),
+        type: 'unknown',
+        dates: {},
+        key_terms: {},
+        suggested_track_ids: [],
+        suggested_party_links: []
+      }
+    },
+    trackIds: [],
+    parties: [],
+    contractId: null,
     documentId: null,
     completeness: null,
-    terms: {},               // selected terms to edit
+    terms: {},
     error: null,
   };
 }
@@ -110,47 +119,6 @@ export default function ContractsBulk() {
     setBanner(null);
   }, []);
 
-  // ── Step 2: Extract all ────────────────────────────────────────────
-
-  const extractAll = useCallback(async () => {
-    const pending = items.filter(it => it.status === 'idle' || it.status === 'error');
-    if (!pending.length) {
-      setBanner({ type: 'error', message: 'No files to process.' });
-      return;
-    }
-
-    setGlobalStatus('extracting');
-    setBanner(null);
-
-    // AI Extraction bypassed. Generate empty extraction shells so drafts can be created instantly.
-    setItems(prev => prev.map(it => {
-      if (it.status !== 'idle' && it.status !== 'error') return it;
-
-      const emptyExtract = {
-        data: {
-          title: it.filename.replace(/\.pdf$/i, ''),
-          type: 'unknown',
-          dates: {},
-          key_terms: {},
-          suggested_track_ids: [],
-          suggested_party_links: []
-        }
-      };
-
-      return {
-        ...it,
-        status: 'extracted',
-        extract: emptyExtract,
-        trackIds: [],
-        parties: [],
-        terms: {},
-        error: null,
-      };
-    }));
-
-    setBanner({ type: 'success', message: `Processed ${pending.length} file(s) for manual data entry.` });
-    setGlobalStatus('idle');
-  }, [items]);
 
   // ── Step 3: Create draft for one item ──────────────────────────────
 
@@ -396,15 +364,6 @@ export default function ContractsBulk() {
 
           {/* Action buttons */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <button
-              type="button"
-              className="btn orange"
-              disabled={isBusy || counts.idle === 0}
-              onClick={extractAll}
-            >
-              {globalStatus === 'extracting' ? 'Processing...' : `Process Uploads (${counts.idle})`}
-            </button>
-
             <button
               type="button"
               className="btn"
