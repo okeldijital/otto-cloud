@@ -41,6 +41,7 @@ class ContractUpdate(BaseModel):
     recoupment_notes: Optional[str] = None
     status_quo_override: Optional[str] = None
     contract_number: Optional[str] = None
+    key_terms: Optional[dict] = None
 
 
 class ContractPartyBase(BaseModel):
@@ -60,6 +61,7 @@ class ContractPartyResponse(ContractPartyBase):
     id: int
     contract_id: int
     organization_id: UUID
+    display_name: Optional[str] = None
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -78,6 +80,7 @@ class ContractAssetResponse(ContractAssetBase):
     id: int
     contract_id: int
     organization_id: UUID
+    asset_title: Optional[str] = None
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -161,6 +164,7 @@ class ContractResponse(ContractBase):
     end_date_specified: Optional[bool] = None
     governing_law: Optional[str] = None
     term_summary: Optional[str] = None
+    key_terms: Optional[dict] = None
     status_quo_override: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)

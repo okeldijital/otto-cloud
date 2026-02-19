@@ -114,6 +114,10 @@ def inject_status_quo(contract: Optional[Contract]) -> Optional[Contract]:
         contract.effective_date = contract.start_date
         contract.term_summary = _contract_meta(contract).get("term_summary")
         contract.governing_law = _contract_meta(contract).get("governing_law")
+        contract.key_terms = {
+            "term_text": contract.term_summary,
+            "governing_law": contract.governing_law
+        }
     return contract
 
 
@@ -211,6 +215,22 @@ def _build_party_summary(party, db):
         "display": display_name,
         "member_preview": member_preview if kind == "group" else [],
     }
+
+
+def _build_asset_title(asset, db):
+    if not asset.asset_id:
+        return asset.notes or "Unknown Asset"
+    etype = str(asset.asset_type or "").strip().lower()
+    if etype == "track":
+        t = db.query(Track).filter(Track.id == asset.asset_id).first()
+        if t: return t.title
+    elif etype == "work":
+        w = db.query(Work).filter(Work.id == asset.asset_id).first()
+        if w: return w.title
+    elif etype == "release":
+        r = db.query(Release).filter(Release.id == asset.asset_id).first()
+        if r: return r.title
+    return f"{asset.asset_type} #{asset.asset_id}"
 
 
 def _serialize_contract_item(contract: Contract, db=None) -> Dict[str, Any]:
@@ -624,7 +644,18 @@ def update_contract(
         if docs == 0:
             raise HTTPException(status_code=400, detail="A PDF document is required before activating a contract.")
 
-    updated = contract_repository.update(db, contract, contract_data.model_dump(exclude_unset=True))
+    contract_dict = contract_data.model_dump(exclude_unset=True)
+    if "key_terms" in contract_dict:
+        key_terms = contract_dict.pop("key_terms")
+        if key_terms:
+            meta = _contract_meta(contract)
+            if "term_text" in key_terms:
+                meta["term_summary"] = key_terms["term_text"]
+            if "governing_law" in key_terms:
+                meta["governing_law"] = key_terms["governing_law"]
+            contract_dict["notes"] = _append_contract_meta(contract.notes, meta)
+
+    updated = contract_repository.update(db, contract, contract_dict)
     audit_service.log(db, "UPDATE", "Contract", contract.id, current_user.id, changes=contract_data.model_dump(exclude_unset=True), organization_id=org_id)
     return inject_status_quo(contract_repository.get_with_details(db, contract_id, org_id))
 
@@ -1133,6 +1164,15 @@ def get_contract(
     if not contract:
         raise HTTPException(status_code=404, detail="Contract not found")
     audit_service.log(db, "VIEW", "Contract", contract.id, current_user.id, organization_id=org_id)
+    
+    # Inject actual names for UI
+    for p in contract.parties:
+        summary = _build_party_summary(p, db)
+        p.display_name = summary.get("display")
+        
+    for a in contract.assets:
+        a.asset_title = _build_asset_title(a, db)
+        
     return inject_status_quo(contract)
 
 
