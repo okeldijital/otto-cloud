@@ -115,78 +115,41 @@ export default function ContractsBulk() {
   const extractAll = useCallback(async () => {
     const pending = items.filter(it => it.status === 'idle' || it.status === 'error');
     if (!pending.length) {
-      setBanner({ type: 'error', message: 'No files to extract.' });
+      setBanner({ type: 'error', message: 'No files to process.' });
       return;
     }
 
     setGlobalStatus('extracting');
     setBanner(null);
 
-    // Mark all pending as extracting
-    setItems(prev => prev.map(it =>
-      (it.status === 'idle' || it.status === 'error')
-        ? { ...it, status: 'extracting', error: null }
-        : it
-    ));
+    // AI Extraction bypassed. Generate empty extraction shells so drafts can be created instantly.
+    setItems(prev => prev.map(it => {
+      if (it.status !== 'idle' && it.status !== 'error') return it;
 
-    try {
-      const formData = new FormData();
-      for (const item of pending) {
-        formData.append('files', item.file, item.filename);
-      }
-
-      const resp = await contractsBulkClient.extractBulk(formData);
-      const results = Array.isArray(resp?.results) ? resp.results : [];
-
-      // Map results by filename
-      const byFilename = new Map();
-      for (const r of results) {
-        byFilename.set(r.filename, r);
-      }
-
-      // Update each item with its result
-      setItems(prev => prev.map(it => {
-        if (it.status !== 'extracting') return it;
-        const r = byFilename.get(it.filename);
-        if (!r) {
-          return { ...it, status: 'error', error: 'No result from server' };
+      const emptyExtract = {
+        data: {
+          title: it.filename.replace(/\.pdf$/i, ''),
+          type: 'unknown',
+          dates: {},
+          key_terms: {},
+          suggested_track_ids: [],
+          suggested_party_links: []
         }
-        if (r.status === 'ok' && r.extract) {
-          const data = r.extract.data || {};
-          return {
-            ...it,
-            status: 'extracted',
-            extract: r.extract,
-            // Auto-attach tracks and parties from AI suggestions
-            trackIds: Array.isArray(data.suggested_track_ids) ? data.suggested_track_ids : [],
-            parties: Array.isArray(data.suggested_party_links) ? data.suggested_party_links : [],
-            terms: data.key_terms || {},
-            error: null,
-          };
-        }
-        return {
-          ...it,
-          status: 'error',
-          error: r.error?.message || 'Extraction failed',
-        };
-      }));
+      };
 
-      const okCount = results.filter(r => r.status === 'ok').length;
-      const errCount = results.filter(r => r.status !== 'ok').length;
-      setBanner({
-        type: errCount > 0 ? 'error' : 'success',
-        message: `Extracted ${okCount} file(s)${errCount > 0 ? `, ${errCount} failed` : ''}.`,
-      });
-    } catch (err) {
-      setBanner({ type: 'error', message: `Extraction failed: ${err.message}` });
-      setItems(prev => prev.map(it =>
-        it.status === 'extracting'
-          ? { ...it, status: 'error', error: err.message }
-          : it
-      ));
-    } finally {
-      setGlobalStatus('idle');
-    }
+      return {
+        ...it,
+        status: 'extracted',
+        extract: emptyExtract,
+        trackIds: [],
+        parties: [],
+        terms: {},
+        error: null,
+      };
+    }));
+
+    setBanner({ type: 'success', message: `Processed ${pending.length} file(s) for manual data entry.` });
+    setGlobalStatus('idle');
   }, [items]);
 
   // ── Step 3: Create draft for one item ──────────────────────────────
@@ -439,7 +402,7 @@ export default function ContractsBulk() {
               disabled={isBusy || counts.idle === 0}
               onClick={extractAll}
             >
-              {globalStatus === 'extracting' ? 'Extracting...' : `Extract All (${counts.idle})`}
+              {globalStatus === 'extracting' ? 'Processing...' : `Process Uploads (${counts.idle})`}
             </button>
 
             <button
@@ -449,7 +412,7 @@ export default function ContractsBulk() {
               disabled={isBusy || counts.extracted === 0}
               onClick={createAllDrafts}
             >
-              {globalStatus === 'creating' ? 'Creating...' : `Create All Drafts (${counts.extracted})`}
+              {globalStatus === 'creating' ? 'Creating...' : `Bulk Create Drafts (${counts.extracted})`}
             </button>
 
             {items.length > 0 && (
