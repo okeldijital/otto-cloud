@@ -1,0 +1,4 @@
+TrackMultiSelect UI behavior:
+- selected chips render track labels (title/name/display_name), never raw #id.
+- selecting a result closes dropdown immediately and clears query.
+- legacy selected id arrays hydrate labels using POST /api/tracks/by_ids.

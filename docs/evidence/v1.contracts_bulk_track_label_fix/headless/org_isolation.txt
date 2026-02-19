@@ -1,0 +1,19 @@
+Org A by_ids [track_a, track_b] (expect only track_a):
+{
+  "items": [
+    {
+      "id": 1,
+      "title": "Konko Man (Muchacho Remix)"
+    }
+  ]
+}
+
+Org B by_ids [track_a, track_b] (expect only track_b):
+{
+  "items": [
+    {
+      "id": 2,
+      "title": "Umoya ORG_B_TOKEN"
+    }
+  ]
+}

@@ -11,6 +11,7 @@ function useDebounced(value, delayMs = 250) {
 }
 
 export default function TrackMultiSelect({
+  tracks = [],
   selectedIds = [],
   onChange,
   placeholder = 'Search tracks...',
@@ -21,14 +22,74 @@ export default function TrackMultiSelect({
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState([]);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const [selectedItems, setSelectedItems] = useState([]);
   const inputRef = useRef(null);
   const containerRef = useRef(null);
   const debounced = useDebounced(query);
 
-  const selectedSet = useMemo(
-    () => new Set((selectedIds || []).map((id) => Number(id))),
-    [selectedIds],
-  );
+  const tracksById = useMemo(() => {
+    const map = new Map();
+    for (const row of tracks || []) {
+      const id = Number(row?.id);
+      if (!Number.isFinite(id)) continue;
+      map.set(id, row);
+    }
+    return map;
+  }, [tracks]);
+
+  const selectedSet = useMemo(() => new Set(selectedItems.map((x) => Number(x.id))), [selectedItems]);
+
+  function normalizeTrack(row) {
+    const id = Number(row?.id);
+    if (!Number.isFinite(id)) return null;
+    const label = row?.title || row?.name || row?.display_name || row?.filename || `Track #${id}`;
+    return {
+      id,
+      label,
+      artist: row?.artist || null,
+      release: row?.release || null,
+    };
+  }
+
+  useEffect(() => {
+    const incoming = Array.isArray(selectedIds) ? selectedIds : [];
+    const normalized = [];
+    for (const row of incoming) {
+      if (typeof row === 'number' || typeof row === 'string') {
+        const id = Number(row);
+        if (!Number.isFinite(id)) continue;
+        const known = tracksById.get(id);
+        normalized.push(normalizeTrack({ id, ...known }) || { id, label: `Track #${id}` });
+      } else if (row && typeof row === 'object') {
+        const n = normalizeTrack(row);
+        if (n) normalized.push(n);
+      }
+    }
+    const deduped = Array.from(new Map(normalized.map((x) => [x.id, x])).values());
+    setSelectedItems(deduped);
+  }, [selectedIds, tracksById]);
+
+  useEffect(() => {
+    const missing = selectedItems.filter((x) => String(x.label || '').startsWith('Track #')).map((x) => x.id);
+    if (!missing.length) return;
+    let alive = true;
+    (async () => {
+      try {
+        const data = await tracksClient.byIds(missing);
+        if (!alive) return;
+        const byId = new Map((data?.items || []).map((x) => [Number(x.id), x.title || `Track #${x.id}`]));
+        setSelectedItems((prev) => prev.map((item) => {
+          const label = byId.get(Number(item.id));
+          return label ? { ...item, label } : item;
+        }));
+      } catch {
+        // best effort
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [selectedItems]);
 
   useEffect(() => {
     if (!query.trim()) {
@@ -56,14 +117,18 @@ export default function TrackMultiSelect({
   }
 
   function onSelect(track) {
-    const numeric = Number(track?.id);
-    if (!Number.isFinite(numeric)) return;
-    const next = new Set(selectedSet);
-    next.add(numeric);
-    onChange?.(Array.from(next));
+    const normalized = normalizeTrack(track);
+    if (!normalized) return;
+    setSelectedItems((prev) => {
+      const map = new Map(prev.map((x) => [x.id, x]));
+      map.set(normalized.id, normalized);
+      const arr = Array.from(map.values());
+      onChange?.(arr.map((x) => Number(x.id)));
+      return arr;
+    });
     setQuery('');
     closeDropdown();
-    requestAnimationFrame(() => inputRef.current?.blur());
+    requestAnimationFrame(() => inputRef.current?.focus());
   }
 
   function onInputBlur() {
@@ -85,7 +150,7 @@ export default function TrackMultiSelect({
       try {
         const data = await tracksClient.search({ q, limit: 20 });
         if (!alive) return;
-        const rows = Array.isArray(data?.items) ? data.items : [];
+        const rows = (Array.isArray(data?.items) ? data.items : []).map((row) => normalizeTrack(row)).filter(Boolean);
         setResults(rows);
         setActiveIndex(rows.length ? 0 : -1);
       } finally {
@@ -100,10 +165,12 @@ export default function TrackMultiSelect({
 
   function toggle(id) {
     const numeric = Number(id);
-    const next = new Set(selectedSet);
-    if (next.has(numeric)) next.delete(numeric);
-    else next.add(numeric);
-    onChange?.(Array.from(next));
+    setSelectedItems((prev) => {
+      const exists = prev.some((x) => Number(x.id) === numeric);
+      const next = exists ? prev.filter((x) => Number(x.id) !== numeric) : [...prev, { id: numeric, label: `Track #${numeric}` }];
+      onChange?.(next.map((x) => Number(x.id)));
+      return next;
+    });
   }
 
   function onInputKeyDown(e) {
@@ -141,16 +208,24 @@ export default function TrackMultiSelect({
           placeholder={placeholder}
           aria-label="Track search"
         />
-        <button type="button" className="ghost-btn" disabled={!selectedSet.size} onClick={() => onChange?.([])}>
+        <button
+          type="button"
+          className="ghost-btn"
+          disabled={!selectedSet.size}
+          onClick={() => {
+            setSelectedItems([]);
+            onChange?.([]);
+          }}
+        >
           Clear
         </button>
       </div>
 
       {selectedSet.size > 0 && (
         <div style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {Array.from(selectedSet).map((id) => (
-            <button key={id} type="button" className="ghost-btn" onClick={() => toggle(id)}>
-              #{id} x
+          {selectedItems.map((row) => (
+            <button key={row.id} type="button" className="ghost-btn" onClick={() => toggle(row.id)}>
+              {row.label} x
             </button>
           ))}
         </div>
@@ -184,7 +259,7 @@ export default function TrackMultiSelect({
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                <div className="strong break-words">{row.display_name || row.title || `Track #${row.id}`}</div>
+                <div className="strong break-words">{row.label}</div>
                 {checked ? <span className="status-badge success">Selected</span> : null}
               </div>
               <div className="muted small break-words">

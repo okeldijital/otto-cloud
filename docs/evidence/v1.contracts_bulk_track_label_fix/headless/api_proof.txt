@@ -1,0 +1,37 @@
+=== POST /api/tracks/by_ids ===
+HTTP/1.1 200
+{
+  "items": [
+    {
+      "id": 1,
+      "title": "Konko Man (Muchacho Remix)"
+    }
+  ]
+}
+
+=== GET /api/tracks/search ===
+HTTP/1.1 200
+{
+  "status": "ok",
+  "org_id": "00000000-0000-0000-0000-0000000069dd",
+  "runtime": {
+    "db_id": "active",
+    "db_path_hint": "/Users/m2krproduction/.otto/data/db/otto.sqlite"
+  },
+  "items": [
+    {
+      "id": 1,
+      "display_name": "Konko Man (Muchacho Remix)",
+      "title": "Konko Man (Muchacho Remix)",
+      "artist": null,
+      "release": null,
+      "artists": [],
+      "version": null,
+      "isrc": null,
+      "artist_display": null
+    }
+  ],
+  "limit": 20,
+  "offset": 0,
+  "total_estimate": 1
+}

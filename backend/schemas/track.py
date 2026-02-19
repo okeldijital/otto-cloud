@@ -49,3 +49,16 @@ class Track(TrackBase):
     updated_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class TrackByIdsRequest(BaseModel):
+    ids: list[int]
+
+
+class TrackLite(BaseModel):
+    id: int
+    title: str
+
+
+class TrackByIdsResponse(BaseModel):
+    items: list[TrackLite]

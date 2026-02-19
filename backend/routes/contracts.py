@@ -23,6 +23,7 @@ from schemas.contract import (
 from schemas.contracts_list import ContractsListResponse, ContractCounts
 from schemas.contracts_from_extract import CreateFromExtractRequest, CreateFromExtractResponse
 from schemas.contracts_parties_bulk import SavePartiesRequest, SavePartiesResponse
+from schemas.track import TrackByIdsRequest, TrackByIdsResponse
 from models.contract import Contract, ContractDocument, ContractParty, ContractAsset, ContractSplitGroup, ContractSplit
 from models.artist import Artist
 from models.release import Release
@@ -1331,6 +1332,25 @@ def tracks_search(
         "offset": offset,
         "total_estimate": total_estimate,
     }
+
+
+@router.post("/tracks/by_ids", response_model=TrackByIdsResponse)
+def tracks_by_ids(
+    payload: TrackByIdsRequest,
+    db: Session = Depends(get_db),
+    org_id: int = Depends(get_current_organization_id),
+    current_user=Depends(get_current_user),
+):
+    ids = sorted({int(x) for x in (payload.ids or []) if int(x) > 0})
+    if not ids:
+        return {"items": []}
+    rows = (
+        db.query(Track)
+        .filter(Track.organization_id == org_id, Track.id.in_(ids))
+        .all()
+    )
+    items = [{"id": r.id, "title": r.title or f"Track #{r.id}"} for r in rows]
+    return {"items": items}
 
 
 @router.get("/works")
