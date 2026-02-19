@@ -11,6 +11,14 @@ const ROLE_OPTIONS = ['Artist', 'Label', 'Publisher', 'Licensee', 'Licensor', 'P
 const ASSET_TYPES = ['Track', 'Work', 'Release'];
 const TABS = ['overview', 'terms', 'parties', 'assets', 'documents'];
 
+const formatError = (err, fallback) => {
+    const detail = err?.response?.data?.detail;
+    if (typeof detail === 'string') return detail;
+    if (Array.isArray(detail)) return detail.map(d => d.msg).join(', ');
+    if (typeof detail === 'object') return JSON.stringify(detail);
+    return fallback;
+};
+
 const ContractDetail = () => {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -77,7 +85,7 @@ const ContractDetail = () => {
                 }
 
             } catch (err) {
-                setError(err?.response?.data?.detail || err.message || 'Load failed');
+                setError(formatError(err, err.message || 'Load failed'));
             } finally {
                 setLoading(false);
             }
@@ -100,6 +108,8 @@ const ContractDetail = () => {
         try {
             const payload = {
                 ...metaForm,
+                start_date: metaForm.start_date || null,
+                end_date: metaForm.end_date || null,
                 key_terms: {
                     term_text: metaForm.term_text,
                     renewal_text: metaForm.renewal_text,
@@ -118,7 +128,7 @@ const ContractDetail = () => {
                 });
             }
         } catch (err) {
-            setError(err?.response?.data?.detail || 'Save failed');
+            setError(formatError(err, 'Save failed'));
         }
     };
 
@@ -134,7 +144,7 @@ const ContractDetail = () => {
             setPartyModalOpen(false);
             setPartyForm({ party_mode: 'system', role: '', entity: null, external_name: '', split_percent: '', notes: '' });
         } catch (err) {
-            setError(err?.response?.data?.detail || 'Add party failed');
+            setError(formatError(err, 'Add party failed'));
         }
     };
 
@@ -155,7 +165,7 @@ const ContractDetail = () => {
             setAssetModalOpen(false);
             setAssetForm({ asset_type: 'Track', assets: [], notes: '' });
         } catch (err) {
-            setError(err?.response?.data?.detail || 'Add asset failed');
+            setError(formatError(err, 'Add asset failed'));
         }
     };
 
@@ -166,7 +176,7 @@ const ContractDetail = () => {
                 const res = await contractService.getById(id);
                 setContract(res.data || res);
             } catch (err) {
-                setError(err?.response?.data?.detail || 'Remove failed');
+                setError(formatError(err, 'Remove failed'));
             }
         }
     };
@@ -181,7 +191,7 @@ const ContractDetail = () => {
             setDocModalOpen(false);
             setSelectedFile(null);
         } catch (err) {
-            setError(err?.response?.data?.detail || 'Upload failed');
+            setError(formatError(err, 'Upload failed'));
         } finally {
             setUploading(false);
         }
@@ -194,7 +204,7 @@ const ContractDetail = () => {
                 navigate('/admin-of-works/contracts');
             } catch (err) {
                 console.error(err);
-                alert('Failed to delete contract: ' + (err.response?.data?.detail || err.message));
+                alert('Failed to delete contract: ' + formatError(err, err.message));
             }
         }
     };
