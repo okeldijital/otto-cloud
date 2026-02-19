@@ -70,6 +70,7 @@ def test_tracks_search_org_scoped():
         row = body["items"][0]
         assert "id" in row
         assert "display_name" in row
+        assert "title" in row
         assert "artist" in row
         assert "release" in row
 

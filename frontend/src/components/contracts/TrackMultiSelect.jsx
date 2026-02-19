@@ -247,7 +247,10 @@ export default function TrackMultiSelect({
               key={row.id}
               type="button"
               onMouseEnter={() => setActiveIndex(idx)}
-              onClick={() => onSelect(row)}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                onSelect(row);
+              }}
               style={{
                 width: '100%',
                 textAlign: 'left',

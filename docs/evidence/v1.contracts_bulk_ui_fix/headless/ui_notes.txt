@@ -1,0 +1,7 @@
+Screenshot waiver: headless evidence only.
+Navigation path: Administration of Works -> Contracts List; then Contracts -> Bulk Processing.
+Contracts list should render for [] and envelope shapes ({items:[]}/{contracts:[]}) without runtime crash.
+Bulk track mapping should have one search input; single-click select; dropdown closes after select.
+Selected track chip should render track title (human label), not Track #id.
+Expected sections on each bulk card: Overview, Tracks, Splits, Warnings, Track Mapping, Parties entrypoint.
+Expected contract deep links: /contracts/:id?tab=parties and /contracts/:id?tab=assets.

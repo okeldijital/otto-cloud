@@ -183,6 +183,7 @@ with TestClient(app) as client:
         headers={"X-Organization-ID": str(org_a)},
     )
 
+    track_search = client.get("/api/tracks/search", params={"q": "ABANGOMA", "limit": 20}, headers={"X-Organization-ID": str(org_a)})
     contracts_list = client.get("/api/contracts", headers={"X-Organization-ID": str(org_a)})
 
     active_user["value"] = user_b
@@ -207,6 +208,10 @@ api_file.write_text(
         "=== GET /api/contracts ===",
         f"HTTP/1.1 {contracts_list.status_code}",
         json.dumps(contracts_list.json(), indent=2)[:3000],
+        "",
+        "=== GET /api/tracks/search ===",
+        f"HTTP/1.1 {track_search.status_code}",
+        json.dumps(track_search.json(), indent=2)[:3000],
     ]),
     encoding="utf-8",
 )
@@ -243,7 +248,10 @@ iso_file.write_text(
 ui_file.write_text(
     "\n".join([
         "Screenshot waiver: headless evidence only.",
-        "Navigation path: Administration of Works -> Bulk Processing",
+        "Navigation path: Administration of Works -> Contracts List; then Contracts -> Bulk Processing.",
+        "Contracts list should render for [] and envelope shapes ({items:[]}/{contracts:[]}) without runtime crash.",
+        "Bulk track mapping should have one search input; single-click select; dropdown closes after select.",
+        "Selected track chip should render track title (human label), not Track #id.",
         "Expected sections on each bulk card: Overview, Tracks, Splits, Warnings, Track Mapping, Parties entrypoint.",
         "Expected contract deep links: /contracts/:id?tab=parties and /contracts/:id?tab=assets.",
     ]),

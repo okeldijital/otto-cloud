@@ -1,0 +1,39 @@
+Org A /tracks/search for ORG_B_TOKEN (expect empty)
+{
+  "status": "ok",
+  "org_id": "00000000-0000-0000-0000-000000007595",
+  "runtime": {
+    "db_id": "active",
+    "db_path_hint": "/Users/m2krproduction/.otto/data/db/otto.sqlite"
+  },
+  "items": [],
+  "limit": 20,
+  "offset": 0,
+  "total_estimate": 0
+}
+
+Org B /tracks/search for ORG_B_TOKEN (expect matches)
+{
+  "status": "ok",
+  "org_id": "00000000-0000-0000-0000-000000007596",
+  "runtime": {
+    "db_id": "active",
+    "db_path_hint": "/Users/m2krproduction/.otto/data/db/otto.sqlite"
+  },
+  "items": [
+    {
+      "id": 2,
+      "display_name": "Hidden ORG_B_TOKEN Track",
+      "title": "Hidden ORG_B_TOKEN Track",
+      "artist": "Bulk UI Artist B ORG_B_TOKEN",
+      "release": "Bulk UI Release B ORG_B_TOKEN",
+      "artists": [],
+      "version": null,
+      "isrc": null,
+      "artist_display": "Bulk UI Artist B ORG_B_TOKEN"
+    }
+  ],
+  "limit": 20,
+  "offset": 0,
+  "total_estimate": 1
+}

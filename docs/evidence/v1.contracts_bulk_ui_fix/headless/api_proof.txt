@@ -1,0 +1,342 @@
+=== POST /api/ai/contracts/extract_bulk ===
+HTTP/1.1 200
+{
+  "version": "bulk_extract_v1",
+  "org_id": "00000000-0000-0000-0000-000000007595",
+  "batch_id": null,
+  "status": "ok",
+  "results": [
+    {
+      "file_id": "f_001",
+      "filename": "bulk_ui_fix.pdf",
+      "ok": true,
+      "client_file_id": "bulk_ui_fix.pdf",
+      "sha256": "62e881fca6d2304015fa1f951656a7d45d9a6b69171a5ae766704341fdc9f00e",
+      "status": "ok",
+      "extract": {
+        "version": "v2",
+        "parser": {
+          "name": "hybrid_conservative_v2",
+          "llm_used": false,
+          "parser_version": "deterministic_v2",
+          "confidence": 0.95
+        },
+        "data": {
+          "title": "bulk_ui_fix",
+          "type": "unknown",
+          "dates": {
+            "contract_date": null,
+            "effective_date": null,
+            "expiration_date": null,
+            "end_date": null,
+            "end_date_specified": false
+          },
+          "parties": [
+            {
+              "name": "M2KR MELT 2000 Revisited",
+              "display_name": "M2KR MELT 2000 Revisited",
+              "role": "label",
+              "entity_hint": "organization",
+              "confidence": 0.9,
+              "evidence": "agreement_header"
+            },
+            {
+              "name": "SPIRIT MOTION PTY LTD",
+              "display_name": "SPIRIT MOTION PTY LTD",
+              "role": "remixer",
+              "entity_hint": "unknown",
+              "confidence": 0.9,
+              "evidence": "agreement_header"
+            },
+            {
+              "name": "MADALA KUNENE",
+              "display_name": "MADALA KUNENE",
+              "role": "artist",
+              "entity_hint": "artist",
+              "confidence": 0.8,
+              "evidence": "body_original_artist"
+            }
+          ],
+          "tracks": [
+            {
+              "title": "ABANGOMA CAVE MIX TO GO ON THE BLACK MOTION ALBUM REBIRTH of the DRUMS",
+              "version": null,
+              "confidence": 0.65
+            },
+            {
+              "title": "ABANGOMA DRUM EFFECT MIX TO BE RELEASED",
+              "version": null,
+              "confidence": 0.65
+            }
+          ],
+          "splits": [
+            {
+              "scope": "master",
+              "percent": 30.0,
+              "party_name": "SPIRIT MOTION PTY LTD",
+              "role": "remixer",
+              "notes": "remixer_royalty_rate",
+              "evidence": "remixer_royalty_rate"
+            },
+            {
+              "scope": "master",
+              "percent": 70.0,
+              "party_name": "M2KR MELT 2000 Revisited",
+              "role": "label",
+              "notes": "inferred_complement",
+              "evidence": "inferred_complement"
+            }
+          ],
+          "key_terms": {
+            "territory": "Worldwide",
+            "governing_law": null,
+            "term_text": "minimum 15 years; auto-renew 5 years",
+            "renewal_text": "minimum 15 years; auto-renew 5 years"
+          },
+          "warnings": 
+
+=== POST /api/contracts/from_extract (expect 422) ===
+HTTP/1.1 422
+{
+  "detail": {
+    "detail": "confirmation_required",
+    "message": "confirm_non_destructive must be true"
+  }
+}
+
+=== POST /api/contracts/from_extract (expect 200) ===
+HTTP/1.1 200
+{
+  "status": "ok",
+  "created": true,
+  "idempotent_hit": false,
+  "org_id": "00000000-0000-0000-0000-000000007595",
+  "contract": {
+    "id": 1,
+    "org_id": "00000000-0000-0000-0000-000000007595",
+    "status": "draft",
+    "title": "bulk_ui_fix",
+    "type": "unknown",
+    "territory": "Worldwide",
+    "effective_date": null,
+    "end_date": null,
+    "end_date_specified": false,
+    "created_at": "2026-02-19T08:44:12",
+    "updated_at": "2026-02-19T08:44:12",
+    "overview": {
+      "type": "unknown",
+      "territory": "Worldwide",
+      "effective_date": null,
+      "end_date": null,
+      "end_date_note": "no_end_date_specified"
+    }
+  },
+  "contract_id": 1,
+  "links": {
+    "documents_created": 1,
+    "tracks_linked": 1,
+    "parties_linked": 0
+  },
+  "document": {
+    "id": 1,
+    "filename": "bulk_ui_fix.pdf"
+  },
+  "linked_tracks_count": 1,
+  "warnings": [
+    "missing_effective_date",
+    "no_end_date_specified"
+  ],
+  "completeness": {
+    "version": "v1",
+    "score": 60,
+    "status_quo": "red",
+    "color": "red",
+    "missing": [
+      "missing_parties",
+      "missing_effective_date"
+    ],
+    "notes": [
+      "no_parties_linked"
+    ],
+    "reasons": [
+      {
+        "code": "missing_parties",
+        "message": "No parties linked",
+        "weight": 40
+      },
+      {
+        "code": "missing_effective_date",
+        "message": "Effective date not set",
+        "weight": 5
+      }
+    ],
+    "signals": {
+      "documents": 1,
+      "tracks": 1,
+      "parties": 0,
+      "effective_date": false,
+      "end_date_known": true,
+      "territory": true,
+      "term_present": true
+    }
+  }
+}
+
+=== GET /api/contracts ===
+HTTP/1.1 200
+{
+  "contracts": [
+    {
+      "id": 1,
+      "org_id": "00000000-0000-0000-0000-000000007595",
+      "status": "draft",
+      "title": "bulk_ui_fix",
+      "type": "unknown",
+      "territory": "Worldwide",
+      "effective_date": null,
+      "end_date": null,
+      "end_date_specified": false,
+      "created_at": "2026-02-19T08:44:12",
+      "updated_at": "2026-02-19T08:44:12",
+      "counts": {
+        "documents": 1,
+        "tracks": 1,
+        "parties": 0
+      },
+      "completeness": {
+        "version": "v1",
+        "score": 60,
+        "status_quo": "red",
+        "color": "red",
+        "missing": [
+          "missing_parties",
+          "missing_effective_date"
+        ],
+        "notes": [
+          "no_parties_linked"
+        ],
+        "reasons": [
+          {
+            "code": "missing_parties",
+            "message": "No parties linked",
+            "weight": 40
+          },
+          {
+            "code": "missing_effective_date",
+            "message": "Effective date not set",
+            "weight": 5
+          }
+        ],
+        "signals": {
+          "documents": 1,
+          "tracks": 1,
+          "parties": 0,
+          "effective_date": false,
+          "end_date_known": true,
+          "territory": true,
+          "term_present": true
+        }
+      },
+      "dates": {
+        "effective_date": null,
+        "contract_date": null,
+        "expiration_date": null
+      }
+    }
+  ],
+  "counts": {
+    "total": 1,
+    "by_status": {
+      "draft": 1
+    }
+  },
+  "meta": {
+    "limit": 50,
+    "offset": 0,
+    "total": 1
+  },
+  "items": [
+    {
+      "id": 1,
+      "org_id": "00000000-0000-0000-0000-000000007595",
+      "status": "draft",
+      "title": "bulk_ui_fix",
+      "type": "unknown",
+      "territory": "Worldwide",
+      "effective_date": null,
+      "end_date": null,
+      "end_date_specified": false,
+      "created_at": "2026-02-19T08:44:12",
+      "updated_at": "2026-02-19T08:44:12",
+      "counts": {
+        "documents": 1,
+        "tracks": 1,
+        "parties": 0
+      },
+      "completeness": {
+        "version": "v1",
+        "score": 60,
+        "status_quo": "red",
+        "color": "red",
+        "missing": [
+          "missing_parties",
+          "missing_effective_date"
+        ],
+        "notes": [
+          "no_parties_linked"
+        ],
+        "reasons": [
+          {
+            "code": "missing_parties",
+            "message": "No parties linked",
+            "weight": 40
+          },
+          {
+            "code": "missing_effective_date",
+            "message": "Effective date not set",
+            "weight": 5
+          }
+        ],
+        "signals": {
+          "documents": 1,
+          "tracks": 1,
+          "parties": 0,
+          "effective_date": false,
+          "end_date_known": true,
+          "territory": true,
+          "term_present": true
+        }
+      },
+      "dates": {
+        "effective_date": null,
+        "contract_date": null,
+        "expiration_date": null
+      }
+  
+
+=== GET /api/tracks/search ===
+HTTP/1.1 200
+{
+  "status": "ok",
+  "org_id": "00000000-0000-0000-0000-000000007595",
+  "runtime": {
+    "db_id": "active",
+    "db_path_hint": "/Users/m2krproduction/.otto/data/db/otto.sqlite"
+  },
+  "items": [
+    {
+      "id": 1,
+      "display_name": "ABANGOMA DRUM EFFECT MIX",
+      "title": "ABANGOMA DRUM EFFECT MIX",
+      "artist": "Bulk UI Artist A",
+      "release": "Bulk UI Release A",
+      "artists": [],
+      "version": null,
+      "isrc": null,
+      "artist_display": "Bulk UI Artist A"
+    }
+  ],
+  "limit": 20,
+  "offset": 0,
+  "total_estimate": 1
+}

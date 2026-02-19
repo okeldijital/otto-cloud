@@ -83,7 +83,10 @@ const Contracts = () => {
                     CatalogService.getAll('releases')
                 ]);
                 const payload = normalizeContractsListResponse(conRes.data || conRes || {});
-                setContracts(Array.isArray(payload.contracts) ? payload.contracts : []);
+                const items = Array.isArray(payload)
+                    ? payload
+                    : (Array.isArray(payload?.items) ? payload.items : (payload?.contracts ?? []));
+                setContracts(Array.isArray(items) ? items : []);
                 setReleases(relRes.data || relRes || []);
             } catch (e) {
                 console.error(e);

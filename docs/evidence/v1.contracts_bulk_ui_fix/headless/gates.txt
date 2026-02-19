@@ -1,0 +1,30 @@
+=== python3 backend/invariant_check.py ===
+🛡️ Running Governed AI Invariant Check (AST)...
+✅ AI invariants pass (No drift, No writes in AI tools to production DB, No unscoped network queries).
+
+=== HOME=$(mktemp -d) python3 -m pytest -q ===
+........................................................................ [ 54%]
+...........................................................              [100%]
+131 passed in 83.17s (0:01:23)
+
+=== cd frontend && npm run -s build ===
+vite v7.3.1 building client environment for production...
+transforming...
+✓ 2619 modules transformed.
+rendering chunks...
+[plugin vite:reporter] 
+(!) /Users/m2krproduction/otto/frontend/src/services/operations.js is dynamically imported by /Users/m2krproduction/otto/frontend/src/pages/network/IndividualDetail.jsx but also statically imported by /Users/m2krproduction/otto/frontend/src/components/QuickAddModal.jsx, /Users/m2krproduction/otto/frontend/src/pages/Admin.jsx, /Users/m2krproduction/otto/frontend/src/pages/ArtistDetail.jsx, /Users/m2krproduction/otto/frontend/src/pages/Artists.jsx, /Users/m2krproduction/otto/frontend/src/pages/Labels.jsx, /Users/m2krproduction/otto/frontend/src/pages/Playlists.jsx, /Users/m2krproduction/otto/frontend/src/pages/Releases.jsx, /Users/m2krproduction/otto/frontend/src/pages/admin-of-works/ContractsList.jsx, dynamic import will not move module into another chunk.
+
+computing gzip size...
+dist/index.html                     0.46 kB │ gzip:   0.30 kB
+dist/assets/logo-CWMvqfG5.png      64.12 kB
+dist/assets/index-Ci0f-cVs.css     45.91 kB │ gzip:   8.95 kB
+dist/assets/index-DabTiyse.js       0.54 kB │ gzip:   0.29 kB
+dist/assets/index-DWsAy999.js       1.07 kB │ gzip:   0.58 kB
+dist/assets/index-D4U4w9Lx.js   1,289.65 kB │ gzip: 347.76 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 5.45s
