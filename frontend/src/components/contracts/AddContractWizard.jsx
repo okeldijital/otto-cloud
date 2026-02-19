@@ -2,8 +2,7 @@ import React, { useEffect, useState } from 'react';
 import contractsWizardClient from '../../api/contractsWizardClient';
 import aiTrackMappingClient from '../../api/aiTrackMappingClient';
 import { CatalogService } from '../../services/catalog';
-import ContractExtractPreview from './ContractExtractPreview';
-import ContractCreateReviewForm from './ContractCreateReviewForm';
+import ExtractPreviewSections from './ExtractPreviewSections';
 import TrackMultiSelect from './TrackMultiSelect';
 
 export default function AddContractWizard({ isOpen, onClose, onCreated }) {
@@ -86,8 +85,8 @@ export default function AddContractWizard({ isOpen, onClose, onCreated }) {
       const detail = e?.response?.data?.detail;
       setError(
         (typeof detail === 'string' ? detail : detail?.detail) ||
-          e.message ||
-          'Extraction failed'
+        e.message ||
+        'Extraction failed'
       );
       setErrorId(typeof detail === 'object' ? detail?.error_id || '' : '');
     } finally {
@@ -139,16 +138,16 @@ export default function AddContractWizard({ isOpen, onClose, onCreated }) {
     try {
       const extractPayload = extraction
         ? {
-            title: extraction.contract_title || form.user_overrides.title || file.name.replace(/\\.pdf$/i, ''),
-            type: extraction.contract_type || form.contract_type?.toLowerCase() || 'other',
-            dates: {
-              contract_date: extraction.contract_date || null,
-              effective_date: extraction.effective_date || extraction.dates?.effective_date || null,
-              end_date: extraction.end_date || extraction.dates?.end_date || null,
-              end_date_specified: Boolean(extraction.dates?.end_date_specified || extraction.end_date),
-            },
-            key_terms: extraction.key_terms || {},
-          }
+          title: extraction.contract_title || form.user_overrides.title || file.name.replace(/\\.pdf$/i, ''),
+          type: extraction.contract_type || form.contract_type?.toLowerCase() || 'other',
+          dates: {
+            contract_date: extraction.contract_date || null,
+            effective_date: extraction.effective_date || extraction.dates?.effective_date || null,
+            end_date: extraction.end_date || extraction.dates?.end_date || null,
+            end_date_specified: Boolean(extraction.dates?.end_date_specified || extraction.end_date),
+          },
+          key_terms: extraction.key_terms || {},
+        }
         : {};
       const payload = {
         ...form,
@@ -167,8 +166,8 @@ export default function AddContractWizard({ isOpen, onClose, onCreated }) {
       const detail = e?.response?.data?.detail;
       setError(
         (typeof detail === 'string' ? detail : detail?.detail) ||
-          e.message ||
-          'Create failed'
+        e.message ||
+        'Create failed'
       );
       setErrorId(typeof detail === 'object' ? detail?.error_id || '' : '');
     } finally {
@@ -221,7 +220,7 @@ export default function AddContractWizard({ isOpen, onClose, onCreated }) {
                 ))}
               </div>
             )}
-            <ContractExtractPreview extraction={extraction} />
+            <ExtractPreviewSections extract={{ data: extraction }} />
 
             <TrackMultiSelect tracks={tracks} selectedIds={selectedTrackIds} onChange={setSelectedTrackIds} />
 
@@ -248,7 +247,12 @@ export default function AddContractWizard({ isOpen, onClose, onCreated }) {
               </div>
             )}
 
-            <ContractCreateReviewForm form={form} setForm={setForm} />
+            <div style={{ display: 'grid', gap: 8, marginBottom: 8 }}>
+              <div className="form-group">
+                <label>Title</label>
+                <input className="input" value={form.user_overrides?.title || ''} onChange={(e) => setForm(prev => ({ ...prev, user_overrides: { ...prev.user_overrides, title: e.target.value } }))} />
+              </div>
+            </div>
             <div className="muted small" style={{ marginBottom: 8 }}>
               {form.user_overrides.start_date ? `Start date prefilled: ${form.user_overrides.start_date}` : 'Start date: Not specified'}
               {' | '}

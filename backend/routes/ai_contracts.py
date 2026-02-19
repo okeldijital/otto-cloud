@@ -34,6 +34,7 @@ from services.ai.release_integration.plan import build_release_integration_plan
 from services.ai.extractors.contract_extractor_v1 import extract_contract_intelligence
 from services.ai.audit import log_ai_request
 from services.ai.parsing.pdf_extract import extract_text_from_pdf
+from services.ai.extractors.link_auto_mapper import apply_auto_mapping_to_v2
 
 router = APIRouter()
 
@@ -162,8 +163,13 @@ async def extract_bulk(
                     "effective_date": extract_data.get("effective_date"),
                     "start_date": extract_data.get("start_date"),
                     "end_date": extract_data.get("end_date"),
-                    "end_date_specified": extract_data.get("end_date") is not None
                 }
+            
+            # Auto-map links (Parties and Tracks) if available
+            mapping = apply_auto_mapping_to_v2(db, org_id, extract_result)
+            extract_data["suggested_party_links"] = mapping.get("party_links", [])
+            extract_data["suggested_track_ids"] = mapping.get("track_ids", [])
+            extract_data["suggested_track_matches"] = mapping.get("track_matches", [])
 
             res.status = "ok"
             res.extract = ExtractData(
@@ -260,6 +266,12 @@ async def extract_contract_single(
             "end_date": v2_data.get("end_date"),
             "end_date_specified": v2_data.get("end_date") is not None
         }
+        
+        # Auto-map links (Parties and Tracks)
+        mapping = apply_auto_mapping_to_v2(db, org_id, extract_result_v2)
+        v2_data["suggested_party_links"] = mapping.get("party_links", [])
+        v2_data["suggested_track_ids"] = mapping.get("track_ids", [])
+        v2_data["suggested_track_matches"] = mapping.get("track_matches", [])
         
         response_data["version"] = "v2"
         response_data["data"] = v2_data

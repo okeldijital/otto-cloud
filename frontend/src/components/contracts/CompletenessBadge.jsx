@@ -41,36 +41,49 @@ export default function CompletenessBadge({ completeness }) {
       ? completeness.reasons
       : [];
 
+  const colors = {
+    green: { bg: 'rgba(34, 197, 94, 0.1)', border: '#22c55e', text: '#15803d', dot: '#22c55e' },
+    amber: { bg: 'rgba(245, 158, 11, 0.1)', border: '#f59e0b', text: '#b45309', dot: '#f59e0b' },
+    red: { bg: 'rgba(239, 68, 68, 0.1)', border: '#ef4444', text: '#b91c1c', dot: '#ef4444' },
+  };
+
+  const theme = colors[status] || colors.red;
+
   const pillStyle = {
     display: 'inline-flex',
     alignItems: 'center',
     gap: 8,
-    padding: '6px 10px',
-    borderRadius: 999,
-    border: '1px solid rgba(0,0,0,0.12)',
-    fontSize: 12,
-    fontWeight: 600,
+    padding: '4px 12px',
+    borderRadius: 8,
+    border: `1px solid ${theme.border}`,
+    backgroundColor: theme.bg,
+    color: theme.text,
+    fontSize: 11,
+    letterSpacing: '0.05em',
+    fontWeight: 800,
+    boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
   };
 
   const dotStyle = {
-    width: 8,
-    height: 8,
+    width: 6,
+    height: 6,
     borderRadius: 999,
-    background: status === 'green' ? '#22c55e' : status === 'amber' ? '#f59e0b' : '#ef4444',
+    background: theme.dot,
+    boxShadow: `0 0 6px ${theme.dot}`,
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
       <div style={pillStyle} title={reasonsToHuman(missing).join(' • ')}>
         <span style={dotStyle} />
         <span>{labelFor(status)}</span>
-        <span style={{ opacity: 0.7 }}>{score}%</span>
+        <span style={{ borderLeft: `1px solid ${theme.border}`, marginLeft: 4, paddingLeft: 8 }}>{score}%</span>
       </div>
 
       {missing.length > 0 && (
-        <div style={{ fontSize: 12, opacity: 0.75 }}>
-          {reasonsToHuman(missing).slice(0, 3).join(' • ')}
-          {missing.length > 3 ? ' • …' : ''}
+        <div className="small muted" style={{ fontSize: 10, textAlign: 'right' }}>
+          {reasonsToHuman(missing).slice(0, 2).join(' • ')}
+          {missing.length > 2 ? ` +${missing.length - 2}` : ''}
         </div>
       )}
     </div>

@@ -35,6 +35,7 @@ class Contract(Base):
     assets = relationship("ContractAsset", back_populates="contract", cascade="all, delete-orphan")
     documents = relationship("ContractDocument", back_populates="contract", cascade="all, delete-orphan")
     split_groups = relationship("ContractSplitGroup", back_populates="contract", cascade="all, delete-orphan")
+    track_links = relationship("ContractTrackLink", cascade="all, delete-orphan")
 
     __table_args__ = (
         Index('ix_contracts_org_number', 'organization_id', 'contract_number', unique=True),

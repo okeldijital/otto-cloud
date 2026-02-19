@@ -186,7 +186,7 @@ export default function PartyMultiAssign({
       <div style={{ border: '1px solid #e5e7eb', borderRadius: 10, padding: 8, display: 'grid', gap: 8 }}>
         {!rows.length ? <div className="small muted">No parties assigned yet.</div> : null}
         {rows.map((row, idx) => (
-          <div key={`${row.entity_type}:${row.entity_id}:${idx}`} style={{ display: 'grid', gridTemplateColumns: '1fr 170px 110px auto', gap: 8 }}>
+          <div key={`${row.entity_type}:${row.entity_id}:${idx}`} style={{ display: 'grid', gridTemplateColumns: '1fr 170px auto', gap: 8 }}>
             <div className="input break-words" style={{ background: '#f8fafc', display: 'flex', alignItems: 'center', gap: 6 }}>
               {row.display_name}
               {(row.kind === 'group' || row.artist_type === 'group') && <span className="status-badge success" style={{ fontSize: '0.5rem', padding: '1px 3px' }}>GROUP</span>}
@@ -198,18 +198,6 @@ export default function PartyMultiAssign({
             >
               {ROLE_OPTIONS.map((r) => <option key={r} value={r}>{r}</option>)}
             </select>
-            <input
-              className="input"
-              type="number"
-              min="0"
-              max="100"
-              value={row.split_percent ?? ''}
-              onChange={(e) => {
-                const v = e.target.value;
-                updateRow(idx, { split_percent: v === '' ? null : Number(v) });
-              }}
-              placeholder="%"
-            />
             <button type="button" className="ghost-btn" onClick={() => removeRow(idx)}>Remove</button>
           </div>
         ))}

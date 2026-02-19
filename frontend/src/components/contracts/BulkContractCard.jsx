@@ -1,147 +1,186 @@
 import React from 'react';
 import TrackMultiSelect from './TrackMultiSelect';
-import ExtractPreviewSections from './ExtractPreviewSections';
 import CompletenessBadge from './CompletenessBadge';
 import PartyMultiAssign from './PartyMultiAssign';
 
-function dateLabel(extractData, key) {
-  const dates = extractData?.dates || {};
-  if (key === 'expiration_date') {
-    return dates.expiration_date || dates.end_date || (dates.end_date_specified ? 'Not found' : 'No end date specified');
-  }
-  return dates[key] || 'Not found';
-}
+/**
+ * Card for a single contract in Bulk Processing.
+ *
+ * Props:
+ *   item          - { id, filename, status, extract, trackIds, parties, contractId, completeness, error }
+ *   onUpdateTracks(trackIds)
+ *   onUpdateParties(parties)
+ *   onCreateDraft()
+ *   onSaveTracks()
+ *   onSaveParties()
+ *   onRemove()
+ */
 
 export default function BulkContractCard({
   item,
   onUpdateTracks,
-  onAutoMatchTracks,
   onUpdateParties,
-  onPersistParties,
-  onPersistTracks,
-  onToggleConfirmNonDestructive,
+  onUpdateTerms,
   onCreateDraft,
-  onOpenContract,
+  onSaveTracks,
+  onSaveParties,
+  onSaveTerms,
+  onRemove,
 }) {
-  const extractData = item?.extract?.data || {};
-  const title = extractData.title || item.filename;
-  const parties = Array.isArray(extractData.parties) ? extractData.parties : [];
-  const assignedParties = Array.isArray(item?.parties) ? item.parties : [];
-  const selectedTracks = Array.isArray(item?.selected_track_ids) ? item.selected_track_ids : [];
-  const hasTracksSelected = selectedTracks.length > 0 || Number(item?.linked_tracks_count || 0) > 0;
-  const hasPartiesSelected = assignedParties.length > 0;
-  const missingTracks = !hasTracksSelected;
-  const missingParties = !hasPartiesSelected;
-  const hasOptionalDates = Boolean(extractData?.dates?.contract_date || extractData?.dates?.effective_date || extractData?.dates?.expiration_date || extractData?.dates?.end_date);
-  const canCreate = Boolean(item?.extract) && Boolean(item?.confirm_non_destructive);
-  const isDraftCreated = Boolean(item?.created_contract_id);
-  const baseCompleteness = item?.completeness || {
-    score: 0,
-    status: 'red',
-    missing: [],
-  };
-  const incomingMissing = Array.isArray(baseCompleteness?.missing)
-    ? baseCompleteness.missing
-    : Array.isArray(baseCompleteness?.reasons)
-      ? baseCompleteness.reasons
-      : [];
-  const filteredMissing = incomingMissing.filter((m) => {
-    if ((m === 'missing_tracks' || m === 'tracks_missing') && hasTracksSelected) return false;
-    if ((m === 'missing_parties' || m === 'parties_missing') && hasPartiesSelected) return false;
-    return true;
-  });
-  const completeness = {
-    ...baseCompleteness,
-    missing: filteredMissing,
-  };
-  const checklist = [];
-  if (missingTracks) checklist.push('add tracks');
-  if (missingParties) checklist.push('add parties');
-  if (!hasOptionalDates) checklist.push('add dates (optional)');
+  if (!item) return null;
+
+  const data = item.extract?.data || {};
+  const title = data.contract_title || data.title || item.filename;
+  const parties = Array.isArray(data.parties) ? data.parties : [];
+  const dates = data.dates || {};
+  const isCreated = Boolean(item.contractId);
+  const isBusy = item.status === 'extracting' || item.status === 'creating';
+
+  const trackMatches = Array.isArray(data.suggested_track_matches) ? data.suggested_track_matches : [];
+  const matchedCount = trackMatches.filter(m => m.track_id).length;
+  const unmatchedCount = trackMatches.filter(m => !m.track_id).length;
 
   return (
-    <article className="panel min-w-0" style={{ padding: 12, gap: 10 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-        <div className="min-w-0">
-          <div className="strong break-words">{title}</div>
-          <div className="small muted break-words">{item.filename}</div>
+    <div className="panel" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+      {/* ── Header ────────────────────────────────────── */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+        <div style={{ minWidth: 0 }}>
+          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>{title}</h2>
+          <div className="small muted">{item.filename}</div>
+          {isCreated && (
+            <div className="small" style={{ color: '#15803d', marginTop: 4 }}>
+              ✓ Draft created · Contract #{item.contractId}
+            </div>
+          )}
         </div>
-        <CompletenessBadge completeness={completeness} />
+        {item.completeness && <CompletenessBadge completeness={item.completeness} />}
       </div>
-      {checklist.length > 0 ? (
-        <div className="small muted break-words">
-          To improve completeness: {checklist.join(', ')}.
-        </div>
-      ) : (
-        <div className="small" style={{ color: '#15803d' }}>
-          Completeness requirements resolved.
+
+      {/* ── Error ─────────────────────────────────────── */}
+      {item.error && (
+        <div className="error-banner" style={{ padding: '8px 12px', borderRadius: 6, fontSize: 13 }}>
+          {typeof item.error === 'string' ? item.error : item.error.message || JSON.stringify(item.error)}
         </div>
       )}
 
-      <div className="small break-words">
-        Effective: {dateLabel(extractData, 'effective_date')} | Contract Date: {dateLabel(extractData, 'contract_date')} | Expiration: {dateLabel(extractData, 'expiration_date')}
-      </div>
-      <div className="small break-words">
-        Parties: {parties.length ? parties.map((p) => p.display_name || p.name).filter(Boolean).join(', ') : 'No parties extracted'}
-      </div>
-      {item?.error ? (
-        <div className="error-banner small break-words">
-          {`${item.phase === 'draft_failed' ? 'Create failed' : item.phase === 'extract_failed' ? 'Extract failed' : 'Request failed'} (${item.error.code || 'error'}): ${item.error.message}`}
-          {item.error.error_id ? ` [error_id: ${item.error.error_id}]` : ''}
+      {/* ── Status: idle ──────────────────────────────── */}
+      {item.status === 'idle' && (
+        <div className="muted" style={{ padding: 20, textAlign: 'center', border: '1px dashed #e5e7eb', borderRadius: 8 }}>
+          Ready for extraction. Click "Extract All" in the sidebar.
         </div>
-      ) : null}
+      )}
 
-      <ExtractPreviewSections extract={item.extract} hasTracks={hasTracksSelected} hasParties={hasPartiesSelected} />
+      {/* ── Status: extracting ────────────────────────── */}
+      {item.status === 'extracting' && (
+        <div style={{ padding: 20, textAlign: 'center', color: '#b45309' }}>
+          Extracting...
+        </div>
+      )}
 
-      <section className="panel min-w-0" style={{ padding: 10, overflow: 'visible' }}>
-        <div className="strong" style={{ marginBottom: 6 }}>Track Mapping</div>
-        <TrackMultiSelect selectedIds={selectedTracks} onChange={onUpdateTracks} />
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
-          <button type="button" className="ghost-btn" onClick={onAutoMatchTracks}>
-            Auto-match
+      {/* ── Extraction result ─────────────────────────── */}
+      {(item.status === 'extracted' || item.status === 'created' || item.status === 'creating') && item.extract && (
+        <>
+          {/* Auto-match summary */}
+          {trackMatches.length > 0 && (
+            <div className="small" style={{
+              padding: '8px 12px', borderRadius: 6,
+              background: matchedCount > 0 ? '#f0fdf4' : '#fefce8',
+              border: `1px solid ${matchedCount > 0 ? '#bbf7d0' : '#fef08a'}`,
+            }}>
+              <strong>AI Auto-Match:</strong>{' '}
+              {matchedCount > 0 && <span style={{ color: '#15803d' }}>{matchedCount} track(s) matched</span>}
+              {matchedCount > 0 && unmatchedCount > 0 && ' · '}
+              {unmatchedCount > 0 && <span style={{ color: '#b45309' }}>{unmatchedCount} unmatched (manual review needed)</span>}
+            </div>
+          )}
+
+          {/* Terms */}
+          <section style={{ border: '1px solid #e5e7eb', borderRadius: 10, padding: 12 }}>
+            <div className="strong" style={{ marginBottom: 8 }}>Contract Terms</div>
+            <div style={{ display: 'grid', gap: 8 }}>
+              <div>
+                <textarea
+                  className="input"
+                  rows={6}
+                  defaultValue={item.terms?.term_text || ''}
+                  placeholder="Paste contract terms here..."
+                  onBlur={e => onUpdateTerms({ ...item.terms, term_text: e.target.value })}
+                />
+              </div>
+            </div>
+            {isCreated && (
+              <div style={{ marginTop: 8, display: 'flex', justifyContent: 'flex-end' }}>
+                <button type="button" className="btn small" onClick={onSaveTerms}>Save Terms</button>
+              </div>
+            )}
+          </section>
+
+          {/* Tracks */}
+          <section style={{ border: '1px solid #e5e7eb', borderRadius: 10, padding: 12 }}>
+            <div className="strong" style={{ marginBottom: 8 }}>Track Mapping</div>
+            <TrackMultiSelect
+              selectedIds={item.trackIds || []}
+              onChange={onUpdateTracks}
+            />
+            {isCreated && (
+              <div style={{ marginTop: 8, display: 'flex', justifyContent: 'flex-end' }}>
+                <button type="button" className="btn small" onClick={onSaveTracks}>Save Tracks</button>
+              </div>
+            )}
+          </section>
+
+          {/* Parties */}
+          <section style={{ border: '1px solid #e5e7eb', borderRadius: 10, padding: 12 }}>
+            <div className="strong" style={{ marginBottom: 8 }}>Parties</div>
+            <PartyMultiAssign
+              rows={item.parties || []}
+              onChangeRows={onUpdateParties}
+              onPersist={onSaveParties}
+              canPersist={isCreated}
+              isPersisting={false}
+            />
+          </section>
+        </>
+      )}
+
+      {/* ── Actions ───────────────────────────────────── */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+        paddingTop: 12, borderTop: '1px solid #f1f5f9',
+      }}>
+        {!isCreated && item.status === 'extracted' && (
+          <button
+            type="button"
+            className="btn orange"
+            disabled={isBusy}
+            onClick={onCreateDraft}
+            style={{ minWidth: 160 }}
+          >
+            Create Draft Contract
           </button>
-          {isDraftCreated ? (
-            <button type="button" className="ghost-btn" onClick={onPersistTracks}>
-              Save Tracks
-            </button>
-          ) : null}
-        </div>
-      </section>
+        )}
 
-      <section className="panel min-w-0" style={{ padding: 10, overflow: 'visible' }}>
-        <div className="strong" style={{ marginBottom: 6 }}>Parties</div>
-        <PartyMultiAssign
-          rows={assignedParties}
-          onChangeRows={onUpdateParties}
-          onPersist={onPersistParties}
-          canPersist={Boolean(item?.created_contract_id) && Boolean(item?.confirm_non_destructive)}
-          isPersisting={item?.phase === 'parties_saving'}
-        />
-      </section>
+        {isCreated && (
+          <a
+            href={`#/contracts/${item.contractId}`}
+            className="btn"
+            style={{ background: '#1d4ed8', color: '#fff', textDecoration: 'none', minWidth: 140, textAlign: 'center' }}
+          >
+            View Contract ▸
+          </a>
+        )}
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <label className="small" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-          <input
-            type="checkbox"
-            checked={Boolean(item?.confirm_non_destructive)}
-            onChange={(e) => onToggleConfirmNonDestructive(e.target.checked)}
-          />
-          confirm_non_destructive
-        </label>
         <button
           type="button"
-          className="btn orange"
-          disabled={!canCreate || item?.phase === 'draft_creating'}
-          onClick={onCreateDraft}
+          className="ghost-btn small"
+          onClick={onRemove}
+          disabled={isBusy}
+          style={{ marginLeft: 'auto' }}
         >
-          {item?.phase === 'draft_creating' ? 'Creating...' : isDraftCreated ? 'Update Draft' : 'Create Draft Contract'}
+          Remove
         </button>
-        {item?.created_contract_id ? (
-          <button type="button" className="btn ghost" onClick={() => onOpenContract?.(item.created_contract_id, 'assets')}>
-            Open Contract (Assets)
-          </button>
-        ) : null}
       </div>
-    </article>
+    </div>
   );
 }
