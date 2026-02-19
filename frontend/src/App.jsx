@@ -32,6 +32,7 @@ import ContractDetailAdmin from './pages/admin-of-works/ContractDetail';
 import WorksAdminList from './pages/admin-of-works/WorksAdminList';
 import WorksAdminDetail from './pages/admin-of-works/WorksAdminDetail';
 import StatusQuoDashboard from './pages/admin-of-works/StatusQuoDashboard';
+import ContractsBulk from './pages/contracts/ContractsBulk';
 
 import Admin from './pages/Admin';
 import Royalties from './pages/Royalties';
@@ -243,6 +244,26 @@ function App() {
                         <ProtectedRoute>
                           <MainLayout>
                             <ContractDetailAdmin />
+                          </MainLayout>
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/contracts/:id"
+                      element={
+                        <ProtectedRoute>
+                          <MainLayout>
+                            <ContractDetailAdmin />
+                          </MainLayout>
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/contracts/bulk"
+                      element={
+                        <ProtectedRoute>
+                          <MainLayout>
+                            <ContractsBulk />
                           </MainLayout>
                         </ProtectedRoute>
                       }

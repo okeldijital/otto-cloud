@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { FileText, Upload, Edit3, Plus, Trash, Download, AlertCircle, CheckCircle, ChevronLeft, Settings } from 'lucide-react';
 import { confirmAction } from '../../lib/tauri';
 import contractService from '../../services/contractService';
@@ -24,6 +24,7 @@ const TABS = ['overview', 'parties', 'assets', 'financials', 'documents', 'ai_re
 const ContractDetail = () => {
     const { id } = useParams();
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
 
     const [contract, setContract] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -83,6 +84,13 @@ const ContractDetail = () => {
     const [coreWriteSuccess, setCoreWriteSuccess] = useState('');
 
     useEffect(() => {
+        const tab = (searchParams.get('tab') || '').toLowerCase();
+        if (TABS.includes(tab)) {
+            setActiveTab(tab);
+        }
+    }, [searchParams]);
+
+    useEffect(() => {
         const load = async () => {
             setLoading(true);
             try {
@@ -118,6 +126,15 @@ const ContractDetail = () => {
         };
         load();
     }, [id]);
+
+    const handleTabChange = (tab) => {
+        setActiveTab(tab);
+        setSearchParams((prev) => {
+            const next = new URLSearchParams(prev);
+            next.set('tab', tab);
+            return next;
+        }, { replace: true });
+    };
 
     const latestDoc = (data) => {
         if (!data?.documents?.length) return null;
@@ -549,7 +566,7 @@ const ContractDetail = () => {
 
             <div className="tabs">
                 {TABS.map((tab) => (
-                    <button key={tab} className={`tab ${activeTab === tab ? 'active' : ''}`} onClick={() => setActiveTab(tab)}>
+                    <button key={tab} className={`tab ${activeTab === tab ? 'active' : ''}`} onClick={() => handleTabChange(tab)}>
                         {tab.charAt(0).toUpperCase() + tab.slice(1)}
                     </button>
                 ))}

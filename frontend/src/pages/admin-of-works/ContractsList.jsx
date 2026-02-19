@@ -12,9 +12,35 @@ const STATUS_COLORS = {
     Active: 'success',
     Expired: 'muted',
     Terminated: 'danger',
+    draft: 'neutral',
+    active: 'success',
+    expired: 'muted',
+    archived: 'danger',
 };
 
 const CONTRACT_TYPES = ['Recording', 'Publishing', 'Remix', 'License'];
+
+const COMPLETENESS_COLOR_CLASS = {
+    red: 'danger',
+    amber: 'warning',
+    green: 'success',
+};
+
+function getCompletenessView(contract) {
+    const c = contract?.completeness || {};
+    const score = Number(c.score || 0);
+    const missing = Array.isArray(c.missing)
+        ? c.missing
+        : Array.isArray(c.reasons)
+            ? c.reasons.map((r) => (typeof r === 'string' ? r : r?.code)).filter(Boolean)
+            : [];
+    const tracksMissing = missing.includes('missing_tracks');
+    const partiesMissing = missing.includes('missing_parties');
+    let color = 'amber';
+    if (tracksMissing || partiesMissing || score < 70) color = 'red';
+    else if (score === 100) color = 'green';
+    return { score, color, missing };
+}
 
 const ContractsList = () => {
     const navigate = useNavigate();
@@ -88,7 +114,7 @@ const ContractsList = () => {
             const res = await contractService.create(payload);
             const newContract = res.data || res;
             setShowCreate(false);
-            navigate(`/admin-of-works/contracts/${newContract.id}`);
+            navigate(`/contracts/${newContract.id}`);
         } catch (err) {
             setCreateError(formatCreateError(err));
         }
@@ -182,13 +208,13 @@ const ContractsList = () => {
                                 <th>Parties</th>
                                 <th>Assets</th>
                                 <th>Dates</th>
-                                <th>Status Quo</th>
+                                <th>Completeness</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             {filtered.map(c => (
-                                <tr key={c.id} onClick={() => navigate(`/admin-of-works/contracts/${c.id}`)}>
+                                <tr key={c.id} onClick={() => navigate(`/contracts/${c.id}`)}>
                                     <td>
                                         <span className={`status-badge ${STATUS_COLORS[c.status]}`}>
                                             {c.status}
@@ -197,20 +223,33 @@ const ContractsList = () => {
                                     <td className="strong">{c.title} <div className="muted small mono">{c.contract_number}</div></td>
                                     <td>
                                         <div title={c.parties?.map(p => p.external_name || p.display_name).join(', ')}>
-                                            {c.parties?.length || 0} parties
+                                            {(c.counts?.parties ?? c.parties?.length ?? 0)} parties
                                         </div>
                                     </td>
-                                    <td>{c.assets?.length || 0} items</td>
-                                    <td>{c.start_date || '—'} → {c.end_date || '—'}</td>
                                     <td>
-                                        {c.status_quo && (
-                                            <span className={`status-badge ${c.status_quo.status.toLowerCase()}`} title={c.status_quo.reasons.join('\n')}>
-                                                {c.status_quo.status}
-                                            </span>
-                                        )}
+                                        {(c.counts?.tracks ?? c.counts?.assets ?? c.assets?.length ?? 0)} tracks
+                                        <div className="small muted">
+                                            <button className="link-btn" onClick={(e) => { e.stopPropagation(); navigate(`/contracts/${c.id}?tab=assets`); }}>Open Assets</button>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {(c.dates?.effective_date || c.effective_date || c.start_date || '—')} → {(c.dates?.expiration_date || c.end_date || '—')}
+                                    </td>
+                                    <td>
+                                        {(() => {
+                                            const cv = getCompletenessView(c);
+                                            return (
+                                                <span className={`status-badge ${COMPLETENESS_COLOR_CLASS[cv.color] || 'neutral'}`}>
+                                                    {cv.color.toUpperCase()} {cv.score}%
+                                                </span>
+                                            );
+                                        })()}
                                     </td>
                                     <td className="actions">
-                                        <button className="ghost-btn" onClick={(e) => { e.stopPropagation(); navigate(`/admin-of-works/contracts/${c.id}`); }}>View</button>
+                                        <button className="ghost-btn" onClick={(e) => { e.stopPropagation(); navigate(`/contracts/${c.id}`); }}>View</button>
+                                        <button className="ghost-btn" onClick={(e) => { e.stopPropagation(); navigate(`/contracts/${c.id}?tab=parties`); }}>
+                                            Add Parties
+                                        </button>
                                         <button className="ghost-btn" onClick={(e) => handleDownload(e, c)} disabled={!c.documents?.length}>
                                             <Download size={14} /> PDF
                                         </button>
@@ -229,7 +268,7 @@ const ContractsList = () => {
                 isOpen={showCreate}
                 onClose={() => setShowCreate(false)}
                 onCreated={(created) => {
-                    if (created?.contract_id) navigate(`/admin-of-works/contracts/${created.contract_id}`);
+                    if (created?.contract_id) navigate(`/contracts/${created.contract_id}`);
                 }}
             />
         </div>

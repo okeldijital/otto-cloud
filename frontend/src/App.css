@@ -1539,6 +1539,20 @@ body {
   align-items: flex-start;
 }
 
+/* Utility classes used by contracts bulk screens */
+.min-w-0 {
+  min-width: 0;
+}
+
+.break-words {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.overflow-auto {
+  overflow: auto;
+}
+
 .ai-icon {
   color: #6366f1;
   flex-shrink: 0;

@@ -10,10 +10,10 @@ import Autocomplete from '../components/Autocomplete';
 import AddContractWizard from '../components/contracts/AddContractWizard';
 
 const STATUS_COLORS = {
-    Draft: 'neutral',
-    Active: 'success',
-    Expired: 'muted',
-    Terminated: 'danger',
+    draft: 'neutral',
+    active: 'success',
+    expired: 'muted',
+    archived: 'danger',
 };
 
 const HEALTH_COLORS = {
@@ -22,7 +22,22 @@ const HEALTH_COLORS = {
     green: 'success',
 };
 
-const CONTRACT_TYPES = ['Recording', 'Publishing', 'Remix', 'License'];
+function getCompletenessView(contract) {
+    const c = contract?.completeness || {};
+    const score = Number(c.score || 0);
+    const missing = Array.isArray(c.missing)
+        ? c.missing
+        : Array.isArray(c.reasons)
+            ? c.reasons.map((r) => (typeof r === 'string' ? r : r?.code)).filter(Boolean)
+            : [];
+    if (missing.includes('missing_tracks') || missing.includes('missing_parties') || score < 70) {
+        return { score, color: 'red' };
+    }
+    if (score === 100) return { score, color: 'green' };
+    return { score, color: 'amber' };
+}
+
+const CONTRACT_TYPES = ['Recording', 'Publishing', 'License', 'Other', 'Unknown'];
 const EXPIRING_BUCKETS = [
     { label: 'Any time', value: 0 },
     { label: 'Expiring ≤30 days', value: 30 },
@@ -66,7 +81,8 @@ const Contracts = () => {
                     contractService.getAll(),
                     CatalogService.getAll('releases')
                 ]);
-                setContracts(conRes.data || conRes || []);
+                const payload = conRes.data || conRes || {};
+                setContracts(payload.items || payload || []);
                 setReleases(relRes.data || relRes || []);
             } catch (e) {
                 console.error(e);
@@ -152,10 +168,10 @@ const Contracts = () => {
                         .toLowerCase()
                         .includes(search.toLowerCase());
                 const matchesStatus =
-                    statusFilter === 'All' || c.status === statusFilter;
+                    statusFilter === 'All' || (c.status || '').toLowerCase() === statusFilter.toLowerCase();
                 const matchesType =
                     typeFilter === 'All' ||
-                    (c.contract_type || '').toLowerCase() ===
+                    (c.type || c.contract_type || '').toLowerCase() ===
                     typeFilter.toLowerCase();
                 const matchesExpiring =
                     expiring === 0 ||
@@ -226,7 +242,7 @@ const Contracts = () => {
                         <option value="Draft">Draft</option>
                         <option value="Active">Active</option>
                         <option value="Expired">Expired</option>
-                        <option value="Terminated">Terminated</option>
+                        <option value="Archived">Archived</option>
                     </select>
                     <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
                         <option value="All">Type: All</option>
@@ -291,8 +307,8 @@ const Contracts = () => {
                             {filtered.map((c) => (
                                 <tr key={c.id} onClick={() => navigate(`/contracts/${c.id}`)}>
                                     <td>
-                                        <span className={`status-badge ${STATUS_COLORS[c.status] || 'neutral'}`}>
-                                            {c.status || '—'}
+                                        <span className={`status-badge ${STATUS_COLORS[(c.status || '').toLowerCase()] || 'neutral'}`}>
+                                            {((c.status || '—') + '').toUpperCase()}
                                         </span>
                                     </td>
                                     <td className="strong">
@@ -304,22 +320,31 @@ const Contracts = () => {
                                     <td title={partyTooltip(c)}>
                                         {(c.counts?.parties ?? c.parties?.length ?? c.party_count ?? 0)} parties
                                     </td>
-                                    <td>{(c.counts?.assets ?? c.assets?.length ?? c.asset_count ?? 0)} assets</td>
+                                    <td>{(c.counts?.tracks ?? c.counts?.assets ?? c.assets?.length ?? c.asset_count ?? 0)} tracks</td>
                                     <td>
                                         <span className="doc-chip">
                                             <FileText size={14} /> {(c.counts?.documents ?? c.documents?.length) ? `v${c.counts?.documents ?? c.documents?.length}` : c.primary_document_id ? 'PDF' : '—'}
                                         </span>
                                         <div style={{ marginTop: 4 }}>
-                                            <span className={`status-badge ${HEALTH_COLORS[c.status_quo] || 'neutral'}`}>
-                                                {(c.status_quo || 'red').toUpperCase()}
-                                            </span>
+                                            {(() => {
+                                                const view = getCompletenessView(c);
+                                                return (
+                                                    <span className={`status-badge ${HEALTH_COLORS[view.color] || 'neutral'}`}>
+                                                        {view.color.toUpperCase()}
+                                                    </span>
+                                                );
+                                            })()}
                                         </div>
                                     </td>
                                     <td className={isExpired(c.end_date) ? 'danger-text' : ''}>
-                                        {(c.start_date || '—')} → {(c.end_date || '—')}
+                                        {(c.dates?.effective_date || c.effective_date || c.start_date || '—')} → {(c.dates?.expiration_date || c.end_date || '—')}
+                                        {c.completeness?.score != null && (
+                                            <div className="muted small">Score: {c.completeness.score}</div>
+                                        )}
                                     </td>
                                     <td className="actions">
                                         <button className="ghost-btn" onClick={(e) => { e.stopPropagation(); navigate(`/contracts/${c.id}`); }}>View</button>
+                                        <button className="ghost-btn" onClick={(e) => { e.stopPropagation(); navigate(`/contracts/${c.id}?tab=parties`); }}>Add Parties</button>
                                         <button className="ghost-btn" onClick={(e) => handleDownload(e, c)}>
                                             <Download size={14} /> Download
                                         </button>
@@ -335,8 +360,9 @@ const Contracts = () => {
                 isOpen={showCreate}
                 onClose={() => setShowCreate(false)}
                 onCreated={(created) => {
-                    if (created?.contract_id) {
-                        navigate(`/contracts/${created.contract_id}`);
+                    const cid = created?.contract?.id || created?.contract_id;
+                    if (cid) {
+                        navigate(`/contracts/${cid}`);
                     }
                 }}
             />
