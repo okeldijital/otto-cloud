@@ -45,6 +45,7 @@ Company = Organization
 Contact = Individual
 
 from models.contract import Contract, ContractParty, ContractAsset, ContractDocument, ContractSplitGroup, ContractSplit
+from models.contract_track_links import ContractTrackLink
 from models.works_admin import WorksAdmin, WorksAdminDocument
 
 __all__ = [
@@ -104,6 +105,7 @@ __all__ = [
     "ContractDocument",
     "ContractSplitGroup",
     "ContractSplit",
+    "ContractTrackLink",
     "WorksAdmin",
     "WorksAdminDocument",
 ]

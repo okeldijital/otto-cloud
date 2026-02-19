@@ -17,7 +17,8 @@ def compute_contract_status(contract: Any, documents: List[Any]) -> Dict[str, An
 
     try:
         parties_count = len(getattr(contract, "parties", []) or [])
-        assets_count = len(getattr(contract, "assets", []) or [])
+        assets = list(getattr(contract, "assets", []) or [])
+        assets_count = sum(1 for a in assets if str(getattr(a, "asset_type", "")).lower() == "track")
         documents_count = len(documents or [])
     except Exception:
         return {"status": "RED", "reasons": ["unknown_state"]}

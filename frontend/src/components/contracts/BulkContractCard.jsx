@@ -2,6 +2,7 @@ import React from 'react';
 import TrackMultiSelect from './TrackMultiSelect';
 import ExtractPreviewSections from './ExtractPreviewSections';
 import CompletenessBadge from './CompletenessBadge';
+import PartyMultiAssign from './PartyMultiAssign';
 
 function dateLabel(extractData, key) {
   const dates = extractData?.dates || {};
@@ -14,6 +15,10 @@ function dateLabel(extractData, key) {
 export default function BulkContractCard({
   item,
   onUpdateTracks,
+  onAutoMatchTracks,
+  onUpdateParties,
+  onPersistParties,
+  onPersistTracks,
   onToggleConfirmNonDestructive,
   onCreateDraft,
   onOpenContract,
@@ -21,8 +26,10 @@ export default function BulkContractCard({
   const extractData = item?.extract?.data || {};
   const title = extractData.title || item.filename;
   const parties = Array.isArray(extractData.parties) ? extractData.parties : [];
+  const assignedParties = Array.isArray(item?.parties) ? item.parties : [];
   const selectedTracks = item?.selected_track_ids || [];
   const canCreate = Boolean(item?.extract) && selectedTracks.length > 0 && Boolean(item?.confirm_non_destructive);
+  const isDraftCreated = Boolean(item?.created_contract_id);
 
   return (
     <article className="panel min-w-0" style={{ padding: 12, gap: 10 }}>
@@ -46,19 +53,27 @@ export default function BulkContractCard({
       <section className="panel min-w-0" style={{ padding: 10 }}>
         <div className="strong" style={{ marginBottom: 6 }}>Track Mapping</div>
         <TrackMultiSelect selectedIds={selectedTracks} onChange={onUpdateTracks} />
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
+          <button type="button" className="ghost-btn" onClick={onAutoMatchTracks}>
+            Auto-match
+          </button>
+          {isDraftCreated ? (
+            <button type="button" className="ghost-btn" onClick={onPersistTracks}>
+              Save Tracks
+            </button>
+          ) : null}
+        </div>
       </section>
 
       <section className="panel min-w-0" style={{ padding: 10 }}>
         <div className="strong" style={{ marginBottom: 6 }}>Parties</div>
-        {!item?.created_contract_id ? (
-          <div className="small muted break-words">
-            Parties are assigned after draft is created (Parties tab).
-          </div>
-        ) : (
-          <button type="button" className="btn" onClick={() => onOpenContract?.(item.created_contract_id, 'parties')}>
-            Assign Parties (opens Contract)
-          </button>
-        )}
+        <PartyMultiAssign
+          rows={assignedParties}
+          onChangeRows={onUpdateParties}
+          onPersist={onPersistParties}
+          canPersist={Boolean(item?.created_contract_id) && Boolean(item?.confirm_non_destructive)}
+          isPersisting={item?.phase === 'parties_saving'}
+        />
       </section>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -76,7 +91,7 @@ export default function BulkContractCard({
           disabled={!canCreate || item?.phase === 'draft_creating'}
           onClick={onCreateDraft}
         >
-          {item?.phase === 'draft_creating' ? 'Creating...' : 'Create Draft Contract'}
+          {item?.phase === 'draft_creating' ? 'Creating...' : isDraftCreated ? 'Update Draft' : 'Create Draft Contract'}
         </button>
         {item?.created_contract_id ? (
           <button type="button" className="btn ghost" onClick={() => onOpenContract?.(item.created_contract_id, 'assets')}>

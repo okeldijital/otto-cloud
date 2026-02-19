@@ -3,7 +3,6 @@ import type { BulkBatchState } from './types';
 import type { BulkAction } from './bulkReducer';
 import { canCreateDraft, canSaveParties } from './bulkReducer';
 import contractsBulkClient from '../../../api/contractsBulkClient';
-import contractsPartiesClient from '../../../api/contractsPartiesClient';
 
 function stableUuid() {
   return globalThis.crypto?.randomUUID
@@ -157,6 +156,37 @@ export function useBulkController(state: BulkBatchState, dispatch: (a: BulkActio
 
   const createDraftForSelected = useCallback(async (file_id: string) => {
     const item = state.items.find((x) => x.file_id === file_id) ?? null;
+    if (item?.created_contract_id) {
+      try {
+        const tracksResp = await contractsBulkClient.batchSetTracks(item.created_contract_id, {
+          confirm_non_destructive: true,
+          track_ids: item.selected_track_ids || [],
+        });
+        const partiesResp = await contractsBulkClient.batchSetParties(item.created_contract_id, {
+          confirm_non_destructive: true,
+          items: (item.parties || []).map((p: any) => ({
+            role: p.role || 'other',
+            entity_type: p.entity_type,
+            entity_id: p.entity_id,
+            split_percent: p.split_percent ?? null,
+            notes: p.notes ?? null,
+          })),
+        });
+        dispatch({
+          type: 'DRAFT/SUCCESS',
+          file_id,
+          created_contract_id: Number(item.created_contract_id),
+          created_document_id: Number(item.created_document_id || 0),
+          linked_tracks_count: Number(tracksResp?.linked_tracks_count ?? item.selected_track_ids?.length ?? 0),
+          completeness: normalizeCompleteness(partiesResp?.completeness ? partiesResp : tracksResp),
+          created_at: item.created_at || new Date().toISOString(),
+        });
+        dispatch({ type: 'BULK/SET_BANNER_NOTICE', message: 'Draft mappings updated successfully.' });
+      } catch (e) {
+        dispatch({ type: 'DRAFT/ERROR', file_id, error: toUiError(e) });
+      }
+      return;
+    }
     const gate = canCreateDraft(item);
     if (!gate.ok) {
       dispatch({
@@ -196,6 +226,32 @@ export function useBulkController(state: BulkBatchState, dispatch: (a: BulkActio
         completeness: normalizeCompleteness(resp),
         created_at: new Date().toISOString(),
       });
+      const contractId = Number(resp?.contract?.id ?? resp?.contract_id);
+      if (contractId) {
+        const tracksResp = await contractsBulkClient.batchSetTracks(contractId, {
+          confirm_non_destructive: true,
+          track_ids: item.selected_track_ids || [],
+        });
+        const partiesResp = await contractsBulkClient.batchSetParties(contractId, {
+          confirm_non_destructive: true,
+          items: (item.parties || []).map((p: any) => ({
+            role: p.role || 'other',
+            entity_type: p.entity_type,
+            entity_id: p.entity_id,
+            split_percent: p.split_percent ?? null,
+            notes: p.notes ?? null,
+          })),
+        });
+        dispatch({
+          type: 'DRAFT/SUCCESS',
+          file_id,
+          created_contract_id: contractId,
+          created_document_id: Number(resp?.document?.id ?? resp?.contract_document_id ?? 0),
+          linked_tracks_count: Number(tracksResp?.linked_tracks_count ?? resp?.linked_tracks_count ?? 0),
+          completeness: normalizeCompleteness(partiesResp?.completeness ? partiesResp : tracksResp),
+          created_at: new Date().toISOString(),
+        });
+      }
       dispatch({ type: 'BULK/SET_BANNER_NOTICE', message: 'Draft created successfully.' });
       dispatch({ type: 'BULK/SET_BANNER_ERROR', message: null });
     } catch (e) {
@@ -218,29 +274,56 @@ export function useBulkController(state: BulkBatchState, dispatch: (a: BulkActio
     dispatch({ type: 'PARTIES/START', file_id });
 
     try {
-      const normalizedParties = (item.parties || []).map((p) => ({
-        role: p.role,
-        entity_type: p.entity_type || (p.source === 'external_party' ? 'external' : p.party_ref?.ref_type || 'external'),
-        entity_id: p.entity_id ?? p.party_ref?.ref_id ?? null,
-        display_name: p.display_name || p.external_name || p.party_ref?.display_name || '',
-        split_percent: p.split_percent ?? p.split?.percent ?? null,
-        notes: p.notes ?? p.split?.scope ?? null,
-      }));
-      const resp = await contractsPartiesClient.save({
-        contract_id: item.created_contract_id,
-        parties: normalizedParties,
+      const normalizedParties = (item.parties || [])
+        .filter((p: any) => p.entity_id && p.entity_type)
+        .map((p: any) => ({
+          role: p.role || 'other',
+          entity_type: p.entity_type,
+          entity_id: Number(p.entity_id),
+          split_percent: p.split_percent ?? null,
+          notes: p.notes ?? null,
+        }));
+      const resp = await contractsBulkClient.batchSetParties(item.created_contract_id, {
+        confirm_non_destructive: true,
+        items: normalizedParties,
       });
 
       dispatch({
         type: 'PARTIES/SUCCESS',
         file_id,
-        saved_count: Number(resp?.saved_count ?? 0),
+        saved_count: Number(resp?.updated_count ?? 0),
         completeness: normalizeCompleteness(resp),
       });
       dispatch({ type: 'BULK/SET_BANNER_NOTICE', message: 'Parties saved successfully.' });
       dispatch({ type: 'BULK/SET_BANNER_ERROR', message: null });
     } catch (e) {
       dispatch({ type: 'PARTIES/ERROR', file_id, error: toUiError(e) });
+    }
+  }, [dispatch, state.items]);
+
+  const saveTracksForSelected = useCallback(async (file_id: string) => {
+    const item = state.items.find((x) => x.file_id === file_id) ?? null;
+    if (!item?.created_contract_id) {
+      dispatch({ type: 'BULK/SET_BANNER_ERROR', message: 'Cannot save tracks: create draft first' });
+      return;
+    }
+    try {
+      const resp = await contractsBulkClient.batchSetTracks(item.created_contract_id, {
+        confirm_non_destructive: true,
+        track_ids: item.selected_track_ids || [],
+      });
+      dispatch({
+        type: 'DRAFT/SUCCESS',
+        file_id,
+        created_contract_id: item.created_contract_id,
+        created_document_id: Number(item.created_document_id || 0),
+        linked_tracks_count: Number(resp?.linked_tracks_count ?? item.selected_track_ids?.length ?? 0),
+        completeness: normalizeCompleteness(resp),
+        created_at: item.created_at || new Date().toISOString(),
+      });
+      dispatch({ type: 'BULK/SET_BANNER_NOTICE', message: 'Tracks saved successfully.' });
+    } catch (e) {
+      dispatch({ type: 'BULK/SET_BANNER_ERROR', message: toUiError(e).message });
     }
   }, [dispatch, state.items]);
 
@@ -287,6 +370,7 @@ export function useBulkController(state: BulkBatchState, dispatch: (a: BulkActio
     createDraftForSelected,
     createDraftForBatch,
     savePartiesForSelected,
+    saveTracksForSelected,
     savePartiesForBatch,
     autoMatchTracks,
     searchTracks: contractsBulkClient.searchTracks,

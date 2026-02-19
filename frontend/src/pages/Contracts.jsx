@@ -8,6 +8,7 @@ import { isTauriEnv, downloadFile } from '../lib/tauri';
 import EntityForm from '../components/EntityForm';
 import Autocomplete from '../components/Autocomplete';
 import AddContractWizard from '../components/contracts/AddContractWizard';
+import { normalizeContractsListResponse } from '../services/operations';
 
 const STATUS_COLORS = {
     draft: 'neutral',
@@ -81,8 +82,8 @@ const Contracts = () => {
                     contractService.getAll(),
                     CatalogService.getAll('releases')
                 ]);
-                const payload = conRes.data || conRes || {};
-                setContracts(payload.items || payload || []);
+                const payload = normalizeContractsListResponse(conRes.data || conRes || {});
+                setContracts(Array.isArray(payload.contracts) ? payload.contracts : []);
                 setReleases(relRes.data || relRes || []);
             } catch (e) {
                 console.error(e);

@@ -6,6 +6,7 @@ from datetime import datetime, date
 import json
 import os
 import shutil
+from urllib.parse import urlparse
 
 from database import get_db
 from dependencies import get_current_user, get_current_organization_id
@@ -26,6 +27,7 @@ from models.contract import Contract, ContractDocument, ContractParty, ContractA
 from models.artist import Artist
 from models.release import Release
 from models.track import Track
+from models.contract_track_links import ContractTrackLink
 from models.work import Work
 from models.network import Organization, Individual
 from models.publisher import Publisher
@@ -210,6 +212,20 @@ def _serialize_contract_item(contract: Contract) -> Dict[str, Any]:
 
 def _new_entity_id(prefix: str) -> str:
     return f"{prefix}-{uuid.uuid4().hex[:10].upper()}"
+
+
+def _runtime_db_hint() -> Dict[str, str]:
+    url = str(settings.DATABASE_URL or "")
+    path_hint = ""
+    if url.startswith("sqlite:///"):
+        path_hint = url.replace("sqlite:///", "")
+    else:
+        parsed = urlparse(url)
+        path_hint = parsed.path or "unknown"
+    return {
+        "db_id": "active",
+        "db_path_hint": path_hint or "unknown",
+    }
 
 
 def ensure_contract_wizard_enabled():
@@ -523,20 +539,6 @@ async def create_contract_via_extract(
         if msg in {"invalid_contract_type", "invalid_status"}:
             raise HTTPException(status_code=422, detail=msg)
         raise HTTPException(status_code=422, detail=msg)
-
-
-@router.get("/contracts/{contract_id}", response_model=ContractResponse)
-def get_contract(
-    contract_id: int,
-    db: Session = Depends(get_db),
-    org_id: int = Depends(get_current_organization_id),
-    current_user=Depends(get_current_user),
-):
-    contract = contract_repository.get_with_details(db, contract_id, org_id)
-    if not contract:
-        raise HTTPException(status_code=404, detail="Contract not found")
-    audit_service.log(db, "VIEW", "Contract", contract.id, current_user.id, organization_id=org_id)
-    return inject_status_quo(contract)
 
 
 @router.patch("/contracts/{contract_id}", response_model=ContractResponse)
@@ -862,6 +864,49 @@ def parties_search(
     return {"items": out[:limit], "limit": limit}
 
 
+@router.get("/contracts/party_search")
+def contracts_party_search(
+    q: str = "",
+    limit: int = 20,
+    db: Session = Depends(get_db),
+    org_id: int = Depends(get_current_organization_id),
+    current_user=Depends(get_current_user),
+):
+    query = (q or "").strip()
+    if not query:
+        raise HTTPException(status_code=422, detail="q is required")
+
+    out = []
+    for r in (
+        db.query(Artist)
+        .filter(Artist.organization_id == org_id, Artist.name.ilike(f"%{query}%"))
+        .limit(limit)
+        .all()
+    ):
+        out.append({"entity_type": "artist", "id": r.id, "display_name": r.name})
+    for r in (
+        db.query(Organization)
+        .filter(Organization.organization_id == org_id, Organization.name.ilike(f"%{query}%"))
+        .limit(limit)
+        .all()
+    ):
+        out.append({"entity_type": "organization", "id": r.id, "display_name": r.name})
+    for r in (
+        db.query(Individual)
+        .filter(
+            Individual.organization_id == org_id,
+            ((Individual.first_name + " " + Individual.last_name).ilike(f"%{query}%"))
+            | (Individual.first_name.ilike(f"%{query}%"))
+            | (Individual.last_name.ilike(f"%{query}%")),
+        )
+        .limit(limit)
+        .all()
+    ):
+        display = f"{(r.first_name or '').strip()} {(r.last_name or '').strip()}".strip() or r.email or "Unnamed Individual"
+        out.append({"entity_type": "individual", "id": r.id, "display_name": display})
+    return {"status": "ok", "org_id": str(org_id), "items": out[:limit]}
+
+
 @router.post("/parties", status_code=status.HTTP_201_CREATED)
 def create_party_inline(
     payload: dict,
@@ -910,6 +955,241 @@ def create_party_inline(
         return {"ref_type": "individual", "ref_id": row.id, "display_name": out_name}
 
     raise HTTPException(status_code=422, detail="type must be one of artist|individual|organization")
+
+
+@router.post("/contracts/party_create", status_code=status.HTTP_201_CREATED)
+def contracts_party_create(
+    payload: dict,
+    db: Session = Depends(get_db),
+    org_id: int = Depends(get_current_organization_id),
+    current_user=Depends(get_current_user),
+):
+    entity_type = str(payload.get("entity_type") or "").strip().lower()
+    display_name = str(payload.get("display_name") or "").strip()
+    if entity_type not in {"artist", "organization", "individual"}:
+        raise HTTPException(status_code=422, detail="entity_type must be one of artist|individual|organization")
+    if not display_name:
+        raise HTTPException(status_code=422, detail="display_name is required")
+
+    if entity_type == "artist":
+        existing = db.query(Artist).filter(Artist.organization_id == org_id, Artist.name == display_name).first()
+        if existing:
+            return {"status": "created", "entity_type": "artist", "id": existing.id, "display_name": existing.name}
+        row = Artist(organization_id=org_id, artist_id=_new_entity_id("ART"), name=display_name)
+        db.add(row)
+        db.commit()
+        db.refresh(row)
+        return {"status": "created", "entity_type": "artist", "id": row.id, "display_name": row.name}
+
+    if entity_type == "organization":
+        existing = db.query(Organization).filter(Organization.organization_id == org_id, Organization.name == display_name).first()
+        if existing:
+            return {"status": "created", "entity_type": "organization", "id": existing.id, "display_name": existing.name}
+        row = Organization(organization_id=org_id, name=display_name, org_type=(payload.get("org_type") or "Other"))
+        db.add(row)
+        db.commit()
+        db.refresh(row)
+        return {"status": "created", "entity_type": "organization", "id": row.id, "display_name": row.name}
+
+    first, *rest = display_name.split(" ")
+    row = Individual(
+        organization_id=org_id,
+        first_name=first,
+        last_name=" ".join(rest).strip() or None,
+        email=payload.get("email"),
+        role=payload.get("role") or "Other",
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    out_name = f"{(row.first_name or '').strip()} {(row.last_name or '').strip()}".strip() or display_name
+    return {"status": "created", "entity_type": "individual", "id": row.id, "display_name": out_name}
+
+
+@router.get("/contracts/{contract_id}", response_model=ContractResponse)
+def get_contract(
+    contract_id: int,
+    db: Session = Depends(get_db),
+    org_id: int = Depends(get_current_organization_id),
+    current_user=Depends(get_current_user),
+):
+    contract = contract_repository.get_with_details(db, contract_id, org_id)
+    if not contract:
+        raise HTTPException(status_code=404, detail="Contract not found")
+    audit_service.log(db, "VIEW", "Contract", contract.id, current_user.id, organization_id=org_id)
+    return inject_status_quo(contract)
+
+
+@router.post("/contracts/{contract_id}/parties/batch_set")
+def contracts_parties_batch_set(
+    contract_id: int,
+    payload: dict,
+    db: Session = Depends(get_db),
+    org_id: int = Depends(get_current_organization_id),
+    current_user=Depends(get_current_user),
+):
+    if payload.get("confirm_non_destructive") is not True:
+        raise HTTPException(status_code=422, detail={"detail": "confirmation_required", "message": "confirm_non_destructive must be true"})
+    contract = contract_repository.get(db, contract_id, org_id)
+    if not contract:
+        raise HTTPException(status_code=404, detail="Contract not found")
+
+    items = payload.get("items") or []
+    if not isinstance(items, list):
+        raise HTTPException(status_code=422, detail="items must be a list")
+
+    updated_count = 0
+    for row in items:
+        entity_type = str(row.get("entity_type") or "").strip().lower()
+        entity_id = row.get("entity_id")
+        role = str(row.get("role") or "other").strip().lower()
+        split_percent = row.get("split_percent")
+        notes = row.get("notes")
+        if entity_type not in {"artist", "organization", "individual"}:
+            raise HTTPException(status_code=422, detail="entity_type must be one of artist|organization|individual")
+        if entity_id in (None, ""):
+            raise HTTPException(status_code=422, detail="entity_id is required")
+        assert_same_org(entity_type, int(entity_id), org_id, db)
+        if split_percent is not None and not (0 <= float(split_percent) <= 100):
+            raise HTTPException(status_code=422, detail="split_percent must be between 0 and 100")
+
+        storage_entity_type = entity_type.capitalize()
+        existing = (
+            db.query(ContractParty)
+            .filter(
+                ContractParty.contract_id == contract_id,
+                ContractParty.organization_id == org_id,
+                ContractParty.entity_type == storage_entity_type,
+                ContractParty.entity_id == int(entity_id),
+            )
+            .first()
+        )
+        if existing:
+            existing.role = role
+            existing.split_percent = split_percent
+            if notes is not None:
+                existing.notes = notes
+        else:
+            db.add(
+                ContractParty(
+                    contract_id=contract_id,
+                    organization_id=org_id,
+                    entity_type=storage_entity_type,
+                    entity_id=int(entity_id),
+                    role=role,
+                    split_percent=split_percent,
+                    notes=notes,
+                )
+            )
+        updated_count += 1
+
+    db.commit()
+    full = inject_status_quo(contract_repository.get_with_details(db, contract_id, org_id))
+    completeness = getattr(full, "completeness", {}) or {}
+    return {
+        "status": "ok",
+        "contract_id": contract_id,
+        "updated_count": updated_count,
+        "completeness": {
+            "score": int(completeness.get("score", 0)),
+            "color": str(completeness.get("color") or completeness.get("status_quo") or "red").lower(),
+            "missing": list(completeness.get("missing") or []),
+            "notes": list(completeness.get("notes") or []),
+        },
+    }
+
+
+@router.post("/contracts/{contract_id}/tracks/batch_set")
+def contracts_tracks_batch_set(
+    contract_id: int,
+    payload: dict,
+    db: Session = Depends(get_db),
+    org_id: int = Depends(get_current_organization_id),
+    current_user=Depends(get_current_user),
+):
+    if payload.get("confirm_non_destructive") is not True:
+        raise HTTPException(status_code=422, detail={"detail": "confirmation_required", "message": "confirm_non_destructive must be true"})
+    contract = contract_repository.get(db, contract_id, org_id)
+    if not contract:
+        raise HTTPException(status_code=404, detail="Contract not found")
+
+    track_ids_raw = payload.get("track_ids") or []
+    if not isinstance(track_ids_raw, list):
+        raise HTTPException(status_code=422, detail="track_ids must be a list")
+
+    track_ids = []
+    for item in track_ids_raw:
+        try:
+            track_ids.append(int(item))
+        except Exception:
+            raise HTTPException(status_code=422, detail="track_ids must be integers")
+    track_ids = sorted(list(set(track_ids)))
+    if not track_ids:
+        return {"status": "ok", "contract_id": contract_id, "linked_tracks_count": 0}
+
+    valid_tracks = db.query(Track).filter(Track.organization_id == org_id, Track.id.in_(track_ids)).all()
+    valid_ids = {t.id for t in valid_tracks}
+    missing_ids = [tid for tid in track_ids if tid not in valid_ids]
+    if missing_ids:
+        raise HTTPException(status_code=403, detail={"detail": "invalid_track_ids", "invalid_track_ids": missing_ids})
+
+    linked = 0
+    for track_id in track_ids:
+        existing_link = (
+            db.query(ContractTrackLink)
+            .filter(
+                ContractTrackLink.organization_id == org_id,
+                ContractTrackLink.contract_id == contract_id,
+                ContractTrackLink.track_id == track_id,
+            )
+            .first()
+        )
+        if not existing_link:
+            db.add(
+                ContractTrackLink(
+                    organization_id=org_id,
+                    contract_id=contract_id,
+                    track_id=track_id,
+                )
+            )
+            linked += 1
+
+        existing_asset = (
+            db.query(ContractAsset)
+            .filter(
+                ContractAsset.organization_id == org_id,
+                ContractAsset.contract_id == contract_id,
+                ContractAsset.asset_type == "Track",
+                ContractAsset.asset_id == track_id,
+            )
+            .first()
+        )
+        if not existing_asset:
+            db.add(
+                ContractAsset(
+                    organization_id=org_id,
+                    contract_id=contract_id,
+                    asset_type="Track",
+                    asset_id=track_id,
+                    scope_type="INCLUSION",
+                    notes="Linked during batch_set",
+                )
+            )
+    db.commit()
+
+    full = inject_status_quo(contract_repository.get_with_details(db, contract_id, org_id))
+    completeness = getattr(full, "completeness", {}) or {}
+    return {
+        "status": "ok",
+        "contract_id": contract_id,
+        "linked_tracks_count": linked,
+        "completeness": {
+            "score": int(completeness.get("score", 0)),
+            "color": str(completeness.get("color") or completeness.get("status_quo") or "red").lower(),
+            "missing": list(completeness.get("missing") or []),
+            "notes": list(completeness.get("notes") or []),
+        },
+    }
 
 
 @router.post("/artists")
@@ -1036,7 +1316,21 @@ def tracks_search(
                 "isrc": getattr(r, "isrc", None) or getattr(r, "isrc_code", None),
             }
         )
-    return {"items": items, "limit": limit, "offset": offset, "total_estimate": total_estimate}
+    return {
+        "status": "ok",
+        "org_id": str(org_id),
+        "runtime": _runtime_db_hint(),
+        "items": [
+            {
+                **row,
+                "artist_display": row.get("artist"),
+            }
+            for row in items
+        ],
+        "limit": limit,
+        "offset": offset,
+        "total_estimate": total_estimate,
+    }
 
 
 @router.get("/works")

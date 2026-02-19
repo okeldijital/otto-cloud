@@ -224,12 +224,12 @@ def test_create_from_extract_and_core_counts(client, db, monkeypatch):
     )
     assert res.status_code == 200
     body = res.json()
-    assert body["contract_id"] > 0
-    assert body["pdf_asset_id"] > 0
-    assert body["title"] == "KAARGO M2KR Remix Agreement"
-    assert body["start_date"] == "2024-03-15"
-    assert "parties" in body["extraction"]
-    assert "splits" in body["extraction"]
+    assert body["status"] == "ok"
+    assert body["created"] is True
+    assert body["contract"]["id"] > 0
+    assert body["contract"]["title"] == "KAARGO M2KR Remix Agreement"
+    assert body["contract"]["effective_date"] == "2024-03-15"
+    assert body["links"]["documents_created"] == 1
 
     after = _core_counts(db)
     assert after["artists"] == before["artists"]
@@ -258,7 +258,7 @@ def test_org_isolation_for_created_contract(client, db, monkeypatch):
         headers={"X-Organization-ID": str(seeded["org_a"])},
     )
     assert create_res.status_code == 200
-    contract_id = create_res.json()["contract_id"]
+    contract_id = create_res.json()["contract"]["id"]
 
     _set_user(seeded["user_b"])
     forbidden = client.get(

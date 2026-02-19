@@ -1,0 +1,91 @@
+=== GET /api/tracks/search ===
+HTTP/1.1 200
+{
+  "status": "ok",
+  "org_id": "00000000-0000-0000-0000-00000000c79d",
+  "runtime": {
+    "db_id": "active",
+    "db_path_hint": "/Users/m2krproduction/.otto/data/db/otto.sqlite"
+  },
+  "items": [
+    {
+      "id": 1,
+      "display_name": "Evidence Track A",
+      "title": "Evidence Track A",
+      "artist": null,
+      "release": null,
+      "artists": [],
+      "version": null,
+      "isrc": null,
+      "artist_display": null
+    }
+  ],
+  "limit": 20,
+  "offset": 0,
+  "total_estimate": 1
+}
+
+=== GET /api/contracts/party_search ===
+HTTP/1.1 200
+{
+  "status": "ok",
+  "org_id": "00000000-0000-0000-0000-00000000c79d",
+  "items": []
+}
+
+=== POST /api/contracts/party_create ===
+HTTP/1.1 201
+{
+  "status": "created",
+  "entity_type": "artist",
+  "id": 1,
+  "display_name": "Evidence Artist"
+}
+
+=== POST /api/contracts/{id}/parties/batch_set (422) ===
+HTTP/1.1 422
+{
+  "detail": {
+    "detail": "confirmation_required",
+    "message": "confirm_non_destructive must be true"
+  }
+}
+
+=== POST /api/contracts/{id}/parties/batch_set (200) ===
+HTTP/1.1 200
+{
+  "status": "ok",
+  "contract_id": 1,
+  "updated_count": 1,
+  "completeness": {
+    "score": 50,
+    "color": "red",
+    "missing": [
+      "missing_tracks",
+      "missing_territory",
+      "missing_effective_date",
+      "missing_term"
+    ],
+    "notes": [
+      "no_tracks_linked"
+    ]
+  }
+}
+
+=== POST /api/contracts/{id}/tracks/batch_set (200) ===
+HTTP/1.1 200
+{
+  "status": "ok",
+  "contract_id": 1,
+  "linked_tracks_count": 1,
+  "completeness": {
+    "score": 80,
+    "color": "amber",
+    "missing": [
+      "missing_territory",
+      "missing_effective_date",
+      "missing_term"
+    ],
+    "notes": []
+  }
+}

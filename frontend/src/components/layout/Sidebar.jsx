@@ -100,6 +100,7 @@ const Sidebar = () => {
             label: 'Administration of Works',
             items: [
                 { icon: FileText, label: 'Contracts', path: '/admin-of-works/contracts' },
+                { icon: Inbox, label: 'Bulk Processing', path: '/contracts/bulk' },
                 { icon: ShieldCheck, label: 'Works Administration', path: '/admin-of-works/works' },
                 { icon: BarChart3, label: 'Status Quo', path: '/admin-of-works/status-quo' },
             ]

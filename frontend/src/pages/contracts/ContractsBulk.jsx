@@ -71,6 +71,10 @@ export default function ContractsBulk() {
               key={item.file_id}
               item={item}
               onUpdateTracks={(trackIds) => dispatch({ type: 'ITEM/SET_TRACKS', file_id: item.file_id, track_ids: trackIds })}
+              onAutoMatchTracks={() => ctrl.autoMatchTracks(item.file_id)}
+              onUpdateParties={(parties) => dispatch({ type: 'ITEM/SET_PARTIES', file_id: item.file_id, parties })}
+              onPersistParties={() => ctrl.savePartiesForSelected(item.file_id)}
+              onPersistTracks={() => ctrl.saveTracksForSelected(item.file_id)}
               onToggleConfirmNonDestructive={(value) => dispatch({ type: 'ITEM/SET_CONFIRM_NON_DESTRUCTIVE', file_id: item.file_id, value })}
               onCreateDraft={() => ctrl.createDraftForSelected(item.file_id)}
               onOpenContract={(id, tab) => navigate(`/contracts/${id}?tab=${tab || 'overview'}`)}

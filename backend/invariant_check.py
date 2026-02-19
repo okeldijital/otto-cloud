@@ -135,6 +135,7 @@ def main():
     contract_from_extract_violations = check_contract_create_from_extract_governance()
     llm_extract_violations = check_llm_contract_extract_governance()
     contract_track_map_violations = check_contract_track_map_governance()
+    contract_parties_save_violations = check_contract_parties_save_governance()
     
     all_violations = (
         drift_violations
@@ -153,6 +154,7 @@ def main():
         + contract_from_extract_violations
         + llm_extract_violations
         + contract_track_map_violations
+        + contract_parties_save_violations
     )
     
     if all_violations:
@@ -1213,6 +1215,74 @@ def check_llm_contract_extract_governance():
                     violations.append(
                         f"LLM extract governance violation in {rel}: mutating db.execute SQL at line {node.lineno}"
                     )
+
+    return violations
+
+
+def check_contract_parties_save_governance():
+    """
+    Governed contract parties save checks:
+      - Scope: backend/services/contracts/save_parties.py
+      - ORM writes allowed only to ContractParty
+      - Block delete/update and mutating execute SQL
+    """
+    project_root = Path(__file__).resolve().parent.parent
+    path = project_root / "backend/services/contracts/save_parties.py"
+    violations = []
+    if not path.exists():
+        return violations
+
+    tree = get_ast(path)
+    if not tree:
+        return violations
+
+    rel = os.path.relpath(path, project_root / "backend")
+    allowed_models = {"ContractParty"}
+    forbidden_methods = {"delete", "update"}
+    mutating_sql = ("insert", "update", "delete", "alter", "drop", "create")
+
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
+            continue
+        method = node.func.attr
+
+        if method in forbidden_methods:
+            violations.append(
+                f"Contract parties save governance violation in {rel}: .{method}() at line {node.lineno}"
+            )
+
+        if method == "add":
+            for arg in node.args:
+                model = None
+                if isinstance(arg, ast.Call) and isinstance(arg.func, ast.Name):
+                    model = arg.func.id
+                elif isinstance(arg, ast.Name):
+                    for assign in ast.walk(tree):
+                        if (
+                            isinstance(assign, ast.Assign)
+                            and len(assign.targets) == 1
+                            and isinstance(assign.targets[0], ast.Name)
+                            and assign.targets[0].id == arg.id
+                            and isinstance(assign.value, ast.Call)
+                            and isinstance(assign.value.func, ast.Name)
+                        ):
+                            model = assign.value.func.id
+                if model and model not in allowed_models:
+                    violations.append(
+                        f"Contract parties save governance violation in {rel}: non-allowlisted model write {model} via .add() at line {node.lineno}"
+                    )
+
+        if method == "execute" and node.args:
+            arg0 = node.args[0]
+            sql_text = ""
+            if isinstance(arg0, ast.Constant) and isinstance(arg0.value, str):
+                sql_text = arg0.value.lower()
+            elif isinstance(arg0, ast.Call) and arg0.args and isinstance(arg0.args[0], ast.Constant) and isinstance(arg0.args[0].value, str):
+                sql_text = arg0.args[0].value.lower()
+            if any(keyword in sql_text for keyword in mutating_sql):
+                violations.append(
+                    f"Contract parties save governance violation in {rel}: mutating db.execute SQL at line {node.lineno}"
+                )
 
     return violations
 

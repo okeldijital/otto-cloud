@@ -65,6 +65,7 @@ class Settings(BaseSettings):
     AI_CORE_WRITE_APPLY_ENABLED: bool = True
     AI_CORE_WRITE_REQUIRE_BACKUP: bool = True
     AI_CONTRACT_WIZARD_ENABLED: bool = True
+    AI_CONTRACT_TRACK_MAP_ENABLED: bool = True
     AI_CONTRACT_ATTACH_PLAN_ENABLED: bool = True
     AI_CONTRACT_ATTACH_APPLY_ENABLED: bool = True
     AI_ATTACH_REQUIRE_BACKUP: bool = True

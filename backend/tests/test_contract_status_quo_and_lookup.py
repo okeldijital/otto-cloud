@@ -101,10 +101,11 @@ def test_status_quo_red_to_green_and_lookup(monkeypatch, tmp_path):
         # list: starts RED
         lst = client.get("/api/contracts", headers={"X-Organization-ID": str(seeded["org"])})
         assert lst.status_code == 200
-        row = [r for r in (lst.json() or []) if str(r.get("id")) == str(seeded["contract"].id)][0]
-        assert row["status_quo"] == "red"
-        assert "missing_parties" in row["status_quo_reasons"]
-        assert "missing_assets" in row["status_quo_reasons"]
+        row = [r for r in (lst.json().get("items") or []) if str(r.get("id")) == str(seeded["contract"].id)][0]
+        assert row["completeness"]["status_quo"] == "red"
+        reason_codes = {x["code"] for x in (row["completeness"]["reasons"] or [])}
+        assert "missing_parties" in reason_codes
+        assert "missing_tracks" in reason_codes
 
         # party lookup
         lookup = client.get("/api/party_lookup", params={"q": "Black", "types": "artist", "limit": 10}, headers={"X-Organization-ID": str(seeded["org"])})

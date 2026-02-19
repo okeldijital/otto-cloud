@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import contractsWizardClient from '../../api/contractsWizardClient';
-import aiReleaseMappingClient from '../../api/aiReleaseMappingClient';
+import aiTrackMappingClient from '../../api/aiTrackMappingClient';
 import { CatalogService } from '../../services/catalog';
 import ContractExtractPreview from './ContractExtractPreview';
 import ContractCreateReviewForm from './ContractCreateReviewForm';
-import ReleasePickerInline from './ReleasePickerInline';
-import ContractReleaseMapper from './ContractReleaseMapper';
+import TrackMultiSelect from './TrackMultiSelect';
 
 export default function AddContractWizard({ isOpen, onClose, onCreated }) {
   const [step, setStep] = useState(1);
@@ -15,8 +14,8 @@ export default function AddContractWizard({ isOpen, onClose, onCreated }) {
   const [errorId, setErrorId] = useState('');
   const [extraction, setExtraction] = useState(null);
   const [created, setCreated] = useState(null);
-  const [releases, setReleases] = useState([]);
-  const [selectedReleaseId, setSelectedReleaseId] = useState('');
+  const [tracks, setTracks] = useState([]);
+  const [selectedTrackIds, setSelectedTrackIds] = useState([]);
   const [mapLoading, setMapLoading] = useState(false);
   const [mapError, setMapError] = useState('');
   const [mapResult, setMapResult] = useState(null);
@@ -29,14 +28,14 @@ export default function AddContractWizard({ isOpen, onClose, onCreated }) {
   useEffect(() => {
     if (!isOpen) return;
     let alive = true;
-    CatalogService.getAll('releases', { limit: 2000 })
+    CatalogService.getAll('tracks', { limit: 2000 })
       .then((rows) => {
         if (!alive) return;
-        setReleases(Array.isArray(rows) ? rows : []);
+        setTracks(Array.isArray(rows) ? rows : []);
       })
       .catch(() => {
         if (!alive) return;
-        setReleases([]);
+        setTracks([]);
       });
 
     return () => {
@@ -54,7 +53,7 @@ export default function AddContractWizard({ isOpen, onClose, onCreated }) {
     setErrorId('');
     setExtraction(null);
     setCreated(null);
-    setSelectedReleaseId('');
+    setSelectedTrackIds([]);
     setMapLoading(false);
     setMapError('');
     setMapResult(null);
@@ -72,6 +71,7 @@ export default function AddContractWizard({ isOpen, onClose, onCreated }) {
       setExtraction(data);
       setMapResult(null);
       setMapError('');
+      setSelectedTrackIds([]);
       setForm((prev) => ({
         ...prev,
         user_overrides: {
@@ -95,53 +95,37 @@ export default function AddContractWizard({ isOpen, onClose, onCreated }) {
     }
   };
 
-  const runMapPlan = async () => {
-    if (!selectedReleaseId || !extraction) return;
+  const runTrackMapPlan = async () => {
+    if (!extraction) return;
     setMapLoading(true);
     setMapError('');
     try {
       const extractV2 = {
         contract_title: extraction.contract_title || null,
-        effective_date: extraction.effective_date || extraction?.dates?.effective_date || null,
-        expiration_date: extraction.expiration_date || extraction?.dates?.expiration_date || extraction.end_date || null,
-        expiration_label:
-          extraction.expiration_date || extraction?.dates?.expiration_date || extraction.end_date
-            ? 'date_specified'
-            : 'no_end_date_specified',
-        parties: (extraction.parties || []).map((p) => ({
-          display_name: p.display_name || p.name || '',
-          role: p.role || null,
-          confidence: Number(p.confidence || 0),
-        })),
-        splits: (extraction.splits || []).map((s) => ({
-          split_type: s.split_type || s.scope || 'OTHER',
-          party_display_name: s.party_display_name || s.party_name || null,
-          percent: Number(s.percent || 0),
-          basis: s.basis || null,
-          notes: s.notes || null,
-        })),
-        terms: Array.isArray(extraction.terms)
-          ? extraction.terms.map((t) => ({ term_type: t.term_type || 'other', text: t.text || t.summary || '' }))
-          : Object.entries(extraction.terms || {})
-              .filter(([, v]) => !!v)
-              .map(([k, v]) => ({ term_type: k, text: String(v) })),
-        tracks: Array.isArray(extraction.tracks_mentioned)
-          ? extraction.tracks_mentioned.map((t) => ({ title: t.title || '', artist: null, confidence: Number(t.confidence || 0) }))
-          : (extraction.tracks || []).map((title) => ({ title, artist: null, confidence: 0.6 })),
+        tracks: extraction.tracks || [],
         warnings: extraction.warnings || [],
-        raw_confidence: Number(extraction.raw_confidence || 0),
-        parser_version: extraction.parser_version || null,
       };
-
-      const result = await aiReleaseMappingClient.mapPlan(Number(selectedReleaseId), extractV2);
+      const result = await aiTrackMappingClient.trackMapPlan({
+        contract_extract_v2: extractV2,
+        track_ids_hint: selectedTrackIds,
+        max_results: 20,
+      });
       if (result?.featureDisabled) {
-        setMapError('Release mapping is disabled by feature flags.');
+        setMapError('Track mapping is disabled by feature flags.');
         setMapResult(null);
       } else {
         setMapResult(result);
+        const suggested = [];
+        for (const row of result?.candidates || []) {
+          const top = (row.matches || [])[0];
+          if (top?.track?.id) suggested.push(Number(top.track.id));
+        }
+        if (suggested.length) {
+          setSelectedTrackIds((prev) => Array.from(new Set([...(prev || []), ...suggested])));
+        }
       }
     } catch (e) {
-      setMapError(e?.response?.data?.detail || e?.message || 'Release map plan failed');
+      setMapError(e?.response?.data?.detail || e?.message || 'Track map plan failed');
       setMapResult(null);
     } finally {
       setMapLoading(false);
@@ -153,7 +137,29 @@ export default function AddContractWizard({ isOpen, onClose, onCreated }) {
     setLoading(true);
     setError('');
     try {
-      const result = await contractsWizardClient.createFromExtract(file, form);
+      const extractPayload = extraction
+        ? {
+            title: extraction.contract_title || form.user_overrides.title || file.name.replace(/\\.pdf$/i, ''),
+            type: extraction.contract_type || form.contract_type?.toLowerCase() || 'other',
+            dates: {
+              contract_date: extraction.contract_date || null,
+              effective_date: extraction.effective_date || extraction.dates?.effective_date || null,
+              end_date: extraction.end_date || extraction.dates?.end_date || null,
+              end_date_specified: Boolean(extraction.dates?.end_date_specified || extraction.end_date),
+            },
+            key_terms: extraction.key_terms || {},
+          }
+        : {};
+      const payload = {
+        ...form,
+        type: form.contract_type,
+        track_ids: selectedTrackIds,
+        confirm_non_destructive: true,
+        idempotency_key: `sha256:${file.name}:${file.size}:${file.lastModified}`,
+        extract_version: 'v2',
+        extract: extractPayload,
+      };
+      const result = await contractsWizardClient.createFromExtract(file, payload);
       setCreated(result);
       setStep(5);
       onCreated?.(result);
@@ -217,23 +223,30 @@ export default function AddContractWizard({ isOpen, onClose, onCreated }) {
             )}
             <ContractExtractPreview extraction={extraction} />
 
-            <ReleasePickerInline
-              releases={releases}
-              value={selectedReleaseId}
-              onChange={(value) => {
-                setSelectedReleaseId(value);
-                setMapResult(null);
-                setMapError('');
-              }}
-            />
+            <TrackMultiSelect tracks={tracks} selectedIds={selectedTrackIds} onChange={setSelectedTrackIds} />
 
             <div style={{ marginBottom: 10 }}>
-              <button className="btn" disabled={!selectedReleaseId || mapLoading} onClick={runMapPlan}>
-                {mapLoading ? 'Mapping...' : 'Map to Release'}
+              <button className="btn" disabled={mapLoading} onClick={runTrackMapPlan}>
+                {mapLoading ? 'Mapping...' : 'Auto-match from extract'}
               </button>
             </div>
 
-            <ContractReleaseMapper result={mapResult} loading={mapLoading} error={mapError} />
+            {!!mapError && <div className="error-banner" style={{ marginBottom: 8 }}>{mapError}</div>}
+            {!!mapResult && (
+              <div className="panel" style={{ marginBottom: 10, padding: 10 }}>
+                <div style={{ fontWeight: 600, marginBottom: 6 }}>Suggested matches</div>
+                {(mapResult.candidates || []).map((row, idx) => (
+                  <div key={idx} className="small" style={{ marginBottom: 4 }}>
+                    {row.extract_track?.raw_mention || '-'}: {row.matches?.[0]?.track?.title || 'No match'}
+                  </div>
+                ))}
+                {!!(mapResult.missing_tracks || []).length && (
+                  <div className="warning-banner" style={{ marginTop: 8 }}>
+                    Missing tracks: {(mapResult.missing_tracks || []).join(', ')}
+                  </div>
+                )}
+              </div>
+            )}
 
             <ContractCreateReviewForm form={form} setForm={setForm} />
             <div className="muted small" style={{ marginBottom: 8 }}>
@@ -252,7 +265,8 @@ export default function AddContractWizard({ isOpen, onClose, onCreated }) {
 
         {step === 5 && created && (
           <div className="success-banner" style={{ marginTop: 10 }}>
-            Contract created: #{created.contract_id} ({created.title}). PDF asset #{created.pdf_asset_id} attached.
+            Contract created: #{created.contract?.id || created.contract_id} ({created.contract?.title || created.title}).
+            Track links: {created.links?.tracks_linked ?? created.linked_tracks_count ?? 0}.
           </div>
         )}
       </div>

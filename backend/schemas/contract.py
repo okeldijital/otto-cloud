@@ -156,6 +156,11 @@ class ContractResponse(ContractBase):
     status_quo: Optional[StatusQuoResponse] = None
     status_quo_reasons: List[str] = []
     counts: Optional[dict] = None
+    completeness: Optional[dict] = None
+    effective_date: Optional[date] = None
+    end_date_specified: Optional[bool] = None
+    governing_law: Optional[str] = None
+    term_summary: Optional[str] = None
     status_quo_override: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)

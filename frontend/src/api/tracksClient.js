@@ -14,11 +14,11 @@ export const tracksClient = {
     }));
 
     try {
+      const res = await api.get('/tracks/search', { params: { q: query, limit, offset: 0 } });
+      return { items: normalize(res?.data?.items), runtime: res?.data?.runtime, org_id: res?.data?.org_id };
+    } catch (e) {
       const res = await api.get('/tracks', { params: { query, limit } });
       return { items: normalize(res?.data?.items || res?.data?.results) };
-    } catch (e) {
-      const res = await api.get('/tracks/search', { params: { q: query, limit, offset: 0 } });
-      return { items: normalize(res?.data?.items) };
     }
   },
 };
