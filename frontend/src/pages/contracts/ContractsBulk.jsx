@@ -492,11 +492,6 @@ export default function ContractsBulk() {
               onUpdateTracks={(trackIds) => updateItem(selectedItem.id, { trackIds })}
               onUpdateParties={(parties) => updateItem(selectedItem.id, { parties })}
               onUpdateTerms={(terms) => updateItem(selectedItem.id, { terms })}
-              onUpdateDetails={(details) => {
-                const safeExtract = { ...selectedItem.extract, data: { ...selectedItem.extract?.data, ...details } };
-                if (details.dates) safeExtract.data.dates = { ...selectedItem.extract?.data?.dates, ...details.dates };
-                updateItem(selectedItem.id, { extract: safeExtract });
-              }}
               onCreateDraft={() => createDraft(selectedItem.id)}
               onSaveTracks={() => saveTracks(selectedItem.id)}
               onSaveParties={() => saveParties(selectedItem.id)}
