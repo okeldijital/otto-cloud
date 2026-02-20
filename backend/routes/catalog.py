@@ -354,21 +354,16 @@ def get_artist_releases(
     current_user: User = Depends(get_current_active_user)
 ):
     """Get all releases for a specific artist"""
-    # Check both primary artist_id and the artist_ids JSON list
-    from sqlalchemy import or_, func
-    releases = db.query(ReleaseModel).filter(
+    from sqlalchemy import or_, String, func
+    # SQLite JSON array .contains is a broad substring text match, so we over-fetch with LIKE and precisely filter in Python.
+    candidates = db.query(ReleaseModel).filter(
         or_(
             ReleaseModel.artist_id == artist_id,
-            # This is a bit tricky with SQLite JSON, but we can use JSON_EACH or similar if available
-            # For simplicity and portability across typical setups:
-            func.json_extract(func.coalesce(ReleaseModel.artist_ids, '[]'), '$').contains(artist_id)
+            func.cast(ReleaseModel.artist_ids, String).like(f'%{artist_id}%')
         )
     ).all()
-    # Fallback for simpler search if json_extract is not happy with the above
-    if not releases:
-        all_releases = db.query(ReleaseModel).all()
-        releases = [r for r in all_releases if (r.artist_id == artist_id or (r.artist_ids and artist_id in r.artist_ids))]
     
+    releases = [r for r in candidates if (r.artist_id == artist_id or (r.artist_ids and artist_id in r.artist_ids))]
     return releases
 
 
@@ -379,20 +374,19 @@ def get_artist_works(
     current_user: User = Depends(get_current_active_user)
 ):
     """Get all works associated with a specific artist/composer/arranger"""
-    from sqlalchemy import func
-    works = db.query(WorkModel).filter(
-        # Check if artist_id is in composers or arrangers JSON array
-        (func.json_extract(func.coalesce(WorkModel.composers, '[]'), '$').contains(artist_id)) |
-        (func.json_extract(func.coalesce(WorkModel.arrangers, '[]'), '$').contains(artist_id))
+    from sqlalchemy import or_, String, func
+    
+    candidates = db.query(WorkModel).filter(
+        or_(
+            func.cast(WorkModel.composers, String).like(f'%{artist_id}%'),
+            func.cast(WorkModel.arrangers, String).like(f'%{artist_id}%')
+        )
     ).all()
     
-    # Fallback for SQLite if json_extract doesn't behave as expected in all environments
-    if not works:
-        all_works = db.query(WorkModel).all()
-        works = [w for w in all_works if (
-            (w.composers and artist_id in w.composers) or 
-            (w.arrangers and artist_id in w.arrangers)
-        )]
+    works = [w for w in candidates if (
+        (w.composers and artist_id in w.composers) or
+        (w.arrangers and artist_id in w.arrangers)
+    )]
     return works
 
 
