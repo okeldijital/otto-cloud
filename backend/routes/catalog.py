@@ -409,33 +409,29 @@ def list_releases(
     # For now, simplistic loop to ensure correctness.
     for r in releases:
         tracks = db.query(TrackModel).filter(TrackModel.release_id == r.id).all()
-        # Check Contract Link (Asset)
         has_contract = db.query(ContractAsset).filter(
             ContractAsset.asset_type == 'Release',
             ContractAsset.asset_id == r.id
         ).first() is not None
+        if not has_contract and tracks:
+            track_ids = [t.id for t in tracks]
+            has_contract = db.query(ContractAsset).filter(
+                ContractAsset.asset_type == 'Track',
+                ContractAsset.asset_id.in_(track_ids)
+            ).first() is not None
         
         # Check Artist Link (Party)
-        # Note: r.artist_id is primary. r.artist_ids might be multiple. 
-        # Requirement: "Release Artist not linked to any Contract"
-        # We check if THE primary artist is in any contract? Or if ANY contract linked to THIS release has THIS artist?
-        # User phrasing: "Artist not linked to Contract" usually means "Artist attached to this Release has a contractcovering them".
-        # Let's interpret as: Is the Release's Primary Artist a Party on ANY Contract?
-        # Or more strictly: Is the Release's Primary Artist a Party on a Contract that also covers this Release?
-        # Given "Release not linked to any Contract" is separate rule, let's assume this means "Does the Artist have a contract generally?" or "Is the Artist party to the same contract?"
-        # Let's go with: Is the Artist a Party on the contract that covers the Release?
-        # If no contract covers the release, then both fail.
-        # If contract covers release, usually Artist is party.
-        # Let's separate it simpler: Is the Artist linked to ANY contract? (General artist health)
-        # OR: Is the Artist linked to a contract that THIS RELEASE is linked to?
-        # Let's check if the Artist is a Party in ANY Contract for now (Simpler "Artist has contract" check).
-        # Actually, best interpretation of "Release Artist not linked to any Contract" in context of Release Status:
-        # "The Artist of this Release does not have a Contract".
-        has_artist_contract = False
+        artist_id_list = []
         if r.artist_id:
+            artist_id_list.append(r.artist_id)
+        if r.artist_ids:
+            artist_id_list.extend(r.artist_ids)
+            
+        has_artist_contract = False
+        if artist_id_list:
              has_artist_contract = db.query(ContractParty).filter(
                  ContractParty.entity_type == 'Artist',
-                 ContractParty.entity_id == r.artist_id
+                 ContractParty.entity_id.in_(artist_id_list)
              ).first() is not None
 
         r.status_quo = compute_release_status(r, tracks, has_contract, has_artist_contract)
@@ -502,12 +498,24 @@ def get_release(
         ContractAsset.asset_type == 'Release', 
         ContractAsset.asset_id == release.id
     ).first() is not None
+    if not has_contract and tracks:
+        track_ids = [t.id for t in tracks]
+        has_contract = db.query(ContractAsset).filter(
+            ContractAsset.asset_type == 'Track',
+            ContractAsset.asset_id.in_(track_ids)
+        ).first() is not None
     
-    has_artist_contract = False
+    artist_id_list = []
     if release.artist_id:
+        artist_id_list.append(release.artist_id)
+    if release.artist_ids:
+        artist_id_list.extend(release.artist_ids)
+
+    has_artist_contract = False
+    if artist_id_list:
         has_artist_contract = db.query(ContractParty).filter(
             ContractParty.entity_type == 'Artist',
-            ContractParty.entity_id == release.artist_id
+            ContractParty.entity_id.in_(artist_id_list)
         ).first() is not None
 
     release.status_quo = compute_release_status(release, tracks, has_contract, has_artist_contract)
