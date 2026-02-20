@@ -33,7 +33,7 @@ const ContractDetail = () => {
     const [metaModalOpen, setMetaModalOpen] = useState(false);
     const [metaForm, setMetaForm] = useState({});
     const [partyModalOpen, setPartyModalOpen] = useState(false);
-    const [partyForm, setPartyForm] = useState({ party_mode: 'system', role: '', entity: null, external_name: '', split_percent: '', notes: '' });
+    const [partyForm, setPartyForm] = useState({ party_mode: 'system', role: '', entities: [], external_name: '', split_percent: '', notes: '' });
     const [assetModalOpen, setAssetModalOpen] = useState(false);
     const [assetForm, setAssetForm] = useState({ asset_type: 'Track', assets: [], notes: '' });
     const [docModalOpen, setDocModalOpen] = useState(false);
@@ -136,13 +136,19 @@ const ContractDetail = () => {
     const addParty = async (e) => {
         e.preventDefault();
         try {
-            const payload = partyForm.party_mode === 'external'
-                ? { role: partyForm.role, entity_type: 'External', external_name: partyForm.external_name, split_percent: partyForm.split_percent || null }
-                : { role: partyForm.role, entity_type: partyForm.entity?.entity_type, entity_id: partyForm.entity?.id, split_percent: partyForm.split_percent || null };
-            const res = await contractService.addParty(id, payload);
+            if (partyForm.party_mode === 'external') {
+                const payload = { role: partyForm.role, entity_type: 'External', external_name: partyForm.external_name, split_percent: partyForm.split_percent || null };
+                await contractService.addParty(id, payload);
+            } else {
+                for (const entity of (partyForm.entities || [])) {
+                    const payload = { role: partyForm.role, entity_type: entity?.entity_type, entity_id: entity?.id, split_percent: partyForm.split_percent || null };
+                    await contractService.addParty(id, payload);
+                }
+            }
+            const res = await contractService.getById(id);
             setContract(res.data || res);
             setPartyModalOpen(false);
-            setPartyForm({ party_mode: 'system', role: '', entity: null, external_name: '', split_percent: '', notes: '' });
+            setPartyForm({ party_mode: 'system', role: '', entities: [], external_name: '', split_percent: '', notes: '' });
         } catch (err) {
             setError(formatError(err, 'Add party failed'));
         }
@@ -556,8 +562,8 @@ const ContractDetail = () => {
                 </div>
                 {partyForm.party_mode === 'system' ? (
                     <div className="form-group">
-                        <label>Lookup Entity</label>
-                        <EntityTypeahead mode="party" onSelect={(entity) => setPartyForm({ ...partyForm, entity })} />
+                        <label>Lookup Entities</label>
+                        <EntityTypeahead multiple mode="party" onChange={(entities) => setPartyForm({ ...partyForm, entities })} />
                     </div>
                 ) : (
                     <div className="form-group">
