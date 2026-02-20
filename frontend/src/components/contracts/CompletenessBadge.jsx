@@ -21,13 +21,10 @@ function reasonsToHuman(missing = []) {
     missing_tracks: 'Missing track links',
     document_missing: 'Missing document',
     missing_document: 'Missing document',
-    dates_missing: 'Missing dates',
-    missing_dates_optional: 'Missing dates',
-    overview_missing: 'Missing overview metadata',
-    missing_terms_optional: 'Missing terms',
-    missing_splits_optional: 'Missing splits',
   };
-  return missing.map((k) => map[k] || k);
+  return missing
+    .filter(k => map[k])
+    .map((k) => map[k]);
 }
 
 export default function CompletenessBadge({ completeness }) {
@@ -72,18 +69,20 @@ export default function CompletenessBadge({ completeness }) {
     boxShadow: `0 0 6px ${theme.dot}`,
   };
 
+  const missingDisplay = reasonsToHuman(missing);
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
-      <div style={pillStyle} title={reasonsToHuman(missing).join(' • ')}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+      <div style={pillStyle} title={missingDisplay.join(' • ')}>
         <span style={dotStyle} />
         <span>{labelFor(status)}</span>
         <span style={{ borderLeft: `1px solid ${theme.border}`, marginLeft: 4, paddingLeft: 8 }}>{score}%</span>
       </div>
 
-      {missing.length > 0 && (
+      {missingDisplay.length > 0 && (
         <div className="small muted" style={{ fontSize: 10, textAlign: 'right' }}>
-          {reasonsToHuman(missing).slice(0, 2).join(' • ')}
-          {missing.length > 2 ? ` +${missing.length - 2}` : ''}
+          {missingDisplay.slice(0, 2).join(' • ')}
+          {missingDisplay.length > 2 ? ` +${missingDisplay.length - 2}` : ''}
         </div>
       )}
     </div>
