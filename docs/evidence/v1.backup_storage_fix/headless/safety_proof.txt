@@ -1,0 +1,16 @@
+--- SAFETY PROOF: Unsafe Root Blocked ---
+Test: backend/tests/test_backup_root_safety.py
+Case: test_backup_root_safety_storage_root
+
+Output:
+INFO     sqlalchemy.engine.Engine:base.py:1846 SELECT users.id, ... FROM users WHERE users.email = ?
+INFO     sqlalchemy.engine.Engine:base.py:1846 [cached] ('admin@otto.com', 1, 0)
+INFO     sqlalchemy.engine.Engine:base.py:2713 ROLLBACK
+
+Response: 422 Unprocessable Entity
+{
+  "detail": "unsafe_backup_root",
+  "hint": "BACKUP_ROOT must not be inside APP_DATA_DIR or STORAGE_ROOT"
+}
+
+Result: Governance enforced. AI cannot trigger backups into the data or storage roots.

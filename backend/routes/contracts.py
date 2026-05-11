@@ -327,12 +327,14 @@ def list_contracts(
     limit: int = 50,
     offset: int = 0,
     order_by: str = "created_at_desc",
+    entity_type: Optional[str] = None,
+    entity_id: Optional[int] = None,
     db: Session = Depends(get_db),
     org_id: int = Depends(get_current_organization_id),
     current_user=Depends(get_current_user),
 ):
     effective_status = status_filter or status
-    all_contracts = contract_repository.get_all_filtered(db, org_id, effective_status, type_filter)
+    all_contracts = contract_repository.get_all_filtered(db, org_id, effective_status, type_filter, entity_type, entity_id)
     query_text = (q or "").strip().lower()
     if query_text:
         all_contracts = [

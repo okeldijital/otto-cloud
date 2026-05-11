@@ -3,7 +3,6 @@ from pathlib import Path
 import uuid
 from typing import Any, Dict, Optional
 
-from fastapi import UploadFile
 from sqlalchemy.orm import Session
 
 from config import settings
@@ -53,7 +52,8 @@ def ingest_contract_pdf(
     db: Session,
     org_id: uuid.UUID,
     release_id: int,
-    file: UploadFile,
+    file_content: bytes,
+    filename: str,
     user: User,
     contract_id: Optional[int] = None,
 ) -> Dict[str, Any]:
@@ -65,10 +65,10 @@ def ingest_contract_pdf(
     if not release:
         raise ValueError("release_not_found")
 
-    if not file.filename or not file.filename.lower().endswith(".pdf"):
+    if not filename or not filename.lower().endswith(".pdf"):
         raise ValueError("invalid_file_type")
 
-    payload = file.file.read()
+    payload = file_content
     if not payload:
         raise ValueError("empty_file")
 

@@ -9,15 +9,22 @@ const Input = ({
     ...props
 }) => {
     return (
-        <div className={`form-group ${className}`}>
-            {label && <label htmlFor={id}>{label}</label>}
+        <div className={`flex flex-col gap-2 ${className}`}>
+            {label && (
+                <label 
+                    htmlFor={id}
+                    className="text-xs font-bold text-text-secondary uppercase tracking-widest"
+                >
+                    {label}
+                </label>
+            )}
             <input
                 id={id}
                 type={type}
-                className={`form-input ${error ? 'error' : ''}`}
+                className={`w-full bg-white/5 border rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-text-secondary/30 transition-all focus:outline-none focus:ring-2 focus:ring-accent/20 ${error ? 'border-danger/50 focus:border-danger' : 'border-white/10 focus:border-accent/40'}`}
                 {...props}
             />
-            {error && <p className="form-error">{error}</p>}
+            {error && <p className="text-xs font-bold text-danger mt-1">{error}</p>}
         </div>
     );
 };
@@ -31,16 +38,30 @@ export const Select = ({
     ...props
 }) => {
     return (
-        <div className={`form-group ${className}`}>
-            {label && <label htmlFor={id}>{label}</label>}
-            <select
-                id={id}
-                className={`form-select ${error ? 'error' : ''}`}
-                {...props}
-            >
-                {children}
-            </select>
-            {error && <p className="form-error">{error}</p>}
+        <div className={`flex flex-col gap-2 ${className}`}>
+            {label && (
+                <label 
+                    htmlFor={id}
+                    className="text-xs font-bold text-text-secondary uppercase tracking-widest"
+                >
+                    {label}
+                </label>
+            )}
+            <div className="relative group">
+                <select
+                    id={id}
+                    className={`w-full bg-white/5 border rounded-xl px-4 py-2.5 text-sm text-white appearance-none transition-all focus:outline-none focus:ring-2 focus:ring-accent/20 cursor-pointer ${error ? 'border-danger/50 focus:border-danger' : 'border-white/10 focus:border-accent/40 group-hover:bg-white/10'}`}
+                    {...props}
+                >
+                    {children}
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-text-secondary group-hover:text-white transition-colors">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="m6 9 6 6 6-6"/>
+                    </svg>
+                </div>
+            </div>
+            {error && <p className="text-xs font-bold text-danger mt-1">{error}</p>}
         </div>
     );
 };
@@ -53,14 +74,21 @@ export const Textarea = ({
     ...props
 }) => {
     return (
-        <div className={`form-group ${className}`}>
-            {label && <label htmlFor={id}>{label}</label>}
+        <div className={`flex flex-col gap-2 ${className}`}>
+            {label && (
+                <label 
+                    htmlFor={id}
+                    className="text-xs font-bold text-text-secondary uppercase tracking-widest"
+                >
+                    {label}
+                </label>
+            )}
             <textarea
                 id={id}
-                className={`form-textarea ${error ? 'error' : ''}`}
+                className={`w-full bg-white/5 border rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-text-secondary/30 transition-all focus:outline-none focus:ring-2 focus:ring-accent/20 min-h-[100px] resize-y ${error ? 'border-danger/50 focus:border-danger' : 'border-white/10 focus:border-accent/40'}`}
                 {...props}
             />
-            {error && <p className="form-error">{error}</p>}
+            {error && <p className="text-xs font-bold text-danger mt-1">{error}</p>}
         </div>
     );
 };

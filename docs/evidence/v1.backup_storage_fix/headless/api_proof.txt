@@ -1,0 +1,27 @@
+--- API PROOF: Storage Usage ---
+GET /api/admin/scc/storage/usage
+{
+  "app_data_dir": "/Users/m2krproduction/.otto/data",
+  "storage_root": "/Users/m2krproduction/.otto/data/storage",
+  "backup_root": "/Users/m2krproduction/.otto/backups",
+  "sizes": {
+    "storage_bytes": 121332442,
+    "backups_bytes": 0,
+    "contracts_bytes": 0
+  },
+  "retention": {
+    "count": 10,
+    "max_total_gb": 10
+  }
+}
+
+POST /api/admin/backups
+{
+  "status": "uploaded",
+  "backup_id": 45,
+  "filename": "otto_backup_20260222_152733.zip",
+  "size_bytes": 276570,
+  "sha256": "1de04ae95fd26ac46f3be6ef1d40b07c47179ca434f2a0c839a1cf3d75ac9639",
+  "created_at": "2026-02-22T15:27:33Z",
+  "organization_id": "00000000-0000-0000-0000-000000000001"
+}

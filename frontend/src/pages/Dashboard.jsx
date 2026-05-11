@@ -99,10 +99,10 @@ const Dashboard = () => {
         </div>
     );
 
-    if (isLoading) return <div className="loading-state">Initializing Welcome to Otto...</div>;
+    if (isLoading) return <div className="h-screen flex items-center justify-center font-medium text-text-secondary bg-background">Initializing Welcome to Otto...</div>;
 
     return (
-        <div className="dashboard-container">
+        <div className="bg-background min-h-screen">
             <PageHeader
                 title="Welcome to Otto"
                 subtitle="Data Management System for Record Labels"
@@ -126,47 +126,60 @@ const Dashboard = () => {
                 allowOverlap={false}
             >
                 {/* Individual KPI Widgets */}
-                <Card key="kpi-artists" title="Artists" headerAction={<Users size={18} className="text-muted" />} contentClassName="kpi-widget-content">
-                    <div className="kpi-value">{kpis.total_artists}</div>
+                <Card key="kpi-artists" title="Artists" headerAction={<Users size={18} className="text-text-secondary" />} contentClassName="flex items-center justify-center">
+                    <div className="text-5xl font-bold text-white drop-shadow-[0_0_15px_rgba(14,165,233,0.5)] tracking-tight">{kpis.total_artists}</div>
                 </Card>
 
-                <Card key="kpi-releases" title="Releases" headerAction={<Disc size={18} className="text-muted" />} contentClassName="kpi-widget-content">
-                    <div className="kpi-value">{kpis.total_releases}</div>
+                <Card key="kpi-releases" title="Releases" headerAction={<Disc size={18} className="text-text-secondary" />} contentClassName="flex items-center justify-center">
+                    <div className="text-5xl font-bold text-white drop-shadow-[0_0_15px_rgba(14,165,233,0.5)] tracking-tight">{kpis.total_releases}</div>
                 </Card>
 
-                <Card key="kpi-works" title="Works" headerAction={<FileText size={18} className="text-muted" />} contentClassName="kpi-widget-content">
-                    <div className="kpi-value">{kpis.total_works}</div>
+                <Card key="kpi-works" title="Works" headerAction={<FileText size={18} className="text-text-secondary" />} contentClassName="flex items-center justify-center">
+                    <div className="text-5xl font-bold text-white drop-shadow-[0_0_15px_rgba(14,165,233,0.5)] tracking-tight">{kpis.total_works}</div>
                 </Card>
 
-                <Card key="kpi-pending" title="Pending" headerAction={<Clock size={18} className="text-muted" />} contentClassName="kpi-widget-content">
-                    <div className="kpi-value">{pendingContracts}</div>
+                <Card key="kpi-pending" title="Pending" headerAction={<Clock size={18} className="text-text-secondary" />} contentClassName="flex items-center justify-center">
+                    <div className="text-5xl font-bold text-danger drop-shadow-[0_0_15px_rgba(239,68,68,0.5)] tracking-tight">{pendingContracts}</div>
                 </Card>
 
                 {/* Catalog Growth */}
-                <Card key="growth" title="Catalog Overview" headerAction={<TrendingUp size={18} className="text-muted" />}>
+                <Card key="growth" title="Catalog Overview" headerAction={<TrendingUp size={18} className="text-text-secondary" />}>
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={growthData}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-color)" />
-                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
-                            <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--text-muted)', fontSize: 12 }} />
-                            <Tooltip cursor={{ fill: 'var(--surface-secondary)' }} contentStyle={{ backgroundColor: 'var(--surface-color)', borderColor: 'var(--border-color)', color: 'var(--text-color)' }} />
-                            <Bar dataKey="value" fill="var(--accent-color)" radius={[6, 6, 0, 0]} />
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'var(--color-text-secondary)', fontSize: 10 }} />
+                            <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--color-text-secondary)', fontSize: 10 }} />
+                            <Tooltip 
+                                cursor={{ fill: 'rgba(255,255,255,0.05)' }} 
+                                contentStyle={{ backgroundColor: 'rgba(10, 15, 28, 0.9)', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '12px', fontSize: '12px', backdropFilter: 'blur(8px)' }} 
+                            />
+                            <Bar dataKey="value" fill="url(#colorUv)" radius={[4, 4, 0, 0]} />
+                            <defs>
+                                <linearGradient id="colorUv" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="var(--color-accent)" stopOpacity={1}/>
+                                    <stop offset="95%" stopColor="var(--color-accent)" stopOpacity={0.2}/>
+                                </linearGradient>
+                            </defs>
                         </BarChart>
                     </ResponsiveContainer>
                 </Card>
 
                 {/* Recent Activity */}
-                <Card key="activity" title="Recent Activity" headerAction={<ActivityIcon size={18} className="text-muted" />}>
-                    <div className="activity-list compact">
+                <Card key="activity" title="Recent Activity" headerAction={<ActivityIcon size={18} className="text-text-secondary" />}>
+                    <div className="flex flex-col gap-4">
                         {recentActivity.map(activity => (
-                            <div key={activity.id} className="activity-item">
-                                <div className={`activity-status-dot ${activity.action}`} />
-                                <div className="activity-details">
-                                    <div className="activity-text">
-                                        <strong>{activity.action}</strong> {activity.entity_type}
-                                        {activity.entity_name && <span className="entity-name">: {activity.entity_name}</span>}
+                            <div key={activity.id} className="flex gap-3 items-start group">
+                                <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${
+                                    activity.action === 'created' ? 'bg-success' : 
+                                    activity.action === 'updated' ? 'bg-accent' : 'bg-danger'
+                                }`} />
+                                <div className="flex-1">
+                                    <div className="text-xs text-text-primary leading-tight">
+                                        <span className="font-bold uppercase text-[10px] mr-1">{activity.action}</span> 
+                                        <span className="text-text-secondary">{activity.entity_type}</span>
+                                        {activity.entity_name && <span className="font-medium">: {activity.entity_name}</span>}
                                     </div>
-                                    <div className="activity-time">{formatDate(activity.timestamp)}</div>
+                                    <div className="text-[10px] text-text-secondary mt-0.5">{formatDate(activity.timestamp)}</div>
                                 </div>
                             </div>
                         ))}
@@ -174,16 +187,17 @@ const Dashboard = () => {
                 </Card>
 
                 {/* Upcoming Events */}
-                <Card key="events" title="Upcoming Events" headerAction={<Calendar size={18} className="text-muted" />}>
-                    <div className="events-list">
+                <Card key="events" title="Upcoming Events" headerAction={<Calendar size={18} className="text-text-secondary" />}>
+                    <div className="flex flex-col gap-4">
                         {upcomingEvents.map(event => (
-                            <div key={event.id} className="event-item">
-                                <div className="event-date-small">
-                                    {formatMonthAbbr(event.start_time)} <strong>{formatDay(event.start_time)}</strong>
+                            <div key={event.id} className="flex gap-4 items-center">
+                                <div className="bg-surface-elevated border border-border rounded-lg px-2 py-1 text-center min-w-[48px] shadow-sm">
+                                    <div className="text-[9px] font-bold text-text-secondary uppercase">{formatMonthAbbr(event.start_time)}</div>
+                                    <div className="text-lg font-bold text-text-primary leading-none">{formatDay(event.start_time)}</div>
                                 </div>
-                                <div className="event-details">
-                                    <div className="event-title">{event.title}</div>
-                                    <div className="event-meta">{event.event_type} • {formatTime(event.start_time)}</div>
+                                <div className="flex-1 overflow-hidden">
+                                    <div className="text-sm font-semibold text-text-primary truncate">{event.title}</div>
+                                    <div className="text-[10px] text-text-secondary uppercase tracking-wider">{event.event_type} • {formatTime(event.start_time)}</div>
                                 </div>
                             </div>
                         ))}
@@ -191,128 +205,23 @@ const Dashboard = () => {
                 </Card>
 
                 {/* Latest Release */}
-                <Card key="release" title="Latest Release" headerAction={<Layout size={18} className="text-muted" />} contentClassName="kpi-widget-content">
+                <Card key="release" title="Latest Release" headerAction={<Layout size={18} className="text-text-secondary" />}>
                     {latestRelease ? (
-                        <div className="release-widget">
+                        <div className="flex gap-4 items-center h-full">
                             {latestRelease.cover_art_url ? (
-                                <img src={latestRelease.cover_art_url.startsWith('http') ? latestRelease.cover_art_url : `${BASE_URL}${latestRelease.cover_art_url}`} alt="" className="release-thumb" />
+                                <img src={latestRelease.cover_art_url.startsWith('http') ? latestRelease.cover_art_url : `${BASE_URL}${latestRelease.cover_art_url}`} alt="" className="w-20 h-20 rounded-lg object-cover shadow-md" />
                             ) : (
-                                <div className="release-thumb placeholder"><Disc size={32} /></div>
+                                <div className="w-20 h-20 rounded-lg bg-surface-elevated flex items-center justify-center text-text-secondary shadow-inner"><Disc size={32} /></div>
                             )}
-                            <div className="release-info">
-                                <h4>{latestRelease.title}</h4>
-                                <p>{formatDate(latestRelease.release_date)}</p>
+                            <div className="flex-1 overflow-hidden">
+                                <h4 className="text-sm font-bold text-text-primary truncate mb-1">{latestRelease.title}</h4>
+                                <p className="text-xs text-text-secondary mb-2">{formatDate(latestRelease.release_date)}</p>
                                 <Badge variant="primary" size="sm">{latestRelease.release_type}</Badge>
                             </div>
                         </div>
-                    ) : <p className="text-muted">No releases found</p>}
+                    ) : <p className="text-text-secondary text-sm">No releases found</p>}
                 </Card>
             </ResponsiveGridLayout>
-
-            <style>{`
-                .dashboard-container {
-                    padding: 0;
-                    background: var(--background-color);
-                    min-height: 100vh;
-                }
-                .dashboard-header {
-                    padding: 2rem;
-                    background: var(--surface-color);
-                    border-bottom: 1px solid var(--border-color);
-                    margin-bottom: 1rem;
-                }
-                .dashboard-grid-item {
-                    background: var(--surface-color);
-                    border-radius: 12px;
-                    border: 1px solid var(--border-color);
-                    box-shadow: var(--shadow-sm);
-                    overflow: hidden;
-                    display: flex;
-                    flex-direction: column;
-                    transition: box-shadow 0.2s ease, transform 0.2s ease;
-                }
-                .dashboard-grid-item:hover {
-                    box-shadow: var(--shadow);
-                }
-                .react-grid-placeholder {
-                    background: var(--accent-color) !important;
-                    border-radius: 12px !important;
-                    opacity: 0.1 !important;
-                }
-                .react-resizable-handle {
-                    position: absolute;
-                    width: 20px;
-                    height: 20px;
-                    bottom: 0;
-                    right: 0;
-                    cursor: se-resize;
-                }
-                .react-resizable-handle::after {
-                    content: "";
-                    position: absolute;
-                    right: 5px;
-                    bottom: 5px;
-                    width: 8px;
-                    height: 8px;
-                    border-right: 2px solid var(--border-strong);
-                    border-bottom: 2px solid var(--border-strong);
-                }
-                .activity-status-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; }
-                .activity-status-dot.created { background: var(--status-success-text); }
-                .activity-status-dot.updated { background: var(--status-info-text); }
-                .activity-status-dot.deleted { background: var(--status-critical-text); }
-                .activity-list.compact { display: flex; flex-direction: column; gap: 0.75rem; }
-                .activity-text { font-size: 0.8125rem; color: var(--text-color); }
-                .entity-name { color: var(--text-muted); font-weight: normal; }
-                .event-date-small { 
-                    background: var(--surface-secondary); border: 1px solid var(--border-color);
-                    border-radius: 6px; padding: 4px 8px; text-align: center;
-                    font-size: 0.625rem; min-width: 40px; color: var(--text-color);
-                }
-                .event-date-small strong { display: block; font-size: 1rem; }
-                .release-widget { display: flex; gap: 1rem; align-items: center; }
-                .release-thumb { width: 80px; height: 80px; border-radius: 8px; object-fit: cover; }
-                .release-thumb.placeholder { background: var(--surface-secondary); display: flex; align-items: center; justify-content: center; color: var(--text-muted); }
-                .badge-small { font-size: 0.625rem; background: var(--status-info-bg); color: var(--status-info-text); padding: 2px 6px; border-radius: 4px; font-weight: 600; }
-                .loading-state { height: 100vh; display: flex; align-items: center; justify-content: center; font-weight: 500; color: var(--text-muted); background: var(--background-color); }
-                .widget-header {
-                    padding: 1rem;
-                    border-bottom: 1px solid var(--border-color);
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    cursor: grab;
-                    background: var(--surface-secondary);
-                }
-                .widget-header:active {
-                    cursor: grabbing;
-                }
-                .widget-header h3 {
-                    margin: 0;
-                    font-size: 0.875rem;
-                    font-weight: 600;
-                    display: flex;
-                    align-items: center;
-                    gap: 0.5rem;
-                    color: var(--text-color);
-                }
-                .widget-content {
-                    flex: 1;
-                    padding: 1rem;
-                    overflow: auto;
-                    background: var(--surface-color);
-                }
-                .kpi-widget-content {
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                }
-                .kpi-widget-content .kpi-value {
-                    font-size: 2.5rem;
-                    font-weight: 700;
-                    color: var(--primary-color);
-                }
-            `}</style>
         </div>
     );
 };

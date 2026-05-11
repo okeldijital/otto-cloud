@@ -1,0 +1,26 @@
+--- DU PROOF: Recursive Backup Cleanup ---
+
+1. Before Cleanup:
+$ du -sh ~/.otto/data/storage/backups
+113G    /Users/m2krproduction/.otto/data/storage/backups
+
+2. Running Cleanup Script:
+$ CONFIRM_DELETE=true bash backend/scripts/cleanup_recursive_backups.sh
+--- OTTO Recursive Backup Cleanup Tool ---
+Target: /Users/m2krproduction/.otto/data/storage/backups
+Detected size: 113.00GB
+WARNING: /Users/m2krproduction/.otto/data/storage/backups is larger than 1GB. This likely contains recursive backups.
+Action: Deleting /Users/m2krproduction/.otto/data/storage/backups...
+Result: Deleted.
+
+3. After Cleanup:
+$ du -sh ~/.otto/data/storage
+244M    /Users/m2krproduction/.otto/data/storage
+
+4. New Backup (Safe):
+$ curl -X POST http://localhost:8001/api/admin/backups
+...
+$ du -sh ~/.otto/backups
+270K    /Users/m2krproduction/.otto/backups
+
+Result: Storage reclaimed and future backups redirected.

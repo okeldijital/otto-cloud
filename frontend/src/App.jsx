@@ -6,10 +6,13 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { queryClient } from './lib/queryClient';
 import MainLayout from './components/layout/MainLayout';
 import ConfirmationProvider from './components/ConfirmationProvider';
+import ToastContainer from './components/ui/ToastContainer';
 
 // Pages
+import LandingPage from './pages/LandingPage';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import Billing from './pages/Billing';
 import Dashboard from './pages/Dashboard';
 import Catalog from './pages/Catalog';
 import Labels from './pages/Labels';
@@ -77,6 +80,7 @@ function App() {
         <AuthProvider>
           <ConfirmationProvider>
             <ThemeProvider>
+              <ToastContainer />
               <HashRouter>
                 <FirstRunGuard>
                   <Routes>
@@ -399,6 +403,16 @@ function App() {
                       }
                     />
                     <Route
+                      path="/billing"
+                      element={
+                        <ProtectedRoute>
+                          <MainLayout>
+                            <Billing />
+                          </MainLayout>
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
                       path="/settings"
                       element={
                         <ProtectedRoute>
@@ -445,8 +459,8 @@ function App() {
                     <Route path="/network/relationships" element={<ProtectedRoute><MainLayout><Relationships /></MainLayout></ProtectedRoute>} />
 
                     {/* Default redirect */}
-                    <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                    <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                    <Route path="/" element={<LandingPage />} />
+                    <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                 </FirstRunGuard>
               </HashRouter>

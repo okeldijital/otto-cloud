@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import logo from '../assets/logo.png';
+import Logo from '../components/layout/Logo';
 
 export default function Register() {
     const [email, setEmail] = useState('');
@@ -29,76 +29,106 @@ export default function Register() {
     };
 
     return (
-        <div className="auth-container">
-            <div className="auth-background">
-                <div className="auth-gradient" />
+        <div className="min-h-screen bg-[#0f1115] flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden animate-in fade-in duration-500">
+            {/* Background effects */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-accent/20 rounded-full blur-[120px] opacity-30 pointer-events-none"></div>
+            
+            <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10">
+                <div className="flex justify-center mb-6">
+                    <Logo size="lg" />
+                </div>
+                <h2 className="mt-6 text-center text-4xl font-extrabold text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.3)] tracking-tight">
+                    Create Account
+                </h2>
+                <p className="mt-3 text-center text-sm text-text-secondary">
+                    Join 500+ music businesses scaling with OTTO
+                </p>
             </div>
 
-            <div className="auth-content">
-                <div className="auth-card">
-                    <div className="auth-logo">
-                        <img src={logo} alt="OTTO" />
-                    </div>
-
-                    <h1 className="auth-title">Create Account</h1>
-                    <p className="auth-subtitle">Join OTTO and manage your label</p>
-
+            <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10">
+                <div className="bg-premium-glass py-8 px-4 shadow-glass sm:rounded-[32px] sm:px-10 border border-white/5 backdrop-blur-2xl">
                     {error && (
-                        <div className="auth-error">
-                            {error}
+                        <div className="mb-6 bg-danger/10 border border-danger/30 text-danger px-4 py-3 rounded-xl flex items-center gap-3">
+                            <span className="text-sm font-medium">{error}</span>
                         </div>
                     )}
 
-                    <form onSubmit={handleSubmit} className="auth-form">
-                        <div className="form-group">
-                            <label htmlFor="fullName">Full Name</label>
-                            <input
-                                type="text"
-                                id="fullName"
-                                value={fullName}
-                                onChange={(e) => setFullName(e.target.value)}
-                                required
-                                placeholder="John Doe"
-                                autoFocus
-                            />
+                    <form className="space-y-5" onSubmit={handleSubmit}>
+                        <div>
+                            <label htmlFor="fullName" className="block text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">
+                                Full Name
+                            </label>
+                            <div className="mt-1">
+                                <input
+                                    id="fullName"
+                                    name="fullName"
+                                    type="text"
+                                    required
+                                    placeholder="John Doe"
+                                    value={fullName}
+                                    onChange={(e) => setFullName(e.target.value)}
+                                    className="appearance-none block w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-all text-white font-medium"
+                                />
+                            </div>
                         </div>
 
-                        <div className="form-group">
-                            <label htmlFor="email">Email Address</label>
-                            <input
-                                type="email"
-                                id="email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                required
-                                placeholder="you@example.com"
-                            />
+                        <div>
+                            <label htmlFor="email" className="block text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">
+                                Email Address
+                            </label>
+                            <div className="mt-1">
+                                <input
+                                    id="email"
+                                    name="email"
+                                    type="email"
+                                    autoComplete="email"
+                                    required
+                                    placeholder="you@example.com"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    className="appearance-none block w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-all text-white font-medium"
+                                />
+                            </div>
                         </div>
 
-                        <div className="form-group">
-                            <label htmlFor="password">Password</label>
-                            <input
-                                type="password"
-                                id="password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                required
-                                placeholder="Min. 8 characters"
-                                minLength={8}
-                            />
+                        <div>
+                            <label htmlFor="password" className="block text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">
+                                Password
+                            </label>
+                            <div className="mt-1">
+                                <input
+                                    id="password"
+                                    name="password"
+                                    type="password"
+                                    autoComplete="new-password"
+                                    required
+                                    placeholder="Min. 8 characters"
+                                    minLength={8}
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    className="appearance-none block w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-all text-white font-medium"
+                                />
+                            </div>
                         </div>
 
-                        <button
-                            type="submit"
-                            className="auth-submit-btn"
-                            disabled={isLoading}
-                        >
-                            {isLoading ? 'Creating Account...' : 'Create Account'}
-                        </button>
+                        <div className="pt-2">
+                            <button
+                                type="submit"
+                                disabled={isLoading}
+                                className="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-glow text-sm font-bold text-white bg-accent hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent focus:ring-offset-[#0f1115] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {isLoading ? 'Creating Workspace...' : 'Get Started Free'}
+                            </button>
+                        </div>
                     </form>
 
-                    <div className="auth-footer">
-                        Already have an account? <Link to="/login">Sign in</Link>
+                    <div className="mt-8 text-center pt-6 border-t border-white/5">
+                        <p className="text-sm text-text-secondary">
+                            Already have an account?{' '}
+                            <Link to="/login" className="font-bold text-accent hover:text-white transition-colors">
+                                Sign in
+                            </Link>
+                        </p>
                     </div>
                 </div>
             </div>

@@ -298,15 +298,15 @@ const Tracks = () => {
             label: 'Track Title',
             sortable: true,
             render: (row) => (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <div style={{ padding: '6px', background: '#f5f3ff', borderRadius: '6px', color: '#7c3aed' }}>
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-accent/10 rounded-lg text-accent">
                         <FileAudio size={16} />
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <Link to={`/catalog/tracks/${row.id}`} style={{ fontWeight: 600, color: 'var(--primary-color)', textDecoration: 'none' }}>
+                    <div className="flex flex-col">
+                        <Link to={`/catalog/tracks/${row.id}`} className="font-bold text-accent hover:text-white transition-colors">
                             {row.title}
                         </Link>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{row.genre || '-'}</span>
+                        <span className="text-[10px] font-bold text-text-secondary uppercase tracking-tight">{row.genre || '-'}</span>
                     </div>
                 </div>
             )
@@ -322,8 +322,8 @@ const Tracks = () => {
             key: 'artist_ids',
             label: 'Artist(s)',
             render: (row) => (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8125rem' }}>
-                    <Users size={14} className="text-muted" />
+                <div className="flex items-center gap-2 text-xs text-text-secondary">
+                    <Users size={14} className="opacity-50" />
                     {row.artist_ids?.length > 0 ? (
                         row.artist_ids.length === 1 ? (
                             (() => {
@@ -340,11 +340,11 @@ const Tracks = () => {
             label: 'Release',
             render: (row) => (
                 row.release_id ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8125rem' }}>
-                        <Disc size={14} className="text-muted" />
+                    <div className="flex items-center gap-2 text-xs text-text-secondary">
+                        <Disc size={14} className="opacity-50" />
                         {releaseDictionary[row.release_id] || 'Unknown Release'}
                     </div>
-                ) : <span className="text-muted">-</span>
+                ) : <span className="text-text-secondary/50">-</span>
             )
         },
         {
@@ -352,13 +352,13 @@ const Tracks = () => {
             label: 'Underlying Work',
             render: (row) => (
                 row.work_id ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8125rem' }}>
-                        <Music2 size={14} className="text-muted" />
-                        <Link to={`/catalog/works/${row.work_id}`} style={{ fontWeight: 500, color: 'var(--primary-color)', textDecoration: 'none' }}>
+                    <div className="flex items-center gap-2 text-xs text-text-secondary">
+                        <Music2 size={14} className="opacity-50" />
+                        <Link to={`/catalog/works/${row.work_id}`} className="text-accent hover:text-white transition-colors font-medium">
                             {workDictionary[row.work_id] || 'Unknown Work'}
                         </Link>
                     </div>
-                ) : <span className="text-muted">-</span>
+                ) : <span className="text-text-secondary/50">-</span>
             )
         }
     ];
@@ -383,45 +383,40 @@ const Tracks = () => {
     });
 
     return (
-        <div className="entity-page">
-            <Link to="/catalog" className="back-link">
-                <ChevronLeft size={16} /> Back to Catalog
-            </Link>
+        <div className="max-w-7xl mx-auto px-4 py-8">
             <PageHeader
                 title="Tracks"
                 subtitle="Master recordings and audio assets"
                 breadcrumb={
-                    <Link to="/catalog" className="back-link" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: 'var(--text-muted)', textDecoration: 'none', marginBottom: '0.5rem' }}>
+                    <Link to="/catalog" className="inline-flex items-center gap-1 text-text-secondary hover:text-white transition-colors font-bold text-sm mb-2">
                         <ChevronLeft size={16} /> Back to Catalog
                     </Link>
                 }
                 actions={
-                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                        <div className="relative" style={{ minWidth: '250px' }}>
-                            <div style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}>
+                    <div className="flex gap-3 items-center">
+                        <div className="relative min-w-[250px]">
+                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none">
                                 <Search size={16} />
                             </div>
                             <input
                                 type="text"
-                                style={{ width: '100%', paddingLeft: '2.5rem', height: '40px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-color)', outline: 'none' }}
+                                className="w-full pl-10 pr-4 h-10 rounded-xl border border-white/10 bg-white/5 text-white text-sm outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all placeholder:text-text-secondary/50"
                                 placeholder="Quick search tracks..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </div>
-                        <div style={{ minWidth: '150px' }}>
-                            <select
-                                className="input"
-                                style={{ height: '40px', width: '100%', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', padding: '0 1rem', color: 'var(--text-color)' }}
+                        <div className="min-w-[150px]">
+                            <Select
                                 value={filterType}
                                 onChange={(e) => setFilterType(e.target.value)}
                             >
                                 <option value="all">All Tracks</option>
                                 <option value="unassigned">Unassigned (No Release)</option>
                                 <option value="assigned">Assigned (Has Release)</option>
-                            </select>
+                            </Select>
                         </div>
-                        <Button className="btn-primary" onClick={handleCreate} icon={FileAudio}>
+                        <Button className="btn-primary" onClick={handleCreate} icon={Plus}>
                             Add Track
                         </Button>
                     </div>
@@ -450,8 +445,8 @@ const Tracks = () => {
                     required
                 />
 
-                <div className="form-group">
-                    <label>Artist(s)</label>
+                <div className="mb-6">
+                    <label className="block text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">Artist(s)</label>
                     <Autocomplete
                         options={combinedArtistOptions}
                         value={formData.artist_ids}
@@ -495,53 +490,52 @@ const Tracks = () => {
                     />
                 </div>
 
-                <div className="form-group">
-                    <label>Streaming Link</label>
-                    <div style={{ position: 'relative' }}>
-                        <input
+                <div className="mb-6">
+                    <label className="block text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">Streaming Link</label>
+                    <div className="relative">
+                        <Input
                             type="url"
                             value={formData.streaming_link}
                             onChange={(e) => setFormData({ ...formData, streaming_link: e.target.value })}
                             placeholder="https://spotify.com/..."
-                            style={{ paddingRight: '2rem' }}
+                            className="pr-10"
                         />
-                        <div style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}>
-                            <ExternalLink size={14} />
+                        <div className="absolute right-3 top-[38px] text-text-secondary opacity-50">
+                            <ExternalLink size={16} />
                         </div>
                     </div>
                 </div>
 
-                <div className="form-section-title">Relationships</div>
-
-                <div className="form-row">
-                    <div className="form-group flex-1">
-                        <label>Linked Release</label>
-                        <Autocomplete
-                            options={releases || []}
-                            value={formData.release_id}
-                            onChange={(val) => setFormData({ ...formData, release_id: val })}
-                            placeholder="Select Release..."
-                            labelKey="title"
-                            allowQuickAdd={true}
-                            quickAddType="releases"
-                        />
+                <div className="mb-8">
+                    <h4 className="text-xs font-bold text-accent uppercase tracking-widest border-b border-white/5 pb-3 mb-5">Relationships</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label className="block text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">Linked Release</label>
+                            <Autocomplete
+                                options={releases || []}
+                                value={formData.release_id}
+                                onChange={(val) => setFormData({ ...formData, release_id: val })}
+                                placeholder="Select Release..."
+                                labelKey="title"
+                                allowQuickAdd={true}
+                                quickAddType="releases"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">Also On (Additional Releases)</label>
+                            <Autocomplete
+                                options={(releases || []).filter(r => r.id !== formData.release_id)}
+                                value={formData.secondary_release_ids}
+                                onChange={(val) => setFormData({ ...formData, secondary_release_ids: val })}
+                                placeholder="Select other releases..."
+                                labelKey="title"
+                                allowQuickAdd={false}
+                                multiple={true}
+                            />
+                        </div>
                     </div>
-                    <div className="form-group flex-1">
-                        <label>Also On (Additional Releases)</label>
-                        <Autocomplete
-                            options={(releases || []).filter(r => r.id !== formData.release_id)}
-                            value={formData.secondary_release_ids}
-                            onChange={(val) => setFormData({ ...formData, secondary_release_ids: val })}
-                            placeholder="Select other releases..."
-                            labelKey="title"
-                            allowQuickAdd={false}
-                            multiple={true}
-                        />
-                    </div>
-                </div>
-                <div className="form-row">
-                    <div className="form-group flex-1">
-                        <label>Underlying Work</label>
+                    <div>
+                        <label className="block text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">Underlying Work</label>
                         <Autocomplete
                             options={works || []}
                             value={formData.work_id}
@@ -554,9 +548,9 @@ const Tracks = () => {
                     </div>
                 </div>
 
-                <div className="form-group">
-                    <label>Credits (Musicians, Engineers)</label>
-                    <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <div className="mb-6">
+                    <h4 className="text-xs font-bold text-accent uppercase tracking-widest border-b border-white/5 pb-3 mb-5">Credits (Musicians, Engineers)</h4>
+                    <div className="bg-white/5 border border-white/5 p-6 rounded-2xl">
                         {formData.credits.map((credit, index) => {
                             if (!credit) return null;
                             let name = 'Unknown';
@@ -575,14 +569,14 @@ const Tracks = () => {
                             }
 
                             return (
-                                <div key={index} style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.75rem', alignItems: 'center', background: '#fff', padding: '0.5rem', borderRadius: '6px', border: '1px solid #f1f5f9' }}>
-                                    <div style={{ padding: '0.25rem 0.5rem', background: '#e2e8f0', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600, color: '#475569', textTransform: 'uppercase', width: '80px', textAlign: 'center' }}>
+                                <div key={index} className="flex items-center gap-3 mb-3 bg-white/5 p-4 rounded-xl border border-white/5 group hover:border-white/10 transition-colors">
+                                    <div className="px-2 py-1 bg-white/10 rounded text-[9px] font-bold text-text-secondary uppercase tracking-widest w-20 text-center">
                                         {credit.artist_id ? 'Artist' : credit.label_id ? 'Label' : credit.organization_id ? 'Org' : 'Contact'}
                                     </div>
-                                    <div style={{ flex: 1, fontWeight: 500, fontSize: '0.9rem', color: '#1e293b' }}>
+                                    <div className="flex-1 font-bold text-sm text-white">
                                         {name}
                                     </div>
-                                    <div style={{ flex: 1, fontSize: '0.875rem', color: '#64748b' }}>
+                                    <div className="flex-1 text-sm text-text-secondary">
                                         {credit.role}
                                     </div>
                                     <button
@@ -592,20 +586,19 @@ const Tracks = () => {
                                             newCredits.splice(index, 1);
                                             setFormData({ ...formData, credits: newCredits });
                                         }}
-                                        style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem' }}
+                                        className="text-danger hover:text-white p-1.5 rounded-lg hover:bg-danger/20 transition-all opacity-0 group-hover:opacity-100"
                                         title="Remove"
                                     >
-                                        &times;
+                                        <Plus className="rotate-45" size={16} />
                                     </button>
                                 </div>
                             );
                         })}
 
-                        <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid #e2e8f0' }}>
-                            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                                <div style={{ width: '110px' }}>
-                                    <select
-                                        className="input"
+                        <div className="mt-6 pt-6 border-t border-white/5">
+                            <div className="flex flex-col sm:flex-row gap-4 mb-4">
+                                <div className="w-full sm:w-40">
+                                    <Select
                                         value={newCreditType}
                                         onChange={(e) => {
                                             setNewCreditType(e.target.value);
@@ -614,15 +607,14 @@ const Tracks = () => {
                                             setNewCreditLabelId('');
                                             setNewCreditOrgId('');
                                         }}
-                                        style={{ width: '100%', padding: '0.5rem', fontSize: '0.875rem' }}
                                     >
                                         <option value="individual">Contact</option>
                                         <option value="artist">Artist</option>
                                         <option value="label">Label</option>
                                         <option value="organization">Organization</option>
-                                    </select>
+                                    </Select>
                                 </div>
-                                <div style={{ flex: 1 }}>
+                                <div className="flex-1">
                                     {newCreditType === 'artist' ? (
                                         <Autocomplete
                                             options={(artists || []).map(a => ({ id: a.id, name: a.display_name || a.name }))}
@@ -659,18 +651,16 @@ const Tracks = () => {
                                     )}
                                 </div>
                             </div>
-                            <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                <input
-                                    className="input"
-                                    type="text"
-                                    placeholder="Role (e.g. Guitar)"
-                                    value={newCreditRole}
-                                    onChange={(e) => setNewCreditRole(e.target.value)}
-                                    style={{ flex: 1 }}
-                                />
+                            <div className="flex gap-4">
+                                <div className="flex-1">
+                                    <Input
+                                        placeholder="Role (e.g. Guitar)"
+                                        value={newCreditRole}
+                                        onChange={(e) => setNewCreditRole(e.target.value)}
+                                    />
+                                </div>
                                 <button
                                     type="button"
-                                    className="btn-secondary"
                                     disabled={(!newCreditContactId && !newCreditArtistId && !newCreditLabelId && !newCreditOrgId) || !newCreditRole}
                                     onClick={() => {
                                         if ((newCreditContactId || newCreditArtistId || newCreditLabelId || newCreditOrgId) && newCreditRole) {
@@ -696,10 +686,10 @@ const Tracks = () => {
                                             setNewCreditRole('');
                                         }
                                     }}
-                                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: '40px', background: 'var(--primary-color)', color: 'white', border: 'none', borderRadius: '4px' }}
+                                    className="bg-accent hover:bg-accent/90 text-[#0f1115] disabled:bg-white/5 disabled:text-text-secondary disabled:cursor-not-allowed rounded-xl px-5 flex items-center justify-center transition-all shadow-glow hover:shadow-accent/40"
                                     title="Add Credit"
                                 >
-                                    <Plus size={16} />
+                                    <Plus size={20} />
                                 </button>
                             </div>
                         </div>

@@ -1,70 +1,67 @@
 import React, { useEffect } from 'react';
+import { X, AlertCircle, Loader2 } from 'lucide-react';
+import Button from './ui/Button';
 
 const EntityForm = ({ isOpen, onClose, title, children, onSubmit, isSubmitting, error }) => {
-    // Locked modal: No Escape key listener
-    // useEffect(() => { ... }, []);
+    // Prevent body scroll when modal is open
+    useEffect(() => {
+        if (isOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, [isOpen]);
 
     if (!isOpen) return null;
 
     return (
-        <div className="modal-overlay">
-            <div className="modal-content" onClick={e => e.stopPropagation()}>
-                <div className="modal-header">
-                    <h2>{title}</h2>
-                    <button className="close-btn" onClick={onClose} aria-label="Close">&times;</button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0f1115]/80 backdrop-blur-md p-4 sm:p-6 overflow-y-auto">
+            <div 
+                className="bg-premium-glass border border-white/10 rounded-3xl shadow-glass w-full max-w-2xl overflow-hidden flex flex-col max-h-full animate-in fade-in zoom-in-95 duration-200" 
+                onClick={e => e.stopPropagation()}
+            >
+                <div className="flex items-center justify-between p-6 border-b border-white/5 bg-white/[0.02]">
+                    <h2 className="text-xl font-black text-white tracking-tight">{title}</h2>
+                    <button 
+                        className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-text-secondary hover:text-white transition-colors" 
+                        onClick={onClose} 
+                        aria-label="Close"
+                    >
+                        <X size={16} />
+                    </button>
                 </div>
-                <form onSubmit={onSubmit}>
-                    <div className="modal-body">
+                
+                <form onSubmit={onSubmit} className="flex flex-col flex-1 overflow-hidden">
+                    <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
                         {error && (
-                            <div className="form-error-banner" style={{
-                                backgroundColor: '#fee2e2',
-                                color: '#b91c1c',
-                                border: '1px solid #fecaca',
-                                padding: '0.75rem',
-                                borderRadius: '0.375rem',
-                                marginBottom: '1rem',
-                                fontSize: '0.875rem',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.5rem'
-                            }}>
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <circle cx="12" cy="12" r="10"></circle>
-                                    <line x1="12" y1="8" x2="12" y2="12"></line>
-                                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                                </svg>
-                                {error}
+                            <div className="mb-6 bg-danger/10 border border-danger/20 rounded-xl p-4 text-danger text-sm flex items-start gap-3">
+                                <AlertCircle size={18} className="shrink-0 mt-0.5" />
+                                <div>{error}</div>
                             </div>
                         )}
                         {children}
                     </div>
-                    <div className="modal-footer">
-                        <button type="button" className="btn-secondary" onClick={onClose}>
+                    
+                    <div className="p-6 border-t border-white/5 bg-white/[0.02] flex items-center justify-end gap-3 shrink-0">
+                        <Button type="button" variant="secondary" onClick={onClose}>
                             Cancel
-                        </button>
-                        <button type="submit" className="btn-primary" disabled={isSubmitting}>
+                        </Button>
+                        <Button type="submit" disabled={isSubmitting}>
                             {isSubmitting ? (
-                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <svg className="spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'spin 1s linear infinite' }}>
-                                        <line x1="12" y1="2" x2="12" y2="6"></line>
-                                        <line x1="12" y1="18" x2="12" y2="22"></line>
-                                        <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line>
-                                        <line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line>
-                                        <line x1="2" y1="12" x2="6" y2="12"></line>
-                                        <line x1="18" y1="12" x2="22" y2="12"></line>
-                                        <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line>
-                                        <line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line>
-                                    </svg>
+                                <span className="flex items-center gap-2">
+                                    <Loader2 size={16} className="animate-spin" />
                                     Saving...
                                 </span>
-                            ) : 'Save'}
-                        </button>
+                            ) : (
+                                'Save'
+                            )}
+                        </Button>
                     </div>
                 </form>
             </div>
-            <style>{`
-                @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-            `}</style>
         </div>
     );
 };

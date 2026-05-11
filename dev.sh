@@ -69,7 +69,7 @@ for _ in $(seq 1 40); do
         exit 1
     fi
     if [ -f "$FRONTEND_LOG" ]; then
-        FRONTEND_URL="$(rg -o 'http://localhost:[0-9]+' "$FRONTEND_LOG" | tail -n 1 || true)"
+        FRONTEND_URL="$(grep -oE 'http://localhost:[0-9]+' "$FRONTEND_LOG" | tail -n 1 || true)"
         if [ -n "${FRONTEND_URL:-}" ]; then
             break
         fi

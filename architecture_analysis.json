@@ -1,0 +1,115 @@
+{
+  "entry_point": {
+    "file": "/backend/main.py",
+    "function": "start_backend()"
+  },
+  "agents": [
+    {
+      "file": "/backend/services/ai/engine.py",
+      "role": "Main AI orchestrator that coordinates different AI services"
+    },
+    {
+      "file": "/backend/services/ai/llm/client.py",
+      "role": "Handles communication with Large Language Models (LLMs)"
+    },
+    {
+      "file": "/backend/services/ai/extractors/contract_extractor_v2.py",
+      "role": "Extracts structured data from contracts using LLM or deterministic methods"
+    },
+    {
+      "file": "/backend/services/ai/matchers/contract_resolver_v1.py",
+      "role": "Matches and resolves contract entities against existing records"
+    },
+    {
+      "file": "/backend/services/ai/royalty/simulate.py",
+      "role": "Simulates royalty calculations based on contract terms"
+    },
+    {
+      "file": "/backend/services/ai/contract_wizard/draft.py",
+      "role": "Guides users through contract creation workflow"
+    },
+    {
+      "file": "/backend/services/ai/release_integration/attach.py",
+      "role": "Attaches source documents to release integration records"
+    },
+    {
+      "file": "/backend/services/ai/release_validation/plan.py",
+      "role": "Plans and executes release validation workflows"
+    },
+    {
+      "file": "/backend/services/ai/track_mapping/track_map_plan_v1.py",
+      "role": "Maps audio tracks to contract terms"
+    },
+    {
+      "file": "/backend/services/ai/contract_attach/apply.py",
+      "role": "Applies AI-extracted contract data to the system"
+    }
+  ],
+  "pipelines": [
+    {
+      "file": "/backend/services/ai/contract_ingest/ingest.py",
+      "description": "Main pipeline for ingesting and processing contracts through AI extraction, validation, and storage"
+    },
+    {
+      "file": "/backend/services/ai/release_validation/plan.py",
+      "description": "Orchestrates release validation workflow including document attachment and persistence"
+    },
+    {
+      "file": "/backend/services/ai/release_integration/plan.py",
+      "description": "Coordinates release integration processes including source contract verification"
+    },
+    {
+      "file": "/backend/services/ai/release_mapping/map_plan_v1.py",
+      "description": "Maps audio tracks to contractual rights and obligations"
+    },
+    {
+      "file": "/backend/services/ai/contract_wizard/draft.py",
+      "description": "Step-by-step workflow for creating contracts with AI assistance"
+    },
+    {
+      "file": "/backend/services/ai/contract_attach/plan.py",
+      "description": "Plans the attachment of AI-extracted contract data to existing records"
+    },
+    {
+      "file": "/backend/services/ai/core_write/apply.py",
+      "description": "Applies AI-generated core write proposals to the system"
+    },
+    {
+      "file": "/backend/services/ai/core_write/propose.py",
+      "description": "Generates AI-powered contract modification proposals"
+    }
+  ],
+  "memory": [
+    {
+      "type": "Database",
+      "files": [
+        "/backend/database.py",
+        "/backend/models/",
+        "/backend/schemas/"
+      ],
+      "description": "PostgreSQL/SQLite database using SQLAlchemy ORM for persistent storage of contracts, users, royalties, and AI processing results"
+    },
+    {
+      "type": "In-memory Cache",
+      "files": [
+        "/backend/services/ai/registry.py"
+      ],
+      "description": "AI service registry that caches service instances and configuration"
+    },
+    {
+      "type": "File System",
+      "files": [
+        "/backend/config.py",
+        "/backend/utils/migrations.py"
+      ],
+      "description": "File-based storage for uploads, migrations, and configuration"
+    },
+    {
+      "type": "Migration State",
+      "files": [
+        "/backend/alembic/versions/"
+      ],
+      "description": "Database migration scripts tracking schema evolution"
+    }
+  ]
+}

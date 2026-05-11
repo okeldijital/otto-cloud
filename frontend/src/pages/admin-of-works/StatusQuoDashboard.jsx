@@ -12,6 +12,9 @@ import {
     RefreshCw
 } from 'lucide-react';
 import statusQuoService from '../../services/statusQuoService';
+import Button from '../../components/ui/Button';
+import Card from '../../components/ui/Card';
+import Badge from '../../components/ui/Badge';
 
 const StatusQuoDashboard = () => {
     const navigate = useNavigate();
@@ -55,126 +58,173 @@ const StatusQuoDashboard = () => {
         }
     };
 
-    if (loading && !data) return <div className="placeholder">Loading status quo insight…</div>;
-    if (error) return <div className="error-banner">{error}</div>;
+    if (loading && !data) return <div className="p-8 text-center text-text-secondary animate-pulse">Loading status quo insight…</div>;
+    if (error) return <div className="p-8"><div className="bg-danger/10 border border-danger/30 text-danger px-4 py-3 rounded-xl">{error}</div></div>;
 
     const { summary, alerts, contracts, works } = data;
 
-    const getStatusClass = (status) => {
-        return status?.toLowerCase() || 'neutral';
+    const getStatusVariant = (status) => {
+        const s = status?.toUpperCase();
+        if (s === 'GREEN') return 'success';
+        if (s === 'AMBER') return 'warning';
+        if (s === 'RED') return 'danger';
+        return 'neutral';
     };
 
     return (
-        <div className="contracts-shell">
-            <header className="contracts-header">
-                <div>
-                    <p className="breadcrumb">Administration ▸ Status Quo</p>
-                    <h1>Status Quo Dashboard</h1>
-                    <p className="muted">Live monitoring of legal compliance and registration health.</p>
+        <div className="p-8 max-w-[1600px] mx-auto animate-in fade-in duration-500">
+            {/* Header */}
+            <div className="bg-premium-glass border border-white/5 rounded-[32px] p-8 mb-8 flex flex-col gap-6 shadow-glass backdrop-blur-2xl">
+                <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
+                    <div>
+                        <p className="text-sm font-bold text-text-secondary uppercase tracking-widest mb-2">Administration ▸ Status Quo</p>
+                        <h1 className="text-4xl font-bold text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.4)] tracking-tight mb-2">Status Quo Dashboard</h1>
+                        <p className="text-text-secondary">Live monitoring of legal compliance and registration health.</p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-4">
+                        <Button
+                            variant="primary"
+                            onClick={handleRecompute}
+                            disabled={recomputing}
+                            className={recomputing ? 'opacity-70 cursor-not-allowed' : ''}
+                        >
+                            <RefreshCw size={16} className={`mr-2 ${recomputing ? 'animate-spin' : ''}`} />
+                            {recomputing ? 'Recomputing...' : 'Recompute Gaps'}
+                        </Button>
+                        <Badge variant={getStatusVariant(summary.overall_status)} size="lg" className="px-4 py-2 text-sm font-bold">
+                            {summary.overall_status === 'GREEN' ? <CheckCircle size={18} className="mr-2" /> : <AlertTriangle size={18} className="mr-2" />}
+                            Overall Health: {summary.overall_status}
+                        </Badge>
+                    </div>
                 </div>
-                <div className="header-actions">
-                    <button
-                        className={`btn-primary flex items-center gap-2 ${recomputing ? 'animate-pulse' : ''}`}
-                        onClick={handleRecompute}
-                        disabled={recomputing}
+            </div>
+
+            {/* Stats Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <Card>
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <p className="text-xs font-bold text-text-secondary uppercase tracking-widest mb-1">Contracts Red</p>
+                            <p className="text-4xl font-black text-danger drop-shadow-[0_0_10px_rgba(239,68,68,0.5)]">{summary.red_contracts}</p>
+                        </div>
+                        <div className="p-3 bg-danger/10 text-danger rounded-xl border border-danger/20">
+                            <FileText size={24} />
+                        </div>
+                    </div>
+                </Card>
+                <Card>
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <p className="text-xs font-bold text-text-secondary uppercase tracking-widest mb-1">Works Red</p>
+                            <p className="text-4xl font-black text-danger drop-shadow-[0_0_10px_rgba(239,68,68,0.5)]">{summary.red_works}</p>
+                        </div>
+                        <div className="p-3 bg-danger/10 text-danger rounded-xl border border-danger/20">
+                            <ShieldCheck size={24} />
+                        </div>
+                    </div>
+                </Card>
+                <Card>
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <p className="text-xs font-bold text-text-secondary uppercase tracking-widest mb-1">Total Active</p>
+                            <p className="text-4xl font-black text-white">{contracts.length + works.length}</p>
+                        </div>
+                        <div className="p-3 bg-white/5 text-text-secondary rounded-xl border border-white/10">
+                            <Clock size={24} />
+                        </div>
+                    </div>
+                </Card>
+            </div>
+
+            {/* Filters Row */}
+            <div className="bg-premium-glass border border-white/5 rounded-2xl p-4 mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm backdrop-blur-xl">
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-white/5 text-text-secondary border border-white/10">
+                        <Filter size={18} />
+                    </div>
+                    <select 
+                        value={filter.status} 
+                        onChange={(e) => setFilter({ ...filter, status: e.target.value })}
+                        className="bg-white/5 border border-white/10 text-white text-sm rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-accent appearance-none font-medium"
                     >
-                        <RefreshCw size={16} className={recomputing ? 'animate-spin' : ''} />
-                        {recomputing ? 'Recomputing...' : 'Recompute Gaps'}
-                    </button>
-                    <div className={`status-badge big ${getStatusClass(summary.overall_status)}`}>
-                        {summary.overall_status === 'GREEN' ? <CheckCircle size={18} /> : <AlertTriangle size={18} />}
-                        Overall Health: {summary.overall_status}
-                    </div>
-                </div>
-            </header>
-
-            <div className="stats-grid">
-                <div className="stats-card">
-                    <div>
-                        <p className="stats-title">Contracts Red</p>
-                        <p className="stats-value">{summary.red_contracts}</p>
-                    </div>
-                    <FileText className="muted" size={24} />
-                </div>
-                <div className="stats-card">
-                    <div>
-                        <p className="stats-title">Works Red</p>
-                        <p className="stats-value">{summary.red_works}</p>
-                    </div>
-                    <ShieldCheck className="muted" size={24} />
-                </div>
-                <div className="stats-card">
-                    <div>
-                        <p className="stats-title">Total Active</p>
-                        <p className="stats-value">{contracts.length + works.length}</p>
-                    </div>
-                    <Clock className="muted" size={24} />
-                </div>
-            </div>
-
-            <div className="panel filters-row">
-                <div className="filter-group">
-                    <Filter size={16} />
-                    <select value={filter.status} onChange={(e) => setFilter({ ...filter, status: e.target.value })}>
-                        <option value="All">All Statuses</option>
-                        <option value="RED">RED (Action Required)</option>
-                        <option value="AMBER">AMBER (Warning)</option>
-                        <option value="GREEN">GREEN (Compliance)</option>
+                        <option value="All" className="bg-[#0f1115]">All Statuses</option>
+                        <option value="RED" className="bg-[#0f1115]">RED (Action Required)</option>
+                        <option value="AMBER" className="bg-[#0f1115]">AMBER (Warning)</option>
+                        <option value="GREEN" className="bg-[#0f1115]">GREEN (Compliance)</option>
                     </select>
-                    <select value={filter.type} onChange={(e) => setFilter({ ...filter, type: e.target.value })}>
-                        <option value="All">All Types</option>
-                        <option value="contract">Contracts</option>
-                        <option value="work">Works</option>
+                    <select 
+                        value={filter.type} 
+                        onChange={(e) => setFilter({ ...filter, type: e.target.value })}
+                        className="bg-white/5 border border-white/10 text-white text-sm rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-accent appearance-none font-medium"
+                    >
+                        <option value="All" className="bg-[#0f1115]">All Types</option>
+                        <option value="contract" className="bg-[#0f1115]">Contracts</option>
+                        <option value="work" className="bg-[#0f1115]">Works</option>
                     </select>
                 </div>
-                <button className="ghost-btn" onClick={() => alert('PDF Report Export stub.')}>
-                    <Download size={14} /> Download Report
-                </button>
+                <Button variant="ghost" onClick={() => alert('PDF Report Export stub.')}>
+                    <Download size={16} className="mr-2" /> Download Report
+                </Button>
             </div>
 
-            <div className="grid-2">
-                <div className="panel padded">
-                    <h3 className="section-title">Critical Attention (RED)</h3>
-                    <div className="alerts-list">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Critical Attention */}
+                <Card title="Critical Attention (RED)" noPadding className="flex flex-col h-full">
+                    <div className="flex-1 overflow-y-auto max-h-[600px] divide-y divide-white/5">
                         {(alerts.missing_signed_pdf || []).map((item, i) => (
-                            <div key={`pdf-${i}`} className="alert-item red" onClick={() => navigate(`/admin-of-works/contracts/${item.id}`)}>
-                                <AlertTriangle size={16} />
-                                <div>
-                                    <p className="strong">{item.title}</p>
-                                    <p className="small">Missing signed PDF document</p>
+                            <div 
+                                key={`pdf-${i}`} 
+                                className="p-4 hover:bg-white/[0.02] transition-colors cursor-pointer flex items-center gap-4 group" 
+                                onClick={() => navigate(`/admin-of-works/contracts/${item.id}`)}
+                            >
+                                <div className="w-10 h-10 rounded-full bg-danger/10 text-danger flex items-center justify-center shrink-0 border border-danger/20 group-hover:scale-110 transition-transform">
+                                    <AlertTriangle size={18} />
                                 </div>
-                                <ChevronRight size={16} className="ml-auto" />
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-white font-bold truncate">{item.title}</p>
+                                    <p className="text-sm text-danger/80">Missing signed PDF document</p>
+                                </div>
+                                <ChevronRight size={18} className="text-text-secondary group-hover:text-white transition-colors shrink-0" />
                             </div>
                         ))}
                         {(alerts.missing_registration_proof || []).map((item, i) => (
-                            <div key={`proof-${i}`} className="alert-item red" onClick={() => navigate(`/admin-of-works/works/${item.work_id}`)}>
-                                <AlertTriangle size={16} />
-                                <div>
-                                    <p className="strong">{item.title}</p>
-                                    <p className="small">Missing registration proof</p>
+                            <div 
+                                key={`proof-${i}`} 
+                                className="p-4 hover:bg-white/[0.02] transition-colors cursor-pointer flex items-center gap-4 group" 
+                                onClick={() => navigate(`/admin-of-works/works/${item.work_id}`)}
+                            >
+                                <div className="w-10 h-10 rounded-full bg-danger/10 text-danger flex items-center justify-center shrink-0 border border-danger/20 group-hover:scale-110 transition-transform">
+                                    <AlertTriangle size={18} />
                                 </div>
-                                <ChevronRight size={16} className="ml-auto" />
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-white font-bold truncate">{item.title}</p>
+                                    <p className="text-sm text-danger/80">Missing registration proof</p>
+                                </div>
+                                <ChevronRight size={18} className="text-text-secondary group-hover:text-white transition-colors shrink-0" />
                             </div>
                         ))}
                         {(!alerts.missing_signed_pdf?.length && !alerts.missing_registration_proof?.length) && (
-                            <p className="placeholder">No critical alerts found.</p>
+                            <div className="p-8 text-center text-text-secondary">
+                                <CheckCircle size={32} className="mx-auto mb-3 text-success/50" />
+                                <p>No critical alerts found.</p>
+                            </div>
                         )}
                     </div>
-                </div>
+                </Card>
 
-                <div className="panel padded">
-                    <h3 className="section-title">Aggregated View</h3>
-                    <div className="scroll-panel" style={{ maxHeight: '600px', overflowY: 'auto' }}>
-                        <table className="contracts-table">
-                            <thead>
+                {/* Aggregated View */}
+                <Card title="Aggregated View" noPadding className="flex flex-col h-full">
+                    <div className="flex-1 overflow-y-auto max-h-[600px]">
+                        <table className="w-full text-left">
+                            <thead className="sticky top-0 bg-[#0f1115]/90 backdrop-blur border-b border-white/5 z-10">
                                 <tr>
-                                    <th>Status</th>
-                                    <th>Item</th>
-                                    <th>Type</th>
-                                    <th>Reasons</th>
+                                    <th className="px-6 py-4 text-[10px] text-text-secondary uppercase tracking-widest font-bold">Status</th>
+                                    <th className="px-6 py-4 text-[10px] text-text-secondary uppercase tracking-widest font-bold">Item</th>
+                                    <th className="px-6 py-4 text-[10px] text-text-secondary uppercase tracking-widest font-bold">Type</th>
+                                    <th className="px-6 py-4 text-[10px] text-text-secondary uppercase tracking-widest font-bold">Reasons</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody className="divide-y divide-white/5">
                                 {(data.aggregated || [...contracts, ...works]).map((item, i) => (
                                     <tr
                                         key={i}
@@ -187,19 +237,23 @@ const StatusQuoDashboard = () => {
                                                                 '#';
                                             if (path !== '#') navigate(path);
                                         }}
-                                        className="clickable"
+                                        className="hover:bg-white/[0.02] transition-colors cursor-pointer group"
                                     >
-                                        <td>
-                                            <span className={`status-badge ${getStatusClass(item.status_quo.status)}`}>
-                                                {item.status_quo.status}
-                                            </span>
+                                        <td className="px-6 py-4">
+                                            <Badge variant={getStatusVariant(item.status_quo?.status)}>
+                                                {item.status_quo?.status || 'UNKNOWN'}
+                                            </Badge>
                                         </td>
-                                        <td className="strong">{item.title}</td>
-                                        <td className="text-xs uppercase font-bold text-primary">{item.type}</td>
-                                        <td>
-                                            <div className="reasons-list">
-                                                {item.status_quo.reasons.map((r, ri) => (
-                                                    <div key={ri} className="small muted">• {r}</div>
+                                        <td className="px-6 py-4">
+                                            <p className="text-white font-bold group-hover:text-accent transition-colors">{item.title}</p>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className="text-[10px] font-bold text-accent bg-accent/10 px-2 py-1 rounded-md uppercase tracking-widest">{item.type}</span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex flex-col gap-1">
+                                                {(item.status_quo?.reasons || []).map((r, ri) => (
+                                                    <div key={ri} className="text-sm text-text-secondary line-clamp-1 group-hover:line-clamp-none transition-all">• {r}</div>
                                                 ))}
                                             </div>
                                         </td>
@@ -208,7 +262,7 @@ const StatusQuoDashboard = () => {
                             </tbody>
                         </table>
                     </div>
-                </div>
+                </Card>
             </div>
         </div>
     );

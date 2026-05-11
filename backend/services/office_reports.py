@@ -14,7 +14,7 @@ from models.artist import Artist
 from models.track import Track
 from models.release import Release
 from models.work import Work
-from models.contract import Contract, ContractParty, ContractAsset
+from models.contract import Contract, ContractParty, ContractAsset, ContractDocument
 from models.works_admin import WorksAdmin
 from models.royalty import Royalty
 from models.network import Organization
@@ -25,10 +25,11 @@ from models.task import Task
 from models.event import Event
 
 REPORT_TYPES = {
-    "status_quo": {"label": "Status Quo Report", "formats": ["pdf", "csv"]},
-    "documents_coverage": {"label": "Documents Coverage", "formats": ["pdf", "csv"]},
-    "tasks_progress": {"label": "Tasks Progress", "formats": ["pdf", "csv"]},
-    "events_timeline": {"label": "Events Timeline", "formats": ["pdf", "csv"]},
+    "status_quo": {"label": "Status Quo Report", "formats": ["pdf", "csv", "json", "xlsx"]},
+    "documents_coverage": {"label": "Documents Coverage", "formats": ["pdf", "csv", "json", "xlsx"]},
+    "tasks_progress": {"label": "Tasks Progress", "formats": ["pdf", "csv", "json", "xlsx"]},
+    "events_timeline": {"label": "Events Timeline", "formats": ["pdf", "csv", "json", "xlsx"]},
+    "contracts_audit": {"label": "Contracts Audit", "formats": ["pdf", "csv", "json", "xlsx"]},
 }
 
 def build_status_quo(db, org_id: UUID, params: Dict[str, Any]) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
@@ -100,11 +101,58 @@ def build_events_timeline(db, org_id: UUID, params: Dict[str, Any]) -> Tuple[Lis
         })
     return rows, {"title": "Upcoming Events Timeline (30 Days)"}
 
+def build_contracts_audit(db, org_id: UUID, params: Dict[str, Any]) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+    rows = []
+    
+    # 1. Contracts missing files
+    contracts = db.query(Contract).filter(Contract.organization_id == org_id).all()
+    for c in contracts:
+        doc_count = db.query(ContractDocument).filter(ContractDocument.contract_id == c.id).count()
+        if doc_count == 0:
+            rows.append({
+                "Type": "Contract Error",
+                "Name": f"{c.contract_number} - {c.title}",
+                "Issue": "Missing Document",
+                "Severity": "HIGH"
+            })
+            
+    # 2. Contracts not linked to any release
+    for c in contracts:
+        asset_count = db.query(ContractAsset).filter(
+            ContractAsset.contract_id == c.id,
+            ContractAsset.asset_type == "Release"
+        ).count()
+        if asset_count == 0:
+            rows.append({
+                "Type": "Contract Error",
+                "Name": f"{c.contract_number} - {c.title}",
+                "Issue": "No Linked Release",
+                "Severity": "MEDIUM"
+            })
+            
+    # 3. Releases not attached to contracts
+    releases = db.query(Release).filter(Release.organization_id == org_id, Release.is_deleted == False).all()
+    for r in releases:
+        linked_count = db.query(ContractAsset).filter(
+            ContractAsset.asset_type == "Release",
+            ContractAsset.asset_id == r.id
+        ).count()
+        if linked_count == 0:
+            rows.append({
+                "Type": "Release Error",
+                "Name": r.title,
+                "Issue": "No Attached Contract",
+                "Severity": "HIGH"
+            })
+            
+    return rows, {"title": "Contracts Audit Report (Missing/Unlinked Assets)"}
+
 BUILDERS = {
     "status_quo": build_status_quo,
     "documents_coverage": build_documents_coverage,
     "tasks_progress": build_tasks_progress,
     "events_timeline": build_events_timeline,
+    "contracts_audit": build_contracts_audit,
 }
 
 
@@ -119,7 +167,33 @@ def export_csv(rows: List[Dict[str, Any]]) -> bytes:
     return output.getvalue().encode("utf-8")
 
 
+def export_xlsx(rows: List[Dict[str, Any]]) -> bytes:
+    from openpyxl import Workbook
+    from io import BytesIO
+    
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Report Data"
+    
+    if not rows:
+        buffer = BytesIO()
+        wb.save(buffer)
+        return buffer.getvalue()
+        
+    headers = list(rows[0].keys())
+    ws.append(headers)
+    
+    for row in rows:
+        ws.append([row.get(h, "") for h in headers])
+        
+    buffer = BytesIO()
+    wb.save(buffer)
+    return buffer.getvalue()
+
+
 def export_pdf(title: str, rows: List[Dict[str, Any]], params: Dict[str, Any]) -> bytes:
+    if not os.path.exists(settings.UPLOAD_DIR):
+        os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
     buffer_path = os.path.join(settings.UPLOAD_DIR, "tmp_report.pdf")
     c = canvas.Canvas(buffer_path, pagesize=letter)
     width, height = letter

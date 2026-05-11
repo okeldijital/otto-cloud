@@ -6,7 +6,9 @@ import { CatalogService } from '../services/catalog';
 import DataTable from '../components/DataTable';
 import EntityForm from '../components/EntityForm';
 import { DocumentsService } from '../services/operations';
-import { Upload, X, ImageIcon, ChevronLeft, Search } from 'lucide-react';
+import { Upload, X, ImageIcon, Search, Building2 } from 'lucide-react';
+import Button from '../components/ui/Button';
+import PageHeader from '../components/ui/PageHeader';
 
 const Labels = () => {
     const [labels, setLabels] = useState([]);
@@ -32,7 +34,6 @@ const Labels = () => {
             setLabels(data);
         } catch (error) {
             console.error('Failed to fetch labels:', error);
-            // Ideally show a toast notification here
         } finally {
             setIsLoading(false);
         }
@@ -135,13 +136,17 @@ const Labels = () => {
                 const url = row.logo_url;
                 const fullUrl = url ? (url.startsWith('http') ? url : `${BASE_URL}${url}`) : null;
                 return fullUrl ? (
-                    <img
-                        src={fullUrl}
-                        alt="Logo"
-                        style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'cover', background: '#f1f5f9' }}
-                    />
+                    <div className="w-10 h-10 rounded-xl overflow-hidden bg-white/5 border border-white/10 shrink-0 shadow-sm group-hover:border-accent/50 transition-colors">
+                        <img
+                            src={fullUrl}
+                            alt="Logo"
+                            className="w-full h-full object-cover"
+                        />
+                    </div>
                 ) : (
-                    <div style={{ width: '40px', height: '40px', borderRadius: '8px', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '10px' }}>No Logo</div>
+                    <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-text-muted shrink-0 shadow-sm group-hover:border-accent/50 transition-colors">
+                        <Building2 size={16} />
+                    </div>
                 );
             }
         },
@@ -150,7 +155,7 @@ const Labels = () => {
             label: 'Name',
             sortable: true,
             render: (row) => (
-                <Link to={`/catalog/labels/${row.id}`} style={{ fontWeight: 600, color: 'var(--primary-color)', textDecoration: 'none' }}>
+                <Link to={`/catalog/labels/${row.id}`} className="font-bold text-white hover:text-accent transition-colors">
                     {row.name}
                 </Link>
             )
@@ -170,30 +175,30 @@ const Labels = () => {
     });
 
     return (
-        <div className="entity-page">
-            <Link to="/catalog" className="back-link">
-                <ChevronLeft size={16} /> Back to Catalog
-            </Link>
-            <div className="page-header" style={{ marginBottom: '1.5rem' }}>
-                <h1 className="page-title">Labels</h1>
-                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                    <div className="relative" style={{ minWidth: '250px' }}>
-                        <div style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}>
-                            <Search size={16} />
+        <div className="p-8 max-w-[1600px] mx-auto animate-in fade-in duration-500">
+            <PageHeader
+                title="Labels"
+                breadcrumb="Catalog ▸ Labels"
+                actions={
+                    <div className="flex flex-col sm:flex-row gap-4 items-center">
+                        <div className="relative w-full sm:w-64">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-text-muted">
+                                <Search size={16} />
+                            </div>
+                            <input
+                                type="text"
+                                className="block w-full pl-10 pr-3 py-2 border border-white/10 rounded-xl leading-5 bg-white/5 text-white placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent sm:text-sm transition-all"
+                                placeholder="Search labels..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
                         </div>
-                        <input
-                            type="text"
-                            style={{ width: '100%', paddingLeft: '2.5rem', height: '40px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-color)', outline: 'none' }}
-                            placeholder="Quick search labels..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
+                        <Button variant="primary" onClick={handleCreate} className="w-full sm:w-auto">
+                            + Add Label
+                        </Button>
                     </div>
-                    <button className="btn-primary" onClick={handleCreate}>
-                        + Add Label
-                    </button>
-                </div>
-            </div>
+                }
+            />
 
             <DataTable
                 columns={columns}
@@ -210,122 +215,128 @@ const Labels = () => {
                 onSubmit={handleSubmit}
                 isSubmitting={isSubmitting}
             >
-                <div className="form-group">
-                    <label htmlFor="name">Label Name</label>
-                    <input
-                        type="text"
-                        id="name"
-                        value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        required
-                        autoFocus
-                    />
-                </div>
-
-                <div className="form-group">
-                    <label>Label Logo</label>
-                    <div className="logo-upload-container" style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginTop: '0.5rem' }}>
-                        {formData.logo_url ? (
-                            <div className="logo-preview-wrapper" style={{ position: 'relative' }}>
-                                <img
-                                    src={formData.logo_url.startsWith('http') ? formData.logo_url : `${BASE_URL}${formData.logo_url}`}
-                                    alt="Preview"
-                                    style={{ width: '80px', height: '80px', borderRadius: '12px', objectFit: 'cover', border: '2px solid #e2e8f0' }}
-                                />
-                                <button
-                                    type="button"
-                                    onClick={removeLogo}
-                                    style={{ position: 'absolute', top: '-8px', right: '-8px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '50%', width: '24px', height: '24px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                                >
-                                    <X size={14} />
-                                </button>
-                            </div>
-                        ) : (
-                            <div
-                                onClick={() => document.getElementById('logo-upload-input').click()}
-                                style={{ width: '80px', height: '80px', borderRadius: '12px', background: '#f8fafc', border: '2px dashed #e2e8f0', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#94a3b8' }}
-                            >
-                                <Upload size={20} />
-                                <span style={{ fontSize: '10px', marginTop: '4px' }}>Upload</span>
-                            </div>
-                        )}
+                <div className="space-y-4">
+                    <div>
+                        <label htmlFor="name" className="block text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">Label Name</label>
                         <input
-                            type="file"
-                            id="logo-upload-input"
-                            style={{ display: 'none' }}
-                            accept="image/*"
-                            onChange={handleFileUpload}
+                            type="text"
+                            id="name"
+                            value={formData.name}
+                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                            required
+                            autoFocus
+                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-accent transition-colors"
                         />
-                        <div style={{ flex: 1 }}>
-                            <p style={{ fontSize: '12px', color: '#64748b', margin: '0 0 4px 0' }}>Paste an image URL or upload a file</p>
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">Label Logo</label>
+                        <div className="flex gap-4 items-center mt-2">
+                            {formData.logo_url ? (
+                                <div className="relative">
+                                    <img
+                                        src={formData.logo_url.startsWith('http') ? formData.logo_url : `${BASE_URL}${formData.logo_url}`}
+                                        alt="Preview"
+                                        className="w-20 h-20 rounded-xl object-cover border border-white/10 shadow-sm"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={removeLogo}
+                                        className="absolute -top-2 -right-2 bg-danger text-white border-none rounded-full w-6 h-6 flex items-center justify-center shadow-lg hover:scale-110 transition-transform"
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                </div>
+                            ) : (
+                                <div
+                                    onClick={() => document.getElementById('logo-upload-input').click()}
+                                    className="w-20 h-20 rounded-xl bg-white/5 border border-white/10 border-dashed flex flex-col items-center justify-center cursor-pointer text-text-muted hover:text-accent hover:border-accent/50 transition-colors"
+                                >
+                                    <Upload size={20} />
+                                    <span className="text-[10px] mt-1 font-medium tracking-wide">Upload</span>
+                                </div>
+                            )}
+                            <input
+                                type="file"
+                                id="logo-upload-input"
+                                className="hidden"
+                                accept="image/*"
+                                onChange={handleFileUpload}
+                            />
+                            <div className="flex-1">
+                                <p className="text-xs text-text-secondary mb-2">Paste an image URL or upload a file</p>
+                                <input
+                                    type="text"
+                                    value={formData.logo_url}
+                                    onChange={(e) => setFormData({ ...formData, logo_url: e.target.value })}
+                                    placeholder="https://example.com/logo.png"
+                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-accent transition-colors"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label htmlFor="contact_person" className="block text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">Contact Person</label>
                             <input
                                 type="text"
-                                value={formData.logo_url}
-                                onChange={(e) => setFormData({ ...formData, logo_url: e.target.value })}
-                                placeholder="https://example.com/logo.png"
-                                style={{ fontSize: '13px' }}
+                                id="contact_person"
+                                value={formData.contact_person}
+                                onChange={(e) => setFormData({ ...formData, contact_person: e.target.value })}
+                                placeholder="Full Name"
+                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-accent transition-colors"
+                            />
+                        </div>
+                        <div>
+                            <label htmlFor="contact_email" className="block text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">Email Address</label>
+                            <input
+                                type="email"
+                                id="contact_email"
+                                value={formData.contact_email}
+                                onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
+                                placeholder="label@example.com"
+                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-accent transition-colors"
                             />
                         </div>
                     </div>
-                </div>
 
-                <div className="form-row">
-                    <div className="form-group">
-                        <label htmlFor="contact_person">Contact Person</label>
-                        <input
-                            type="text"
-                            id="contact_person"
-                            value={formData.contact_person}
-                            onChange={(e) => setFormData({ ...formData, contact_person: e.target.value })}
-                            placeholder="Full Name"
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label htmlFor="contact_phone" className="block text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">Phone Number</label>
+                            <input
+                                type="text"
+                                id="contact_phone"
+                                value={formData.contact_phone}
+                                onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
+                                placeholder="+1 (555) 000-0000"
+                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-accent transition-colors"
+                            />
+                        </div>
+                        <div>
+                            <label htmlFor="website" className="block text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">Website</label>
+                            <input
+                                type="url"
+                                id="website"
+                                value={formData.website}
+                                onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                                placeholder="https://example.com"
+                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-accent transition-colors"
+                            />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label htmlFor="address" className="block text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">Physical Address</label>
+                        <textarea
+                            id="address"
+                            value={formData.address}
+                            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                            rows={3}
+                            placeholder="123 Music Ave, Suite 100"
+                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-accent transition-colors resize-none"
                         />
                     </div>
-                </div>
-
-                <div className="form-row">
-                    <div className="form-group">
-                        <label htmlFor="contact_email">Email Address</label>
-                        <input
-                            type="email"
-                            id="contact_email"
-                            value={formData.contact_email}
-                            onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
-                            placeholder="label@example.com"
-                        />
-                    </div>
-
-                    <div className="form-group">
-                        <label htmlFor="contact_phone">Phone Number</label>
-                        <input
-                            type="text"
-                            id="contact_phone"
-                            value={formData.contact_phone}
-                            onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
-                            placeholder="+1 (555) 000-0000"
-                        />
-                    </div>
-                </div>
-
-                <div className="form-group">
-                    <label htmlFor="website">Website</label>
-                    <input
-                        type="url"
-                        id="website"
-                        value={formData.website}
-                        onChange={(e) => setFormData({ ...formData, website: e.target.value })}
-                        placeholder="https://example.com"
-                    />
-                </div>
-
-                <div className="form-group">
-                    <label htmlFor="address">Physical Address</label>
-                    <textarea
-                        id="address"
-                        value={formData.address}
-                        onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                        rows={3}
-                        placeholder="123 Music Ave, Suite 100"
-                    />
                 </div>
             </EntityForm>
         </div>

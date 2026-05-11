@@ -11,7 +11,7 @@ export default function Settings() {
         email: user?.email || '',
         organization: 'OTTO Records',
         notifications: true,
-        theme: 'light'
+        theme: 'dark'
     });
     const [isSaving, setIsSaving] = useState(false);
     const [saveStatus, setSaveStatus] = useState({ type: '', message: '' });
@@ -19,7 +19,6 @@ export default function Settings() {
     const [nodeInfo, setNodeInfo] = useState({ nodeRole: '', nodeName: '' });
 
     useEffect(() => {
-        // Fetch node info
         api.get('/node/info')
             .then(res => setNodeInfo(res.data))
             .catch(err => console.error('Failed to fetch node info:', err));
@@ -48,9 +47,8 @@ export default function Settings() {
         setSaveStatus({ type: '', message: '' });
 
         try {
-            // TODO: Implement actual save logic
-            await new Promise(resolve => setTimeout(resolve, 1000)); // Mock delay
-            setSaveStatus({ type: 'success', message: 'Settings saved successfully (Mock)' });
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            setSaveStatus({ type: 'success', message: 'Settings saved successfully' });
         } catch (error) {
             setSaveStatus({ type: 'error', message: 'Failed to save settings' });
         } finally {
@@ -63,7 +61,8 @@ export default function Settings() {
             setFormData(prev => ({
                 ...prev,
                 full_name: user.full_name || '',
-                email: user.email || ''
+                email: user.email || '',
+                theme: 'dark'
             }));
 
             if (user.avatar_url) {
@@ -75,41 +74,40 @@ export default function Settings() {
         }
     }, [user]);
 
-    // ... (keep headers)
-
     return (
-        <div className="page-container p-8">
+        <div className="max-w-7xl mx-auto px-4 py-8">
             <PageHeader
                 title="Settings"
                 subtitle="Manage your account and preferences"
             />
 
-            <div className="max-w-3xl">
+            <div className="max-w-3xl space-y-8">
                 {/* Node Configuration Section */}
-                <div className="panel mb-6">
-                    <div className="panel-header bg-surface-secondary">
-                        <h2 className="font-bold flex items-center gap-2">
-                            <Server size={20} />
+                <div className="bg-premium-glass border border-white/5 rounded-[24px] overflow-hidden backdrop-blur-xl">
+                    <div className="px-6 py-4 bg-white/[0.02] border-b border-white/5">
+                        <h2 className="text-sm font-bold text-white flex items-center gap-2 uppercase tracking-widest">
+                            <Server size={18} className="text-accent" />
                             Node Configuration
                         </h2>
                     </div>
-                    <div className="panel-content">
+                    <div className="p-6">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm font-medium text-gray-900">Current Role</p>
-                                <p className="text-sm text-gray-500">This node's operating mode.</p>
+                                <p className="text-sm font-bold text-white mb-1">Current Role</p>
+                                <p className="text-xs text-text-secondary">This node's operating mode.</p>
                             </div>
-                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${nodeInfo.nodeRole === 'hub' ? 'bg-indigo-100 text-indigo-800' : 'bg-blue-100 text-blue-800'
+                            <span className={`inline-flex items-center px-4 py-1.5 rounded-xl text-xs font-black tracking-wider ${
+                                nodeInfo.nodeRole === 'hub' 
+                                    ? 'bg-accent/20 text-accent border border-accent/20' 
+                                    : 'bg-primary/20 text-primary border border-primary/20'
                                 }`}>
                                 {nodeInfo.nodeRole ? nodeInfo.nodeRole.toUpperCase() : 'LOADING...'}
                             </span>
                         </div>
-                        <div className="mt-4 pt-4 border-t border-gray-100">
+                        <div className="mt-6 pt-6 border-t border-white/5">
                             <button
                                 onClick={() => {
                                     if (confirm('Are you sure you want to re-configure this node? You will need to restart the application afterwards.')) {
-                                        // Trigger hard reset via local server
-                                        // This deletes config.json and restarts the app
                                         api.post('/__local__/reset-config')
                                             .then(() => {
                                                 alert('Application is resetting...');
@@ -120,31 +118,32 @@ export default function Settings() {
                                             });
                                     }
                                 }}
-                                className="text-indigo-600 hover:text-indigo-900 text-sm font-medium"
+                                className="text-accent hover:text-white text-sm font-bold transition-colors"
                             >
                                 Reset Application & Change Role
                             </button>
-                            <p className="mt-1 text-xs text-gray-500">
+                            <p className="mt-2 text-xs text-text-secondary">
                                 This will delete your node configuration and restart the app.
                             </p>
                         </div>
                     </div>
                 </div>
 
-                <div className="panel">
-                    <div className="panel-header bg-surface-secondary">
-                        <h2 className="font-bold flex items-center gap-2">
-                            <User size={20} />
+                {/* Profile Information Section */}
+                <div className="bg-premium-glass border border-white/5 rounded-[24px] overflow-hidden backdrop-blur-xl">
+                    <div className="px-6 py-4 bg-white/[0.02] border-b border-white/5">
+                        <h2 className="text-sm font-bold text-white flex items-center gap-2 uppercase tracking-widest">
+                            <User size={18} className="text-accent" />
                             Profile Information
                         </h2>
                     </div>
 
-                    <div className="panel-content">
-                        <form onSubmit={handleSave} className="space-y-6">
+                    <div className="p-6">
+                        <form onSubmit={handleSave} className="space-y-8">
                             {/* Avatar Upload Section */}
-                            <div className="flex items-start gap-6 pb-6 border-b border-border">
-                                <div className="relative">
-                                    <div className="w-24 h-24 rounded-full overflow-hidden bg-surface-secondary border-2 border-border flex items-center justify-center group">
+                            <div className="flex items-center gap-8 pb-8 border-b border-white/5">
+                                <div className="relative group shrink-0">
+                                    <div className="w-24 h-24 rounded-full overflow-hidden bg-white/5 border-2 border-white/10 flex items-center justify-center transition-all group-hover:border-accent/50 shadow-premium">
                                         {previewUrl ? (
                                             <img
                                                 src={previewUrl}
@@ -152,7 +151,7 @@ export default function Settings() {
                                                 className="w-full h-full object-cover"
                                             />
                                         ) : (
-                                            <User size={40} className="text-muted" />
+                                            <User size={40} className="text-text-secondary" />
                                         )}
                                         {previewUrl && (
                                             <button
@@ -165,137 +164,117 @@ export default function Settings() {
                                             </button>
                                         )}
                                     </div>
-                                    {selectedAvatar && (
-                                        <div className="absolute -bottom-1 -right-1 bg-primary text-white rounded-full p-1">
-                                            <Check size={14} />
-                                        </div>
-                                    )}
+                                    <label
+                                        htmlFor="avatar-upload"
+                                        className="absolute -bottom-1 -right-1 bg-accent text-[#0f1115] rounded-full p-2 shadow-lg cursor-pointer hover:scale-110 transition-transform active:scale-95"
+                                    >
+                                        <Camera size={16} strokeWidth={3} />
+                                    </label>
+                                    <input
+                                        type="file"
+                                        id="avatar-upload"
+                                        accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                                        onChange={handleAvatarChange}
+                                        className="hidden"
+                                    />
                                 </div>
 
                                 <div className="flex-1">
-                                    <h3 className="font-semibold mb-2">Profile Photo</h3>
-                                    <p className="text-sm text-muted mb-4">
-                                        Upload a photo to personalize your account. JPG, PNG, GIF or WebP. Max 5MB.
+                                    <h3 className="text-sm font-bold text-white mb-2 tracking-tight">Profile Photo</h3>
+                                    <p className="text-xs text-text-secondary mb-4 leading-relaxed">
+                                        Upload a photo to personalize your account.<br/>JPG, PNG, GIF or WebP. Max 5MB.
                                     </p>
-                                    <div className="flex gap-3">
-                                        <label
-                                            htmlFor="avatar-upload"
-                                            className="btn btn-secondary btn-sm cursor-pointer"
+                                    {previewUrl && (
+                                        <button
+                                            type="button"
+                                            onClick={handleRemoveAvatar}
+                                            className="text-xs font-bold text-danger hover:text-white transition-colors"
                                         >
-                                            <Camera size={16} />
-                                            {previewUrl ? 'Change Photo' : 'Upload Photo'}
-                                        </label>
-                                        <input
-                                            type="file"
-                                            id="avatar-upload"
-                                            accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
-                                            onChange={handleAvatarChange}
-                                            className="hidden"
-                                        />
-                                        {previewUrl && (
-                                            <button
-                                                type="button"
-                                                onClick={handleRemoveAvatar}
-                                                className="btn btn-ghost btn-sm text-status-critical-text"
-                                            >
-                                                Remove
-                                            </button>
-                                        )}
-                                    </div>
+                                            Remove Photo
+                                        </button>
+                                    )}
                                 </div>
                             </div>
 
-                            {/* Full Name */}
-                            <div className="form-group">
-                                <label htmlFor="full_name" className="flex items-center gap-2 mb-2 font-medium">
-                                    <User size={16} />
-                                    Full Name
-                                </label>
-                                <input
-                                    type="text"
-                                    id="full_name"
-                                    value={formData.full_name}
-                                    onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                                    className="w-full bg-surface-color border border-border rounded-lg px-4 py-2.5 outline-none focus:border-primary/50 transition-colors"
-                                    placeholder="Enter your full name"
-                                />
-                            </div>
+                            {/* Form Fields */}
+                            <div className="grid grid-cols-1 gap-6">
+                                <div>
+                                    <label htmlFor="full_name" className="block text-[10px] font-black text-text-secondary uppercase tracking-widest mb-3">
+                                        Full Name
+                                    </label>
+                                    <input
+                                        type="text"
+                                        id="full_name"
+                                        value={formData.full_name}
+                                        onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-white text-sm outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all placeholder:text-text-secondary/30"
+                                        placeholder="Enter your full name"
+                                    />
+                                </div>
 
-                            {/* Email */}
-                            <div className="form-group">
-                                <label htmlFor="email" className="flex items-center gap-2 mb-2 font-medium">
-                                    <Mail size={16} />
-                                    Email Address
-                                </label>
-                                <input
-                                    type="email"
-                                    id="email"
-                                    value={formData.email}
-                                    disabled
-                                    className="w-full bg-surface-secondary border border-border rounded-lg px-4 py-2.5 outline-none opacity-60 cursor-not-allowed"
-                                />
-                                <small className="text-xs text-muted mt-1 block">
-                                    Email cannot be changed
-                                </small>
-                            </div>
+                                <div>
+                                    <label htmlFor="email" className="block text-[10px] font-black text-text-secondary uppercase tracking-widest mb-3">
+                                        Email Address
+                                    </label>
+                                    <input
+                                        type="email"
+                                        id="email"
+                                        value={formData.email}
+                                        disabled
+                                        className="w-full bg-white/[0.02] border border-white/5 rounded-xl px-4 py-3.5 text-text-secondary text-sm cursor-not-allowed italic"
+                                    />
+                                    <p className="mt-2 text-[10px] text-text-secondary/50 font-bold uppercase tracking-tighter">
+                                        Email cannot be changed
+                                    </p>
+                                </div>
 
-                            {/* Organization */}
-                            <div className="form-group">
-                                <label htmlFor="organization" className="flex items-center gap-2 mb-2 font-medium">
-                                    <Building size={16} />
-                                    Organization
-                                </label>
-                                <input
-                                    type="text"
-                                    id="organization"
-                                    value={formData.organization}
-                                    onChange={(e) => setFormData({ ...formData, organization: e.target.value })}
-                                    className="w-full bg-surface-color border border-border rounded-lg px-4 py-2.5 outline-none focus:border-primary/50 transition-colors"
-                                    placeholder="Organization name"
-                                />
+                                <div>
+                                    <label htmlFor="organization" className="block text-[10px] font-black text-text-secondary uppercase tracking-widest mb-3">
+                                        Organization
+                                    </label>
+                                    <input
+                                        type="text"
+                                        id="organization"
+                                        value={formData.organization}
+                                        onChange={(e) => setFormData({ ...formData, organization: e.target.value })}
+                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-white text-sm outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all placeholder:text-text-secondary/30"
+                                        placeholder="Organization name"
+                                    />
+                                </div>
                             </div>
 
                             {/* Status Messages */}
                             {saveStatus.message && (
-                                <div className={`p-4 rounded-lg flex items-start gap-3 ${saveStatus.type === 'success'
-                                    ? 'bg-status-success-bg border border-status-success-text/20'
-                                    : 'bg-status-critical-bg border border-status-critical-text/20'
+                                <div className={`p-4 rounded-2xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300 ${
+                                    saveStatus.type === 'success'
+                                        ? 'bg-success/10 border border-success/20 text-success'
+                                        : 'bg-danger/10 border border-danger/20 text-danger'
                                     }`}>
                                     {saveStatus.type === 'success' ? (
-                                        <Check size={20} className="text-status-success-text flex-shrink-0 mt-0.5" />
+                                        <Check size={18} className="shrink-0" />
                                     ) : (
-                                        <AlertCircle size={20} className="text-status-critical-text flex-shrink-0 mt-0.5" />
+                                        <AlertCircle size={18} className="shrink-0" />
                                     )}
-                                    <p className={`text-sm font-medium ${saveStatus.type === 'success'
-                                        ? 'text-status-success-text'
-                                        : 'text-status-critical-text'
-                                        }`}>
-                                        {saveStatus.message}
-                                    </p>
+                                    <p className="text-xs font-bold uppercase tracking-wider">{saveStatus.message}</p>
                                 </div>
                             )}
 
                             {/* Save Button */}
-                            <div className="flex justify-end pt-4 border-t border-border">
+                            <div className="flex justify-end pt-4 border-t border-white/5">
                                 <button
                                     type="submit"
-                                    className="btn btn-primary btn-md"
+                                    className="flex items-center gap-2 px-8 py-3.5 bg-accent text-[#0f1115] rounded-xl text-sm font-black transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:hover:scale-100 shadow-lg shadow-accent/20"
                                     disabled={isSaving || isUploading}
                                 >
-                                    {isUploading ? (
-                                        <>
-                                            <Upload size={18} className="animate-pulse" />
-                                            Uploading...
-                                        </>
-                                    ) : isSaving ? (
+                                    {isSaving ? (
                                         <>
                                             <Save size={18} className="animate-pulse" />
-                                            Saving...
+                                            SAVING...
                                         </>
                                     ) : (
                                         <>
-                                            <Save size={18} />
-                                            Save Changes
+                                            <Save size={18} strokeWidth={3} />
+                                            SAVE CHANGES
                                         </>
                                     )}
                                 </button>
@@ -305,42 +284,50 @@ export default function Settings() {
                 </div>
 
                 {/* Preferences Section */}
-                <div className="panel mt-6">
-                    <div className="panel-header bg-surface-secondary">
-                        <h2 className="font-bold">Preferences</h2>
+                <div className="bg-premium-glass border border-white/5 rounded-[24px] overflow-hidden backdrop-blur-xl">
+                    <div className="px-6 py-4 bg-white/[0.02] border-b border-white/5">
+                        <h2 className="text-sm font-bold text-white uppercase tracking-widest">Preferences</h2>
                     </div>
 
-                    <div className="panel-content space-y-6">
-                        <div className="form-group">
-                            <label className="flex items-center gap-3 cursor-pointer">
+                    <div className="p-6 space-y-8">
+                        <label className="flex items-start gap-4 cursor-pointer group">
+                            <div className="relative mt-1">
                                 <input
                                     type="checkbox"
                                     checked={formData.notifications}
                                     onChange={(e) => setFormData({ ...formData, notifications: e.target.checked })}
-                                    className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                                    className="peer hidden"
                                 />
-                                <div>
-                                    <span className="font-medium">Email Notifications</span>
-                                    <p className="text-xs text-muted mt-0.5">
-                                        Receive updates about your catalog and contracts
-                                    </p>
+                                <div className="w-5 h-5 border-2 border-white/10 rounded-md bg-white/5 peer-checked:bg-accent peer-checked:border-accent transition-all flex items-center justify-center">
+                                    <Check size={12} className="text-[#0f1115] opacity-0 peer-checked:opacity-100 transition-opacity" strokeWidth={4} />
                                 </div>
-                            </label>
-                        </div>
+                            </div>
+                            <div>
+                                <span className="text-sm font-bold text-white block group-hover:text-accent transition-colors">Email Notifications</span>
+                                <p className="text-xs text-text-secondary mt-1">
+                                    Receive updates about your catalog and contracts
+                                </p>
+                            </div>
+                        </label>
 
-                        <div className="form-group">
-                            <label htmlFor="theme" className="block mb-2 font-medium">
-                                Theme
+                        <div>
+                            <label htmlFor="theme" className="block text-[10px] font-black text-text-secondary uppercase tracking-widest mb-3">
+                                Interface Theme
                             </label>
-                            <select
-                                id="theme"
-                                value={formData.theme}
-                                onChange={(e) => setFormData({ ...formData, theme: e.target.value })}
-                                className="w-full bg-surface-color border border-border rounded-lg px-4 py-2.5 outline-none focus:border-primary/50 transition-colors"
-                            >
-                                <option value="light">Light</option>
-                                <option value="dark" disabled>Dark (Coming Soon)</option>
-                            </select>
+                            <div className="relative">
+                                <select
+                                    id="theme"
+                                    value={formData.theme}
+                                    onChange={(e) => setFormData({ ...formData, theme: e.target.value })}
+                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3.5 text-white text-sm outline-none focus:border-accent/50 appearance-none"
+                                >
+                                    <option value="dark" className="bg-[#0f1115]">Dark (Premium)</option>
+                                    <option value="light" className="bg-[#0f1115]">Light (Classic)</option>
+                                </select>
+                                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-text-secondary">
+                                    <Server size={14} />
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

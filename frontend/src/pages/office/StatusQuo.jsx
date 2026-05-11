@@ -18,6 +18,8 @@ import Badge from '../../components/ui/Badge';
 import PageHeader from '../../components/ui/PageHeader';
 import Input from '../../components/ui/Input';
 
+import { useToastStore } from '../../store/useToastStore';
+
 const SEVERITY_VARIANTS = {
     critical: 'critical',
     warn: 'warn',
@@ -36,6 +38,8 @@ const StatusQuo = () => {
     const [isRecomputing, setIsRecomputing] = useState(false);
     const [filter, setFilter] = useState('all');
     const [search, setSearch] = useState('');
+
+    const { addToast } = useToastStore();
 
     const fetchItems = async () => {
         setIsLoading(true);
@@ -56,7 +60,8 @@ const StatusQuo = () => {
     const handleRecompute = async () => {
         setIsRecomputing(true);
         try {
-            await officeStatusQuoService.recompute();
+            const res = await officeStatusQuoService.recompute();
+            addToast(`Recompute complete. Found ${res.data.items_found} governance gaps.`, 'success');
             await fetchItems();
         } catch (error) {
             console.error('Recompute failed', error);

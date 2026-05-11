@@ -234,22 +234,22 @@ const Artists = () => {
             label: 'Artist Name',
             sortable: true,
             render: (row) => (
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <Link to={`/catalog/artists/${row.id}`} style={{ fontWeight: 600, color: 'var(--primary-color)', textDecoration: 'none' }}>
+                <div className="flex flex-col">
+                    <div className="flex items-center gap-2">
+                        <Link to={`/catalog/artists/${row.id}`} className="font-bold text-accent hover:text-white transition-colors">
                             {row.display_name || row.aka || row.name}
                         </Link>
                         {(row.artist_kind === 'group') && (
-                            <span style={{ fontSize: '0.6rem', padding: '1px 6px', borderRadius: 4, background: '#dcfce7', color: '#16a34a', fontWeight: 700, letterSpacing: '0.04em' }}>GROUP</span>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-success/20 text-success uppercase tracking-wider">GROUP</span>
                         )}
                     </div>
                     {row.aka && row.name !== row.aka && (
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        <span className="text-xs text-text-secondary">
                             Real Name: {row.name}
                         </span>
                     )}
                     {row.artist_kind === 'group' && row.members?.length > 0 && (
-                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                        <span className="text-[10px] text-text-secondary italic">
                             Members: {row.members.map(m => m.name).join(', ')}
                         </span>
                     )}
@@ -264,7 +264,7 @@ const Artists = () => {
             render: (row) => {
                 const kind = row.artist_kind || 'solo';
                 return (
-                    <span style={{ textTransform: 'capitalize' }}>
+                    <span className="capitalize text-xs font-bold text-text-secondary">
                         {kind}{kind === 'group' && row.member_count ? ` (${row.member_count})` : ''}
                     </span>
                 );
@@ -276,7 +276,9 @@ const Artists = () => {
             label: 'Label',
             render: (row) => {
                 const label = (labels || []).find(l => l.id === row.label_id);
-                return label ? label.name : '-';
+                return label ? (
+                    <span className="text-white font-medium">{label.name}</span>
+                ) : <span className="text-text-secondary/50">-</span>;
             }
         },
     ];
@@ -292,24 +294,24 @@ const Artists = () => {
     });
 
     return (
-        <div className="entity-page p-8">
+        <div className="max-w-7xl mx-auto px-4 py-8">
             <PageHeader
                 title="Artists"
                 subtitle="Manage your artist roster"
                 breadcrumb={
-                    <Link to="/catalog" className="back-link" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: 'var(--text-muted)', textDecoration: 'none', marginBottom: '0.5rem' }}>
+                    <Link to="/catalog" className="inline-flex items-center gap-1 text-text-secondary hover:text-white transition-colors font-bold text-sm mb-2">
                         <ChevronLeft size={16} /> Back to Catalog
                     </Link>
                 }
                 actions={
-                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                        <div className="relative" style={{ minWidth: '250px' }}>
-                            <div style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}>
+                    <div className="flex gap-3 items-center">
+                        <div className="relative min-w-[250px]">
+                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none">
                                 <Search size={16} />
                             </div>
                             <input
                                 type="text"
-                                style={{ width: '100%', paddingLeft: '2.5rem', height: '40px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-color)', outline: 'none' }}
+                                className="w-full pl-10 pr-4 h-10 rounded-xl border border-white/10 bg-white/5 text-white text-sm outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all placeholder:text-text-secondary/50"
                                 placeholder="Quick search artists..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -348,203 +350,219 @@ const Artists = () => {
                 onSubmit={handleSubmit}
                 isSubmitting={isSubmitting}
             >
-                <h3 className="form-section-title">Basic Information</h3>
-
-                <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-                    <div style={{ position: 'relative', width: '80px', height: '80px', borderRadius: '50%', overflow: 'hidden', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #e2e8f0' }}>
-                        {imagePreview ? (
-                            <img src={imagePreview} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        ) : (
-                            <User size={32} color="#94a3b8" />
-                        )}
-                    </div>
+                <div className="space-y-8">
+                    {/* Basic Information Section */}
                     <div>
-                        <label htmlFor="image-upload" className="btn-secondary" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <Camera size={16} /> Upload Photo
-                        </label>
-                        <input
-                            type="file"
-                            id="image-upload"
-                            accept="image/*"
-                            onChange={handleImageChange}
-                            style={{ display: 'none' }}
+                        <h3 className="text-xs font-bold text-accent uppercase tracking-widest border-b border-white/5 pb-3 mb-5">Basic Information</h3>
+                        
+                        <div className="flex items-center gap-6 mb-6">
+                            <div className="relative w-20 h-20 rounded-full overflow-hidden bg-white/5 border border-white/10 shadow-sm flex items-center justify-center shrink-0">
+                                {imagePreview ? (
+                                    <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                                ) : (
+                                    <User size={32} className="text-text-muted" />
+                                )}
+                            </div>
+                            <div>
+                                <label htmlFor="image-upload" className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm font-bold text-white cursor-pointer transition-colors">
+                                    <Camera size={16} /> Upload Photo
+                                </label>
+                                <input
+                                    type="file"
+                                    id="image-upload"
+                                    accept="image/*"
+                                    onChange={handleImageChange}
+                                    className="hidden"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                            <Input
+                                label="Artist Name"
+                                id="name"
+                                value={formData.name}
+                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                required
+                                autoFocus
+                            />
+                            <Input
+                                label="AKA (Stage Name)"
+                                id="aka"
+                                value={formData.aka}
+                                onChange={(e) => setFormData({ ...formData, aka: e.target.value })}
+                            />
+                        </div>
+
+                        <div className="mb-4">
+                            <label htmlFor="artist_kind" className="block text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">Kind</label>
+                            <Select
+                                id="artist_kind"
+                                value={formData.artist_kind || 'solo'}
+                                onChange={(e) => setFormData({ ...formData, artist_kind: e.target.value })}
+                            >
+                                <option value="solo">Solo</option>
+                                <option value="group">Group</option>
+                            </Select>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                            <Input
+                                label="ID Number"
+                                id="id_number"
+                                value={formData.id_number}
+                                onChange={(e) => setFormData({ ...formData, id_number: e.target.value })}
+                                placeholder="National ID / Passport Number"
+                            />
+                            <Input
+                                label="Nationality"
+                                id="nationality"
+                                value={formData.nationality}
+                                onChange={(e) => setFormData({ ...formData, nationality: e.target.value })}
+                                placeholder="e.g. South African"
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                            <Input
+                                label="Email"
+                                type="email"
+                                id="contact_email"
+                                value={formData.contact_email}
+                                onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
+                            />
+                            <Input
+                                label="Phone"
+                                id="contact_phone"
+                                value={formData.contact_phone}
+                                onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
+                            />
+                        </div>
+
+                        <div className="mb-4">
+                            <Textarea
+                                label="Physical Address"
+                                id="physical_address"
+                                value={formData.physical_address}
+                                onChange={(e) => setFormData({ ...formData, physical_address: e.target.value })}
+                                rows={2}
+                            />
+                        </div>
+
+                        <div className="mb-4">
+                            <Input
+                                label="IPI Number"
+                                id="ipi_number"
+                                value={formData.ipi_number}
+                                onChange={(e) => setFormData({ ...formData, ipi_number: e.target.value })}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Relationships Section */}
+                    <div>
+                        <h3 className="text-xs font-bold text-accent uppercase tracking-widest border-b border-white/5 pb-3 mb-5">Relationships</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div>
+                                <label htmlFor="label_id" className="block text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">Label</label>
+                                <Autocomplete
+                                    options={labels || []}
+                                    value={formData.label_id}
+                                    onChange={(val) => setFormData({ ...formData, label_id: val })}
+                                    placeholder="Select Label..."
+                                    allowQuickAdd={true}
+                                    quickAddType="labels"
+                                />
+                            </div>
+                            <div>
+                                <label htmlFor="publisher_id" className="block text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">Publisher</label>
+                                <Autocomplete
+                                    options={publishers || []}
+                                    value={formData.publisher_id}
+                                    onChange={(val) => setFormData({ ...formData, publisher_id: val })}
+                                    placeholder="Select Publisher..."
+                                    allowQuickAdd={true}
+                                    quickAddType="publishers"
+                                />
+                            </div>
+                            <div>
+                                <label htmlFor="pro_id" className="block text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">PRO</label>
+                                <Autocomplete
+                                    options={pros || []}
+                                    value={formData.pro_id}
+                                    onChange={(val) => setFormData({ ...formData, pro_id: val })}
+                                    placeholder="Select PRO..."
+                                    allowQuickAdd={true}
+                                    quickAddType="pros"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Social & Streaming Section */}
+                    <div>
+                        <h3 className="text-xs font-bold text-accent uppercase tracking-widest border-b border-white/5 pb-3 mb-5">Social & Streaming</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                            <Input
+                                label="Instagram"
+                                id="instagram"
+                                value={formData.instagram}
+                                onChange={(e) => setFormData({ ...formData, instagram: e.target.value })}
+                                placeholder="@artist"
+                            />
+                            <Input
+                                label="Twitter"
+                                id="twitter"
+                                value={formData.twitter}
+                                onChange={(e) => setFormData({ ...formData, twitter: e.target.value })}
+                                placeholder="@artist"
+                            />
+                        </div>
+                        <div className="space-y-4">
+                            <Input
+                                label="Spotify URL"
+                                type="url"
+                                id="spotify"
+                                value={formData.spotify_url}
+                                onChange={(e) => setFormData({ ...formData, spotify_url: e.target.value })}
+                                placeholder="https://open.spotify.com/artist/..."
+                            />
+                            <Input
+                                label="Apple Music URL"
+                                type="url"
+                                id="apple_music"
+                                value={formData.apple_music_url}
+                                onChange={(e) => setFormData({ ...formData, apple_music_url: e.target.value })}
+                                placeholder="https://music.apple.com/..."
+                            />
+                        </div>
+                    </div>
+
+                    {/* Banking Details Section */}
+                    <div>
+                        <h3 className="text-xs font-bold text-accent uppercase tracking-widest border-b border-white/5 pb-3 mb-5">Banking Details</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                            <Input
+                                label="Bank Name"
+                                id="bank_name"
+                                value={formData.bank_name}
+                                onChange={(e) => setFormData({ ...formData, bank_name: e.target.value })}
+                            />
+                            <Input
+                                label="Branch Code"
+                                id="branch_code"
+                                value={formData.branch_code}
+                                onChange={(e) => setFormData({ ...formData, branch_code: e.target.value })}
+                            />
+                        </div>
+                        <Input
+                            label="Account Number"
+                            id="account_number"
+                            value={formData.account_number}
+                            onChange={(e) => setFormData({ ...formData, account_number: e.target.value })}
                         />
                     </div>
                 </div>
-
-                <div className="form-row">
-                    <Input
-                        label="Artist Name"
-                        id="name"
-                        value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        required
-                        autoFocus
-                    />
-                    <Input
-                        label="AKA (Stage Name)"
-                        id="aka"
-                        value={formData.aka}
-                        onChange={(e) => setFormData({ ...formData, aka: e.target.value })}
-                    />
-                </div>
-
-                <div className="form-row">
-                    <div className="form-group">
-                        <label htmlFor="artist_kind">Kind</label>
-                        <select
-                            id="artist_kind"
-                            className="input"
-                            value={formData.artist_kind || 'solo'}
-                            onChange={(e) => setFormData({ ...formData, artist_kind: e.target.value })}
-                            style={{ height: '40px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-color)', padding: '0 12px' }}
-                        >
-                            <option value="solo">Solo</option>
-                            <option value="group">Group</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div className="form-row">
-                    <Input
-                        label="ID Number"
-                        id="id_number"
-                        value={formData.id_number}
-                        onChange={(e) => setFormData({ ...formData, id_number: e.target.value })}
-                        placeholder="National ID / Passport Number"
-                    />
-                    <Input
-                        label="Nationality"
-                        id="nationality"
-                        value={formData.nationality}
-                        onChange={(e) => setFormData({ ...formData, nationality: e.target.value })}
-                        placeholder="e.g. South African"
-                    />
-                </div>
-
-                <div className="form-row">
-                    <Input
-                        label="Email"
-                        type="email"
-                        id="contact_email"
-                        value={formData.contact_email}
-                        onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
-                    />
-                    <Input
-                        label="Phone"
-                        id="contact_phone"
-                        value={formData.contact_phone}
-                        onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
-                    />
-                </div>
-
-                <Textarea
-                    label="Physical Address"
-                    id="physical_address"
-                    value={formData.physical_address}
-                    onChange={(e) => setFormData({ ...formData, physical_address: e.target.value })}
-                    rows={2}
-                />
-
-                <Input
-                    label="IPI Number"
-                    id="ipi_number"
-                    value={formData.ipi_number}
-                    onChange={(e) => setFormData({ ...formData, ipi_number: e.target.value })}
-                />
-
-                <h3 className="form-section-title">Relationships</h3>
-                <div className="form-row">
-                    <div className="form-group">
-                        <label htmlFor="label_id">Label</label>
-                        <Autocomplete
-                            options={labels || []}
-                            value={formData.label_id}
-                            onChange={(val) => setFormData({ ...formData, label_id: val })}
-                            placeholder="Select Label..."
-                            allowQuickAdd={true}
-                            quickAddType="labels"
-                        />
-                    </div>
-                    <div className="form-group">
-                        <label htmlFor="publisher_id">Publisher</label>
-                        <Autocomplete
-                            options={publishers || []}
-                            value={formData.publisher_id}
-                            onChange={(val) => setFormData({ ...formData, publisher_id: val })}
-                            placeholder="Select Publisher..."
-                            allowQuickAdd={true}
-                            quickAddType="publishers"
-                        />
-                    </div>
-                    <div className="form-group">
-                        <label htmlFor="pro_id">PRO</label>
-                        <Autocomplete
-                            options={pros || []}
-                            value={formData.pro_id}
-                            onChange={(val) => setFormData({ ...formData, pro_id: val })}
-                            placeholder="Select PRO..."
-                            allowQuickAdd={true}
-                            quickAddType="pros"
-                        />
-                    </div>
-                </div>
-
-                <h3 className="form-section-title">Social & Streaming</h3>
-                <div className="form-row">
-                    <Input
-                        label="Instagram"
-                        id="instagram"
-                        value={formData.instagram}
-                        onChange={(e) => setFormData({ ...formData, instagram: e.target.value })}
-                        placeholder="@artist"
-                    />
-                    <Input
-                        label="Twitter"
-                        id="twitter"
-                        value={formData.twitter}
-                        onChange={(e) => setFormData({ ...formData, twitter: e.target.value })}
-                        placeholder="@artist"
-                    />
-                </div>
-                <Input
-                    label="Spotify URL"
-                    type="url"
-                    id="spotify"
-                    value={formData.spotify_url}
-                    onChange={(e) => setFormData({ ...formData, spotify_url: e.target.value })}
-                    placeholder="https://open.spotify.com/artist/..."
-                />
-                <Input
-                    label="Apple Music URL"
-                    type="url"
-                    id="apple_music"
-                    value={formData.apple_music_url}
-                    onChange={(e) => setFormData({ ...formData, apple_music_url: e.target.value })}
-                    placeholder="https://music.apple.com/..."
-                />
-
-                <h3 className="form-section-title">Banking Details</h3>
-                <div className="form-row">
-                    <Input
-                        label="Bank Name"
-                        id="bank_name"
-                        value={formData.bank_name}
-                        onChange={(e) => setFormData({ ...formData, bank_name: e.target.value })}
-                    />
-                    <Input
-                        label="Branch Code"
-                        id="branch_code"
-                        value={formData.branch_code}
-                        onChange={(e) => setFormData({ ...formData, branch_code: e.target.value })}
-                    />
-                </div>
-                <Input
-                    label="Account Number"
-                    id="account_number"
-                    value={formData.account_number}
-                    onChange={(e) => setFormData({ ...formData, account_number: e.target.value })}
-                />
             </EntityForm>
         </div>
     );

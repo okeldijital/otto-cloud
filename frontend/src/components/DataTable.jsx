@@ -47,25 +47,25 @@ const DataTable = ({ columns, data, onEdit, onDelete, isLoading }) => {
 
     if (isLoading) {
         return (
-            <div className="table-container">
-                <table className="data-table">
-                    <thead>
+            <div className="bg-premium-glass border border-white/5 rounded-[24px] shadow-glass overflow-hidden backdrop-blur-xl">
+                <table className="w-full border-collapse">
+                    <thead className="bg-white/[0.02]">
                         <tr>
                             {columns.map((col, index) => (
-                                <th key={index}>{col.label}</th>
+                                <th key={index} className="px-6 py-5 text-left text-[10px] font-bold text-text-secondary uppercase tracking-widest border-b border-white/5">{col.label}</th>
                             ))}
-                            <th className="actions-header">Actions</th>
+                            <th className="px-6 py-5 text-left text-[10px] font-bold text-text-secondary uppercase tracking-widest border-b border-white/5">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {[...Array(5)].map((_, index) => (
-                            <tr key={index}>
+                            <tr key={index} className="border-b border-white/5 last:border-0">
                                 {columns.map((col, cIndex) => (
-                                    <td key={cIndex}>
+                                    <td key={cIndex} className="px-6 py-5">
                                         <Skeleton />
                                     </td>
                                 ))}
-                                <td className="actions-cell">
+                                <td className="px-6 py-5">
                                     <Skeleton width="60px" />
                                 </td>
                             </tr>
@@ -78,14 +78,7 @@ const DataTable = ({ columns, data, onEdit, onDelete, isLoading }) => {
 
     if (!data || data.length === 0) {
         return (
-            <div className="empty-state" style={{
-                padding: '3rem',
-                textAlign: 'center',
-                color: '#64748b',
-                background: 'var(--surface-color)',
-                borderRadius: 'var(--radius)',
-                border: '1px solid var(--border-color)'
-            }}>
+            <div className="bg-premium-glass border border-white/5 rounded-[24px] py-16 text-center text-text-secondary text-sm backdrop-blur-xl">
                 No records found.
             </div>
         );
@@ -94,64 +87,67 @@ const DataTable = ({ columns, data, onEdit, onDelete, isLoading }) => {
     const renderSortIcon = (col) => {
         if (!col.sortable) return null;
         if (!sortConfig || sortConfig.key !== col.key) {
-            return <ArrowUpDown size={14} style={{ marginLeft: '4px', opacity: 0.3 }} />;
+            return <ArrowUpDown size={12} className="ml-2 text-text-secondary opacity-30" />;
         }
         return sortConfig.direction === 'ascending' ?
-            <ArrowUp size={14} style={{ marginLeft: '4px' }} /> :
-            <ArrowDown size={14} style={{ marginLeft: '4px' }} />;
+            <ArrowUp size={12} className="ml-2 text-accent" /> :
+            <ArrowDown size={12} className="ml-2 text-accent" />;
     };
 
     return (
-        <div className="table-container">
-            <table className="data-table">
-                <thead>
-                    <tr>
-                        {columns.map((col, index) => (
-                            <th
-                                key={col.key || index}
-                                onClick={() => col.sortable && handleSort(col.key)}
-                                style={{ cursor: col.sortable ? 'pointer' : 'default', userSelect: 'none' }}
-                                className={col.sortable ? 'sortable-header' : ''}
-                            >
-                                <div style={{ display: 'flex', alignItems: 'center' }}>
-                                    {col.label}
-                                    {renderSortIcon(col)}
-                                </div>
-                            </th>
-                        ))}
-                        <th className="actions-header" style={{ width: '100px' }}>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {sortedData.map((row, index) => (
-                        <tr key={row.id || index}>
-                            {columns.map((col, cIndex) => (
-                                <td key={`${row.id}-${cIndex}`}>
-                                    {col.render ? col.render(row) : row[col.key]}
-                                </td>
+        <div className="bg-premium-glass border border-white/5 rounded-[24px] shadow-glass overflow-hidden backdrop-blur-xl">
+            <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                    <thead className="bg-white/[0.02]">
+                        <tr>
+                            {columns.map((col, index) => (
+                                <th
+                                    key={col.key || index}
+                                    onClick={() => col.sortable && handleSort(col.key)}
+                                    className={`px-6 py-5 text-left text-[10px] font-bold text-text-secondary uppercase tracking-widest border-b border-white/5 transition-colors ${col.sortable ? 'cursor-pointer hover:text-white select-none' : 'cursor-default'}`}
+                                >
+                                    <div className="flex items-center">
+                                        {col.label}
+                                        {renderSortIcon(col)}
+                                    </div>
+                                </th>
                             ))}
-                            <td className="actions-cell">
-                                <button
-                                    type="button"
-                                    className="btn-icon edit"
-                                    onClick={() => onEdit(row)}
-                                    title="Edit"
-                                >
-                                    <Edit2 size={16} />
-                                </button>
-                                <button
-                                    type="button"
-                                    className="btn-icon delete"
-                                    onClick={() => onDelete(row)}
-                                    title="Delete"
-                                >
-                                    <Trash2 size={16} />
-                                </button>
-                            </td>
+                            <th className="px-6 py-5 text-left text-[10px] font-bold text-text-secondary uppercase tracking-widest border-b border-white/5 w-[100px]">Actions</th>
                         </tr>
-                    ))}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {sortedData.map((row, index) => (
+                            <tr key={row.id || index} className="border-b border-white/5 last:border-0 hover:bg-white/[0.03] transition-colors group">
+                                {columns.map((col, cIndex) => (
+                                    <td key={`${row.id}-${cIndex}`} className="px-6 py-5 text-sm text-white font-medium">
+                                        {col.render ? col.render(row) : row[col.key]}
+                                    </td>
+                                ))}
+                                <td className="px-6 py-5">
+                                    <div className="flex items-center gap-2 opacity-50 group-hover:opacity-100 transition-opacity">
+                                        <button
+                                            type="button"
+                                            className="p-2 text-text-secondary hover:text-accent hover:bg-accent/10 rounded-lg transition-all focus:outline-none"
+                                            onClick={() => onEdit(row)}
+                                            title="Edit"
+                                        >
+                                            <Edit2 size={16} />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="p-2 text-text-secondary hover:text-danger hover:bg-danger/10 rounded-lg transition-all focus:outline-none"
+                                            onClick={() => onDelete(row)}
+                                            title="Delete"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
         </div>
     );
 };

@@ -17,7 +17,7 @@ from fastapi.responses import FileResponse, JSONResponse
 # -----------------------------
 try:
     from dotenv import load_dotenv  # type: ignore
-    load_dotenv()
+    load_dotenv(".env.development")
 except Exception:
     # dotenv is optional; environment may already be set via shell
     pass
@@ -67,8 +67,62 @@ app = FastAPI(
 
 @app.get("/api/health")
 async def api_health():
-    """Alias for /health to support frontend API clients that prefix with /api"""
-    return {"status": "ok", "env": getattr(settings, "APP_ENV", os.getenv("APP_ENV", "dev"))}
+    """Extended health check with service status."""
+    import time
+    import redis as redis_lib
+
+    services = {}
+    db_latency = None
+
+    # Check Database
+    try:
+        from database import engine
+        from sqlalchemy import text
+        start = time.time()
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        db_latency = round((time.time() - start) * 1000, 2)
+        services["db"] = "ok"
+    except Exception:
+        services["db"] = "down"
+        db_latency = None
+
+    # Check Redis
+    try:
+        r = redis_lib.from_url(os.getenv("REDIS_URL", "redis://localhost:6379/0"))
+        r.ping()
+        services["redis"] = "ok"
+    except Exception:
+        services["redis"] = "down"
+
+    # Check Queue
+    queue_depth = 0
+    worker_count = 0
+    try:
+        from job_queue.connection import default_queue, get_redis_connection
+        redis_conn = get_redis_connection()
+        queue_depth = default_queue.count
+
+        from rq import Worker
+        workers = Worker.all(connection=redis_conn)
+        worker_count = len([w for w in workers if w.get_state() == "busy"])
+
+        services["queue"] = "ok"
+    except Exception:
+        services["queue"] = "down"
+
+    status = "ok" if all(v == "ok" for v in services.values()) else "degraded"
+
+    return {
+        "status": status,
+        "env": getattr(settings, "APP_ENV", os.getenv("APP_ENV", "dev")),
+        "services": services,
+        "metrics": {
+            "db_latency_ms": db_latency,
+            "queue_depth": queue_depth,
+            "busy_workers": worker_count,
+        }
+    }
 
 # -----------------------------
 # CORS (FIXED)
@@ -94,12 +148,10 @@ else:
 
 app.add_middleware(
     CORSMiddleware,
-    # allow_origins=allow_origins,  # Replaced by regex for better dev experience
-    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?",
+    allow_origins=allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"],
 )
 
 # -----------------------------
@@ -392,19 +444,6 @@ else:
     logging.warning(f"⚠️ Frontend build not found at {dist_dir}")
 
 
-
-# -----------------------------
-# Desktop/CLI entry point
-# -----------------------------
-    try:
-        run_preflight_checks()
-    except GovernanceError as e:
-        logging.critical(f"🛑 Governance Check Failed: {e}")
-        # In startup event, raising exception will stop the server
-        raise e
-    except Exception as e:
-        logging.critical(f"🛑 Startup Failed: {e}")
-        raise e
 
 # -----------------------------
 # Desktop/CLI entry point

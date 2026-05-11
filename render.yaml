@@ -1,0 +1,38 @@
+services:
+  - type: web
+    name: otto-backend
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn backend.main:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: SECRET_KEY
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+
+  - type: worker
+    name: otto-worker
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m queue.worker --num-workers 3
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+    scaling:
+      type: classic
+      minInstances: 1
+      maxInstances: 3

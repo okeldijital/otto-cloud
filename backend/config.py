@@ -12,8 +12,12 @@ IS_PACKAGED = getattr(sys, 'frozen', False)
 
 class Settings(BaseSettings):
     """Application configuration settings"""
-    
-    model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=True,
+        extra="ignore"
+    )
     
     APP_NAME: str = "OTTO"
     APP_VERSION: str = "1.0.1"
@@ -27,6 +31,9 @@ class Settings(BaseSettings):
     IMPORT_LOGS_ROOT: str = ""
     UPLOAD_DIR: str = ""
     LOG_FILE: str = ""
+    BACKUP_ROOT: str = ""
+    BACKUP_RETENTION_COUNT: int = 5
+    BACKUP_MAX_TOTAL_GB: int = 10
     
     # Desktop Settings
     AUTH_DISABLED: bool = False
@@ -105,7 +112,7 @@ class Settings(BaseSettings):
             self.APP_ENV = env_from_os if env_from_os else "development"
             self.DEBUG = True
             # DEV MODE: Disable auth for development
-            self.AUTH_DISABLED = True  # Set to False to re-enable auth
+            self.AUTH_DISABLED = False # SaaS requires auth
 
         # Resolve Data Directory
         # UNIVERSAL SINGLE SOURCE OF TRUTH
@@ -142,6 +149,16 @@ class Settings(BaseSettings):
         logs_dir.mkdir(exist_ok=True)
         runtime_dir = data_parent / "runtime"
         runtime_dir.mkdir(exist_ok=True)
+        
+        # BACKUP_ROOT: canonical outside data tree
+        backup_root_env = os.getenv("BACKUP_ROOT")
+        if backup_root_env:
+            backup_dir = Path(backup_root_env).expanduser().resolve()
+        else:
+            # Sibling to 'data' -> ~/.otto/backups
+            backup_dir = data_parent.parent / "backups"
+        backup_dir.mkdir(exist_ok=True, parents=True)
+        self.BACKUP_ROOT = str(backup_dir)
         active_db_pointer = runtime_dir / "active_db.json"
         self.ACTIVE_DB_POINTER_FILE = str(active_db_pointer)
 

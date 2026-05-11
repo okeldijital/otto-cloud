@@ -10,14 +10,13 @@ import { BarChart3, TrendingUp, PieChart as PieIcon, Activity, GripVertical } fr
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
-const COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f97316', '#eab308'];
+const COLORS = ['#7c3aed', '#4f46e5', '#3b82f6', '#ec4899', '#f43f5e', '#8b5cf6'];
 
 const Analytics = () => {
     const [growthData, setGrowthData] = useState([]);
     const [kpis, setKpis] = useState({});
     const [isLoading, setIsLoading] = useState(true);
 
-    // Dynamic Layout
     const [layout, setLayout] = useState(() => {
         const saved = localStorage.getItem('otto_analytics_layout');
         return saved ? JSON.parse(saved) : [
@@ -52,13 +51,15 @@ const Analytics = () => {
     }, []);
 
     const WidgetHeader = ({ title, icon: Icon }) => (
-        <div className="widget-header">
-            <h3><Icon size={18} /> {title}</h3>
-            <GripVertical size={14} className="text-muted" />
+        <div className="flex items-center justify-between p-4 bg-white/[0.03] border-b border-white/5 cursor-move">
+            <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2">
+                <Icon size={16} className="text-accent" />
+                {title}
+            </h3>
+            <GripVertical size={14} className="text-text-secondary opacity-30" />
         </div>
     );
 
-    // Mock data for more visual flavor if real data is sparse
     const mockDistribution = [
         { name: 'Pop', value: 400 },
         { name: 'Hip Hop', value: 300 },
@@ -66,14 +67,22 @@ const Analytics = () => {
         { name: 'Rock', value: 200 }
     ];
 
-    if (isLoading) return <div className="loading-state">Aggregating Global Metrics...</div>;
+    if (isLoading) return (
+        <div className="h-[80vh] flex flex-col items-center justify-center space-y-4 animate-in fade-in duration-700">
+            <div className="w-12 h-12 border-4 border-accent/20 border-t-accent rounded-full animate-spin"></div>
+            <p className="text-xs font-black text-text-secondary uppercase tracking-[0.2em]">Aggregating Global Metrics...</p>
+        </div>
+    );
 
     return (
-        <div className="entity-page">
-            <div className="page-header">
+        <div className="max-w-7xl mx-auto px-4 py-8 space-y-8 animate-in fade-in duration-500">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
-                    <h1 className="page-title">Advanced Analytics</h1>
-                    <p className="page-subtitle">Visual performance indicators and catalog distribution</p>
+                    <h1 className="text-3xl font-black text-white flex items-center gap-3 tracking-tight">
+                        <BarChart3 size={32} className="text-accent" />
+                        Intelligence Terminal
+                    </h1>
+                    <p className="mt-2 text-text-secondary text-sm font-medium">Visual performance indicators and catalog distribution</p>
                 </div>
             </div>
 
@@ -86,30 +95,48 @@ const Analytics = () => {
                 draggableHandle=".widget-header"
                 onLayoutChange={onLayoutChange}
             >
-                <div key="overview" className="dashboard-grid-item">
+                <div key="overview" className="bg-premium-glass border border-white/5 rounded-[24px] overflow-hidden shadow-glass flex flex-col">
                     <WidgetHeader title="Catalog Growth Trend" icon={TrendingUp} />
-                    <div className="widget-content">
+                    <div className="flex-1 p-6 min-h-0">
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={growthData}>
                                 <defs>
                                     <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1} />
-                                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                                        <stop offset="5%" stopColor="#7c3aed" stopOpacity={0.2} />
+                                        <stop offset="95%" stopColor="#7c3aed" stopOpacity={0} />
                                     </linearGradient>
                                 </defs>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                <XAxis dataKey="name" axisLine={false} tickLine={false} />
-                                <YAxis axisLine={false} tickLine={false} />
-                                <Tooltip />
-                                <Area type="monotone" dataKey="value" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" />
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                                <XAxis 
+                                    dataKey="name" 
+                                    axisLine={false} 
+                                    tickLine={false} 
+                                    tick={{ fill: '#9ca3af', fontSize: 10, fontWeight: 700 }}
+                                    dy={10}
+                                />
+                                <YAxis 
+                                    axisLine={false} 
+                                    tickLine={false} 
+                                    tick={{ fill: '#9ca3af', fontSize: 10, fontWeight: 700 }}
+                                />
+                                <Tooltip 
+                                    contentStyle={{ 
+                                        backgroundColor: '#1a1d23', 
+                                        border: '1px solid rgba(255,255,255,0.1)',
+                                        borderRadius: '12px',
+                                        fontSize: '12px',
+                                        fontWeight: '700'
+                                    }}
+                                />
+                                <Area type="monotone" dataKey="value" stroke="#7c3aed" strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" />
                             </AreaChart>
                         </ResponsiveContainer>
                     </div>
                 </div>
 
-                <div key="distribution" className="dashboard-grid-item">
+                <div key="distribution" className="bg-premium-glass border border-white/5 rounded-[24px] overflow-hidden shadow-glass flex flex-col">
                     <WidgetHeader title="Genre Distribution" icon={PieIcon} />
-                    <div className="widget-content">
+                    <div className="flex-1 p-6 min-h-0">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie
@@ -120,28 +147,60 @@ const Analytics = () => {
                                     outerRadius={80}
                                     paddingAngle={5}
                                     dataKey="value"
+                                    stroke="none"
                                 >
                                     {mockDistribution.map((entry, index) => (
                                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                     ))}
                                 </Pie>
-                                <Tooltip />
-                                <Legend />
+                                <Tooltip 
+                                    contentStyle={{ 
+                                        backgroundColor: '#1a1d23', 
+                                        border: '1px solid rgba(255,255,255,0.1)',
+                                        borderRadius: '12px',
+                                        fontSize: '12px',
+                                        fontWeight: '700'
+                                    }}
+                                />
+                                <Legend 
+                                    verticalAlign="bottom" 
+                                    height={36} 
+                                    iconType="circle"
+                                    wrapperStyle={{ fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#9ca3af' }}
+                                />
                             </PieChart>
                         </ResponsiveContainer>
                     </div>
                 </div>
 
-                <div key="trends" className="dashboard-grid-item">
+                <div key="trends" className="bg-premium-glass border border-white/5 rounded-[24px] overflow-hidden shadow-glass flex flex-col">
                     <WidgetHeader title="System Activity Pulse" icon={Activity} />
-                    <div className="widget-content">
+                    <div className="flex-1 p-6 min-h-0">
                         <ResponsiveContainer width="100%" height="100%">
                             <LineChart data={growthData}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                <XAxis dataKey="name" axisLine={false} tickLine={false} />
-                                <YAxis axisLine={false} tickLine={false} />
-                                <Tooltip />
-                                <Line type="stepAfter" dataKey="value" stroke="#ec4899" strokeWidth={2} dot={{ r: 4 }} />
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                                <XAxis 
+                                    dataKey="name" 
+                                    axisLine={false} 
+                                    tickLine={false} 
+                                    tick={{ fill: '#9ca3af', fontSize: 10, fontWeight: 700 }}
+                                    dy={10}
+                                />
+                                <YAxis 
+                                    axisLine={false} 
+                                    tickLine={false} 
+                                    tick={{ fill: '#9ca3af', fontSize: 10, fontWeight: 700 }}
+                                />
+                                <Tooltip 
+                                    contentStyle={{ 
+                                        backgroundColor: '#1a1d23', 
+                                        border: '1px solid rgba(255,255,255,0.1)',
+                                        borderRadius: '12px',
+                                        fontSize: '12px',
+                                        fontWeight: '700'
+                                    }}
+                                />
+                                <Line type="stepAfter" dataKey="value" stroke="#ec4899" strokeWidth={3} dot={{ r: 4, fill: '#ec4899', strokeWidth: 0 }} />
                             </LineChart>
                         </ResponsiveContainer>
                     </div>

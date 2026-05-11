@@ -1,11 +1,30 @@
 from typing import Any, Iterable
 
-from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from models.artist import Artist
 from models.contract import Contract, ContractParty
 from models.network import Individual, Organization
+
+
+class EntityTypeError(Exception):
+    pass
+
+
+class EntityNotFoundError(Exception):
+    pass
+
+
+class ContractNotFoundError(Exception):
+    pass
+
+
+class ValidationError(Exception):
+    pass
+
+
+class ConfirmRequiredError(Exception):
+    pass
 
 
 def _assert_entity_in_org(db: Session, entity_type: str, entity_id: int, org_id: Any) -> None:
@@ -16,15 +35,15 @@ def _assert_entity_in_org(db: Session, entity_type: str, entity_id: int, org_id:
     }
     model = model_map.get((entity_type or "").strip().lower())
     if model is None:
-        raise HTTPException(status_code=422, detail="unsupported entity_type")
+        raise EntityTypeError("unsupported entity_type")
 
     record = db.query(model).filter(model.id == int(entity_id)).first()
     if not record:
-        raise HTTPException(status_code=404, detail="linked entity not found")
+        raise EntityNotFoundError("linked entity not found")
 
     record_org_id = getattr(record, "organization_id", None)
     if record_org_id is not None and record_org_id != org_id:
-        raise HTTPException(status_code=404, detail="linked entity not found")
+        raise EntityNotFoundError("linked entity not found")
 
 
 def save_parties(
@@ -35,7 +54,7 @@ def save_parties(
     confirm: bool,
 ) -> int:
     if not confirm:
-        raise HTTPException(status_code=422, detail="confirm_non_destructive required")
+        raise ConfirmRequiredError("confirm_non_destructive required")
 
     org_id = getattr(user, "organization_id", None)
     contract = (
@@ -44,7 +63,7 @@ def save_parties(
         .first()
     )
     if not contract:
-        raise HTTPException(status_code=404, detail="contract not found")
+        raise ContractNotFoundError("contract not found")
 
     saved = 0
     for party in parties or []:
@@ -57,10 +76,10 @@ def save_parties(
         if split_percent is not None:
             try:
                 split_percent = float(split_percent)
-            except Exception as exc:  # pragma: no cover - defensive
-                raise HTTPException(status_code=422, detail="split_percent must be between 0 and 100") from exc
+            except Exception as exc:
+                raise ValidationError("split_percent must be a valid number") from exc
             if split_percent < 0 or split_percent > 100:
-                raise HTTPException(status_code=422, detail="split_percent must be between 0 and 100")
+                raise ValidationError("split_percent must be between 0 and 100")
 
         entity_id = None
         external_name = None
@@ -68,13 +87,13 @@ def save_parties(
 
         if entity_type == "external":
             if not display_name:
-                raise HTTPException(status_code=422, detail="display_name is required")
+                raise ValidationError("display_name is required")
             external_name = display_name
             db_entity_type = "External"
         else:
             entity_id = party.get("entity_id")
             if not entity_id:
-                raise HTTPException(status_code=422, detail="entity_id is required")
+                raise ValidationError("entity_id is required")
             _assert_entity_in_org(db, entity_type, int(entity_id), org_id)
             db_entity_type = entity_type.capitalize()
 

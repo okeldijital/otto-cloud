@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -93,16 +93,28 @@ async def admin_create_backup(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_admin_user),
 ):
-    row = create_manual_backup(db=db, org_id=current_user.organization_id, user_id=current_user.id)
-    return BackupUploadResponse(
-        status="uploaded",
-        backup_id=row.id,
-        filename=row.filename,
-        size_bytes=row.size_bytes,
-        sha256=row.sha256,
-        created_at=_iso(row.created_at),
-        organization_id=str(row.organization_id),
-    )
+    try:
+        row = create_manual_backup(db=db, org_id=current_user.organization_id, user_id=current_user.id)
+        return BackupUploadResponse(
+            status="uploaded",
+            backup_id=row.id,
+            filename=row.filename,
+            size_bytes=row.size_bytes,
+            sha256=row.sha256,
+            created_at=_iso(row.created_at),
+            organization_id=str(row.organization_id),
+        )
+    except ValueError as exc:
+        code = str(exc)
+        if code.startswith("unsafe_backup_root"):
+            return JSONResponse(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                content={
+                    "detail": "unsafe_backup_root",
+                    "hint": "BACKUP_ROOT must not be inside APP_DATA_DIR or STORAGE_ROOT"
+                }
+            )
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=code)
 
 
 @router.post("/admin/backups/upload", response_model=BackupUploadResponse)

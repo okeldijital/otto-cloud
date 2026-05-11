@@ -19,6 +19,7 @@ from services.admin.scc.runtime import (
     get_alembic_head,
     get_last_backup_timestamp,
     get_org_name,
+    get_storage_usage,
     list_orgs,
     option_by_db_id,
     redact_database_url,
@@ -220,3 +221,8 @@ async def scc_org_switch(
         "active_org_name": get_org_name(db, org_uuid),
         "session_scoped": True,
     }
+
+
+@router.get("/admin/scc/storage/usage")
+async def scc_storage_usage(current_user: User = Depends(get_current_admin_user)):
+    return get_storage_usage()

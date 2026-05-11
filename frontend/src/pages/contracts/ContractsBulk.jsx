@@ -1,6 +1,10 @@
 import React, { useState, useCallback, useRef } from 'react';
 import contractsBulkClient from '../../api/contractsBulkClient';
 import BulkContractCard from '../../components/contracts/BulkContractCard';
+import PageHeader from '../../components/ui/PageHeader';
+import Button from '../../components/ui/Button';
+import Badge from '../../components/ui/Badge';
+import { X } from 'lucide-react';
 
 /**
  * Bulk Processing — Clean rebuild.
@@ -46,17 +50,8 @@ function makeItem(file) {
     id: uid(),
     filename: file.name,
     file,
-    status: 'extracted',
-    extract: {
-      data: {
-        title: file.name.replace(/\.pdf$/i, ''),
-        type: 'unknown',
-        dates: {},
-        key_terms: {},
-        suggested_track_ids: [],
-        suggested_party_links: []
-      }
-    },
+    status: 'idle',
+    extract: null,
     trackIds: [],
     parties: [],
     contractId: null,
@@ -118,6 +113,55 @@ export default function ContractsBulk() {
     setSelectedId(null);
     setBanner(null);
   }, []);
+
+  // ── Step 2: Extraction ─────────────────────────────────────────────
+
+  const extractItem = useCallback(async (id) => {
+    const item = items.find(it => it.id === id);
+    if (!item || item.status !== 'idle') return;
+
+    updateItem(id, { status: 'extracting', error: null });
+
+    try {
+      const formData = new FormData();
+      formData.append('file', item.file);
+
+      const resp = await contractsBulkClient.extractBulk(formData);
+      // Since our extractBulk is immediate in this version of the backend (per typical local Electron apps)
+      // we handle the response directly. If it was async, we'd poll.
+      
+      const extractData = resp.results?.[0] || resp;
+      
+      updateItem(id, {
+        status: 'extracted',
+        extract: extractData,
+        trackIds: extractData.data?.suggested_track_ids || [],
+        parties: extractData.data?.suggested_party_links || [],
+        terms: {
+          term_text: extractData.data?.key_terms?.term_text || null,
+          territory: extractData.data?.key_terms?.territory || null,
+          governing_law: extractData.data?.key_terms?.governing_law || null,
+          renewal_text: extractData.data?.key_terms?.renewal_text || null,
+        }
+      });
+    } catch (err) {
+      updateItem(id, {
+        status: 'error',
+        error: err.message || 'Extraction failed'
+      });
+    }
+  }, [items, updateItem]);
+
+  const extractAll = useCallback(async () => {
+    const idle = items.filter(it => it.status === 'idle');
+    if (!idle.length) return;
+
+    setGlobalStatus('extracting');
+    for (const item of idle) {
+      await extractItem(item.id);
+    }
+    setGlobalStatus('idle');
+  }, [items, extractItem]);
 
 
   // ── Step 3: Create draft for one item ──────────────────────────────
@@ -313,79 +357,79 @@ export default function ContractsBulk() {
   // ── Render ─────────────────────────────────────────────────────────
 
   return (
-    <div className="contracts-shell">
-      <header className="contracts-header">
-        <div>
-          <p className="breadcrumb">Administration of Works ▸ Bulk Processing</p>
-          <h1>Bulk Processing</h1>
-        </div>
-      </header>
+    <div className="flex flex-col h-full">
+      <PageHeader
+        title="Bulk Processing"
+        subtitle="Administration of Works ▸ Bulk Processing"
+      />
 
       {/* Banner */}
       {banner && (
-        <div
-          className={banner.type === 'error' ? 'error-banner' : 'success-banner'}
-          style={{ padding: '10px 16px', borderRadius: 8, marginBottom: 12, fontSize: 13 }}
-        >
-          {banner.message}
-          <button
-            type="button"
-            onClick={() => setBanner(null)}
-            style={{ float: 'right', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700 }}
-          >
-            ✕
+        <div className={`mb-md px-md py-3 rounded-lg flex items-center justify-between border ${
+          banner.type === 'error' ? 'bg-danger/10 border-danger/20 text-danger' : 'bg-success/10 border-success/20 text-success'
+        }`}>
+          <div className="text-sm font-medium">{banner.message}</div>
+          <button type="button" onClick={() => setBanner(null)} className="p-1 hover:bg-black/5 rounded-md transition-colors">
+            <X size={16} />
           </button>
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '300px minmax(0, 1fr)', gap: 16 }}>
+      <div className="grid grid-cols-[320px_1fr] gap-md flex-1 min-h-0">
         {/* ── Sidebar ─────────────────────────────────── */}
-        <aside className="panel" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div className="strong">Files</div>
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            accept=".pdf,application/pdf"
-            onChange={onFilesChosen}
-            style={{ fontSize: 13 }}
-          />
-
-          {/* Stats */}
-          {items.length > 0 && (
-            <div className="small muted" style={{ lineHeight: 1.6 }}>
-              {counts.total} file(s) ·
-              {counts.extracted > 0 && ` ${counts.extracted} extracted ·`}
-              {counts.created > 0 && ` ${counts.created} created ·`}
-              {counts.errors > 0 && ` ${counts.errors} error(s)`}
-            </div>
-          )}
-
-          {/* Action buttons */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <button
-              type="button"
-              className="btn"
-              style={{ background: '#15803d', color: '#fff' }}
-              disabled={isBusy || counts.extracted === 0}
-              onClick={createAllDrafts}
-            >
-              {globalStatus === 'creating' ? 'Creating...' : `Bulk Create Drafts (${counts.extracted})`}
-            </button>
-
+        <aside className="panel flex flex-col gap-md p-md overflow-hidden">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-text-secondary uppercase tracking-widest">Queue</span>
             {items.length > 0 && (
-              <button type="button" className="ghost-btn small" onClick={clearAll} disabled={isBusy}>
-                Clear All
-              </button>
+               <button type="button" onClick={clearAll} className="text-[10px] font-bold text-danger uppercase hover:underline">Clear</button>
             )}
           </div>
 
+          <label className="flex flex-col items-center justify-center p-md border-2 border-dashed border-border rounded-xl hover:border-accent/50 transition-colors cursor-pointer bg-surface-elevated/10">
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept=".pdf,application/pdf"
+              onChange={onFilesChosen}
+              className="hidden"
+            />
+            <div className="text-accent mb-2">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            </div>
+            <div className="text-xs font-semibold text-text-primary">Upload PDFs</div>
+            <div className="text-[10px] text-text-secondary mt-1">Drag & drop files here</div>
+          </label>
+
+          {/* Action buttons */}
+          <div className="flex flex-col gap-2">
+            <Button
+              variant="primary"
+              disabled={isBusy || counts.idle === 0}
+              onClick={extractAll}
+              fullWidth
+            >
+              {globalStatus === 'extracting' ? 'Extracting...' : `Extract All (${counts.idle})`}
+            </Button>
+
+            <Button
+              variant="secondary"
+              disabled={isBusy || counts.extracted === 0}
+              onClick={createAllDrafts}
+              fullWidth
+            >
+              {globalStatus === 'creating' ? 'Creating...' : `Create Drafts (${counts.extracted})`}
+            </Button>
+          </div>
+
           {/* File list */}
-          <div style={{ flex: 1, overflowY: 'auto', maxHeight: 400, border: '1px solid #e5e7eb', borderRadius: 8 }}>
+          <div className="flex-1 overflow-y-auto border border-border rounded-xl bg-surface-elevated/5">
             {items.length === 0 && (
-              <div className="small muted" style={{ padding: 16, textAlign: 'center' }}>
-                Select PDF files to begin.
+              <div className="flex flex-col items-center justify-center h-full p-xl text-center">
+                <div className="text-text-secondary opacity-20 mb-2">
+                   <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                </div>
+                <div className="text-xs text-text-secondary">No files in queue</div>
               </div>
             )}
             {items.map(item => (
@@ -393,54 +437,65 @@ export default function ContractsBulk() {
                 key={item.id}
                 type="button"
                 onClick={() => setSelectedId(item.id)}
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  width: '100%', padding: '8px 12px', border: 'none', borderBottom: '1px solid #f1f5f9',
-                  background: selectedId === item.id ? '#f0f9ff' : 'transparent',
-                  cursor: 'pointer', textAlign: 'left', fontSize: 13,
-                }}
+                className={`w-full flex flex-col gap-1 p-3 text-left border-b border-border transition-colors hover:bg-surface-elevated/30 ${selectedId === item.id ? 'bg-surface-elevated border-l-2 border-l-accent' : 'bg-transparent'}`}
               >
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                <div className="text-[11px] font-semibold text-text-primary truncate w-full">
                   {item.filename}
-                </span>
-                <span style={{
-                  fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
-                  background:
-                    item.status === 'created' ? '#dcfce7' :
-                      item.status === 'extracted' ? '#dbeafe' :
-                        item.status === 'extracting' || item.status === 'creating' ? '#fef3c7' :
-                          item.status === 'error' ? '#fee2e2' : '#f1f5f9',
-                  color:
-                    item.status === 'created' ? '#15803d' :
-                      item.status === 'extracted' ? '#1d4ed8' :
-                        item.status === 'error' ? '#b91c1c' : '#64748b',
-                }}>
-                  {item.status === 'extracting' ? '⏳' :
-                    item.status === 'creating' ? '⏳' :
-                      item.status === 'extracted' ? '✓ Extracted' :
-                        item.status === 'created' ? '✓ Created' :
-                          item.status === 'error' ? '✗ Error' : 'Ready'}
-                </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <Badge
+                    variant={
+                      item.status === 'created' ? 'success' :
+                      item.status === 'extracted' ? 'primary' :
+                      item.status === 'error' ? 'critical' :
+                      item.status === 'idle' ? 'neutral' : 'warn'
+                    }
+                    size="sm"
+                  >
+                    {item.status === 'extracting' ? 'Extracting...' :
+                      item.status === 'creating' ? 'Creating...' :
+                      item.status === 'extracted' ? 'Extracted' :
+                      item.status === 'created' ? 'Created' :
+                      item.status === 'error' ? 'Error' : 'Ready'}
+                  </Badge>
+                  {item.completeness && (
+                    <div className="text-[10px] font-bold text-accent">{item.completeness}%</div>
+                  )}
+                </div>
               </button>
             ))}
           </div>
         </aside>
 
         {/* ── Detail Panel ────────────────────────────── */}
-        <main style={{ minWidth: 0 }}>
-          {!selectedItem && items.length === 0 && (
-            <div className="panel" style={{ padding: 40, textAlign: 'center' }}>
-              <div className="strong" style={{ fontSize: 18, marginBottom: 8 }}>Upload Contract PDFs</div>
-              <div className="muted">Select PDF files from the sidebar to begin bulk processing.</div>
-              <div className="muted small" style={{ marginTop: 16, lineHeight: 1.8 }}>
-                1. Upload PDFs → 2. Extract (AI auto-maps tracks + parties) → 3. Review & Fix → 4. Create Drafts
+        <main className="min-w-0 overflow-y-auto pr-2">
+          {!selectedItem && (
+            <div className="panel h-full flex flex-col items-center justify-center p-xl text-center">
+              <div className="w-16 h-16 bg-surface-elevated rounded-full flex items-center justify-center mb-md text-text-secondary/30">
+                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
               </div>
-            </div>
-          )}
-
-          {!selectedItem && items.length > 0 && (
-            <div className="panel" style={{ padding: 40, textAlign: 'center' }}>
-              <div className="muted">Select a file from the sidebar to view details.</div>
+              <h2 className="text-xl font-bold text-text-primary mb-2">Process Documents</h2>
+              <p className="text-sm text-text-secondary max-w-sm">
+                Select a file from the queue to review extraction results and prepare draft contracts.
+              </p>
+              <div className="grid grid-cols-2 gap-4 mt-xl text-left max-w-lg w-full">
+                <div className="p-4 rounded-xl bg-surface-elevated/20 border border-border">
+                  <div className="text-accent font-bold mb-1">1. Upload</div>
+                  <div className="text-xs text-text-secondary leading-relaxed">Add PDF contracts to the processing queue.</div>
+                </div>
+                <div className="p-4 rounded-xl bg-surface-elevated/20 border border-border">
+                  <div className="text-accent font-bold mb-1">2. Extract</div>
+                  <div className="text-xs text-text-secondary leading-relaxed">AI analyzes terms, tracks, and parties.</div>
+                </div>
+                <div className="p-4 rounded-xl bg-surface-elevated/20 border border-border">
+                  <div className="text-accent font-bold mb-1">3. Review</div>
+                  <div className="text-xs text-text-secondary leading-relaxed">Fix mappings and verify auto-matched data.</div>
+                </div>
+                <div className="p-4 rounded-xl bg-surface-elevated/20 border border-border">
+                  <div className="text-accent font-bold mb-1">4. Commit</div>
+                  <div className="text-xs text-text-secondary leading-relaxed">Generate draft contracts in the DB.</div>
+                </div>
+              </div>
             </div>
           )}
 

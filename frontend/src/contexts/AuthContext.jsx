@@ -11,7 +11,7 @@ export const AuthProvider = ({ children }) => {
 
     const checkAuth = async () => {
         // DEV MODE: Bypass authentication entirely
-        const DEV_MODE = true; // Set to false to re-enable auth
+        const DEV_MODE = false; // SaaS requires real auth
 
         if (DEV_MODE) {
             console.log('🔓 DEV MODE: Authentication bypassed');

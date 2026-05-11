@@ -40,6 +40,10 @@ from models.contract_wizard import (
     AIContractAttachRun,
     AIContractDraft,
 )
+from models.job import Job
+from models.plan import Plan
+from models.subscription import Subscription
+from models.usage import Usage
 
 # Aliases for backward compatibility
 Company = Organization
@@ -58,6 +62,7 @@ __all__ = [
     "Release",
     "Track",
     "Work",
+    "Job",
     "Royalty",
     "Document",
     "Note",
@@ -110,4 +115,8 @@ __all__ = [
     "WorksAdmin",
     "WorksAdminDocument",
     "ArtistMembership",
+    "Job",
+    "Plan",
+    "Subscription",
+    "Usage",
 ]

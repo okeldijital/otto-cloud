@@ -1,23 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Calculator } from 'lucide-react';
+import { Calculator, CheckCircle, AlertTriangle } from 'lucide-react';
 import { CatalogService } from '../services/catalog';
 import aiRoyaltyClient from '../api/aiRoyaltyClient';
-
-const cardStyle = {
-    background: '#ffffff',
-    border: '1px solid #e5e7eb',
-    borderRadius: '12px',
-    padding: '1rem',
-    boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-};
-
-const inputStyle = {
-    width: '100%',
-    border: '1px solid #cbd5e1',
-    borderRadius: '8px',
-    padding: '0.55rem 0.65rem',
-    background: '#fff',
-};
 
 const AIRoyalty = () => {
     const [loading, setLoading] = useState(false);
@@ -108,157 +92,248 @@ const AIRoyalty = () => {
     };
 
     return (
-        <div style={{ padding: '1.5rem', display: 'flex', justifyContent: 'center' }}>
-            <div style={{ width: '100%', maxWidth: '1200px', display: 'grid', gap: '1rem' }}>
-                <div>
-                    <h1 style={{ margin: 0, fontSize: '1.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}>
-                        <Calculator size={24} />
-                        AI Royalties
-                    </h1>
-                    <p style={{ margin: '0.35rem 0 0', color: '#6b7280' }}>
-                        Deterministic royalty simulation for release-linked AI contract intelligence.
-                    </p>
-                </div>
+        <div className="max-w-7xl mx-auto px-4 py-8 space-y-8 animate-in fade-in duration-500">
+            <div>
+                <h1 className="text-3xl font-black text-white flex items-center gap-3 tracking-tight">
+                    <Calculator size={32} className="text-accent" />
+                    AI Royalties
+                </h1>
+                <p className="mt-2 text-text-secondary text-sm font-medium">
+                    Deterministic royalty simulation for release-linked AI contract intelligence.
+                </p>
+            </div>
 
-                <div style={{ ...cardStyle, background: '#eff6ff', borderColor: '#bfdbfe', color: '#1d4ed8' }}>
-                    Does not modify Catalog/Network/Contracts data.
-                </div>
+            <div className="bg-accent/10 border border-accent/20 rounded-2xl px-6 py-4 flex items-center gap-3">
+                <div className="w-2 h-2 bg-accent rounded-full animate-pulse shadow-[0_0_10px_rgba(124,58,237,0.5)]"></div>
+                <p className="text-xs font-bold text-accent uppercase tracking-widest">
+                    Simulation Mode Active • No persistent data modification
+                </p>
+            </div>
 
-                {bootLoading && <div style={cardStyle}>Loading...</div>}
-                {!bootLoading && (
-                    <div style={cardStyle}>
-                        <div style={{ display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
-                            <div>
-                                <label style={{ display: 'block', fontSize: '0.82rem', marginBottom: '0.3rem' }}>Release search</label>
-                                <input value={releaseSearch} onChange={(e) => setReleaseSearch(e.target.value)} style={inputStyle} placeholder="Search by id/title" />
+            {bootLoading ? (
+                <div className="bg-premium-glass border border-white/5 rounded-[24px] p-12 flex flex-col items-center justify-center">
+                    <div className="w-12 h-12 border-4 border-accent/20 border-t-accent rounded-full animate-spin mb-4"></div>
+                    <p className="text-xs font-black text-text-secondary uppercase tracking-[0.2em]">Synchronizing Registry...</p>
+                </div>
+            ) : (
+                <div className="bg-premium-glass border border-white/5 rounded-[24px] overflow-hidden backdrop-blur-xl">
+                    <div className="px-6 py-4 bg-white/[0.02] border-b border-white/5">
+                        <h2 className="text-xs font-black text-white uppercase tracking-widest">Simulation Parameters</h2>
+                    </div>
+                    
+                    <div className="p-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Catalog Search</label>
+                                <input 
+                                    value={releaseSearch} 
+                                    onChange={(e) => setReleaseSearch(e.target.value)} 
+                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-accent/40 transition-all" 
+                                    placeholder="Search by ID or Title..." 
+                                />
                             </div>
-                            <div>
-                                <label style={{ display: 'block', fontSize: '0.82rem', marginBottom: '0.3rem' }}>Release</label>
-                                <select value={releaseId} onChange={(e) => setReleaseId(e.target.value)} style={inputStyle}>
-                                    <option value="">Select release</option>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Target Release</label>
+                                <select 
+                                    value={releaseId} 
+                                    onChange={(e) => setReleaseId(e.target.value)} 
+                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-accent/40 appearance-none"
+                                >
+                                    <option value="" className="bg-[#0f1115]">Select a release</option>
                                     {filteredReleases.map((row) => (
-                                        <option key={row.id} value={row.id}>
-                                            #{row.id} {row.title}
+                                        <option key={row.id} value={row.id} className="bg-[#0f1115]">
+                                            #{row.id} | {row.title}
                                         </option>
                                     ))}
                                 </select>
                             </div>
-                            <div>
-                                <label style={{ display: 'block', fontSize: '0.82rem', marginBottom: '0.3rem' }}>Gross revenue</label>
-                                <input value={grossRevenue} onChange={(e) => setGrossRevenue(e.target.value)} style={inputStyle} type="number" min="0" step="0.01" />
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Gross Revenue ($)</label>
+                                <input 
+                                    value={grossRevenue} 
+                                    onChange={(e) => setGrossRevenue(e.target.value)} 
+                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-accent/40" 
+                                    type="number" min="0" step="0.01" 
+                                />
                             </div>
-                            <div>
-                                <label style={{ display: 'block', fontSize: '0.82rem', marginBottom: '0.3rem' }}>Units</label>
-                                <input value={units} onChange={(e) => setUnits(e.target.value)} style={inputStyle} type="number" min="0" step="1" />
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Consumption Units</label>
+                                <input 
+                                    value={units} 
+                                    onChange={(e) => setUnits(e.target.value)} 
+                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-accent/40" 
+                                    type="number" min="0" step="1" 
+                                />
                             </div>
-                            <div>
-                                <label style={{ display: 'block', fontSize: '0.82rem', marginBottom: '0.3rem' }}>Period start</label>
-                                <input value={periodStart} onChange={(e) => setPeriodStart(e.target.value)} style={inputStyle} type="date" />
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Period Start</label>
+                                <input 
+                                    value={periodStart} 
+                                    onChange={(e) => setPeriodStart(e.target.value)} 
+                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-accent/40" 
+                                    type="date" 
+                                />
                             </div>
-                            <div>
-                                <label style={{ display: 'block', fontSize: '0.82rem', marginBottom: '0.3rem' }}>Period end</label>
-                                <input value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} style={inputStyle} type="date" />
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Period End</label>
+                                <input 
+                                    value={periodEnd} 
+                                    onChange={(e) => setPeriodEnd(e.target.value)} 
+                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-accent/40" 
+                                    type="date" 
+                                />
                             </div>
                         </div>
 
-                        <div style={{ marginTop: '0.75rem', display: 'grid', gap: '0.55rem' }}>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <input type="checkbox" checked={useLatestAttached} onChange={(e) => setUseLatestAttached(e.target.checked)} />
-                                Use latest attached contract document
+                        <div className="mt-8 flex flex-col gap-4">
+                            <label className="flex items-center gap-3 group cursor-pointer">
+                                <div className="relative">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={useLatestAttached} 
+                                        onChange={(e) => setUseLatestAttached(e.target.checked)} 
+                                        className="peer hidden"
+                                    />
+                                    <div className="w-5 h-5 border-2 border-white/10 rounded bg-white/5 peer-checked:bg-accent peer-checked:border-accent transition-all flex items-center justify-center">
+                                        <div className="w-2 h-2 bg-[#0f1115] rounded-sm opacity-0 peer-checked:opacity-100 transition-opacity"></div>
+                                    </div>
+                                </div>
+                                <span className="text-xs font-bold text-text-secondary group-hover:text-white transition-colors">Auto-link latest attached contract document</span>
                             </label>
+
                             {!useLatestAttached && (
-                                <div style={{ maxWidth: '360px' }}>
-                                    <label style={{ display: 'block', fontSize: '0.82rem', marginBottom: '0.3rem' }}>contract_document_id (optional)</label>
+                                <div className="max-w-xs space-y-2 animate-in slide-in-from-left-2 duration-300">
+                                    <label className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Document Registry ID</label>
                                     <input
                                         value={contractDocumentId}
                                         onChange={(e) => setContractDocumentId(e.target.value)}
-                                        style={inputStyle}
+                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-accent/40"
                                         type="number"
                                         min="1"
-                                        step="1"
                                         placeholder="e.g. 123"
                                     />
                                 </div>
                             )}
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <input
-                                    type="checkbox"
-                                    checked={persistResult}
-                                    disabled={!persistEnabled}
-                                    onChange={(e) => setPersistResult(e.target.checked)}
-                                />
-                                Persist result {!persistEnabled ? '(disabled by backend flag)' : ''}
+
+                            <label className="flex items-center gap-3 group cursor-pointer">
+                                <div className="relative">
+                                    <input
+                                        type="checkbox"
+                                        checked={persistResult}
+                                        disabled={!persistEnabled}
+                                        onChange={(e) => setPersistResult(e.target.checked)}
+                                        className="peer hidden"
+                                    />
+                                    <div className="w-5 h-5 border-2 border-white/10 rounded bg-white/5 peer-checked:bg-accent peer-checked:border-accent transition-all flex items-center justify-center disabled:opacity-30">
+                                        <div className="w-2 h-2 bg-[#0f1115] rounded-sm opacity-0 peer-checked:opacity-100 transition-opacity"></div>
+                                    </div>
+                                </div>
+                                <span className="text-xs font-bold text-text-secondary group-hover:text-white transition-colors">
+                                    Persist simulation results to ledger {!persistEnabled && <span className="text-danger ml-2 opacity-50">(Unauthorized)</span>}
+                                </span>
                             </label>
                         </div>
 
-                        <div style={{ marginTop: '1rem' }}>
-                            <button className="btn-primary" disabled={loading || !releaseId} onClick={onSimulate}>
-                                {loading ? 'Simulating...' : 'Simulate'}
+                        <div className="mt-8 pt-8 border-t border-white/5">
+                            <button 
+                                className="px-12 py-4 bg-accent text-[#0f1115] rounded-2xl text-xs font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 disabled:opacity-50 shadow-lg shadow-accent/20" 
+                                disabled={loading || !releaseId} 
+                                onClick={onSimulate}
+                            >
+                                {loading ? 'Computing Intelligence...' : 'Run Simulation'}
                             </button>
                         </div>
                     </div>
-                )}
+                </div>
+            )}
 
-                {error && <div style={{ ...cardStyle, color: '#b91c1c', background: '#fef2f2', borderColor: '#fecaca' }}>{error}</div>}
+            {error && (
+                <div className="p-4 bg-danger/10 border border-danger/20 rounded-2xl flex items-center gap-3 text-danger">
+                    <div className="shrink-0 w-8 h-8 rounded-full bg-danger/10 flex items-center justify-center">
+                        <Calculator size={16} />
+                    </div>
+                    <p className="text-xs font-bold uppercase tracking-widest">{error}</p>
+                </div>
+            )}
 
-                {response && (
-                    <div style={cardStyle}>
-                        <h3 style={{ marginTop: 0 }}>Results</h3>
-                        <div style={{ color: '#475569', fontSize: '0.9rem', marginBottom: '0.6rem' }}>
-                            release_id: {response.release_id}
-                            {selectedRelease ? ` (${selectedRelease.title})` : ''}
-                            {' | '}
-                            org_id: {response.org_id}
+            {response && (
+                <div className="bg-premium-glass border border-white/5 rounded-[24px] overflow-hidden backdrop-blur-xl animate-in slide-in-from-bottom-4 duration-500 shadow-glass">
+                    <div className="px-6 py-4 bg-white/[0.02] border-b border-white/5 flex justify-between items-center">
+                        <h2 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2">
+                            <CheckCircle size={16} className="text-success" />
+                            Synthesized Results
+                        </h2>
+                        <span className="text-[10px] font-black text-text-secondary uppercase bg-white/5 px-3 py-1 rounded-full border border-white/10">
+                            RUN_ID: {response.run_id || 'LOCAL'}
+                        </span>
+                    </div>
+
+                    <div className="p-6 space-y-8">
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div className="p-4 bg-white/[0.03] border border-white/5 rounded-2xl">
+                                <div className="text-[10px] font-black text-text-secondary uppercase mb-1">Target</div>
+                                <div className="text-sm font-bold text-white truncate">{selectedRelease?.title || response.release_id}</div>
+                            </div>
+                            <div className="p-4 bg-white/[0.03] border border-white/5 rounded-2xl">
+                                <div className="text-[10px] font-black text-text-secondary uppercase mb-1">Total Splits</div>
+                                <div className={`text-sm font-bold ${response.splits_total === 100 ? 'text-success' : 'text-danger'}`}>{response.splits_total}%</div>
+                            </div>
+                            <div className="p-4 bg-white/[0.03] border border-white/5 rounded-2xl">
+                                <div className="text-[10px] font-black text-text-secondary uppercase mb-1">Ledger State</div>
+                                <div className="text-sm font-bold text-white uppercase tracking-tighter">{response.persisted ? 'Committed' : 'Volatile'}</div>
+                            </div>
+                            <div className="p-4 bg-white/[0.03] border border-white/5 rounded-2xl">
+                                <div className="text-[10px] font-black text-text-secondary uppercase mb-1">Integrity</div>
+                                <div className={`text-sm font-bold uppercase ${response?.integrity?.total_equals_100 ? 'text-success' : 'text-danger'}`}>
+                                    {response?.integrity?.total_equals_100 ? 'Verified' : 'Corrupted'}
+                                </div>
+                            </div>
                         </div>
 
-                        <div style={{ overflowX: 'auto' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                                <thead>
+                        <div className="overflow-hidden border border-white/5 rounded-2xl">
+                            <table className="w-full border-collapse">
+                                <thead className="bg-white/[0.02]">
                                     <tr>
-                                        <th style={{ textAlign: 'left', borderBottom: '1px solid #e5e7eb', padding: '0.45rem' }}>Party</th>
-                                        <th style={{ textAlign: 'left', borderBottom: '1px solid #e5e7eb', padding: '0.45rem' }}>%</th>
-                                        <th style={{ textAlign: 'left', borderBottom: '1px solid #e5e7eb', padding: '0.45rem' }}>Amount</th>
-                                        <th style={{ textAlign: 'left', borderBottom: '1px solid #e5e7eb', padding: '0.45rem' }}>Rationale</th>
+                                        <th className="text-left text-[10px] font-black text-text-secondary uppercase tracking-widest p-4 border-b border-white/5">Party</th>
+                                        <th className="text-left text-[10px] font-black text-text-secondary uppercase tracking-widest p-4 border-b border-white/5">Split %</th>
+                                        <th className="text-left text-[10px] font-black text-text-secondary uppercase tracking-widest p-4 border-b border-white/5">Yield</th>
+                                        <th className="text-left text-[10px] font-black text-text-secondary uppercase tracking-widest p-4 border-b border-white/5">Logic Rationale</th>
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody className="divide-y divide-white/5">
                                     {(response.results || []).length === 0 && (
                                         <tr>
-                                            <td style={{ padding: '0.55rem', color: '#64748b' }} colSpan={4}>No computed split results.</td>
+                                            <td className="p-8 text-center text-xs font-bold text-text-secondary uppercase tracking-widest italic" colSpan={4}>No compute artifacts found</td>
                                         </tr>
                                     )}
                                     {(response.results || []).map((row, idx) => (
-                                        <tr key={`${row.party_display_name}-${idx}`}>
-                                            <td style={{ padding: '0.55rem', borderBottom: '1px solid #f1f5f9' }}>{row.party_display_name}</td>
-                                            <td style={{ padding: '0.55rem', borderBottom: '1px solid #f1f5f9' }}>{row.percent}</td>
-                                            <td style={{ padding: '0.55rem', borderBottom: '1px solid #f1f5f9' }}>{row.amount == null ? '-' : row.amount}</td>
-                                            <td style={{ padding: '0.55rem', borderBottom: '1px solid #f1f5f9' }}>{row.rationale || '-'}</td>
+                                        <tr key={`${row.party_display_name}-${idx}`} className="hover:bg-white/[0.01] transition-colors">
+                                            <td className="p-4 text-sm font-bold text-white">{row.party_display_name}</td>
+                                            <td className="p-4 text-sm font-bold text-accent">{row.percent}%</td>
+                                            <td className="p-4 text-sm font-bold text-white font-mono">${row.amount == null ? '0.00' : row.amount.toFixed(2)}</td>
+                                            <td className="p-4 text-xs font-medium text-text-secondary leading-relaxed">{row.rationale || 'Default algorithmic allocation'}</td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
                         </div>
 
-                        <div style={{ marginTop: '0.85rem', display: 'grid', gap: '0.35rem', color: '#334155' }}>
-                            <div>splits_total: {response.splits_total}</div>
-                            <div>integrity.total_equals_100: {String(response?.integrity?.total_equals_100)}</div>
-                            <div>integrity.over_allocated: {String(response?.integrity?.over_allocated)}</div>
-                            <div>integrity.under_allocated: {String(response?.integrity?.under_allocated)}</div>
-                            <div>persisted: {String(response.persisted)} | run_id: {response.run_id || '-'}</div>
-                            <div>idempotent_hit: {String(response.idempotent_hit)}</div>
-                        </div>
-
                         {(response.warnings || []).length > 0 && (
-                            <div style={{ marginTop: '0.8rem', padding: '0.7rem 0.8rem', borderRadius: '10px', background: '#fff7ed', color: '#9a3412' }}>
-                                <strong>Warnings</strong>
-                                <ul style={{ margin: '0.45rem 0 0 1rem' }}>
-                                    {(response.warnings || []).map((w, idx) => <li key={`w-${idx}`}>{w}</li>)}
+                            <div className="p-4 bg-warning/5 border border-warning/10 rounded-2xl">
+                                <div className="flex items-center gap-2 text-warning mb-2">
+                                    <AlertTriangle size={16} />
+                                    <span className="text-[10px] font-black uppercase tracking-widest">Neural Warning Logs</span>
+                                </div>
+                                <ul className="space-y-1">
+                                    {(response.warnings || []).map((w, idx) => (
+                                        <li key={`w-${idx}`} className="text-xs font-medium text-warning/80 leading-relaxed">• {w}</li>
+                                    ))}
                                 </ul>
                             </div>
                         )}
                     </div>
-                )}
-            </div>
+                </div>
+            )}
         </div>
     );
 };

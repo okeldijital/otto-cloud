@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, X, Search, Loader2 } from 'lucide-react';
+import { Plus, X, Search, Loader2, AlertCircle } from 'lucide-react';
 import { CatalogService } from '../services/catalog';
 import { NetworkService } from '../services/network';
 import { DocumentsService } from '../services/operations';
 import { formatDurationForSave } from '../utils/formatters';
+import Button from './ui/Button';
 
 const QuickAddModal = ({ isOpen, onClose, entityType, onAdd, initialName = '' }) => {
     const [name, setName] = useState(initialName);
@@ -39,7 +40,6 @@ const QuickAddModal = ({ isOpen, onClose, entityType, onAdd, initialName = '' })
         }
     }, [isOpen, entityType]);
 
-    // Filtered options for artist search
     const filteredArtistOptions = (artistSearch.length < 2) ? [] : [
         ...artists.filter(a => (a.name || '').toLowerCase().includes(artistSearch.toLowerCase()) || (a.aka || '').toLowerCase().includes(artistSearch.toLowerCase()))
             .map(a => ({ id: a.id, name: a.aka || a.name, type: 'artist', label: a.aka || a.name })),
@@ -48,8 +48,9 @@ const QuickAddModal = ({ isOpen, onClose, entityType, onAdd, initialName = '' })
     ].slice(0, 10);
 
     if (!isOpen) return null;
+
     const handleSubmit = async (e) => {
-        e.preventDefault();
+        if (e) e.preventDefault();
         setIsSubmitting(true);
         setError(null);
 
@@ -70,9 +71,8 @@ const QuickAddModal = ({ isOpen, onClose, entityType, onAdd, initialName = '' })
                 });
                 onAdd({ id: result.id, name: result.name });
             } else {
-                // For Catalog items: labels, artists, works, pros, publishers, releases
                 const payload = {};
-                if (entityType === 'works' || entityType === 'releases' || entityType === 'tracks') {
+                if (['works', 'releases', 'tracks'].includes(entityType)) {
                     payload.title = name;
                 } else {
                     payload.name = name;
@@ -86,22 +86,17 @@ const QuickAddModal = ({ isOpen, onClose, entityType, onAdd, initialName = '' })
                     payload.duration = formatDurationForSave(duration);
                     if (genre) payload.genre = genre;
                     if (streamingLink) payload.streaming_link = streamingLink;
-                    if (genre) payload.genre = genre;
-                    if (streamingLink) payload.streaming_link = streamingLink;
                     if (releaseDate) payload.release_date = releaseDate;
 
-                    // Process selected artists
                     const finalArtistIds = [];
                     for (const item of selectedArtists) {
                         if (item.type === 'artist') {
                             finalArtistIds.push(item.id);
                         } else if (item.type === 'contact') {
-                            // Check if artist already exists
                             const existing = artists.find(a => (a.name || '').toLowerCase() === item.name.toLowerCase());
                             if (existing) {
                                 finalArtistIds.push(existing.id);
                             } else {
-                                // Create new artist
                                 try {
                                     const newArt = await CatalogService.create('artists', { name: item.name });
                                     finalArtistIds.push(newArt.id);
@@ -115,7 +110,6 @@ const QuickAddModal = ({ isOpen, onClose, entityType, onAdd, initialName = '' })
                 }
 
                 result = await CatalogService.create(entityType, payload);
-                // Return result with preferred display name
                 const displayName = (entityType === 'artists' && result.aka) ? result.aka : (result.name || result.title);
                 onAdd({ ...result, name: displayName });
             }
@@ -136,125 +130,58 @@ const QuickAddModal = ({ isOpen, onClose, entityType, onAdd, initialName = '' })
             'pros': 'PRO',
             'works': 'Musical Work',
             'individual': 'Individual',
-            'organization': 'Organization'
+            'organization': 'Organization',
+            'tracks': 'Track'
         };
         return labels[entityType] || entityType;
     };
 
     return (
-        <div className="quick-add-overlay" style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.4)',
-            backdropFilter: 'blur(4px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1100,
-            animation: 'fadeIn 0.2s ease-out'
-        }}>
-            <div className="quick-add-modal" style={{
-                background: 'white',
-                width: '100%',
-                maxWidth: '400px',
-                borderRadius: '16px',
-                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-                overflow: 'hidden',
-                animation: 'modalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
-            }}>
-                <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: '1.25rem 1.5rem',
-                    borderBottom: '1px solid #f1f5f9'
-                }}>
-                    <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700, color: '#0f172a' }}>
+        <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-[#0f1115]/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
+            <div 
+                className="bg-premium-glass border border-white/10 rounded-3xl shadow-glass w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-300"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <div className="flex items-center justify-between p-6 border-b border-white/5 bg-white/[0.02]">
+                    <h3 className="text-lg font-black text-white tracking-tight">
                         Quick Add {getEntityLabel()}
                     </h3>
                     <button
                         type="button"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onClose();
-                        }}
-                        style={{
-                            background: 'none',
-                            border: 'none',
-                            color: '#94a3b8',
-                            cursor: 'pointer',
-                            padding: '4px',
-                            borderRadius: '6px',
-                            display: 'flex',
-                            transition: 'all 0.2s'
-                        }} className="close-hover">
-                        <X size={20} />
+                        onClick={onClose}
+                        className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-text-secondary hover:text-white transition-colors"
+                    >
+                        <X size={18} />
                     </button>
                 </div>
 
-                <div style={{ padding: '1.5rem' }} onClick={(e) => e.stopPropagation()}>
+                <div className="p-6 overflow-y-auto max-h-[80vh] custom-scrollbar">
                     {error && (
-                        <div style={{
-                            padding: '0.75rem',
-                            background: '#fef2f2',
-                            border: '1px solid #fee2e2',
-                            borderRadius: '8px',
-                            color: '#b91c1c',
-                            fontSize: '0.875rem',
-                            marginBottom: '1rem'
-                        }}>
-                            {error}
+                        <div className="mb-6 bg-danger/10 border border-danger/20 rounded-xl p-4 text-danger text-sm flex items-start gap-3">
+                            <AlertCircle size={18} className="shrink-0 mt-0.5" />
+                            <div>{error}</div>
                         </div>
                     )}
 
-                    <div style={{ marginBottom: '1.5rem' }}>
-                        <label style={{
-                            display: 'block',
-                            fontSize: '0.875rem',
-                            fontWeight: 600,
-                            color: '#475569',
-                            marginBottom: '0.5rem'
-                        }}>
-                            {getEntityLabel()} Name {entityType === 'artists' && '(Real Name)'}
-                        </label>
-                        <input
-                            autoFocus={entityType !== 'artists'}
-                            type="text"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    if (name.trim() && !isSubmitting) {
-                                        handleSubmit(e);
-                                    }
-                                }
-                            }}
-                            required
-                            placeholder={`e.g. New ${getEntityLabel()}`}
-                            style={{
-                                width: '100%',
-                                padding: '0.75rem 1rem',
-                                border: '1px solid #e2e8f0',
-                                borderRadius: '8px',
-                                outline: 'none',
-                                transition: 'border-color 0.2s'
-                            }}
-                            className="input-focus"
-                        />
+                    <div className="space-y-5">
+                        <div>
+                            <label className="block text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">
+                                {getEntityLabel()} Name {entityType === 'artists' && '(Real Name)'}
+                            </label>
+                            <input
+                                autoFocus={entityType !== 'artists'}
+                                type="text"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/40 transition-all placeholder:text-text-secondary/30"
+                                placeholder={`e.g. New ${getEntityLabel()}`}
+                                required
+                            />
+                        </div>
+
                         {entityType === 'artists' && (
-                            <div style={{ marginTop: '1rem' }}>
-                                <label style={{
-                                    display: 'block',
-                                    fontSize: '0.875rem',
-                                    fontWeight: 600,
-                                    color: '#475569',
-                                    marginBottom: '0.5rem'
-                                }}>
+                            <div>
+                                <label className="block text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">
                                     Stage Name (AKA)
                                 </label>
                                 <input
@@ -262,88 +189,77 @@ const QuickAddModal = ({ isOpen, onClose, entityType, onAdd, initialName = '' })
                                     type="text"
                                     value={stageName}
                                     onChange={(e) => setStageName(e.target.value)}
+                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/40 transition-all placeholder:text-text-secondary/30"
                                     placeholder="e.g. The Weeknd"
-                                    style={{
-                                        width: '100%',
-                                        padding: '0.75rem 1rem',
-                                        border: '1px solid #e2e8f0',
-                                        borderRadius: '8px',
-                                        outline: 'none',
-                                        transition: 'border-color 0.2s'
-                                    }}
-                                    className="input-focus"
                                 />
                             </div>
                         )}
+
                         {entityType === 'tracks' && (
                             <>
-                                <div style={{ marginTop: '1rem', display: 'flex', gap: '0.75rem' }}>
-                                    <div style={{ flex: 1 }}>
-                                        <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#475569', marginBottom: '0.5rem' }}>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">
                                             ISRC Code
                                         </label>
                                         <input
                                             type="text"
                                             value={isrcCode}
                                             onChange={(e) => setIsrcCode(e.target.value)}
+                                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/40 transition-all font-mono"
                                             placeholder="US-XXX-24-00001"
-                                            style={{ width: '100%', padding: '0.75rem 1rem', border: '1px solid #e2e8f0', borderRadius: '8px', outline: 'none' }}
-                                            className="input-focus"
                                             required
                                         />
                                     </div>
-                                    <div style={{ width: '120px' }}>
-                                        <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#475569', marginBottom: '0.5rem' }}>
+                                    <div>
+                                        <label className="block text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">
                                             Duration
                                         </label>
                                         <input
                                             type="text"
                                             value={duration}
                                             onChange={(e) => setDuration(e.target.value)}
+                                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/40 transition-all"
                                             placeholder="03:45"
-                                            style={{ width: '100%', padding: '0.75rem 1rem', border: '1px solid #e2e8f0', borderRadius: '8px', outline: 'none' }}
-                                            className="input-focus"
                                             required
                                         />
                                     </div>
                                 </div>
-                                <div style={{ marginTop: '1rem' }}>
-                                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#475569', marginBottom: '0.5rem' }}>
-                                        Genre (Optional)
+
+                                <div>
+                                    <label className="block text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">
+                                        Genre
                                     </label>
                                     <input
                                         type="text"
                                         value={genre}
                                         onChange={(e) => setGenre(e.target.value)}
+                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/40 transition-all"
                                         placeholder="e.g. Pop"
-                                        style={{ width: '100%', padding: '0.75rem 1rem', border: '1px solid #e2e8f0', borderRadius: '8px', outline: 'none' }}
-                                        className="input-focus"
                                     />
                                 </div>
-                                <div style={{ marginTop: '1rem' }}>
-                                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#475569', marginBottom: '0.5rem' }}>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">
                                         Artist(s) / Contacts
                                     </label>
-                                    <div style={{ position: 'relative' }}>
-                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                                    <div className="space-y-2">
+                                        <div className="flex flex-wrap gap-2">
                                             {selectedArtists.map((art, idx) => (
-                                                <div key={idx} style={{
-                                                    background: '#e2e8f0', padding: '0.25rem 0.5rem', borderRadius: '4px',
-                                                    fontSize: '0.8125rem', display: 'flex', alignItems: 'center', gap: '0.25rem'
-                                                }}>
+                                                <span key={idx} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-accent/10 text-accent border border-accent/20 rounded-lg text-xs font-bold">
                                                     {art.label}
                                                     <button type="button" onClick={() => {
                                                         const next = [...selectedArtists];
                                                         next.splice(idx, 1);
                                                         setSelectedArtists(next);
-                                                    }} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 0, color: '#64748b' }}>
-                                                        <X size={14} />
+                                                    }} className="hover:text-white transition-colors">
+                                                        <X size={12} />
                                                     </button>
-                                                </div>
+                                                </span>
                                             ))}
                                         </div>
-                                        <div style={{ position: 'relative' }}>
-                                            <Search size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                                        <div className="relative">
+                                            <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary" />
                                             <input
                                                 type="text"
                                                 value={artistSearch}
@@ -352,141 +268,106 @@ const QuickAddModal = ({ isOpen, onClose, entityType, onAdd, initialName = '' })
                                                     setShowArtistResults(true);
                                                 }}
                                                 onFocus={() => setShowArtistResults(true)}
+                                                className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/40 transition-all"
                                                 placeholder="Search to add artist..."
-                                                style={{ width: '100%', padding: '0.75rem 1rem 0.75rem 2.5rem', border: '1px solid #e2e8f0', borderRadius: '8px', outline: 'none' }}
-                                                className="input-focus"
                                             />
+                                            {showArtistResults && artistSearch.length >= 2 && (
+                                                <div className="absolute top-full left-0 right-0 mt-2 bg-[#1a1c23] border border-white/10 rounded-xl shadow-xl z-20 overflow-hidden">
+                                                    {filteredArtistOptions.length > 0 ? (
+                                                        filteredArtistOptions.map((opt, i) => (
+                                                            <div
+                                                                key={`${opt.type}_${opt.id}_${i}`}
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    if (!selectedArtists.some(s => s.id === opt.id && s.type === opt.type)) {
+                                                                        setSelectedArtists([...selectedArtists, opt]);
+                                                                    }
+                                                                    setArtistSearch('');
+                                                                    setShowArtistResults(false);
+                                                                }}
+                                                                className="px-4 py-3 text-sm text-text-secondary hover:bg-white/5 hover:text-white cursor-pointer transition-colors border-b border-white/5 last:border-0"
+                                                            >
+                                                                {opt.label}
+                                                            </div>
+                                                        ))
+                                                    ) : (
+                                                        <div className="p-4 text-center text-xs text-text-secondary">
+                                                            No results found
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
-                                        {showArtistResults && artistSearch.length >= 2 && filteredArtistOptions.length > 0 && (
-                                            <div style={{
-                                                position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10,
-                                                background: 'white', border: '1px solid #e2e8f0', borderRadius: '8px',
-                                                boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', marginTop: '4px', maxHeight: '200px', overflowY: 'auto'
-                                            }}>
-                                                {filteredArtistOptions.map((opt, i) => (
-                                                    <div
-                                                        key={`${opt.type}_${opt.id}_${i}`}
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            // Avoid duplicates
-                                                            if (!selectedArtists.some(s => s.id === opt.id && s.type === opt.type)) {
-                                                                setSelectedArtists([...selectedArtists, opt]);
-                                                            }
-                                                            setArtistSearch('');
-                                                            setShowArtistResults(false);
-                                                        }}
-                                                        style={{ padding: '0.75rem', cursor: 'pointer', borderBottom: '1px solid #f1f5f9' }}
-                                                        onMouseEnter={(e) => e.target.style.background = '#f8fafc'}
-                                                        onMouseLeave={(e) => e.target.style.background = 'white'}
-                                                    >
-                                                        {opt.label}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                        {showArtistResults && artistSearch.length >= 2 && filteredArtistOptions.length === 0 && (
-                                            <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', padding: '0.75rem', border: '1px solid #e2e8f0', borderRadius: '8px', marginTop: '4px', fontSize: '0.875rem', color: '#64748b' }}>
-                                                No results found
-                                            </div>
-                                        )}
                                     </div>
                                 </div>
-                                <div style={{ marginTop: '1rem', display: 'flex', gap: '0.75rem' }}>
-                                    <div style={{ flex: 1 }}>
-                                        <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#475569', marginBottom: '0.5rem' }}>
-                                            Release Date (Optional)
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">
+                                            Release Date
                                         </label>
                                         <input
                                             type="date"
                                             value={releaseDate}
                                             onChange={(e) => setReleaseDate(e.target.value)}
-                                            style={{ width: '100%', padding: '0.75rem 1rem', border: '1px solid #e2e8f0', borderRadius: '8px', outline: 'none' }}
-                                            className="input-focus"
+                                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/40 transition-all"
                                         />
                                     </div>
-                                    <div style={{ flex: 1 }}>
-                                        <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#475569', marginBottom: '0.5rem' }}>
-                                            Streaming Link (Optional)
+                                    <div>
+                                        <label className="block text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">
+                                            Streaming Link
                                         </label>
                                         <input
                                             type="url"
                                             value={streamingLink}
                                             onChange={(e) => setStreamingLink(e.target.value)}
+                                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent/40 transition-all"
                                             placeholder="https://..."
-                                            style={{ width: '100%', padding: '0.75rem 1rem', border: '1px solid #e2e8f0', borderRadius: '8px', outline: 'none' }}
-                                            className="input-focus"
                                         />
                                     </div>
                                 </div>
                             </>
                         )}
-                        <p style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#94a3b8' }}>
-                            You can add full details later from the {getEntityLabel()}s page.
+                        
+                        <p className="text-[10px] font-bold text-text-secondary/50 uppercase tracking-widest text-center mt-2">
+                            Full details can be managed later in the main catalog
                         </p>
                     </div>
 
-                    <div style={{ display: 'flex', gap: '0.75rem' }}>
-                        <button
+                    <div className="mt-8 flex gap-3">
+                        <Button
                             type="button"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onClose();
-                            }}
-                            style={{
-                                flex: 1,
-                                padding: '0.75rem',
-                                background: '#f8fafc',
-                                border: '1px solid #e2e8f0',
-                                borderRadius: '8px',
-                                fontSize: '0.875rem',
-                                fontWeight: 600,
-                                color: '#475569',
-                                cursor: 'pointer'
-                            }}
+                            variant="secondary"
+                            onClick={onClose}
+                            className="flex-1"
                         >
                             Cancel
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                             type="button"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                handleSubmit(e);
-                            }}
+                            onClick={handleSubmit}
                             disabled={
                                 isSubmitting ||
                                 !name.trim() ||
                                 (entityType === 'tracks' && (!isrcCode.trim() || !duration.trim()))
                             }
-                            style={{
-                                flex: 2,
-                                padding: '0.75rem',
-                                background: 'var(--primary-color)',
-                                border: 'none',
-                                borderRadius: '8px',
-                                fontSize: '0.875rem',
-                                fontWeight: 600,
-                                color: 'white',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '0.5rem'
-                            }}
+                            className="flex-[2]"
                         >
-                            {isSubmitting ? <Loader2 className="spin" size={18} /> : <Plus size={18} />}
-                            {isSubmitting ? 'Adding...' : `Add ${getEntityLabel()}`}
-                        </button>
+                            {isSubmitting ? (
+                                <span className="flex items-center gap-2">
+                                    <Loader2 size={16} className="animate-spin" />
+                                    Adding...
+                                </span>
+                            ) : (
+                                <span className="flex items-center gap-2">
+                                    <Plus size={16} strokeWidth={3} />
+                                    Add {getEntityLabel()}
+                                </span>
+                            )}
+                        </Button>
                     </div>
                 </div>
             </div>
-            <style>{`
-                @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-                @keyframes modalSlideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-                .close-hover:hover { background: #f1f5f9; color: #475569 !important; }
-                .input-focus:focus { border-color: var(--primary-color) !important; }
-                .spin { animation: spin 1s linear infinite; }
-                @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-            `}</style>
         </div>
     );
 };

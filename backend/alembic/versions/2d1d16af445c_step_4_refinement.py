@@ -22,9 +22,10 @@ def upgrade() -> None:
     # 1. Contract Documents - Fix uploaded_by type and add missing indexes
     with op.batch_alter_table('contract_documents', schema=None) as batch_op:
         batch_op.alter_column('uploaded_by',
-               existing_type=sa.CHAR(length=32),
-               type_=sa.Integer(),
-               existing_nullable=True)
+                existing_type=sa.Uuid(),
+                type_=sa.Integer(),
+                existing_nullable=True,
+                postgresql_using='(uploaded_by::text)::integer')
         # Only create if not exists - but in batch mode recreate, we usually define the target state
         # For simplicity, I'll only add what's missing
         batch_op.create_index('ix_contract_documents_organization_id', ['organization_id'], unique=False)

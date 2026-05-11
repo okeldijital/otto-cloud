@@ -72,24 +72,16 @@ async def get_current_active_user(current_user: User = Depends(get_current_user)
 
 from fastapi import Header
 
+from typing import Annotated
+
 async def get_current_organization_id(
-    x_organization_id: Optional[str] = Header(None, alias="X-Organization-ID")
+    current_user: Annotated[User, Depends(get_current_active_user)]
 ) -> uuid.UUID:
     """
-    Extracts Organization ID from Header.
-    In V1 Strict Mode, this is mandatory for scoped operations.
-    Returns UUID for consistent AI audit compliance.
+    Strictly extracts Organization ID from the authenticated user.
+    This ensures that users can only access data belonging to their organization.
     """
-    if not x_organization_id:
-        # Default UUID for development fallback
-        return DEV_ORG_ID
-    try:
-        # Check if it's an integer-based ID (standard in OTTO V1)
-        if x_organization_id.isdigit():
-             return uuid.UUID(int=int(x_organization_id))
-        return uuid.UUID(x_organization_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid Organization ID format")
+    return current_user.organization_id
 
 # ----------------------------------------------------------------
 def get_node_role() -> str:

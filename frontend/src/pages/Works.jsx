@@ -126,11 +126,11 @@ const Works = () => {
             label: 'Work Title',
             sortable: true,
             render: (row) => (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <div style={{ padding: '6px', background: '#ecfdf5', borderRadius: '6px', color: '#059669' }}>
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-success/10 rounded-lg text-success">
                         <Music2 size={16} />
                     </div>
-                    <Link to={`/catalog/works/${row.id}`} style={{ fontWeight: 600, color: 'var(--primary-color)', textDecoration: 'none' }}>
+                    <Link to={`/catalog/works/${row.id}`} className="font-bold text-accent hover:text-white transition-colors">
                         {row.title}
                     </Link>
                 </div>
@@ -140,7 +140,7 @@ const Works = () => {
             key: 'composers',
             label: 'Composers',
             render: (row) => (
-                <div style={{ fontSize: '0.8125rem' }}>
+                <div className="text-xs text-text-secondary">
                     {row.composers?.length > 0 ? (
                         row.composers.length === 1 ? (
                             artists.find(a => a.id === row.composers[0])?.name || row.composers_text || 'Unknown'
@@ -155,11 +155,11 @@ const Works = () => {
             render: (row) => {
                 const pub = publishers.find(p => p.id === row.publisher_id);
                 return pub ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8125rem' }}>
-                        <Landmark size={14} className="text-muted" />
+                    <div className="flex items-center gap-2 text-xs text-text-secondary">
+                        <Landmark size={14} className="opacity-50" />
                         {pub.name}
                     </div>
-                ) : '-';
+                ) : <span className="text-text-secondary/50">-</span>;
             }
         },
         { key: 'iswc_code', label: 'ISWC', sortable: true },
@@ -175,27 +175,24 @@ const Works = () => {
     });
 
     return (
-        <div className="entity-page">
-            <Link to="/catalog" className="back-link">
-                <ChevronLeft size={16} /> Back to Catalog
-            </Link>
+        <div className="max-w-7xl mx-auto px-4 py-8">
             <PageHeader
                 title="Musical Works"
                 subtitle="Manage your composition catalog"
                 breadcrumb={
-                    <Link to="/catalog" className="back-link" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: 'var(--text-muted)', textDecoration: 'none', marginBottom: '0.5rem' }}>
+                    <Link to="/catalog" className="inline-flex items-center gap-1 text-text-secondary hover:text-white transition-colors font-bold text-sm mb-2">
                         <ChevronLeft size={16} /> Back to Catalog
                     </Link>
                 }
                 actions={
-                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                        <div className="relative" style={{ minWidth: '250px' }}>
-                            <div style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}>
+                    <div className="flex gap-3 items-center">
+                        <div className="relative min-w-[250px]">
+                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none">
                                 <Search size={16} />
                             </div>
                             <input
                                 type="text"
-                                style={{ width: '100%', paddingLeft: '2.5rem', height: '40px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-color)', outline: 'none' }}
+                                className="w-full pl-10 pr-4 h-10 rounded-xl border border-white/10 bg-white/5 text-white text-sm outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all placeholder:text-text-secondary/50"
                                 placeholder="Quick search works..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -242,9 +239,9 @@ const Works = () => {
                     autoFocus
                 />
 
-                <div className="form-row">
-                    <div className="form-group flex-1">
-                        <label>Composers (Search Artists)</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
+                    <div>
+                        <label className="block text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">Composers (Search Artists)</label>
                         <Autocomplete
                             options={artists}
                             value={formData.composers}
@@ -255,18 +252,16 @@ const Works = () => {
                             quickAddType="artists"
                         />
                     </div>
-                    <div className="form-group flex-1">
-                        <Input
-                            label="ISWC Code"
-                            value={formData.iswc_code}
-                            onChange={(e) => setFormData({ ...formData, iswc_code: e.target.value })}
-                            placeholder="T-123.456.789-C"
-                        />
-                    </div>
+                    <Input
+                        label="ISWC Code"
+                        value={formData.iswc_code}
+                        onChange={(e) => setFormData({ ...formData, iswc_code: e.target.value })}
+                        placeholder="T-123.456.789-C"
+                    />
                 </div>
 
-                <div className="form-group">
-                    <label>Arrangers</label>
+                <div className="mb-6">
+                    <label className="block text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">Arrangers</label>
                     <Autocomplete
                         options={artists}
                         value={formData.arrangers}
@@ -278,9 +273,9 @@ const Works = () => {
                     />
                 </div>
 
-                <div className="form-row">
-                    <div className="form-group flex-1">
-                        <label>Publisher</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
+                    <div>
+                        <label className="block text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">Publisher</label>
                         <Autocomplete
                             options={publishers}
                             value={formData.publisher_id}
@@ -290,8 +285,8 @@ const Works = () => {
                             quickAddType="publishers"
                         />
                     </div>
-                    <div className="form-group flex-1">
-                        <label>Performance Rights Org (PRO)</label>
+                    <div>
+                        <label className="block text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">Performance Rights Org (PRO)</label>
                         <Autocomplete
                             options={pros}
                             value={formData.pro_id}
@@ -303,22 +298,18 @@ const Works = () => {
                     </div>
                 </div>
 
-                <div className="form-section-title">Manual Entries (Optional)</div>
-                <div className="form-row">
-                    <div className="form-group flex-1">
-                        <Input
-                            label="Composer Text (Legacy)"
-                            value={formData.composers_text}
-                            onChange={(e) => setFormData({ ...formData, composers_text: e.target.value })}
-                        />
-                    </div>
-                    <div className="form-group flex-1">
-                        <Input
-                            label="Arranger Text (Legacy)"
-                            value={formData.arrangers_text}
-                            onChange={(e) => setFormData({ ...formData, arrangers_text: e.target.value })}
-                        />
-                    </div>
+                <h4 className="text-xs font-bold text-accent uppercase tracking-widest border-b border-white/5 pb-3 mb-5">Manual Entries (Optional)</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <Input
+                        label="Composer Text (Legacy)"
+                        value={formData.composers_text}
+                        onChange={(e) => setFormData({ ...formData, composers_text: e.target.value })}
+                    />
+                    <Input
+                        label="Arranger Text (Legacy)"
+                        value={formData.arrangers_text}
+                        onChange={(e) => setFormData({ ...formData, arrangers_text: e.target.value })}
+                    />
                 </div>
             </EntityForm>
         </div>

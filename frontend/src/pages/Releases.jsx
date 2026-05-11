@@ -9,7 +9,7 @@ import { confirmAction } from '../lib/tauri';
 import DataTable from '../components/DataTable';
 import EntityForm from '../components/EntityForm';
 import Autocomplete from '../components/Autocomplete';
-import { ChevronLeft, Download, Plus, Search } from 'lucide-react';
+import { ChevronLeft, Download, Plus, Search, Disc, Trash2 } from 'lucide-react';
 import Button from '../components/ui/Button';
 import PageHeader from '../components/ui/PageHeader';
 import Input, { Select, Textarea } from '../components/ui/Input';
@@ -245,7 +245,7 @@ const Releases = () => {
             label: 'Release Title',
             sortable: true,
             render: (row) => (
-                <Link to={`/catalog/releases/${row.id}`} style={{ fontWeight: 600, color: 'var(--primary-color)', textDecoration: 'none' }}>
+                <Link to={`/catalog/releases/${row.id}`} className="font-bold text-accent hover:text-white transition-colors">
                     {row.title}
                 </Link>
             )
@@ -254,7 +254,7 @@ const Releases = () => {
             key: 'streaming_link',
             label: 'Link',
             render: (row) => row.streaming_link ? (
-                <a href={row.streaming_link} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary-color)', textDecoration: 'none' }}>
+                <a href={row.streaming_link} target="_blank" rel="noopener noreferrer" className="text-accent hover:text-white transition-colors font-medium">
                     Stream ↗
                 </a>
             ) : '-'
@@ -307,24 +307,24 @@ const Releases = () => {
     });
 
     return (
-        <div className="entity-page">
+        <div className="max-w-7xl mx-auto px-4 py-8">
             <PageHeader
                 title="Releases"
                 subtitle="Manage your music releases"
                 breadcrumb={
-                    <Link to="/catalog" className="back-link" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: 'var(--text-muted)', textDecoration: 'none', marginBottom: '0.5rem' }}>
+                    <Link to="/catalog" className="inline-flex items-center gap-1 text-text-secondary hover:text-white transition-colors font-bold text-sm mb-2">
                         <ChevronLeft size={16} /> Back to Catalog
                     </Link>
                 }
                 actions={
-                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                        <div className="relative" style={{ minWidth: '250px' }}>
-                            <div style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}>
+                    <div className="flex gap-3 items-center">
+                        <div className="relative min-w-[250px]">
+                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none">
                                 <Search size={16} />
                             </div>
                             <input
                                 type="text"
-                                style={{ width: '100%', paddingLeft: '2.5rem', height: '40px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-color)', outline: 'none' }}
+                                className="w-full pl-10 pr-4 h-10 rounded-xl border border-white/10 bg-white/5 text-white text-sm outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all placeholder:text-text-secondary/50"
                                 placeholder="Quick search releases..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -376,297 +376,316 @@ const Releases = () => {
                 onSubmit={handleSubmit}
                 isSubmitting={isSubmitting}
             >
-                <div className="form-group">
-                    <Input
-                        label="Title"
-                        id="title"
-                        value={formData.title}
-                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                        required
-                        autoFocus
-                    />
-                    {similarReleases.length > 0 && (
-                        <div style={{
-                            marginTop: '0.5rem',
-                            padding: '0.75rem',
-                            backgroundColor: '#fffbeb',
-                            border: '1px solid #fde68a',
-                            borderRadius: '0.375rem',
-                            fontSize: '0.8125rem',
-                            color: '#92400e'
-                        }}>
-                            <strong>Potential duplicate?</strong> Similar releases found:
-                            <ul style={{ margin: '0.25rem 0 0 1.25rem', padding: 0 }}>
-                                {similarReleases.map(r => <li key={r.id}>{r.title}</li>)}
-                            </ul>
-                        </div>
-                    )}
-                </div>
-
-                <div className="form-group">
-                    <label htmlFor="cover_art">Cover Art</label>
-                    <input
-                        type="file"
-                        id="cover_art"
-                        accept="image/*"
-                        onChange={handleFileSelect}
-                        className="file-input"
-                    />
-                    {editingRelease && formData.cover_art_url && !selectedFile && (
-                        <div style={{ marginTop: '0.5rem' }}>
-                            <img
-                                src={formData.cover_art_url.startsWith('http') ? formData.cover_art_url : `${API_URL}${formData.cover_art_url}`}
-                                alt="Current Cover"
-                                style={{ width: '100px', height: '100px', objectFit: 'cover', borderRadius: '4px' }}
+                <div className="space-y-8">
+                    {/* Basic Information Section */}
+                    <div>
+                        <h3 className="text-xs font-bold text-accent uppercase tracking-widest border-b border-white/5 pb-3 mb-5">Basic Information</h3>
+                        
+                        <div className="mb-4">
+                            <Input
+                                label="Title"
+                                id="title"
+                                value={formData.title}
+                                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                                required
+                                autoFocus
                             />
+                            {similarReleases.length > 0 && (
+                                <div className="mt-2 p-3 bg-warning/10 border border-warning/20 rounded-xl text-xs text-warning/90">
+                                    <strong>Potential duplicate?</strong> Similar releases found:
+                                    <ul className="list-disc ml-5 mt-1">
+                                        {similarReleases.map(r => <li key={r.id}>{r.title}</li>)}
+                                    </ul>
+                                </div>
+                            )}
                         </div>
-                    )}
-                    {selectedFile && (
-                        <small className="text-green-600">
-                            Selected: {selectedFile.name}
-                        </small>
-                    )}
-                </div>
 
-                <div className="form-group">
-                    <label>Label</label>
-                    <Autocomplete
-                        options={labels || []}
-                        value={formData.label_id}
-                        onChange={(val) => setFormData({ ...formData, label_id: val })}
-                        placeholder="Select Label..."
-                        allowQuickAdd={true}
-                        quickAddType="labels"
-                    />
-                </div>
-                <div className="form-group">
-                    <label>Artist(s)</label>
-                    <Autocomplete
-                        options={(artists || []).map(a => ({ ...a, name: a.display_name || a.aka || a.name }))}
-                        value={formData.artist_ids}
-                        onChange={(val) => setFormData({ ...formData, artist_ids: val })}
-                        placeholder="Select Artist(s)..."
-                        multiple={true}
-                        allowQuickAdd={true}
-                        quickAddType="artists"
-                    />
-                </div>
-                <div className="form-group">
-                    <label>Tracks</label>
-                    <Autocomplete
-                        options={(tracks || []).map(t => ({
-                            id: t.id,
-                            name: `${t.title} ${t.isrc_code ? `(${t.isrc_code})` : ''}`
-                        }))}
-                        value={formData.track_ids}
-                        onChange={(val) => setFormData({ ...formData, track_ids: val })}
-                        placeholder="Select Track(s)..."
-                        multiple={true}
-                        allowQuickAdd={true}
-                        quickAddType="tracks"
-                    />
-                    <small style={{ color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
-                        Only existing tracks can be linked. To create new tracks, use the Tracks page.
-                    </small>
-                </div>
-                <div className="form-group">
-                    <label>Distributor</label>
-                    <Autocomplete
-                        options={distributors || []}
-                        value={formData.distributor_id}
-                        onChange={(val) => setFormData({ ...formData, distributor_id: val })}
-                        placeholder="Select Distributor..."
-                        allowQuickAdd={true}
-                        quickAddType="organization"
-                    />
-                </div>
-
-                <div className="form-group">
-                    <label>Credits (Engineers, Producers, etc.)</label>
-                    <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                        {formData.credits.map((credit, index) => {
-                            if (!credit) return null;
-                            let name = 'Unknown';
-                            if (credit.artist_id) {
-                                const artist = (artists || []).find(a => a.id == credit.artist_id);
-                                name = artist ? (artist.display_name || artist.name) : `Artist #${credit.artist_id}`;
-                            } else if (credit.contact_id) {
-                                const contact = (contacts || []).find(c => c.id == credit.contact_id);
-                                name = contact ? `${contact.first_name} ${contact.last_name}` : `Contact #${credit.contact_id}`;
-                            } else if (credit.label_id) {
-                                const label = (labels || []).find(l => l.id == credit.label_id);
-                                name = label ? label.name : `Label #${credit.label_id}`;
-                            } else if (credit.organization_id) {
-                                const org = (distributors || []).find(o => o.id == credit.organization_id);
-                                name = org ? org.name : `Org #${credit.organization_id}`;
-                            }
-
-                            return (
-                                <div key={index} style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.75rem', alignItems: 'center', background: '#fff', padding: '0.5rem', borderRadius: '6px', border: '1px solid #f1f5f9' }}>
-                                    <div style={{ padding: '0.25rem 0.5rem', background: '#e2e8f0', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600, color: '#475569', textTransform: 'uppercase', width: '80px', textAlign: 'center' }}>
-                                        {credit.artist_id ? 'Artist' : credit.label_id ? 'Label' : credit.organization_id ? 'Org' : 'Contact'}
+                        <div className="mb-4">
+                            <label htmlFor="cover_art" className="block text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">Cover Art</label>
+                            <div className="flex items-center gap-4">
+                                {(editingRelease && formData.cover_art_url && !selectedFile) ? (
+                                    <img
+                                        src={formData.cover_art_url.startsWith('http') ? formData.cover_art_url : `${API_URL}${formData.cover_art_url}`}
+                                        alt="Current Cover"
+                                        className="w-16 h-16 object-cover rounded-xl border border-white/10"
+                                    />
+                                ) : (
+                                    <div className="w-16 h-16 rounded-xl border border-dashed border-white/20 bg-white/5 flex items-center justify-center text-text-muted">
+                                        <Disc size={24} />
                                     </div>
-                                    <div style={{ flex: 1, fontWeight: 500, fontSize: '0.9rem', color: '#1e293b' }}>
-                                        {name}
-                                    </div>
-                                    <div style={{ flex: 1, fontSize: '0.875rem', color: '#64748b' }}>
-                                        {credit.role}
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            const newCredits = [...formData.credits];
-                                            newCredits.splice(index, 1);
-                                            setFormData({ ...formData, credits: newCredits });
-                                        }}
-                                        style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem' }}
-                                        title="Remove"
-                                    >
-                                        &times;
-                                    </button>
-                                </div>
-                            );
-                        })}
-
-                        <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid #e2e8f0' }}>
-                            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                                <div style={{ width: '110px' }}>
-                                    <select
-                                        className="input"
-                                        value={newCreditType}
-                                        onChange={(e) => {
-                                            setNewCreditType(e.target.value);
-                                            setNewCreditContactId('');
-                                            setNewCreditArtistId('');
-                                        }}
-                                        style={{ width: '100%', padding: '0.5rem', fontSize: '0.875rem' }}
-                                    >
-                                        <option value="individual">Contact</option>
-                                        <option value="artist">Artist</option>
-                                        <option value="label">Label</option>
-                                        <option value="organization">Organization</option>
-                                    </select>
-                                </div>
-                                <div style={{ flex: 1 }}>
-                                    {newCreditType === 'artist' ? (
-                                        <Autocomplete
-                                            options={(artists || []).map(a => ({ id: a.id, name: a.display_name || a.name }))}
-                                            value={newCreditArtistId}
-                                            onChange={(val) => setNewCreditArtistId(val)}
-                                            placeholder="Select Artist..."
-                                            allowQuickAdd={false}
-                                        />
-                                    ) : newCreditType === 'label' ? (
-                                        <Autocomplete
-                                            options={(labels || []).map(l => ({ id: l.id, name: l.name }))}
-                                            value={newCreditLabelId}
-                                            onChange={(val) => setNewCreditLabelId(val)}
-                                            placeholder="Select Label..."
-                                            allowQuickAdd={false}
-                                        />
-                                    ) : newCreditType === 'organization' ? (
-                                        <Autocomplete
-                                            options={(distributors || []).map(o => ({ id: o.id, name: o.name }))}
-                                            value={newCreditOrgId}
-                                            onChange={(val) => setNewCreditOrgId(val)}
-                                            placeholder="Select Organization..."
-                                            allowQuickAdd={false}
-                                        />
-                                    ) : (
-                                        <Autocomplete
-                                            options={(contacts || []).map(c => ({ id: c.id, name: `${c.first_name} ${c.last_name}` }))}
-                                            value={newCreditContactId}
-                                            onChange={(val) => setNewCreditContactId(val)}
-                                            placeholder="Select Contact..."
-                                            allowQuickAdd={true}
-                                            quickAddType="individual"
-                                        />
+                                )}
+                                <div>
+                                    <input
+                                        type="file"
+                                        id="cover_art"
+                                        accept="image/*"
+                                        onChange={handleFileSelect}
+                                        className="text-sm text-text-secondary file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-white/10 file:text-white hover:file:bg-white/20 cursor-pointer"
+                                    />
+                                    {selectedFile && (
+                                        <p className="text-xs text-success mt-1">Selected: {selectedFile.name}</p>
                                     )}
                                 </div>
                             </div>
-                            <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                <input
-                                    className="input"
-                                    type="text"
-                                    placeholder="Role (e.g. Mixer, Producer)"
-                                    value={newCreditRole}
-                                    onChange={(e) => setNewCreditRole(e.target.value)}
-                                    style={{ flex: 1 }}
-                                />
-                                <button
-                                    type="button"
-                                    className="btn-secondary"
-                                    disabled={(!newCreditContactId && !newCreditArtistId && !newCreditLabelId && !newCreditOrgId) || !newCreditRole}
-                                    onClick={() => {
-                                        if ((newCreditContactId || newCreditArtistId || newCreditLabelId || newCreditOrgId) && newCreditRole) {
-                                            const newCredit = { role: newCreditRole };
-                                            if (newCreditType === 'artist') {
-                                                newCredit.artist_id = parseInt(newCreditArtistId);
-                                            } else if (newCreditType === 'label') {
-                                                newCredit.label_id = parseInt(newCreditLabelId);
-                                            } else if (newCreditType === 'organization') {
-                                                newCredit.organization_id = parseInt(newCreditOrgId);
-                                            } else {
-                                                newCredit.contact_id = parseInt(newCreditContactId);
-                                            }
+                        </div>
 
-                                            setFormData({
-                                                ...formData,
-                                                credits: [...formData.credits, newCredit]
-                                            });
-                                            setNewCreditContactId('');
-                                            setNewCreditArtistId('');
-                                            setNewCreditLabelId('');
-                                            setNewCreditOrgId('');
-                                            setNewCreditRole('');
-                                        }
-                                    }}
-                                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: '40px', background: 'var(--primary-color)', color: 'white', border: 'none', borderRadius: '4px' }}
-                                    title="Add Credit"
-                                >
-                                    <Plus size={16} />
-                                </button>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                            <Select
+                                label="Type"
+                                id="release_type"
+                                value={formData.release_type}
+                                onChange={(e) => setFormData({ ...formData, release_type: e.target.value })}
+                            >
+                                <option value="Album">Album</option>
+                                <option value="EP">EP</option>
+                                <option value="Single">Single</option>
+                            </Select>
+                            <Input
+                                label="Release Date"
+                                type="date"
+                                id="release_date"
+                                value={formData.release_date}
+                                onChange={(e) => setFormData({ ...formData, release_date: e.target.value })}
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                            <Input
+                                label="Catalog Number"
+                                id="catalog_number"
+                                value={formData.catalog_number}
+                                onChange={(e) => setFormData({ ...formData, catalog_number: e.target.value })}
+                                placeholder="M2KR0001"
+                            />
+                            <Input
+                                label="UPC Code"
+                                id="upc_code"
+                                value={formData.upc_code}
+                                onChange={(e) => setFormData({ ...formData, upc_code: e.target.value })}
+                            />
+                        </div>
+
+                        <div className="mb-4">
+                            <Input
+                                label="Streaming Link"
+                                id="streaming_link"
+                                value={formData.streaming_link}
+                                onChange={(e) => setFormData({ ...formData, streaming_link: e.target.value })}
+                                placeholder="https://spotify.com/album/..."
+                            />
+                        </div>
+                    </div>
+
+                    {/* Relationships Section */}
+                    <div>
+                        <h3 className="text-xs font-bold text-accent uppercase tracking-widest border-b border-white/5 pb-3 mb-5">Relationships</h3>
+                        <div className="grid grid-cols-1 gap-4">
+                            <div>
+                                <label className="block text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">Artist(s)</label>
+                                <Autocomplete
+                                    options={(artists || []).map(a => ({ ...a, name: a.display_name || a.aka || a.name }))}
+                                    value={formData.artist_ids}
+                                    onChange={(val) => setFormData({ ...formData, artist_ids: val })}
+                                    placeholder="Select Artist(s)..."
+                                    multiple={true}
+                                    allowQuickAdd={true}
+                                    quickAddType="artists"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">Tracks</label>
+                                <Autocomplete
+                                    options={(tracks || []).map(t => ({
+                                        id: t.id,
+                                        name: `${t.title} ${t.isrc_code ? `(${t.isrc_code})` : ''}`
+                                    }))}
+                                    value={formData.track_ids}
+                                    onChange={(val) => setFormData({ ...formData, track_ids: val })}
+                                    placeholder="Select Track(s)..."
+                                    multiple={true}
+                                    allowQuickAdd={true}
+                                    quickAddType="tracks"
+                                />
+                                <small className="text-xs text-text-muted block mt-1">
+                                    Only existing tracks can be linked. To create new tracks, use the Tracks page.
+                                </small>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">Label</label>
+                                    <Autocomplete
+                                        options={labels || []}
+                                        value={formData.label_id}
+                                        onChange={(val) => setFormData({ ...formData, label_id: val })}
+                                        placeholder="Select Label..."
+                                        allowQuickAdd={true}
+                                        quickAddType="labels"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">Distributor</label>
+                                    <Autocomplete
+                                        options={distributors || []}
+                                        value={formData.distributor_id}
+                                        onChange={(val) => setFormData({ ...formData, distributor_id: val })}
+                                        placeholder="Select Distributor..."
+                                        allowQuickAdd={true}
+                                        quickAddType="organization"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Credits Section */}
+                    <div>
+                        <h3 className="text-xs font-bold text-accent uppercase tracking-widest border-b border-white/5 pb-3 mb-5">Credits (Engineers, Producers, etc.)</h3>
+                        <div className="bg-white/5 border border-white/5 p-6 rounded-2xl">
+                            {formData.credits.map((credit, index) => {
+                                if (!credit) return null;
+                                let name = 'Unknown';
+                                if (credit.artist_id) {
+                                    const artist = (artists || []).find(a => a.id == credit.artist_id);
+                                    name = artist ? (artist.display_name || artist.name) : `Artist #${credit.artist_id}`;
+                                } else if (credit.contact_id) {
+                                    const contact = (contacts || []).find(c => c.id == credit.contact_id);
+                                    name = contact ? `${contact.first_name} ${contact.last_name}` : `Contact #${credit.contact_id}`;
+                                } else if (credit.label_id) {
+                                    const label = (labels || []).find(l => l.id == credit.label_id);
+                                    name = label ? label.name : `Label #${credit.label_id}`;
+                                } else if (credit.organization_id) {
+                                    const org = (distributors || []).find(o => o.id == credit.organization_id);
+                                    name = org ? org.name : `Org #${credit.organization_id}`;
+                                }
+
+                                return (
+                                    <div key={index} className="flex items-center gap-3 mb-3 bg-white/5 p-4 rounded-xl border border-white/5 group hover:border-white/10 transition-colors">
+                                        <div className="px-2 py-1 bg-white/10 rounded text-[9px] font-bold text-text-secondary uppercase tracking-widest w-20 text-center">
+                                            {credit.artist_id ? 'Artist' : credit.label_id ? 'Label' : credit.organization_id ? 'Org' : 'Contact'}
+                                        </div>
+                                        <div className="flex-1 font-bold text-sm text-white">
+                                            {name}
+                                        </div>
+                                        <div className="flex-1 text-sm text-text-secondary">
+                                            {credit.role}
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                const newCredits = [...formData.credits];
+                                                newCredits.splice(index, 1);
+                                                setFormData({ ...formData, credits: newCredits });
+                                            }}
+                                            className="text-danger hover:text-white p-1.5 rounded-lg hover:bg-danger/20 transition-all opacity-0 group-hover:opacity-100"
+                                            title="Remove"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
+                                );
+                            })}
+
+                            <div className="mt-6 pt-6 border-t border-white/5">
+                                <div className="flex flex-col sm:flex-row gap-4 mb-4">
+                                    <div className="w-full sm:w-40">
+                                        <Select
+                                            value={newCreditType}
+                                            onChange={(e) => {
+                                                setNewCreditType(e.target.value);
+                                                setNewCreditContactId('');
+                                                setNewCreditArtistId('');
+                                                setNewCreditLabelId('');
+                                                setNewCreditOrgId('');
+                                            }}
+                                        >
+                                            <option value="individual">Contact</option>
+                                            <option value="artist">Artist</option>
+                                            <option value="label">Label</option>
+                                            <option value="organization">Organization</option>
+                                        </Select>
+                                    </div>
+                                    <div className="flex-1">
+                                        {newCreditType === 'artist' ? (
+                                            <Autocomplete
+                                                options={(artists || []).map(a => ({ id: a.id, name: a.display_name || a.name }))}
+                                                value={newCreditArtistId}
+                                                onChange={(val) => setNewCreditArtistId(val)}
+                                                placeholder="Select Artist..."
+                                                allowQuickAdd={false}
+                                            />
+                                        ) : newCreditType === 'label' ? (
+                                            <Autocomplete
+                                                options={(labels || []).map(l => ({ id: l.id, name: l.name }))}
+                                                value={newCreditLabelId}
+                                                onChange={(val) => setNewCreditLabelId(val)}
+                                                placeholder="Select Label..."
+                                                allowQuickAdd={false}
+                                            />
+                                        ) : newCreditType === 'organization' ? (
+                                            <Autocomplete
+                                                options={(distributors || []).map(o => ({ id: o.id, name: o.name }))}
+                                                value={newCreditOrgId}
+                                                onChange={(val) => setNewCreditOrgId(val)}
+                                                placeholder="Select Organization..."
+                                                allowQuickAdd={false}
+                                            />
+                                        ) : (
+                                            <Autocomplete
+                                                options={(contacts || []).map(c => ({ id: c.id, name: `${c.first_name} ${c.last_name}` }))}
+                                                value={newCreditContactId}
+                                                onChange={(val) => setNewCreditContactId(val)}
+                                                placeholder="Select Contact..."
+                                                allowQuickAdd={true}
+                                                quickAddType="individual"
+                                            />
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="flex gap-4">
+                                    <div className="flex-1">
+                                        <Input
+                                            placeholder="Role (e.g. Mixer, Producer)"
+                                            value={newCreditRole}
+                                            onChange={(e) => setNewCreditRole(e.target.value)}
+                                        />
+                                    </div>
+                                    <button
+                                        type="button"
+                                        disabled={(!newCreditContactId && !newCreditArtistId && !newCreditLabelId && !newCreditOrgId) || !newCreditRole}
+                                        onClick={() => {
+                                            if ((newCreditContactId || newCreditArtistId || newCreditLabelId || newCreditOrgId) && newCreditRole) {
+                                                const newCredit = { role: newCreditRole };
+                                                if (newCreditType === 'artist') {
+                                                    newCredit.artist_id = parseInt(newCreditArtistId);
+                                                } else if (newCreditType === 'label') {
+                                                    newCredit.label_id = parseInt(newCreditLabelId);
+                                                } else if (newCreditType === 'organization') {
+                                                    newCredit.organization_id = parseInt(newCreditOrgId);
+                                                } else {
+                                                    newCredit.contact_id = parseInt(newCreditContactId);
+                                                }
+
+                                                setFormData({
+                                                    ...formData,
+                                                    credits: [...formData.credits, newCredit]
+                                                });
+                                                setNewCreditContactId('');
+                                                setNewCreditArtistId('');
+                                                setNewCreditLabelId('');
+                                                setNewCreditOrgId('');
+                                                setNewCreditRole('');
+                                            }
+                                        }}
+                                        className="bg-accent hover:bg-accent/90 text-[#0f1115] disabled:bg-white/5 disabled:text-text-secondary disabled:cursor-not-allowed rounded-xl px-5 flex items-center justify-center transition-all shadow-glow hover:shadow-accent/40"
+                                        title="Add Credit"
+                                    >
+                                        <Plus size={20} />
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-                <Select
-                    label="Type"
-                    id="release_type"
-                    value={formData.release_type}
-                    onChange={(e) => setFormData({ ...formData, release_type: e.target.value })}
-                >
-                    <option value="Album">Album</option>
-                    <option value="EP">EP</option>
-                    <option value="Single">Single</option>
-                </Select>
-                <Input
-                    label="Release Date"
-                    type="date"
-                    id="release_date"
-                    value={formData.release_date}
-                    onChange={(e) => setFormData({ ...formData, release_date: e.target.value })}
-                />
-                <Input
-                    label="Catalog Number"
-                    id="catalog_number"
-                    value={formData.catalog_number}
-                    onChange={(e) => setFormData({ ...formData, catalog_number: e.target.value })}
-                    placeholder="M2KR0001"
-                />
-                <Input
-                    label="UPC Code"
-                    id="upc_code"
-                    value={formData.upc_code}
-                    onChange={(e) => setFormData({ ...formData, upc_code: e.target.value })}
-                />
-                <Input
-                    label="Streaming Link"
-                    id="streaming_link"
-                    value={formData.streaming_link}
-                    onChange={(e) => setFormData({ ...formData, streaming_link: e.target.value })}
-                    placeholder="https://spotify.com/album/..."
-                />
             </EntityForm>
         </div>
     );

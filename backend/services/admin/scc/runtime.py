@@ -278,3 +278,51 @@ def get_last_backup_timestamp(db: Session, org_id: uuid.UUID) -> Optional[str]:
     if not row or row.created_at is None:
         return None
     return row.created_at.astimezone(timezone.utc).isoformat()
+
+
+def _get_dir_size(path: Path) -> int:
+    total = 0
+    if not path.exists():
+        return 0
+    try:
+        for entry in path.rglob("*"):
+            if entry.is_file():
+                total += entry.stat().st_size
+    except Exception:
+        pass
+    return total
+
+
+def get_storage_usage() -> Dict:
+    """
+    Calculate sizes for storage_root, backup_root, and contracts (if distinct).
+    """
+    storage_root = Path(settings.STORAGE_ROOT).resolve()
+    backup_root = Path(settings.BACKUP_ROOT).resolve()
+    app_data_dir = Path(settings.APP_DATA_DIR).resolve()
+    
+    # Calculate storage size
+    storage_bytes = _get_dir_size(storage_root)
+    # Calculate backup size
+    backups_bytes = _get_dir_size(backup_root)
+    
+    # Contracts size: items inside storage_root that aren't backups (if they were inside)
+    # But now backups are outside.
+    # In OTTO, contracts are usually in storage_root/contracts or just in storage_root.
+    contracts_dir = storage_root / "contracts"
+    contracts_bytes = _get_dir_size(contracts_dir) if contracts_dir.exists() else 0
+
+    return {
+        "app_data_dir": str(app_data_dir),
+        "storage_root": str(storage_root),
+        "backup_root": str(backup_root),
+        "sizes": {
+            "storage_bytes": storage_bytes,
+            "backups_bytes": backups_bytes,
+            "contracts_bytes": contracts_bytes,
+        },
+        "retention": {
+            "count": settings.BACKUP_RETENTION_COUNT,
+            "max_total_gb": settings.BACKUP_MAX_TOTAL_GB
+        }
+    }

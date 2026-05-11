@@ -37,8 +37,24 @@ def _org_str(org_id: uuid.UUID) -> str:
     return str(org_id)
 
 
+def assert_safe_backup_root(backup_root: str):
+    """
+    Governance: Reject backup destinations inside APP_DATA_DIR or STORAGE_ROOT.
+    """
+    br = Path(backup_root).expanduser().resolve()
+    adr = Path(settings.APP_DATA_DIR).expanduser().resolve()
+    sr = Path(settings.STORAGE_ROOT).expanduser().resolve()
+
+    if br == adr or adr in br.parents:
+        raise ValueError("unsafe_backup_root: inside APP_DATA_DIR")
+    if br == sr or sr in br.parents:
+        raise ValueError("unsafe_backup_root: inside STORAGE_ROOT")
+
+
 def _org_backup_dir(org_id: uuid.UUID) -> Path:
-    root = Path(settings.STORAGE_ROOT) / "backups" / _org_str(org_id)
+    # Governance: Use BACKUP_ROOT instead of STORAGE_ROOT/backups
+    assert_safe_backup_root(settings.BACKUP_ROOT)
+    root = Path(settings.BACKUP_ROOT) / _org_str(org_id)
     root.mkdir(parents=True, exist_ok=True)
     return root
 
@@ -219,7 +235,13 @@ def _snapshot_zip_for_org(org_id: uuid.UUID, output_zip: Path):
     db_path = _db_path()
     storage_path = Path(settings.STORAGE_ROOT)
     import_logs_path = Path(settings.IMPORT_LOGS_ROOT)
-    backups_root = storage_path / "backups"
+    
+    # Exclude all known backup locations
+    forbidden_roots = [
+        Path(settings.BACKUP_ROOT).resolve(),
+        (storage_path / "backups").resolve(),
+    ]
+    
     output_zip_resolved = output_zip.resolve()
     checksum_map = {}
 
@@ -237,7 +259,10 @@ def _snapshot_zip_for_org(org_id: uuid.UUID, output_zip: Path):
                     # Never include backup artifacts while creating a backup.
                     if resolved == output_zip_resolved:
                         continue
-                    if backups_root in resolved.parents:
+                    if any(f_root == resolved or f_root in resolved.parents for f_root in forbidden_roots):
+                        continue
+                    # Also exclude anything containing 'backups' in path name for belt+suspenders
+                    if any(part.lower() == "backups" for part in resolved.parts):
                         continue
                     rel = file_path.relative_to(storage_path)
                     arcname = str(Path("storage") / rel)
@@ -323,6 +348,13 @@ def create_manual_backup(db: Session, org_id: uuid.UUID, user_id: int) -> AdminB
     except Exception:
         logger.exception("admin_backup_failed org_id=%s user_id=%s", _org_str(org_id), user_id)
         raise
+    
+    # Governance: Enforce retention after success
+    try:
+        prune_backups_retention(db=db, org_id=org_id)
+    except Exception:
+        logger.exception("admin_backup_retention_failed org_id=%s", _org_str(org_id))
+        
     logger.info(
         "admin_backup_complete org_id=%s user_id=%s backup_id=%s",
         _org_str(org_id),
@@ -330,6 +362,70 @@ def create_manual_backup(db: Session, org_id: uuid.UUID, user_id: int) -> AdminB
         created_artifact.id,
     )
     return created_artifact
+
+
+def prune_backups_retention(db: Session, org_id: uuid.UUID):
+    """
+    Enforce BACKUP_RETENTION_COUNT and BACKUP_MAX_TOTAL_GB.
+    """
+    backups = (
+        db.query(AdminBackupArtifact)
+        .filter(
+            AdminBackupArtifact.organization_id == org_id,
+            AdminBackupArtifact.is_pre_restore_snapshot.is_(False),
+        )
+        .order_by(AdminBackupArtifact.created_at.desc(), AdminBackupArtifact.id.desc())
+        .all()
+    )
+
+    count_limit = settings.BACKUP_RETENTION_COUNT
+    size_limit_bytes = settings.BACKUP_MAX_TOTAL_GB * 1024 * 1024 * 1024
+
+    kept = []
+    to_delete = []
+    current_total_size = 0
+
+    for i, b in enumerate(backups):
+        # Always keep the most recent ones up to count limit,
+        # BUT they also contribute to the size limit.
+        if i < count_limit:
+            if (current_total_size + b.size_bytes) <= size_limit_bytes:
+                kept.append(b)
+                current_total_size += b.size_bytes
+            else:
+                # If we are over size limit even with count limit, 
+                # keep at least the very newest one? 
+                # No, user says "Keep newest N backups AND enforce MAX_TOTAL_GB".
+                # "Delete oldest first until under limits".
+                if i == 0: # Always keep at least the latest one even if > 10GB
+                    kept.append(b)
+                    current_total_size += b.size_bytes
+                else:
+                    to_delete.append(b)
+        else:
+            to_delete.append(b)
+
+    for b in to_delete:
+        try:
+            p = Path(b.file_path)
+            if p.exists():
+                p.unlink()
+            
+            # Log deletion to events table
+            _record_restore_event(
+                db=db,
+                backup_id=b.id,
+                snapshot_backup_id=None,
+                initiator_user_id=b.created_by,
+                initiator_org_id=org_id,
+                status="pruned",
+                error=f"Retention policy: deleted older than {count_limit} or over {settings.BACKUP_MAX_TOTAL_GB}GB"
+            )
+            db.delete(b)
+        except Exception as e:
+            logger.error(f"Failed to prune backup {b.id}: {e}")
+
+    db.commit()
 
 
 def upload_backup(

@@ -81,10 +81,11 @@ def list_artists(
     limit: int = 100,
     kind: str = None,
     db: Session = Depends(get_db),
+    org_id: uuid.UUID = Depends(get_current_organization_id),
     current_user: User = Depends(get_current_active_user)
 ):
     """List all artists"""
-    query = db.query(ArtistModel).options(joinedload(ArtistModel.memberships_as_group))
+    query = db.query(ArtistModel).options(joinedload(ArtistModel.memberships_as_group)).filter(ArtistModel.organization_id == org_id)
     if kind:
         query = query.filter(ArtistModel.artist_kind == kind.lower())
     artists = query.offset(skip).limit(limit).all()
@@ -95,11 +96,15 @@ def list_artists(
 def create_artist(
     artist: ArtistCreate,
     db: Session = Depends(get_db),
+    org_id: uuid.UUID = Depends(get_current_organization_id),
     current_user: User = Depends(get_current_active_user)
 ):
     """Create a new artist (solo or group)"""
-    # Check for existing artist with same name
-    existing = db.query(ArtistModel).filter(ArtistModel.name == artist.name).first()
+    # Check for existing artist with same name in same org
+    existing = db.query(ArtistModel).filter(
+        ArtistModel.name == artist.name,
+        ArtistModel.organization_id == org_id
+    ).first()
     if existing:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -142,24 +147,17 @@ def search_artists(
     types: str = "solo,group",
     limit: int = 20,
     db: Session = Depends(get_db),
+    org_id: uuid.UUID = Depends(get_current_organization_id),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Search artists by name or alias with support for filtering by kind (solo/group)."""
-    # Import locally to avoid modifying top level imports
+    """Search artists by name or alias"""
     from sqlalchemy import or_
     
     query = (q or "").strip()
     if not query:
         return []
 
-    # Parse requested types (allow specificing solo vs group)
-    kinds = set([t.strip().lower() for t in (types or "solo,group").split(",") if t.strip()])
-    
-    # Map 'individual' or 'Indiv' etc if frontend uses that terminology
-    if 'individual' in kinds:
-        kinds.add('solo')
-        
-    sql_query = db.query(ArtistModel).options(joinedload(ArtistModel.memberships_as_group))
+    sql_query = db.query(ArtistModel).options(joinedload(ArtistModel.memberships_as_group)).filter(ArtistModel.organization_id == org_id)
     
     # Apply kind filter if not asking for both (or neither)
     # We assume only 'solo' and 'group' exist as valid kinds
@@ -189,13 +187,14 @@ def search_artists(
 def get_artist(
     artist_id: int,
     db: Session = Depends(get_db),
+    org_id: uuid.UUID = Depends(get_current_organization_id),
     current_user: User = Depends(get_current_active_user)
 ):
     """Get a specific artist by ID"""
     artist = (
         db.query(ArtistModel)
         .options(joinedload(ArtistModel.memberships_as_group))
-        .filter(ArtistModel.id == artist_id)
+        .filter(ArtistModel.id == artist_id, ArtistModel.organization_id == org_id)
         .first()
     )
     if not artist:
@@ -399,10 +398,11 @@ def list_releases(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
+    org_id: uuid.UUID = Depends(get_current_organization_id),
     current_user: User = Depends(get_current_active_user)
 ):
     """List all releases"""
-    releases = db.query(ReleaseModel).offset(skip).limit(limit).all()
+    releases = db.query(ReleaseModel).filter(ReleaseModel.organization_id == org_id).offset(skip).limit(limit).all()
     
     # Enrich with status_quo
     # Optimization: Fetch basic boolean checks. 
@@ -977,13 +977,39 @@ def delete_work(
     
     from sqlalchemy.exc import IntegrityError
     try:
+        # Nullify track links
+        from models.track import Track
+        db.query(Track).filter(Track.work_id == work_id).update({"work_id": None})
+        
+        # Delete works admin records
+        from models.works_admin import WorksAdmin
+        db.query(WorksAdmin).filter(WorksAdmin.work_id == work_id).delete()
+        
+        # Delete royalties linked to work
+        from models.royalty import Royalty
+        db.query(Royalty).filter(Royalty.work_id == work_id).delete()
+        
+        # Delete contract assets
+        from models.contract import ContractAsset
+        db.query(ContractAsset).filter(
+            ContractAsset.asset_id == work_id,
+            ContractAsset.asset_type == "Work"
+        ).delete()
+        
+        # Delete status quo items
+        from models.governance import StatusQuoItem
+        db.query(StatusQuoItem).filter(
+            StatusQuoItem.entity_id == work_id,
+            StatusQuoItem.entity_type == "Work"
+        ).delete()
+        
         db.delete(db_work)
         db.commit()
-    except IntegrityError:
+    except Exception as e:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Cannot delete work because it is linked to tracks, contracts, or releases. Please remove these links first."
+            detail=f"Cannot delete work due to server error: {str(e)}"
         )
     return None
 

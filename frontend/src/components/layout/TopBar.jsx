@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Bell, User, Settings as SettingsIcon, LogOut, Music, Users, FileText, Layout, X, Building2, BookOpen, Globe, File, StickyNote, ListMusic, Sun, Moon } from 'lucide-react';
+import { Search, Bell, User, Settings as SettingsIcon, LogOut, Music, Users, FileText, Layout, X, Building2, BookOpen, Globe, File, StickyNote, ListMusic, Sun, Moon, CreditCard } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import api, { BASE_URL } from '../../lib/api';
@@ -149,16 +149,16 @@ const TopBar = () => {
     const hasResults = searchResults && Object.values(searchResults).some(arr => arr.length > 0);
 
     return (
-        <div className="topbar">
-            <div className="topbar-search-container" ref={dropdownRef}>
-                <form className="topbar-search" onSubmit={(e) => e.preventDefault()}>
-                    <div className="search-icon-wrapper">
-                        <Search size={20} className="search-icon" />
+        <div className="h-16 bg-surface border-b border-border flex items-center justify-between px-lg sticky top-0 z-[999]">
+            <div className="relative flex-1 max-w-[600px]" ref={dropdownRef}>
+                <form className="flex items-center bg-surface-elevated border border-transparent rounded-xl px-2 h-11 transition-all focus-within:border-accent focus-within:shadow-[0_0_0_4px_rgba(59,130,246,0.1)]" onSubmit={(e) => e.preventDefault()}>
+                    <div className="flex items-center justify-center pr-3 mr-2 border-r border-border h-3/5 text-text-secondary pl-2">
+                        <Search size={20} />
                     </div>
                     <input
                         type="text"
                         placeholder="Start searching here..."
-                        className="search-input"
+                        className="bg-transparent border-none flex-1 p-2 text-sm text-text-primary outline-none placeholder:text-text-secondary"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         onFocus={() => searchQuery.length >= 2 && setShowSearchResults(true)}
@@ -166,132 +166,82 @@ const TopBar = () => {
                     {searchQuery && (
                         <button
                             type="button"
-                            className="search-clear-btn"
+                            className="bg-border hover:bg-border-strong text-text-secondary hover:text-text-primary rounded-full w-5 h-5 flex items-center justify-center transition-all mr-2"
                             onClick={() => setSearchQuery('')}
                         >
                             <X size={14} />
                         </button>
                     )}
-                    {isSearching && <div className="search-spinner" />}
+                    {isSearching && <div className="w-4 h-4 border-2 border-border border-t-accent rounded-full animate-spin mr-2" />}
                 </form>
 
                 {showSearchResults && (
-                    <div className="search-dropdown">
+                    <div className="absolute top-[calc(100%+0.75rem)] left-0 right-0 bg-surface rounded-md shadow-lg border border-border z-[1001] max-h-[400px] overflow-y-auto">
                         {hasResults ? (
-                            <div className="search-results">
+                            <div className="py-2">
                                 {searchResults.artists?.length > 0 && (
-                                    <div className="search-group">
-                                        <h4><Users size={14} /> Artists</h4>
+                                    <div className="mb-2">
+                                        <h4 className="px-4 py-2 text-[10px] font-bold text-text-secondary uppercase tracking-widest bg-surface-elevated flex items-center gap-2"><Users size={12} /> Artists</h4>
                                         {searchResults.artists.map(a => (
-                                            <div key={a.id} className="search-item" onClick={() => handleResultClick(a)}>
+                                            <div key={a.id} className="px-4 py-3 cursor-pointer text-sm text-text-primary hover:bg-surface-elevated hover:text-accent transition-all" onClick={() => handleResultClick(a)}>
                                                 {a.name}
                                             </div>
                                         ))}
                                     </div>
                                 )}
                                 {searchResults.releases?.length > 0 && (
-                                    <div className="search-group">
-                                        <h4><Layout size={14} /> Releases</h4>
+                                    <div className="mb-2">
+                                        <h4 className="px-4 py-2 text-[10px] font-bold text-text-secondary uppercase tracking-widest bg-surface-elevated flex items-center gap-2"><Layout size={12} /> Releases</h4>
                                         {searchResults.releases.map(r => (
-                                            <div key={r.id} className="search-item" onClick={() => handleResultClick(r)}>
+                                            <div key={r.id} className="px-4 py-3 cursor-pointer text-sm text-text-primary hover:bg-surface-elevated hover:text-accent transition-all" onClick={() => handleResultClick(r)}>
                                                 {r.title}
                                             </div>
                                         ))}
                                     </div>
                                 )}
                                 {searchResults.tracks?.length > 0 && (
-                                    <div className="search-group">
-                                        <h4><Music size={14} /> Tracks</h4>
+                                    <div className="mb-2">
+                                        <h4 className="px-4 py-2 text-[10px] font-bold text-text-secondary uppercase tracking-widest bg-surface-elevated flex items-center gap-2"><Music size={12} /> Tracks</h4>
                                         {searchResults.tracks.map(t => (
-                                            <div key={t.id} className="search-item" onClick={() => handleResultClick(t)}>
+                                            <div key={t.id} className="px-4 py-3 cursor-pointer text-sm text-text-primary hover:bg-surface-elevated hover:text-accent transition-all" onClick={() => handleResultClick(t)}>
                                                 {t.title}
                                             </div>
                                         ))}
                                     </div>
                                 )}
                                 {searchResults.works?.length > 0 && (
-                                    <div className="search-group">
-                                        <h4><FileText size={14} /> Works</h4>
+                                    <div className="mb-2">
+                                        <h4 className="px-4 py-2 text-[10px] font-bold text-text-secondary uppercase tracking-widest bg-surface-elevated flex items-center gap-2"><FileText size={12} /> Works</h4>
                                         {searchResults.works.map(w => (
-                                            <div key={w.id} className="search-item" onClick={() => handleResultClick(w)}>
+                                            <div key={w.id} className="px-4 py-3 cursor-pointer text-sm text-text-primary hover:bg-surface-elevated hover:text-accent transition-all" onClick={() => handleResultClick(w)}>
                                                 {w.title}
                                             </div>
                                         ))}
                                     </div>
                                 )}
                                 {searchResults.contracts?.length > 0 && (
-                                    <div className="search-group">
-                                        <h4><FileText size={14} /> Contracts</h4>
+                                    <div className="mb-2">
+                                        <h4 className="px-4 py-2 text-[10px] font-bold text-text-secondary uppercase tracking-widest bg-surface-elevated flex items-center gap-2"><FileText size={12} /> Contracts</h4>
                                         {searchResults.contracts.map(c => (
-                                            <div key={c.id} className="search-item" onClick={() => handleResultClick(c)}>
+                                            <div key={c.id} className="px-4 py-3 cursor-pointer text-sm text-text-primary hover:bg-surface-elevated hover:text-accent transition-all" onClick={() => handleResultClick(c)}>
                                                 {c.title}
                                             </div>
                                         ))}
                                     </div>
                                 )}
-                                {searchResults.labels?.length > 0 && (
-                                    <div className="search-group">
-                                        <h4><Building2 size={14} /> Labels</h4>
-                                        {searchResults.labels.map(l => (
-                                            <div key={l.id} className="search-item" onClick={() => handleResultClick(l)}>
-                                                {l.name}
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                                {searchResults.publishers?.length > 0 && (
-                                    <div className="search-group">
-                                        <h4><BookOpen size={14} /> Publishers</h4>
-                                        {searchResults.publishers.map(p => (
-                                            <div key={p.id} className="search-item" onClick={() => handleResultClick(p)}>
-                                                {p.name}
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                                {searchResults.pros?.length > 0 && (
-                                    <div className="search-group">
-                                        <h4><Globe size={14} /> PROs</h4>
-                                        {searchResults.pros.map(p => (
-                                            <div key={p.id} className="search-item" onClick={() => handleResultClick(p)}>
-                                                {p.name}
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                                {searchResults.documents?.length > 0 && (
-                                    <div className="search-group">
-                                        <h4><File size={14} /> Documents</h4>
-                                        {searchResults.documents.map(d => (
-                                            <div key={d.id} className="search-item" onClick={() => handleResultClick(d)}>
-                                                {d.title}
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                                {searchResults.notes?.length > 0 && (
-                                    <div className="search-group">
-                                        <h4><StickyNote size={14} /> Notes</h4>
-                                        {searchResults.notes.map(n => (
-                                            <div key={n.id} className="search-item" onClick={() => handleResultClick(n)}>
-                                                {n.title}
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                                {searchResults.playlists?.length > 0 && (
-                                    <div className="search-group">
-                                        <h4><ListMusic size={14} /> Playlists</h4>
-                                        {searchResults.playlists.map(p => (
-                                            <div key={p.id} className="search-item" onClick={() => handleResultClick(p)}>
-                                                {p.title}
+                                {searchResults.network?.length > 0 && (
+                                    <div className="mb-2">
+                                        <h4 className="px-4 py-2 text-[10px] font-bold text-text-secondary uppercase tracking-widest bg-surface-elevated flex items-center gap-2"><Globe size={12} /> Network</h4>
+                                        {searchResults.network.map(n => (
+                                            <div key={`${n.type}-${n.id}`} className="px-4 py-3 cursor-pointer text-sm text-text-primary hover:bg-surface-elevated hover:text-accent transition-all" onClick={() => handleResultClick(n)}>
+                                                <span className="opacity-50 mr-2 text-[10px] uppercase">{n.type}</span> {n.name}
                                             </div>
                                         ))}
                                     </div>
                                 )}
                             </div>
                         ) : (
-                            <div className="search-no-results">
+                            <div className="p-8 text-center text-text-secondary text-sm">
                                 No matches found for "{searchQuery}"
                             </div>
                         )}
@@ -299,42 +249,42 @@ const TopBar = () => {
                 )}
             </div>
 
-            <div className="topbar-actions">
+            <div className="flex items-center gap-md">
                 <ThemeToggle />
-                <div className="dropdown-container">
+                <div className="relative">
                     <button
-                        className="topbar-icon-btn"
+                        className="relative p-2 text-text-secondary hover:text-text-primary transition-colors focus:outline-none"
                         title="Notifications"
                         onClick={() => setShowNotifications(!showNotifications)}
                     >
                         <Bell size={20} />
                         {unreadCount > 0 && (
-                            <span className="notification-badge">{unreadCount}</span>
+                            <span className="absolute top-1 right-1 w-4 h-4 bg-danger text-white text-[10px] font-bold flex items-center justify-center rounded-full border border-surface">{unreadCount}</span>
                         )}
                     </button>
 
                     {showNotifications && (
                         <>
-                            <div className="dropdown-overlay" onClick={() => setShowNotifications(false)} />
-                            <div className="dropdown-menu notifications-dropdown">
-                                <div className="dropdown-header">
-                                    <h3>Notifications</h3>
-                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                        <button className="mark-read-btn" onClick={handleMarkAllRead}>Read</button>
-                                        <button className="mark-read-btn" onClick={handleClearNotifications}>Clear</button>
+                            <div className="fixed inset-0 z-[-1]" onClick={() => setShowNotifications(false)} />
+                            <div className="absolute top-full right-0 mt-2 w-80 bg-surface border border-border rounded-lg shadow-xl overflow-hidden">
+                                <div className="px-4 py-3 border-b border-border bg-surface-elevated flex items-center justify-between">
+                                    <h3 className="text-sm font-semibold text-text-primary">Notifications</h3>
+                                    <div className="flex gap-2">
+                                        <button className="text-[10px] text-accent font-bold uppercase hover:underline" onClick={handleMarkAllRead}>Read</button>
+                                        <button className="text-[10px] text-danger font-bold uppercase hover:underline" onClick={handleClearNotifications}>Clear</button>
                                     </div>
                                 </div>
-                                <div className="notifications-list">
+                                <div className="max-h-96 overflow-y-auto">
                                     {notifications.length === 0 ? (
-                                        <div style={{ padding: '1rem', textAlign: 'center', color: '#64748b' }}>No notifications</div>
+                                        <div className="p-4 text-center text-text-secondary text-sm">No notifications</div>
                                     ) : (
                                         notifications.map(notification => (
                                             <div
                                                 key={notification.id}
-                                                className={`notification-item ${notification.unread ? 'unread' : ''}`}
+                                                className={`p-4 border-b border-border last:border-0 ${notification.unread ? 'bg-accent/5' : ''}`}
                                             >
-                                                <div className="notification-message">{notification.message}</div>
-                                                <div className="notification-time">{notification.time}</div>
+                                                <div className="text-sm text-text-primary mb-1">{notification.message}</div>
+                                                <div className="text-[10px] text-text-secondary">{notification.time}</div>
                                             </div>
                                         ))
                                     )}
@@ -344,195 +294,81 @@ const TopBar = () => {
                     )}
                 </div>
 
-                <div className="dropdown-container">
-                    <div className="topbar-user" onClick={() => setShowUserMenu(!showUserMenu)}>
-                        <div className="user-avatar">
+                <div className="relative">
+                    <div className="flex items-center gap-sm cursor-pointer p-1 rounded-full hover:bg-surface-elevated transition-all" onClick={() => setShowUserMenu(!showUserMenu)}>
+                        <div className="w-8 h-8 rounded-full bg-surface-elevated border border-border flex items-center justify-center overflow-hidden">
                             {user?.avatar_url ? (
                                 <img
                                     src={user.avatar_url.startsWith('http') ? user.avatar_url : `${API_URL}${user.avatar_url}`}
                                     alt="Profile"
-                                    style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
+                                    className="w-full h-full object-cover"
                                 />
                             ) : (
-                                <User size={20} />
+                                <User size={18} className="text-text-secondary" />
                             )}
                         </div>
-                        <span className="user-name">{user?.full_name || user?.email || 'User'}</span>
+                        <div className="flex flex-col items-start leading-tight hidden md:flex">
+                            <span className="text-sm font-medium text-text-primary">{user?.full_name || 'User'}</span>
+                            <span className="text-[10px] font-bold text-accent uppercase tracking-wider">Cloud Edition</span>
+                        </div>
                     </div>
 
                     {showUserMenu && (
                         <>
-                            <div className="dropdown-overlay" onClick={() => setShowUserMenu(false)} />
-                            <div className="dropdown-menu user-dropdown">
-                                <div className="dropdown-user-info">
-                                    <div className="dropdown-user-avatar">
+                            <div className="fixed inset-0 z-[-1]" onClick={() => setShowUserMenu(false)} />
+                            <div className="absolute top-full right-0 mt-2 w-64 bg-surface border border-border rounded-lg shadow-xl overflow-hidden">
+                                <div className="p-4 bg-surface-elevated flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-surface border border-border flex items-center justify-center overflow-hidden">
                                         {user?.avatar_url ? (
                                             <img
                                                 src={user.avatar_url.startsWith('http') ? user.avatar_url : `${API_URL}${user.avatar_url}`}
                                                 alt="User"
-                                                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
+                                                className="w-full h-full object-cover"
                                             />
                                         ) : (
-                                            <User size={24} />
+                                            <User size={20} className="text-text-secondary" />
                                         )}
                                     </div>
-                                    <div>
-                                        <div className="dropdown-user-name">{user?.full_name || 'User'}</div>
-                                        <div className="dropdown-user-email">{user?.email}</div>
+                                    <div className="overflow-hidden">
+                                        <div className="text-sm font-semibold text-text-primary truncate">{user?.full_name || 'User'}</div>
+                                        <div className="text-xs text-text-secondary truncate">{user?.email}</div>
                                     </div>
                                 </div>
-                                <div className="dropdown-divider" />
-                                <button
-                                    className="dropdown-item"
-                                    onClick={() => {
-                                        setShowUserMenu(false);
-                                        navigate('/settings');
-                                    }}
-                                >
-                                    <SettingsIcon size={18} />
-                                    Settings
-                                </button>
-                                <div className="dropdown-divider" />
-                                <button className="dropdown-item logout" onClick={handleLogout}>
-                                    <LogOut size={18} />
-                                    Logout
-                                </button>
+                                <div className="p-1 border-t border-border">
+                                    <button
+                                        className="w-full flex items-center gap-3 px-3 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-surface-elevated rounded-md transition-all"
+                                        onClick={() => {
+                                            setShowUserMenu(false);
+                                            navigate('/settings');
+                                        }}
+                                    >
+                                        <SettingsIcon size={16} />
+                                        Settings
+                                    </button>
+                                    <button
+                                        className="w-full flex items-center gap-3 px-3 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-surface-elevated rounded-md transition-all"
+                                        onClick={() => {
+                                            setShowUserMenu(false);
+                                            navigate('/billing');
+                                        }}
+                                    >
+                                        <CreditCard size={16} />
+                                        Billing
+                                    </button>
+                                    <div className="h-px bg-border my-1" />
+                                    <button 
+                                        className="w-full flex items-center gap-3 px-3 py-2 text-sm text-danger hover:bg-danger/10 rounded-md transition-all" 
+                                        onClick={handleLogout}
+                                    >
+                                        <LogOut size={16} />
+                                        Logout
+                                    </button>
+                                </div>
                             </div>
                         </>
                     )}
                 </div>
             </div>
-
-            <style>{`
-                .topbar-search-container {
-                    position: relative;
-                    flex: 1;
-                    max-width: 600px;
-                }
-                .topbar-search {
-                    display: flex;
-                    align-items: center;
-                    background: var(--surface-secondary);
-                    border: 1px solid transparent;
-                    border-radius: 12px;
-                    padding: 0.25rem 0.5rem;
-                    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-                    height: 44px;
-                }
-                .topbar-search:focus-within {
-                    background: var(--surface-color);
-                    border-color: var(--accent-color);
-                    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
-                    max-width: 650px;
-                }
-                .search-icon-wrapper {
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    padding-right: 0.75rem;
-                    margin-right: 0.5rem;
-                    border-right: 1px solid var(--border-color);
-                    height: 60%;
-                    color: var(--text-muted);
-                    padding-left: 0.5rem;
-                }
-                .search-input {
-                    background: transparent;
-                    border: none;
-                    flex: 1;
-                    padding: 0.5rem;
-                    font-size: 0.9375rem;
-                    color: var(--text-color);
-                    outline: none;
-                }
-                .search-clear-btn {
-                    background: var(--border-color);
-                    border: none;
-                    border-radius: 50%;
-                    width: 20px;
-                    height: 20px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    cursor: pointer;
-                    color: var(--text-muted);
-                    transition: all 0.2s;
-                    margin-right: 0.5rem;
-                }
-                .search-clear-btn:hover {
-                    background: var(--border-strong);
-                    color: var(--text-color);
-                }
-                .search-icon {
-                    color: var(--text-muted);
-                    flex-shrink: 0;
-                }
-                .search-dropdown {
-                    position: absolute;
-                    top: calc(100% + 0.75rem);
-                    left: 0;
-                    right: 0;
-                    background: var(--surface-color);
-                    border-radius: var(--radius);
-                    box-shadow: var(--shadow-lg);
-                    border: 1px solid var(--border-color);
-                    z-index: 1001;
-                    max-height: 400px;
-                    overflow-y: auto;
-                    animation: slideDown 0.2s ease-out;
-                }
-                @keyframes slideDown {
-                    from { transform: translateY(-10px); opacity: 0; }
-                    to { transform: translateY(0); opacity: 1; }
-                }
-                .search-results { padding: 0.5rem 0; }
-                .search-group { margin-bottom: 0.5rem; }
-                .search-group h4 {
-                    padding: 0.5rem 1rem;
-                    font-size: 0.75rem;
-                    color: var(--text-muted);
-                    text-transform: uppercase;
-                    letter-spacing: 0.05em;
-                    display: flex;
-                    align-items: center;
-                    gap: 0.5rem;
-                    margin: 0;
-                    background: var(--surface-secondary);
-                }
-                .search-item {
-                    padding: 0.75rem 1rem;
-                    cursor: pointer;
-                    font-size: 0.9375rem;
-                    color: var(--text-color);
-                    transition: all 0.2s;
-                }
-                .search-item:hover {
-                    background: var(--surface-secondary);
-                    color: var(--accent-color);
-                    padding-left: 1.25rem;
-                }
-                .search-no-results {
-                    padding: 2rem;
-                    text-align: center;
-                    color: var(--text-muted);
-                    font-size: 0.9375rem;
-                }
-                .search-spinner {
-                    position: absolute;
-                    right: 1rem;
-                    top: 50%;
-                    transform: translateY(-50%);
-                    width: 16px;
-                    height: 16px;
-                    border: 2px solid var(--border-color);
-                    border-top-color: var(--accent-color);
-                    border-radius: 50%;
-                    animation: spin 0.8s linear infinite;
-                }
-                @keyframes spin {
-                    to { transform: translateY(-50%) rotate(360deg); }
-                }
-            `}</style>
         </div>
     );
 };

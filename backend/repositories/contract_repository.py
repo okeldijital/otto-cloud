@@ -17,13 +17,20 @@ class ContractRepository(BaseRepository[Contract]):
     def __init__(self):
         super().__init__(Contract)
 
-    def get_all_filtered(self, db: Session, organization_id: int, status: Optional[str] = None, type: Optional[str] = None) -> List[Contract]:
+    def get_all_filtered(self, db: Session, organization_id: int, status: Optional[str] = None, type: Optional[str] = None, entity_type: Optional[str] = None, entity_id: Optional[int] = None) -> List[Contract]:
         query = db.query(Contract).options(
             selectinload(Contract.parties),
             selectinload(Contract.assets),
             selectinload(Contract.documents),
             selectinload(Contract.split_groups).selectinload(ContractSplitGroup.splits)
         ).filter(Contract.organization_id == organization_id)
+        
+        if entity_type and entity_id:
+            query = query.join(Contract.parties).filter(
+                ContractParty.entity_type == entity_type,
+                ContractParty.entity_id == entity_id
+            )
+            
         if status:
             query = query.filter(Contract.status == status)
         if type:

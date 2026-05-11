@@ -4,15 +4,11 @@ import { CatalogService } from '../services/catalog';
 import contractService from '../services/contractService';
 import { aiClient } from '../api/aiClient';
 import { ingest as ingestIntegration, plan as integrationPlan } from '../api/aiReleaseIntegrationClient';
+import { ChevronLeft, Check, AlertCircle, FileText, Bot, Upload } from 'lucide-react';
+import PageHeader from '../components/ui/PageHeader';
+import Button from '../components/ui/Button';
 
 const steps = ['Select Release', 'Select Contract PDF', 'Plan', 'Ingest'];
-
-const cardStyle = {
-    border: '1px solid #e2e8f0',
-    borderRadius: '12px',
-    padding: '1rem',
-    background: '#fff',
-};
 
 const ReleaseContractWizard = () => {
     const navigate = useNavigate();
@@ -198,218 +194,351 @@ const ReleaseContractWizard = () => {
     const canIngest = !!planResult && (missingFlags.length === 0 || acknowledged);
 
     return (
-        <div style={{ maxWidth: '1120px', margin: '0 auto', padding: '2rem 1.25rem 3rem' }}>
-            <div style={{ marginBottom: '1rem' }}>
-                <Link to={releaseId ? `/catalog/releases/${releaseId}` : '/catalog/releases'} className="back-link">
-                    ← Back to Release
-                </Link>
-            </div>
+        <div className="max-w-5xl mx-auto px-4 py-8">
+            <Link to={releaseId ? `/catalog/releases/${releaseId}` : '/catalog/releases'} className="inline-flex items-center gap-2 text-text-secondary hover:text-white transition-colors font-bold text-sm mb-6">
+                <ChevronLeft size={16} /> Back to Release
+            </Link>
 
-            <div style={{ background: '#fff', border: '1px solid var(--border-color)', borderRadius: '16px', padding: '1.5rem' }}>
-                <h1 style={{ margin: '0 0 0.25rem', fontSize: '1.6rem' }}>Release Contract Ingest Wizard</h1>
-                <p style={{ margin: 0, color: 'var(--text-muted)' }}>
-                    Upload/select contract PDF, validate plan, then ingest AI linkage records.
-                </p>
-
-                <div style={{ marginTop: '0.75rem', padding: '0.75rem 1rem', borderRadius: '10px', background: '#eff6ff', color: '#1d4ed8' }}>
-                    This will not modify existing catalog data; it stores AI linkage records only.
+            <div className="bg-premium-glass border border-white/5 rounded-3xl p-8 shadow-glass backdrop-blur-2xl">
+                <div className="mb-8">
+                    <h1 className="text-3xl font-black text-white tracking-tight mb-2 flex items-center gap-3">
+                        <Bot className="text-accent" size={32} />
+                        Release Contract Ingest Wizard
+                    </h1>
+                    <p className="text-text-secondary">
+                        Upload or select a contract PDF, let AI validate the plan, and ingest linkage records automatically.
+                    </p>
                 </div>
 
-                <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.25rem', flexWrap: 'wrap' }}>
+                <div className="bg-accent/10 border border-accent/20 rounded-xl p-4 text-accent text-sm flex items-start gap-3 mb-8">
+                    <AlertCircle size={20} className="shrink-0 mt-0.5" />
+                    <div>
+                        <strong className="block mb-1 font-bold">Safe Operation</strong>
+                        This wizard will not modify your existing catalog data. It only extracts entities and creates AI linkage records for tracking.
+                    </div>
+                </div>
+
+                {/* Steps indicator */}
+                <div className="flex flex-wrap gap-3 mb-8 pb-8 border-b border-white/5">
                     {steps.map((title, idx) => {
                         const stepNum = idx + 1;
                         const active = stepNum === activeStep;
+                        const completed = stepNum < activeStep;
                         return (
                             <div
                                 key={title}
-                                style={{
-                                    padding: '0.5rem 0.75rem',
-                                    borderRadius: '999px',
-                                    border: active ? '1px solid #0f766e' : '1px solid #cbd5e1',
-                                    background: active ? '#ccfbf1' : '#f8fafc',
-                                    color: active ? '#0f766e' : '#475569',
-                                    fontWeight: 700,
-                                    fontSize: '0.8rem',
-                                }}
+                                className={`px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2 border transition-all ${
+                                    active 
+                                        ? 'border-accent/50 bg-accent/10 text-accent shadow-[0_0_15px_rgba(14,165,233,0.2)]' 
+                                        : completed
+                                        ? 'border-white/20 bg-white/10 text-white'
+                                        : 'border-white/5 bg-white/5 text-text-muted'
+                                }`}
                             >
-                                {stepNum}. {title}
+                                {completed ? <Check size={14} /> : <span>{stepNum}.</span>}
+                                {title}
                             </div>
                         );
                     })}
                 </div>
 
                 {featureDisabled && (
-                    <div style={{ marginTop: '1rem', padding: '0.75rem 1rem', borderRadius: '10px', background: '#fef2f2', color: '#b91c1c' }}>
-                        AI contract ingest is disabled.
+                    <div className="mb-8 bg-danger/10 border border-danger/20 rounded-xl p-4 text-danger text-sm flex items-center gap-3">
+                        <AlertCircle size={18} /> AI contract ingest is currently disabled on your plan.
                     </div>
                 )}
+                
                 {error && (
-                    <div style={{ marginTop: '1rem', padding: '0.75rem 1rem', borderRadius: '10px', background: '#fff7ed', color: '#c2410c' }}>
-                        {error}
+                    <div className="mb-8 bg-warning/10 border border-warning/20 rounded-xl p-4 text-warning text-sm flex items-center gap-3">
+                        <AlertCircle size={18} /> {error}
                     </div>
                 )}
 
-                <div style={{ marginTop: '1.25rem', display: 'grid', gap: '1rem' }}>
-                    <section style={cardStyle}>
-                        <h3 style={{ marginTop: 0 }}>1) Select Release</h3>
-                        <select
-                            value={releaseId}
-                            onChange={(e) => {
-                                setReleaseId(e.target.value);
-                                setActiveStep(2);
-                                setSelectedContractId('');
-                                setSelectedDocId('');
-                                setExtractResult(null);
-                                setPlanResult(null);
-                                setIngestResult(null);
-                            }}
-                            style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid #cbd5e1' }}
-                        >
-                            <option value="">Choose release</option>
-                            {releases.map((row) => (
-                                <option key={row.id} value={row.id}>
-                                    #{row.id} {row.title}
-                                </option>
-                            ))}
-                        </select>
-                    </section>
-
-                    <section style={cardStyle}>
-                        <h3 style={{ marginTop: 0 }}>2) Select/Upload Contract PDF</h3>
-                        <div style={{ display: 'grid', gap: '0.75rem' }}>
+                <div className="grid gap-6">
+                    {/* Step 1: Select Release */}
+                    <section className={`bg-white/5 border border-white/5 rounded-2xl p-6 transition-opacity ${activeStep < 1 ? 'opacity-50 pointer-events-none' : ''}`}>
+                        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-xs font-black">1</span>
+                            Select Release
+                        </h3>
+                        <div className="max-w-xl">
                             <select
-                                value={selectedContractId}
+                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-accent transition-colors appearance-none"
+                                value={releaseId}
                                 onChange={(e) => {
-                                    setSelectedContractId(e.target.value);
+                                    setReleaseId(e.target.value);
+                                    setActiveStep(2);
+                                    setSelectedContractId('');
                                     setSelectedDocId('');
-                                    setSelectedFile(null);
+                                    setExtractResult(null);
+                                    setPlanResult(null);
+                                    setIngestResult(null);
                                 }}
-                                style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid #cbd5e1' }}
                             >
-                                <option value="">Select existing contract (optional)</option>
-                                {releaseContracts.map((contract) => (
-                                    <option key={contract.id} value={contract.id}>
-                                        #{contract.id} {contract.title}
+                                <option value="" className="bg-[#0f1115]">Choose release...</option>
+                                {releases.map((row) => (
+                                    <option key={row.id} value={row.id} className="bg-[#0f1115]">
+                                        #{row.id} - {row.title}
                                     </option>
                                 ))}
                             </select>
+                        </div>
+                    </section>
 
-                            {selectedContractId && (
+                    {/* Step 2: Select/Upload PDF */}
+                    <section className={`bg-white/5 border border-white/5 rounded-2xl p-6 transition-opacity ${activeStep < 2 ? 'opacity-50 pointer-events-none' : ''}`}>
+                        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-xs font-black">2</span>
+                            Select/Upload Contract PDF
+                        </h3>
+                        <div className="max-w-xl grid gap-4">
+                            <div>
+                                <label className="block text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">Existing Contract (Optional)</label>
                                 <select
-                                    value={selectedDocId}
+                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-accent transition-colors appearance-none"
+                                    value={selectedContractId}
                                     onChange={(e) => {
-                                        setSelectedDocId(e.target.value);
+                                        setSelectedContractId(e.target.value);
+                                        setSelectedDocId('');
                                         setSelectedFile(null);
                                     }}
-                                    style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid #cbd5e1' }}
                                 >
-                                    <option value="">Select contract PDF version</option>
-                                    {selectedContractDocs.map((doc) => (
-                                        <option key={doc.id} value={doc.id}>
-                                            v{doc.version || 1} {doc.file_name || `Document ${doc.id}`}
+                                    <option value="" className="bg-[#0f1115]">Select existing contract...</option>
+                                    {releaseContracts.map((contract) => (
+                                        <option key={contract.id} value={contract.id} className="bg-[#0f1115]">
+                                            #{contract.id} - {contract.title}
                                         </option>
                                     ))}
                                 </select>
+                            </div>
+
+                            {selectedContractId && (
+                                <div>
+                                    <label className="block text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">PDF Version</label>
+                                    <select
+                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-accent transition-colors appearance-none"
+                                        value={selectedDocId}
+                                        onChange={(e) => {
+                                            setSelectedDocId(e.target.value);
+                                            setSelectedFile(null);
+                                        }}
+                                    >
+                                        <option value="" className="bg-[#0f1115]">Select contract PDF version...</option>
+                                        {selectedContractDocs.map((doc) => (
+                                            <option key={doc.id} value={doc.id} className="bg-[#0f1115]">
+                                                v{doc.version || 1} - {doc.file_name || `Document ${doc.id}`}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
                             )}
 
-                            <div style={{ fontSize: '0.85rem', color: '#64748b' }}>Or upload a local PDF</div>
-                            <input
-                                type="file"
-                                accept="application/pdf"
-                                onChange={(e) => {
-                                    setSelectedFile(e.target.files?.[0] || null);
-                                    if (e.target.files?.[0]) {
-                                        setSelectedContractId('');
-                                        setSelectedDocId('');
-                                    }
-                                }}
-                            />
+                            <div className="flex items-center gap-4 my-2">
+                                <div className="h-[1px] bg-white/10 flex-1"></div>
+                                <div className="text-xs font-bold text-text-muted uppercase tracking-widest">OR</div>
+                                <div className="h-[1px] bg-white/10 flex-1"></div>
+                            </div>
 
                             <div>
-                                <button className="btn-primary" onClick={runExtract} disabled={loading || !releaseId}>
-                                    {loading ? 'Running...' : 'Run Contract Extract'}
-                                </button>
+                                <label className="block text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">Upload Local PDF</label>
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-xl border border-dashed border-white/20 bg-white/5 flex items-center justify-center text-text-muted shrink-0">
+                                        <Upload size={20} />
+                                    </div>
+                                    <div className="flex-1">
+                                        <input
+                                            type="file"
+                                            accept="application/pdf"
+                                            onChange={(e) => {
+                                                setSelectedFile(e.target.files?.[0] || null);
+                                                if (e.target.files?.[0]) {
+                                                    setSelectedContractId('');
+                                                    setSelectedDocId('');
+                                                }
+                                            }}
+                                            className="text-sm text-text-secondary file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-white/10 file:text-white hover:file:bg-white/20 cursor-pointer w-full"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="pt-4">
+                                <Button onClick={runExtract} disabled={loading || !releaseId} icon={Bot}>
+                                    {loading ? 'Extracting via AI...' : 'Run Contract Extract'}
+                                </Button>
                             </div>
                         </div>
                     </section>
 
-                    <section style={cardStyle}>
-                        <h3 style={{ marginTop: 0 }}>3) Plan</h3>
-                        <button className="btn-primary" onClick={runPlan} disabled={loading || !extractResult || !releaseId}>
-                            {loading ? 'Running...' : 'Run Integration Plan'}
-                        </button>
+                    {/* Step 3: Plan */}
+                    <section className={`bg-white/5 border border-white/5 rounded-2xl p-6 transition-opacity ${activeStep < 3 ? 'opacity-50 pointer-events-none' : ''}`}>
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                <span className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-xs font-black">3</span>
+                                Integration Plan
+                            </h3>
+                            <Button onClick={runPlan} disabled={loading || !extractResult || !releaseId} variant="secondary">
+                                {loading ? 'Planning...' : 'Generate Plan'}
+                            </Button>
+                        </div>
 
                         {planResult && (
-                            <div style={{ marginTop: '1rem', display: 'grid', gap: '1rem' }}>
-                                <div>
-                                    <h4 style={{ marginBottom: '0.5rem' }}>Missing Flags</h4>
-                                    <ul style={{ margin: '0.25rem 0 0 1rem' }}>
-                                        {missingFlags.map((flag, idx) => (
-                                            <li key={`flag-${idx}`}>{flag.message}</li>
-                                        ))}
-                                        {missingFlags.length === 0 && <li>none</li>}
-                                    </ul>
+                            <div className="grid gap-6">
+                                <div className="bg-white/5 border border-white/10 rounded-xl p-5">
+                                    <h4 className="text-sm font-bold text-white uppercase tracking-widest mb-3 flex items-center gap-2">
+                                        <AlertCircle size={16} className={missingFlags.length > 0 ? "text-warning" : "text-success"} /> 
+                                        Missing Flags
+                                    </h4>
+                                    {missingFlags.length > 0 ? (
+                                        <ul className="list-disc ml-5 space-y-1 text-sm text-warning">
+                                            {missingFlags.map((flag, idx) => (
+                                                <li key={`flag-${idx}`}>{flag.message}</li>
+                                            ))}
+                                        </ul>
+                                    ) : (
+                                        <p className="text-sm text-success font-bold flex items-center gap-2">
+                                            <Check size={16} /> No missing flags detected.
+                                        </p>
+                                    )}
                                 </div>
 
-                                <div>
-                                    <h4 style={{ marginBottom: '0.5rem' }}>Entity Matches</h4>
-                                    <ul style={{ margin: '0.25rem 0 0 1rem' }}>
-                                        {(planResult?.matches?.release_artists || []).map((row) => (
-                                            <li key={`artist-${row.id}`}>Artist: {row.name} ({row.contract_match ? 'match' : 'review'})</li>
-                                        ))}
-                                        {(planResult?.matches?.release_tracks || []).map((row) => (
-                                            <li key={`track-${row.id}`}>Track: {row.name} ({row.contract_match ? 'match' : 'review'})</li>
-                                        ))}
-                                        {(planResult?.matches?.release_works || []).map((row) => (
-                                            <li key={`work-${row.id}`}>Work: {row.name} ({row.contract_match ? 'match' : 'review'})</li>
-                                        ))}
-                                    </ul>
+                                <div className="bg-white/5 border border-white/10 rounded-xl p-5">
+                                    <h4 className="text-sm font-bold text-white uppercase tracking-widest mb-3 flex items-center gap-2">
+                                        <FileText size={16} className="text-accent" /> 
+                                        Entity Matches
+                                    </h4>
+                                    
+                                    <div className="space-y-4">
+                                        {planResult?.matches?.release_artists?.length > 0 && (
+                                            <div>
+                                                <div className="text-xs font-bold text-text-secondary uppercase mb-2">Artists</div>
+                                                <div className="flex flex-col gap-2">
+                                                    {planResult.matches.release_artists.map((row) => (
+                                                        <div key={`artist-${row.id}`} className="flex justify-between items-center bg-white/5 p-2 rounded-lg text-sm">
+                                                            <span className="text-white font-bold">{row.name}</span>
+                                                            <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${row.contract_match ? 'bg-success/20 text-success' : 'bg-warning/20 text-warning'}`}>
+                                                                {row.contract_match ? 'Match' : 'Review Needed'}
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {planResult?.matches?.release_tracks?.length > 0 && (
+                                            <div>
+                                                <div className="text-xs font-bold text-text-secondary uppercase mb-2 mt-4">Tracks</div>
+                                                <div className="flex flex-col gap-2">
+                                                    {planResult.matches.release_tracks.map((row) => (
+                                                        <div key={`track-${row.id}`} className="flex justify-between items-center bg-white/5 p-2 rounded-lg text-sm">
+                                                            <span className="text-white font-bold">{row.name}</span>
+                                                            <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${row.contract_match ? 'bg-success/20 text-success' : 'bg-warning/20 text-warning'}`}>
+                                                                {row.contract_match ? 'Match' : 'Review Needed'}
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {planResult?.matches?.release_works?.length > 0 && (
+                                            <div>
+                                                <div className="text-xs font-bold text-text-secondary uppercase mb-2 mt-4">Works</div>
+                                                <div className="flex flex-col gap-2">
+                                                    {planResult.matches.release_works.map((row) => (
+                                                        <div key={`work-${row.id}`} className="flex justify-between items-center bg-white/5 p-2 rounded-lg text-sm">
+                                                            <span className="text-white font-bold">{row.name}</span>
+                                                            <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${row.contract_match ? 'bg-success/20 text-success' : 'bg-warning/20 text-warning'}`}>
+                                                                {row.contract_match ? 'Match' : 'Review Needed'}
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                        
+                                        {!planResult?.matches?.release_artists?.length && !planResult?.matches?.release_tracks?.length && !planResult?.matches?.release_works?.length && (
+                                            <p className="text-sm text-text-muted">No entity matches found.</p>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         )}
                     </section>
 
-                    <section style={cardStyle}>
-                        <h3 style={{ marginTop: 0 }}>4) Ingest</h3>
-                        {missingFlags.length > 0 && (
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                                <input type="checkbox" checked={acknowledged} onChange={(e) => setAcknowledged(e.target.checked)} />
-                                I acknowledge missing flags and continue.
-                            </label>
-                        )}
-
-                        <button className="btn-primary" onClick={runIngest} disabled={loading || !canIngest}>
-                            {loading ? 'Running...' : 'Ingest'}
-                        </button>
+                    {/* Step 4: Ingest */}
+                    <section className={`bg-white/5 border border-white/5 rounded-2xl p-6 transition-opacity ${activeStep < 4 ? 'opacity-50 pointer-events-none' : ''}`}>
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div>
+                                <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                                    <span className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-xs font-black">4</span>
+                                    Final Ingestion
+                                </h3>
+                                {missingFlags.length > 0 && (
+                                    <label className="flex items-center gap-3 text-sm text-warning cursor-pointer p-3 bg-warning/10 border border-warning/20 rounded-xl mt-3">
+                                        <input 
+                                            type="checkbox" 
+                                            checked={acknowledged} 
+                                            onChange={(e) => setAcknowledged(e.target.checked)}
+                                            className="w-4 h-4 rounded border-warning/30 bg-white/10 text-warning focus:ring-warning focus:ring-offset-0"
+                                        />
+                                        <span className="font-bold">I acknowledge the missing flags and wish to proceed anyway.</span>
+                                    </label>
+                                )}
+                            </div>
+                            <Button onClick={runIngest} disabled={loading || !canIngest} className={!canIngest ? 'opacity-50' : ''}>
+                                {loading ? 'Ingesting...' : 'Confirm & Ingest'}
+                            </Button>
+                        </div>
 
                         {ingestResult && (
-                            <div style={{ marginTop: '0.9rem', padding: '0.75rem 1rem', borderRadius: '10px', background: '#f0fdf4', color: '#166534' }}>
-                                <div>contract_document_id: {ingestResult.contract_document_id}</div>
-                                <div>run_id: {ingestResult.run_id}</div>
-                                <div>links_created_count: {ingestResult.links_created_count}</div>
-                                <div>idempotent_hit: {String(ingestResult.idempotent_hit)}</div>
-                                {selectedContractId && (
-                                    <div style={{ marginTop: '0.5rem' }}>
-                                        <Link to={`/admin-of-works/contracts/${selectedContractId}`}>View ingest record</Link>
+                            <div className="mt-6 p-5 rounded-xl bg-success/10 border border-success/20 text-success">
+                                <h4 className="font-bold mb-3 flex items-center gap-2 text-success">
+                                    <Check size={20} /> Ingestion Successful
+                                </h4>
+                                <div className="grid grid-cols-2 gap-4 text-sm mb-4">
+                                    <div>
+                                        <span className="text-success/70 block text-xs uppercase tracking-widest mb-1">Document ID</span>
+                                        <span className="font-mono font-bold">{ingestResult.contract_document_id}</span>
                                     </div>
+                                    <div>
+                                        <span className="text-success/70 block text-xs uppercase tracking-widest mb-1">Run ID</span>
+                                        <span className="font-mono font-bold">{ingestResult.run_id}</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-success/70 block text-xs uppercase tracking-widest mb-1">Links Created</span>
+                                        <span className="font-mono font-bold text-lg">{ingestResult.links_created_count}</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-success/70 block text-xs uppercase tracking-widest mb-1">Idempotent</span>
+                                        <span className="font-mono font-bold">{String(ingestResult.idempotent_hit)}</span>
+                                    </div>
+                                </div>
+                                {selectedContractId && (
+                                    <Link 
+                                        to={`/admin-of-works/contracts/${selectedContractId}`}
+                                        className="inline-flex items-center gap-2 px-4 py-2 bg-success/20 hover:bg-success/30 text-success rounded-lg text-sm font-bold transition-colors"
+                                    >
+                                        View Ingest Record →
+                                    </Link>
                                 )}
                             </div>
                         )}
                     </section>
                 </div>
 
-                <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.25rem', flexWrap: 'wrap' }}>
-                    <button className="btn-secondary" onClick={() => navigate(releaseId ? `/catalog/releases/${releaseId}` : '/catalog/releases')}>
-                        Close
-                    </button>
+                <div className="mt-8 pt-8 border-t border-white/5 flex items-center justify-between">
+                    <Button variant="secondary" onClick={() => navigate(releaseId ? `/catalog/releases/${releaseId}` : '/catalog/releases')}>
+                        Cancel
+                    </Button>
+                    
+                    {selectedRelease && (
+                        <div className="text-sm text-text-muted font-bold">
+                            Operating on: <span className="text-white">#{selectedRelease.id} {selectedRelease.title}</span>
+                        </div>
+                    )}
                 </div>
             </div>
-
-            {selectedRelease && (
-                <div style={{ marginTop: '0.75rem', color: '#64748b', fontSize: '0.9rem' }}>
-                    Selected release: #{selectedRelease.id} {selectedRelease.title}
-                </div>
-            )}
         </div>
     );
 };

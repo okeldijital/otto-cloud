@@ -54,13 +54,24 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
     
+    # Create a new organization for the user
+    import uuid
+    from models.organization import Organization
+    
+    new_org_id = uuid.uuid4()
+    db_org = Organization(
+        id=new_org_id,
+        name=f"{user.full_name}'s Workspace"
+    )
+    db.add(db_org)
+    
     hashed_password = get_password_hash(user.password)
     db_user = User(
         email=user.email,
         hashed_password=hashed_password,
         full_name=user.full_name,
         is_active=user.is_active,
-        organization_id=UUID("00000000-0000-0000-0000-000000000001")
+        organization_id=new_org_id
     )
     db.add(db_user)
     db.commit()

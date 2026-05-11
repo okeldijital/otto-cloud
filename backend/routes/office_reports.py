@@ -13,7 +13,7 @@ from models.user import User
 from models.reporting import ReportDefinition, ReportRun, ReportArtifact
 from models.office_document import OfficeDocument, OfficeDocumentLink
 from core.audit import log_create, log_update, log_delete, log_download
-from services.office_reports import REPORT_TYPES, BUILDERS, export_csv, export_pdf
+from services.office_reports import REPORT_TYPES, BUILDERS, export_csv, export_pdf, export_xlsx
 from config import settings
 from schemas.office_reports import (
     ReportDefinition as ReportDefinitionSchema,
@@ -260,7 +260,15 @@ def _persist_artifact(org_id: UUID, run_id: int, fmt: str, data: bytes) -> Repor
     with open(dest_path, "wb") as handle:
         handle.write(data)
     storage_path = dest_path.replace(settings.UPLOAD_DIR, "/uploads")
-    mime = "application/pdf" if fmt == "pdf" else "text/csv"
+    
+    mime_map = {
+        "pdf": "application/pdf",
+        "csv": "text/csv",
+        "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "json": "application/json"
+    }
+    mime = mime_map.get(fmt, "application/octet-stream")
+    
     return ReportArtifact(
         organization_id=org_id,
         report_run_id=run_id,
@@ -291,12 +299,16 @@ def run_report(
         if not defn:
             raise HTTPException(status_code=404, detail="Definition not found")
 
+    params = payload.parameters or {}
+    if "report_type" not in params:
+        params["report_type"] = payload.report_type
+        
     run = ReportRun(
         organization_id=org_id,
         report_definition_id=definition_id,
         status="running",
         requested_by_user_id=current_user.id,
-        parameters_json=json.dumps(payload.parameters or {}),
+        parameters_json=json.dumps(params),
     )
     db.add(run)
     db.commit()
@@ -325,6 +337,12 @@ def run_report(
         if "pdf" in formats:
             pdf_data = export_pdf(meta.get("title", payload.report_type), rows, payload.parameters or {})
             artifacts.append(_persist_artifact(org_id, run.id, "pdf", pdf_data))
+        if "xlsx" in formats:
+            xlsx_data = export_xlsx(rows)
+            artifacts.append(_persist_artifact(org_id, run.id, "xlsx", xlsx_data))
+        if "json" in formats:
+            json_data = json.dumps({"rows": rows, "meta": meta}).encode("utf-8")
+            artifacts.append(_persist_artifact(org_id, run.id, "json", json_data))
         for artifact in artifacts:
             db.add(artifact)
         db.commit()
@@ -361,6 +379,29 @@ def get_run(
     if not run:
         raise HTTPException(status_code=404, detail="Run not found")
     return _to_run(run)
+
+
+@router.get("/office/reports/runs/{run_id}/data")
+def get_run_data(
+    run_id: int,
+    db: Session = Depends(get_db),
+    org_id: UUID = Depends(get_current_organization_id),
+    current_user: User = Depends(_require_viewer),
+):
+    artifact = db.query(ReportArtifact).filter(
+        ReportArtifact.report_run_id == run_id,
+        ReportArtifact.format == "json",
+        ReportArtifact.organization_id == org_id
+    ).first()
+    if not artifact:
+        raise HTTPException(status_code=404, detail="JSON data not found for this run")
+    
+    real_path = _resolve_artifact_path(artifact)
+    if not os.path.isfile(real_path):
+        raise HTTPException(status_code=404, detail="File missing on disk")
+        
+    with open(real_path, "r") as f:
+        return json.load(f)
 
 
 @router.get("/office/reports/runs/{run_id}/artifacts", response_model=List[ReportArtifactSchema])
@@ -432,6 +473,45 @@ def preview_artifact(
     if not os.path.isfile(real_path):
         raise HTTPException(status_code=404, detail="File missing on disk")
     return FileResponse(real_path, filename=artifact.filename, media_type=artifact.mime_type)
+
+
+@router.get("/office/reports/runs/{run_id}/export")
+def export_run_data(
+    run_id: int,
+    db: Session = Depends(get_db),
+    org_id: UUID = Depends(get_current_organization_id),
+    current_user: User = Depends(_require_viewer),
+):
+    """
+    Consolidated export endpoint that returns the primary data artifact (CSV).
+    """
+    # Prefer XLSX for the primary download button
+    artifact = db.query(ReportArtifact).filter(
+        ReportArtifact.report_run_id == run_id,
+        ReportArtifact.format == "xlsx",
+        ReportArtifact.organization_id == org_id
+    ).first()
+    
+    if not artifact:
+        # Fallback to CSV
+        artifact = db.query(ReportArtifact).filter(
+            ReportArtifact.report_run_id == run_id,
+            ReportArtifact.format == "csv",
+            ReportArtifact.organization_id == org_id
+        ).first()
+
+    if not artifact:
+        # Fallback to JSON
+        artifact = db.query(ReportArtifact).filter(
+            ReportArtifact.report_run_id == run_id,
+            ReportArtifact.format == "json",
+            ReportArtifact.organization_id == org_id
+        ).first()
+
+    if not artifact:
+        raise HTTPException(status_code=404, detail="No exportable artifacts found")
+    
+    return download_artifact(artifact.id, db, org_id, current_user)
 
 
 @router.get("/office/reports/runs/{run_id}/export.pdf")

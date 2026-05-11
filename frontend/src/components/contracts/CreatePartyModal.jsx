@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import partyClient from '../../api/partyClient';
-import { X, Search } from 'lucide-react';
+import { X, Search, Check, User, Users, Building, Plus } from 'lucide-react';
+import Button from '../ui/Button';
 
 const TYPES = [
-    { id: 'artist_solo', label: 'Artist (Individual)', type: 'artist', kind: 'solo' },
-    { id: 'artist_group', label: 'Artist (Group)', type: 'artist', kind: 'group' },
-    { id: 'organization', label: 'Organization', type: 'organization', kind: null },
-    { id: 'individual', label: 'Individual (Non-Artist)', type: 'individual', kind: null },
+    { id: 'artist_solo', label: 'Artist (Individual)', type: 'artist', kind: 'solo', icon: User },
+    { id: 'artist_group', label: 'Artist (Group)', type: 'artist', kind: 'group', icon: Users },
+    { id: 'organization', label: 'Organization', type: 'organization', kind: null, icon: Building },
+    { id: 'individual', label: 'Individual (Non-Artist)', type: 'individual', kind: null, icon: User },
 ];
 
 function useDebounced(value, delayMs = 250) {
@@ -35,6 +36,12 @@ export default function CreatePartyModal({
     const [memberQuery, setMemberQuery] = useState('');
     const [memberResults, setMemberResults] = useState([]);
     const debouncedMemberQuery = useDebounced(memberQuery);
+
+    useEffect(() => {
+        if (initialName) setName(initialName);
+        // If initialName is provided, we might be creating a group from a suggestion
+        if (initialName) setSelectedType('artist_group');
+    }, [initialName]);
 
     if (!isOpen) return null;
 
@@ -96,78 +103,123 @@ export default function CreatePartyModal({
     };
 
     return (
-        <div style={{
-            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-            background: 'rgba(0,0,0,0.5)', zIndex: 9999,
-            display: 'flex', alignItems: 'center', justifyContent: 'center'
-        }}>
-            <div className="panel" style={{ width: 440, padding: 0, overflow: 'hidden', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
-                <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h3 style={{ margin: 0 }}>Create New Party</h3>
-                    <button type="button" className="ghost-btn" onClick={onClose} style={{ padding: 4 }}>✕</button>
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-md bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+            <div className="bg-surface border border-border w-full max-w-[480px] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-300">
+                
+                {/* Header */}
+                <div className="px-xl py-lg border-b border-border flex justify-between items-center bg-surface-elevated/20">
+                    <div>
+                        <h3 className="text-lg font-bold text-text-primary tracking-tight">Create New Party</h3>
+                        <p className="text-[10px] text-text-secondary uppercase tracking-widest font-bold mt-0.5">
+                            {step === 1 ? 'Step 1: Entity Type' : 'Step 2: Details & Identity'}
+                        </p>
+                    </div>
+                    <button type="button" onClick={onClose} className="p-2 hover:bg-black/5 rounded-full transition-colors text-text-secondary">
+                        <X size={20} />
+                    </button>
                 </div>
 
-                <div style={{ padding: 20, overflowY: 'auto' }}>
-                    {error && <div className="error-message" style={{ marginBottom: 16, color: 'var(--danger-color)' }}>{error}</div>}
+                <div className="p-xl overflow-y-auto flex-1">
+                    {error && (
+                        <div className="mb-lg p-md bg-danger/10 border border-danger/20 rounded-xl text-danger text-xs font-bold flex items-center gap-2">
+                             <X size={14} /> {error}
+                        </div>
+                    )}
 
                     {step === 1 && (
-                        <div style={{ display: 'grid', gap: 12 }}>
-                            <div className="strong" style={{ marginBottom: 4 }}>What applies best?</div>
-                            {TYPES.map(t => (
-                                <label key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', border: '1px solid var(--border-color)', borderRadius: 8, cursor: 'pointer', background: selectedType === t.id ? 'var(--surface-color-hover)' : 'transparent' }}>
-                                    <input
-                                        type="radio"
-                                        name="partyType"
-                                        checked={selectedType === t.id}
-                                        onChange={() => setSelectedType(t.id)}
-                                    />
-                                    <span>{t.label}</span>
-                                </label>
-                            ))}
-                            <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
-                                <button type="button" className="btn" onClick={handleNext}>Next</button>
+                        <div className="flex flex-col gap-md">
+                            <div className="text-sm font-semibold text-text-primary mb-1">What kind of entity are you adding?</div>
+                            <div className="grid grid-cols-1 gap-3">
+                                {TYPES.map(t => {
+                                    const Icon = t.icon;
+                                    const isActive = selectedType === t.id;
+                                    return (
+                                        <button
+                                            key={t.id}
+                                            onClick={() => setSelectedType(t.id)}
+                                            className={`flex items-center gap-4 p-md rounded-xl border-2 transition-all text-left ${
+                                                isActive 
+                                                ? 'border-accent bg-accent/5 ring-4 ring-accent/10' 
+                                                : 'border-border bg-surface-elevated/5 hover:border-border-strong'
+                                            }`}
+                                        >
+                                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isActive ? 'bg-accent text-white' : 'bg-surface-elevated text-text-secondary'}`}>
+                                                <Icon size={20} />
+                                            </div>
+                                            <div className="flex-1">
+                                                <div className={`text-sm font-bold ${isActive ? 'text-accent' : 'text-text-primary'}`}>{t.label}</div>
+                                                <div className="text-[10px] text-text-secondary opacity-60 uppercase tracking-wider font-bold">Type: {t.type}</div>
+                                            </div>
+                                            {isActive && <Check size={18} className="text-accent" />}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                            <div className="mt-xl flex justify-end">
+                                <Button variant="primary" onClick={handleNext} className="px-lg">Continue</Button>
                             </div>
                         </div>
                     )}
 
                     {step === 2 && (
-                        <div style={{ display: 'grid', gap: 16 }}>
-                            <div className="form-group">
-                                <label className="strong" style={{ display: 'block', marginBottom: 6 }}>
-                                    {selectedType === 'organization' ? 'Organization Name' : 'Name'}
+                        <div className="flex flex-col gap-xl">
+                            <div className="flex flex-col gap-2">
+                                <label className="text-xs font-bold text-text-secondary uppercase tracking-widest">
+                                    {selectedType === 'organization' ? 'Organization Name' : 'Legal / Display Name'}
                                 </label>
                                 <input
-                                    className="input"
+                                    className="w-full bg-surface-elevated border border-border rounded-xl p-md text-sm text-text-primary focus:ring-2 focus:ring-accent/50 outline-none transition-all placeholder:text-text-secondary/30"
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
-                                    placeholder="Enter name..."
+                                    placeholder={selectedType === 'organization' ? 'e.g. Sony Music' : 'e.g. John Doe'}
                                     autoFocus
                                 />
                             </div>
 
                             {selectedType === 'artist_group' && (
-                                <div className="form-group" style={{ display: 'grid', gap: 8 }}>
-                                    <label className="strong">Group Members</label>
-                                    <div className="input-box" style={{ padding: 8, border: '1px solid #e5e7eb', borderRadius: 6, display: 'grid', gap: 8 }}>
-                                        {members.map(m => (
-                                            <div key={m.id} className="chip" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f1f5f9', padding: '4px 8px', borderRadius: 4 }}>
-                                                <span>{m.display_name || m.name}</span>
-                                                <button type="button" className="ghost-btn" onClick={() => removeMember(m.id)} style={{ padding: 0, height: 'auto' }}><X size={12} /></button>
+                                <div className="flex flex-col gap-md">
+                                    <label className="text-xs font-bold text-text-secondary uppercase tracking-widest flex items-center gap-2">
+                                        <Users size={14} /> Group Members
+                                    </label>
+                                    <div className="p-md bg-surface-elevated/20 border border-border rounded-xl flex flex-col gap-3 min-h-[100px]">
+                                        <div className="flex flex-wrap gap-2">
+                                            {members.map(m => (
+                                                <div key={m.id} className="flex items-center gap-2 bg-accent/10 text-accent px-3 py-1.5 rounded-full text-xs font-bold border border-accent/20">
+                                                    <span>{m.display_name || m.name}</span>
+                                                    <button type="button" onClick={() => removeMember(m.id)} className="hover:text-danger transition-colors">
+                                                        <X size={14} />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                            {members.length === 0 && !memberQuery && (
+                                                <div className="text-xs text-text-secondary opacity-40 italic py-1">No members added yet...</div>
+                                            )}
+                                        </div>
+                                        
+                                        <div className="relative mt-2 border-t border-border pt-3">
+                                            <div className="relative">
+                                                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary opacity-40" />
+                                                <input
+                                                    value={memberQuery}
+                                                    onChange={e => setMemberQuery(e.target.value)}
+                                                    placeholder="Search to add member..."
+                                                    className="w-full bg-transparent border-none text-xs text-text-primary focus:ring-0 outline-none pl-9"
+                                                />
                                             </div>
-                                        ))}
-                                        <div style={{ position: 'relative' }}>
-                                            <input
-                                                value={memberQuery}
-                                                onChange={e => setMemberQuery(e.target.value)}
-                                                placeholder="Add member (search artist)..."
-                                                style={{ border: 'none', background: 'transparent', width: '100%', outline: 'none' }}
-                                            />
+                                            
                                             {memberResults.length > 0 && (
-                                                <div className="dropdown-menu" style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, background: 'white', border: '1px solid #e5e7eb', borderRadius: 4, maxHeight: 150, overflowY: 'auto' }}>
+                                                <div className="absolute top-full left-0 right-0 mt-2 bg-surface border border-border rounded-xl shadow-xl z-20 overflow-hidden py-1 max-h-[180px] overflow-y-auto">
                                                     {memberResults.map(r => (
-                                                        <div key={r.id} className="dropdown-item" onClick={() => addMember(r)} style={{ padding: '8px', cursor: 'pointer', borderBottom: '1px solid #f8fafc' }}>
-                                                            {r.display_name || r.name}
-                                                        </div>
+                                                        <button 
+                                                            key={r.id} 
+                                                            onClick={() => addMember(r)} 
+                                                            className="w-full px-md py-2 text-left text-xs hover:bg-surface-elevated transition-colors flex items-center gap-3 border-b border-border/50 last:border-0"
+                                                        >
+                                                            <div className="w-6 h-6 bg-accent/10 text-accent rounded-full flex items-center justify-center flex-shrink-0">
+                                                                <User size={12} />
+                                                            </div>
+                                                            <span className="font-medium">{r.display_name || r.name}</span>
+                                                        </button>
                                                     ))}
                                                 </div>
                                             )}
@@ -176,11 +228,16 @@ export default function CreatePartyModal({
                                 </div>
                             )}
 
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
-                                <button type="button" className="ghost-btn" onClick={() => setStep(1)}>Back</button>
-                                <button type="button" className="btn primary" disabled={!name.trim() || isSubmitting} onClick={handleCreate}>
+                            <div className="flex justify-between items-center mt-lg">
+                                <Button variant="ghost" onClick={() => setStep(1)}>Back</Button>
+                                <Button 
+                                    variant="primary" 
+                                    disabled={!name.trim() || isSubmitting} 
+                                    onClick={handleCreate}
+                                    className="min-w-[140px]"
+                                >
                                     {isSubmitting ? 'Creating...' : 'Create Party'}
-                                </button>
+                                </Button>
                             </div>
                         </div>
                     )}

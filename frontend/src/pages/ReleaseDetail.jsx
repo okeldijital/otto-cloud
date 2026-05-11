@@ -75,61 +75,41 @@ const ReleaseDetail = () => {
     const credits = release.credits || [];
 
     return (
-        <div className="entity-page">
-            <Link to="/catalog/releases" className="back-link">
+        <div className="max-w-7xl mx-auto px-4 py-8">
+            <Link to="/catalog/releases" className="mb-6 inline-flex items-center gap-2 text-text-secondary hover:text-white transition-colors font-bold text-sm">
                 <ChevronLeft size={16} /> Back to Releases
             </Link>
 
-            <div className="release-detail-header" style={{ display: 'flex', gap: '2.5rem', marginBottom: '3rem', flexWrap: 'wrap' }}>
-                <div className="release-cover-large" style={{
-                    width: '320px',
-                    height: '320px',
-                    flexShrink: 0,
-                    borderRadius: '16px',
-                    overflow: 'hidden',
-                    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-                    background: '#f1f5f9',
-                    border: '1px solid var(--border-color)'
-                }}>
+            {/* Header / Hero Section */}
+            <div className="bg-premium-glass border border-white/5 rounded-[32px] p-8 mb-8 flex flex-col lg:flex-row gap-8 shadow-glass backdrop-blur-2xl">
+                <div className="w-48 h-48 lg:w-64 lg:h-64 rounded-2xl overflow-hidden border border-white/10 shrink-0 flex items-center justify-center bg-white/5 shadow-[0_0_30px_rgba(14,165,233,0.3)]">
                     {release.cover_art_url ? (
                         <img
                             src={release.cover_art_url.startsWith('http') ? release.cover_art_url : `${BASE_URL}${release.cover_art_url}`}
                             alt={release.title}
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            className="w-full h-full object-cover"
                         />
                     ) : (
-                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
-                            <Disc size={80} />
-                        </div>
+                        <Disc size={80} className="text-text-secondary opacity-30" />
                     )}
                 </div>
 
-                <div className="release-info-hero" style={{ flex: 1, minWidth: '300px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-                        <span style={{
-                            padding: '4px 12px',
-                            background: 'var(--primary-color)',
-                            borderRadius: '20px',
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                            color: 'white',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.05em'
-                        }}>
+                <div className="flex-1 flex flex-col justify-center">
+                    <div className="flex items-center gap-3 mb-4">
+                        <span className="px-3 py-1 bg-accent/10 border border-accent/20 text-accent rounded-full text-[10px] font-bold uppercase tracking-widest">
                             {release.release_type}
                         </span>
                         {label && (
-                            <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+                            <span className="text-sm text-text-secondary font-bold tracking-wide">
                                 {label.name}
                             </span>
                         )}
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
-                        <h1 style={{ fontSize: '3rem', fontWeight: 900, marginBottom: '0.5rem', letterSpacing: '-0.025em', color: 'var(--text-main)' }}>{release.title}</h1>
+                    <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-4">
+                        <h1 className="text-4xl lg:text-5xl font-black text-white tracking-tight drop-shadow-[0_0_15px_rgba(255,255,255,0.4)]">{release.title}</h1>
                         <button
-                            className="btn-secondary btn-icon"
-                            style={{ color: '#ef4444', borderColor: '#fee2e2', background: '#fef2f2' }}
+                            className="flex items-center gap-2 px-4 py-2 bg-danger/10 hover:bg-danger/20 text-danger border border-transparent rounded-xl text-sm font-bold transition-colors shrink-0"
                             onClick={async () => {
                                 if (await confirmAction(`Are you sure you want to delete "${release.title}"?`, 'Delete Release')) {
                                     try {
@@ -143,34 +123,34 @@ const ReleaseDetail = () => {
                             }}
                             title="Delete Release"
                         >
-                            <Trash2 size={24} />
+                            <Trash2 size={16} /> Delete
                         </button>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '1.25rem', color: 'var(--primary-color)', marginBottom: '2rem', fontWeight: 600 }}>
+                    <div className="flex items-center gap-3 text-xl text-accent mb-8 font-bold">
                         <User size={24} />
                         <span>{artistNames}</span>
                     </div>
 
-                    <div className="release-metadata-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '2rem', marginBottom: '2rem' }}>
-                        <div className="meta-item">
-                            <label style={{ display: 'block', fontSize: '0.75rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.5rem', letterSpacing: '0.05em' }}>Release Date</label>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, color: 'var(--text-main)' }}>
-                                <Calendar size={18} color="var(--primary-color)" />
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-auto">
+                        <div className="bg-white/5 border border-white/5 rounded-xl p-4">
+                            <label className="block text-[10px] font-bold text-text-secondary uppercase tracking-widest mb-2">Release Date</label>
+                            <div className="flex items-center gap-2 font-bold text-white">
+                                <Calendar size={16} className="text-accent" />
                                 {formattedDate}
                             </div>
                         </div>
-                        <div className="meta-item">
-                            <label style={{ display: 'block', fontSize: '0.75rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.5rem', letterSpacing: '0.05em' }}>Catalog #</label>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, color: 'var(--text-main)' }}>
-                                <FileText size={18} color="var(--primary-color)" />
+                        <div className="bg-white/5 border border-white/5 rounded-xl p-4">
+                            <label className="block text-[10px] font-bold text-text-secondary uppercase tracking-widest mb-2">Catalog #</label>
+                            <div className="flex items-center gap-2 font-bold text-white font-mono">
+                                <FileText size={16} className="text-accent" />
                                 {release.catalog_number || 'N/A'}
                             </div>
                         </div>
-                        <div className="meta-item">
-                            <label style={{ display: 'block', fontSize: '0.75rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.5rem', letterSpacing: '0.05em' }}>UPC</label>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, color: 'var(--text-main)' }}>
-                                <Tag size={18} color="var(--primary-color)" />
+                        <div className="bg-white/5 border border-white/5 rounded-xl p-4">
+                            <label className="block text-[10px] font-bold text-text-secondary uppercase tracking-widest mb-2">UPC</label>
+                            <div className="flex items-center gap-2 font-bold text-white font-mono">
+                                <Tag size={16} className="text-accent" />
                                 {release.upc_code || 'N/A'}
                             </div>
                         </div>
@@ -178,71 +158,64 @@ const ReleaseDetail = () => {
                 </div>
             </div>
 
-            <div className="release-content-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '2rem', alignItems: 'start' }}>
+            <div className="flex flex-col lg:flex-row gap-8 items-start">
                 {/* Main Content: Tracklist */}
-                <div className="tracks-section" style={{ background: '#fff', borderRadius: '16px', border: '1px solid var(--border-color)', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
-                    <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc' }}>
-                        <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)' }}>Tracklist</h3>
-                        <span style={{ background: '#e2e8f0', padding: '2px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700, color: '#475569' }}>{tracks.length} Tracks</span>
+                <div className="flex-1 w-full min-w-0 bg-premium-glass border border-white/5 rounded-3xl overflow-hidden shadow-glass">
+                    <div className="p-6 border-b border-white/5 flex justify-between items-center bg-white/[0.02]">
+                        <h3 className="text-xl font-bold text-white">Tracklist</h3>
+                        <span className="bg-white/10 px-3 py-1 rounded-lg text-xs font-bold text-white">{tracks.length} Tracks</span>
                     </div>
 
-                    <div className="tracks-list">
+                    <div className="p-0">
                         {tracks.length === 0 ? (
-                            <div style={{ padding: '4rem 2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                                <Music size={48} style={{ marginBottom: '1rem', opacity: 0.2 }} />
-                                <p style={{ fontSize: '1.125rem' }}>No tracks added to this release yet.</p>
-                                <button className="btn-secondary btn-sm" style={{ marginTop: '1rem' }} onClick={() => navigate('/catalog/tracks')}>Manage Tracks</button>
+                            <div className="py-16 text-center text-text-secondary">
+                                <Music size={48} className="mx-auto mb-4 opacity-20" />
+                                <p className="text-lg mb-4">No tracks added to this release yet.</p>
+                                <button className="bg-white/5 hover:bg-white/10 border border-white/10 text-white px-6 py-2 rounded-xl text-sm font-bold transition-all" onClick={() => navigate('/catalog/tracks')}>Manage Tracks</button>
                             </div>
                         ) : (
-                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                                <thead>
-                                    <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border-color)', color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 700 }}>
-                                        <th style={{ padding: '1.25rem 1.5rem', width: '60px' }}>#</th>
-                                        <th style={{ padding: '1.25rem 1.5rem' }}>Title</th>
-                                        <th style={{ padding: '1.25rem 1.5rem' }}>ISRC</th>
-                                        <th style={{ padding: '1.25rem 1.5rem' }}>Duration</th>
-                                        <th style={{ padding: '1.25rem 1.5rem', textAlign: 'right' }}></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {tracks.map((track, index) => (
-                                        <tr key={track.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'all 0.2s' }} className="track-row">
-                                            <td style={{ padding: '1.25rem 1.5rem', color: '#94a3b8', fontWeight: 700, fontSize: '0.875rem' }}>{(index + 1).toString().padStart(2, '0')}</td>
-                                            <td style={{ padding: '1.25rem 1.5rem' }}>
-                                                <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: '1rem' }}>{track.title}</div>
-                                                <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '2px' }}>{track.genre || 'Recording'}</div>
-                                            </td>
-                                            <td style={{ padding: '1.25rem 1.5rem', fontFamily: 'monospace', fontSize: '0.875rem', color: '#64748b' }}>{track.isrc_code || '-'}</td>
-                                            <td style={{ padding: '1.25rem 1.5rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>{formatDurationForDisplay(track.duration)}</td>
-                                            <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right' }}>
-                                                {track.streaming_link ? (
-                                                    <a href={track.streaming_link} target="_blank" rel="noreferrer" style={{
-                                                        display: 'inline-flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        width: '32px',
-                                                        height: '32px',
-                                                        borderRadius: '50%',
-                                                        background: '#f1f5f9',
-                                                        color: 'var(--primary-color)'
-                                                    }}>
-                                                        <Play size={14} fill="currentColor" />
-                                                    </a>
-                                                ) : <div style={{ width: '32px' }} />}
-                                            </td>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left">
+                                    <thead>
+                                        <tr className="border-b border-white/5 text-[10px] font-bold text-text-secondary uppercase tracking-widest">
+                                            <th className="p-4 w-16 text-center">#</th>
+                                            <th className="p-4">Title</th>
+                                            <th className="p-4">ISRC</th>
+                                            <th className="p-4">Duration</th>
+                                            <th className="p-4 text-right"></th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody>
+                                        {tracks.map((track, index) => (
+                                            <tr key={track.id} className="border-b border-white/5 hover:bg-white/[0.03] transition-colors group">
+                                                <td className="p-4 text-text-secondary font-mono text-xs text-center">{(index + 1).toString().padStart(2, '0')}</td>
+                                                <td className="p-4">
+                                                    <div className="font-bold text-white text-sm group-hover:text-accent transition-colors">{track.title}</div>
+                                                    <div className="text-xs text-text-secondary mt-1">{track.genre || 'Recording'}</div>
+                                                </td>
+                                                <td className="p-4 font-mono text-xs text-text-secondary">{track.isrc_code || '-'}</td>
+                                                <td className="p-4 text-xs text-text-muted">{formatDurationForDisplay(track.duration)}</td>
+                                                <td className="p-4 text-right">
+                                                    {track.streaming_link && (
+                                                        <a href={track.streaming_link} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-white/5 text-accent hover:bg-accent hover:text-[#0f1115] transition-colors">
+                                                            <Play size={12} fill="currentColor" />
+                                                        </a>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         )}
                     </div>
                 </div>
 
                 {/* Sidebar: Contributors & Info */}
-                <div className="release-sidebar" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                    <div className="contributors-section" style={{ background: '#fff', borderRadius: '16px', border: '1px solid var(--border-color)', padding: '1.5rem', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
-                        <h4 style={{ margin: '0 0 1.25rem 0', fontSize: '1rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <User size={18} /> Contributors
+                <div className="w-full lg:w-80 shrink-0 flex flex-col gap-6">
+                    <div className="bg-premium-glass border border-white/5 rounded-3xl p-6 shadow-glass">
+                        <h4 className="text-sm font-bold text-white uppercase tracking-widest mb-6 flex items-center gap-2 border-b border-white/5 pb-3">
+                            <User size={16} className="text-accent" /> Contributors
                         </h4>
 
                         {(() => {
@@ -257,12 +230,12 @@ const ReleaseDetail = () => {
 
                             if (allContributors.length === 0) {
                                 return (
-                                    <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', textAlign: 'center', padding: '1rem 0' }}>No contributors listed.</p>
+                                    <p className="text-sm text-text-secondary text-center py-4">No contributors listed.</p>
                                 );
                             }
 
                             return (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                <div className="flex flex-col gap-4">
                                     {allContributors.map((credit, idx) => {
                                         let name = 'Unknown';
                                         let type = 'Contact';
@@ -286,25 +259,15 @@ const ReleaseDetail = () => {
                                         }
 
                                         return (
-                                            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                                <div style={{
-                                                    padding: '2px 6px',
-                                                    background: type === 'Artist' ? '#e0e7ff' : type === 'Label' ? '#fce7f3' : type === 'Org' ? '#dbeafe' : '#f1f5f9',
-                                                    color: type === 'Artist' ? '#4338ca' : type === 'Label' ? '#be185d' : type === 'Org' ? '#1d4ed8' : '#64748b',
-                                                    borderRadius: '4px',
-                                                    fontSize: '0.65rem',
-                                                    fontWeight: 700,
-                                                    textTransform: 'uppercase',
-                                                    textAlign: 'center',
-                                                    minWidth: '60px'
-                                                }}>
+                                            <div key={idx} className="flex items-center gap-3">
+                                                <div className="px-2 py-1 bg-white/5 border border-white/10 text-white rounded text-[9px] font-bold uppercase tracking-widest text-center w-16 shrink-0">
                                                     {type}
                                                 </div>
-                                                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                                    <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                                                <div className="flex flex-col min-w-0">
+                                                    <span className="text-sm font-bold text-white truncate">
                                                         {name}
                                                     </span>
-                                                    <span style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.025em' }}>
+                                                    <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest truncate">
                                                         {credit.role}
                                                     </span>
                                                 </div>
@@ -316,56 +279,37 @@ const ReleaseDetail = () => {
                         })()}
                     </div>
 
-                    <div className="links-section" style={{ background: 'var(--primary-color)', borderRadius: '16px', padding: '1.5rem', color: 'white', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}>
-                        <h4 style={{ margin: '0 0 1rem 0', fontSize: '1rem', fontWeight: 800 }}>Quick Actions</h4>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <div className="bg-accent/10 border border-accent/20 rounded-[24px] p-6 text-white shadow-[0_0_20px_rgba(14,165,233,0.15)] relative overflow-hidden backdrop-blur-xl">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-accent/20 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
+                        <h4 className="text-sm font-bold uppercase tracking-widest mb-4 relative z-10">Quick Actions</h4>
+                        <div className="flex flex-col gap-3 relative z-10">
                             <button
-                                className="btn-secondary btn-sm"
-                                style={{ width: '100%', background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', cursor: 'pointer' }}
+                                className="w-full bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl py-3 px-4 text-xs font-bold transition-all flex justify-between items-center group"
                                 onClick={() => window.print()}
                             >
                                 Generate One-Sheet
+                                <span className="opacity-0 group-hover:opacity-100 transition-opacity">→</span>
                             </button>
                             <button
-                                className="btn-secondary btn-sm"
-                                style={{ width: '100%', background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', cursor: 'pointer' }}
+                                className="w-full bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl py-3 px-4 text-xs font-bold transition-all flex justify-between items-center group"
                                 onClick={() => ReportsService.exportSingle('release', id, 'excel')}
                             >
                                 Export Metadata
+                                <span className="opacity-0 group-hover:opacity-100 transition-opacity">→</span>
                             </button>
                             <button
-                                className="btn-secondary btn-sm"
-                                style={{ width: '100%', background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', cursor: 'pointer' }}
+                                className="w-full bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl py-3 px-4 text-xs font-bold transition-all flex justify-between items-center group"
                                 onClick={() => navigate(`/release/${id}/contract-wizard`)}
                             >
                                 Contract Wizard
+                                <span className="opacity-0 group-hover:opacity-100 transition-opacity">→</span>
                             </button>
                         </div>
                     </div>
                 </div>
             </div>
-
-            <style>{`
-                .track-row:hover { background: #f8fafc !important; }
-                .track-row:hover td { color: var(--primary-color) !important; }
-                .back-link { margin-bottom: 2rem; display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none; color: var(--text-muted); font-weight: 500; }
-                .back-link:hover { color: var(--primary-color); }
-                
-                @media print {
-                    .back-link, .release-sidebar, .play-button-cell, th:last-child, td:last-child { display: none !important; }
-                    .entity-page { padding: 0 !important; width: 100% !important; }
-                    .release-detail-header { margin-bottom: 2rem !important; }
-                    .tracks-section { border: none !important; box-shadow: none !important; }
-                    .release-content-grid { display: block !important; }
-                }
-                
-                @media (max-width: 1024px) {
-                    .release-content-grid { grid-template_columns: 1fr !important; }
-                }
-            `}</style>
         </div>
     );
 };
-
 
 export default ReleaseDetail;

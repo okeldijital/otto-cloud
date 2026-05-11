@@ -1,10 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { FileText, Upload, Edit3, Plus, Trash, Download, AlertCircle, CheckCircle } from 'lucide-react';
+import { FileText, Upload, Edit3, Plus, Trash, Download, AlertCircle, CheckCircle, ChevronLeft } from 'lucide-react';
 import { confirmAction } from '../lib/tauri';
 import contractService from '../services/contractService';
 import EntityForm from '../components/EntityForm';
 import EntityTypeahead from '../components/contracts/EntityTypeahead';
+import Button from '../components/ui/Button';
+import Badge from '../components/ui/Badge';
+import Card from '../components/ui/Card';
 
 const STATUS_COLORS = {
     Draft: 'neutral',
@@ -340,242 +343,289 @@ const ContractDetail = () => {
     if (error || !contract) return <div className="error-banner">{error || 'Not found'}</div>;
 
     return (
-        <div className="contracts-shell">
-            <header className="contracts-header">
-                <div>
-                    <button className="link-btn" onClick={() => navigate('/contracts')}>← Back to list</button>
-                    <h1>{contract.title}</h1>
-                    <p className="muted mono">{contract.contract_number}</p>
-                </div>
-                <div className="header-actions">
-                    {(contract.status_quo || contract.status_quo_reasons) && (
-                        <div className={`status - badge ${HEALTH_COLORS[(contract.status_quo?.status || '').toUpperCase()] || 'neutral'} `} title={(contract.status_quo_reasons || contract.status_quo?.reasons || []).join(', ')}>
-                            Health: {contract.status_quo?.status || 'RED'}
-                            {contract.status_quo_override && <span style={{ marginLeft: '4px', opacity: 0.7 }}>(Override)</span>}
-                        </div>
-                    )}
-                    <span className={`status - badge ${STATUS_COLORS[contract.status] || 'neutral'} `}>
-                        {contract.status}
-                    </span>
-                    <button className="btn ghost" onClick={() => setDocModalOpen(true)}>
-                        <Upload size={16} /> Upload Payloads
-                    </button>
-                    <button className="btn orange" onClick={downloadLatest}>
-                        <Download size={16} /> PDF
-                    </button>
-                    <button className="btn ghost danger" onClick={deleteContract} title="Delete Contract">
-                        <Trash size={16} />
-                    </button>
-                </div>
-            </header>
+        <div className="p-8 max-w-[1600px] mx-auto animate-in fade-in duration-500">
+            <button className="mb-6 inline-flex items-center gap-2 text-text-secondary hover:text-white transition-colors font-bold text-sm" onClick={() => navigate('/contracts')}>
+                <ChevronLeft size={16} /> Back to Contracts
+            </button>
 
-            <div className="tabs">
+            {/* Header / Hero Section */}
+            <div className="bg-premium-glass border border-white/5 rounded-[32px] p-8 mb-8 flex flex-col gap-6 shadow-glass backdrop-blur-2xl">
+                <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
+                    <div>
+                        <h1 className="text-4xl font-bold text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.4)] tracking-tight mb-2">{contract.title}</h1>
+                        <p className="text-text-secondary font-mono bg-white/5 inline-block px-3 py-1 rounded-lg border border-white/10">{contract.contract_number}</p>
+                    </div>
+                    
+                    <div className="flex flex-wrap items-center gap-3">
+                        {(contract.status_quo || contract.status_quo_reasons) && (
+                            <Badge variant={HEALTH_COLORS[(contract.status_quo?.status || '').toUpperCase()] || 'neutral'} title={(contract.status_quo_reasons || contract.status_quo?.reasons || []).join(', ')}>
+                                Health: {contract.status_quo?.status || 'RED'}
+                                {contract.status_quo_override && <span className="opacity-70 ml-1">(Override)</span>}
+                            </Badge>
+                        )}
+                        <Badge variant={STATUS_COLORS[contract.status] || 'neutral'}>
+                            {contract.status}
+                        </Badge>
+                        <Button variant="ghost" size="sm" onClick={() => setDocModalOpen(true)}>
+                            <Upload size={16} className="mr-1.5" /> Upload Payload
+                        </Button>
+                        <Button variant="primary" size="sm" onClick={downloadLatest}>
+                            <Download size={16} className="mr-1.5" /> View PDF
+                        </Button>
+                        <Button variant="danger" className="bg-danger/10 hover:bg-danger/20 text-danger border-transparent" size="sm" onClick={deleteContract} title="Delete Contract">
+                            <Trash size={16} />
+                        </Button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Navigation Tabs */}
+            <div className="flex overflow-x-auto bg-premium-glass border border-white/5 rounded-2xl p-1 mb-6 hide-scrollbar shadow-sm">
                 {TABS.map((tab) => (
                     <button
                         key={tab}
-                        className={`tab ${activeTab === tab ? 'active' : ''} `}
+                        className={`px-6 py-2.5 rounded-xl text-sm font-bold capitalize transition-all whitespace-nowrap flex-1 text-center ${activeTab === tab ? 'bg-white/10 text-white shadow-sm border border-white/5' : 'text-text-secondary hover:text-white hover:bg-white/5'}`}
                         onClick={() => setActiveTab(tab)}
                     >
-                        {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                        {tab}
                     </button>
                 ))}
             </div>
 
-            {activeTab === 'documents' && (
-                <div className="panel">
-                    <div
-                        className={`dropzone ${dragActive ? 'dragging' : ''} `}
-                        onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
-                        onDragLeave={() => setDragActive(false)}
-                        onDrop={onDrop}
-                    >
-                        <Upload size={20} />
-                        <div>
-                            <p className="strong">Drag & drop signed PDF</p>
-                            <p className="muted small">Or <button className="link-btn" onClick={() => setDocModalOpen(true)}>browse files</button></p>
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
+                {activeTab === 'documents' && (
+                    <div className="flex flex-col gap-6">
+                        <div
+                            className={`border-2 border-dashed rounded-[24px] p-8 text-center transition-all ${dragActive ? 'border-accent bg-accent/5' : 'border-white/10 bg-white/[0.02] hover:border-white/20'}`}
+                            onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+                            onDragLeave={() => setDragActive(false)}
+                            onDrop={onDrop}
+                        >
+                            <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4 text-text-secondary">
+                                <Upload size={24} />
+                            </div>
+                            <p className="text-white font-bold text-lg mb-2">Drag & drop signed PDF</p>
+                            <p className="text-text-secondary text-sm">Or <button className="text-accent hover:underline focus:outline-none" onClick={() => setDocModalOpen(true)}>browse files</button></p>
                         </div>
-                    </div>
-                    <div className="document-stack">
-                        <div className="document-versions">
-                            {documentsWithVersions.length === 0 && <div className="placeholder">No documents uploaded yet.</div>}
-                            {documentsWithVersions.map((doc) => (
-                                <button
-                                    key={doc.id}
-                                    className={`document - card ${selectedDoc?.id === doc.id ? 'active' : ''} `}
-                                    onClick={() => setSelectedDoc(doc)}
-                                >
-                                    <div className="doc-meta">
-                                        <FileText size={18} />
-                                        <div>
-                                            <div className="strong">v{doc.version || '?'} • {doc.file_name}</div>
-                                            <div className="muted small">
-                                                {doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleString() : '—'}
+                        
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <div className="lg:col-span-1 flex flex-col gap-3">
+                                {documentsWithVersions.length === 0 && <div className="bg-premium-glass border border-white/5 rounded-[24px] p-8 text-center text-text-secondary">No documents uploaded yet.</div>}
+                                {documentsWithVersions.map((doc) => (
+                                    <button
+                                        key={doc.id}
+                                        className={`p-4 rounded-2xl border text-left flex items-start justify-between gap-4 transition-all group ${selectedDoc?.id === doc.id ? 'bg-white/10 border-white/20 shadow-glow' : 'bg-premium-glass border-white/5 hover:border-white/20'}`}
+                                        onClick={() => setSelectedDoc(doc)}
+                                    >
+                                        <div className="flex gap-3">
+                                            <div className={`mt-1 ${selectedDoc?.id === doc.id ? 'text-accent' : 'text-text-secondary group-hover:text-white'}`}>
+                                                <FileText size={18} />
+                                            </div>
+                                            <div>
+                                                <div className={`font-bold text-sm mb-1 ${selectedDoc?.id === doc.id ? 'text-white' : 'text-text-primary'}`}>v{doc.version || '?'} • {doc.file_name}</div>
+                                                <div className="text-text-secondary text-xs">
+                                                    {doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleString() : '—'}
+                                                </div>
                                             </div>
                                         </div>
+                                        <div className="shrink-0">
+                                            <button className="p-2 rounded-lg text-text-secondary hover:text-white hover:bg-white/10 transition-colors" onClick={(e) => { e.stopPropagation(); downloadDoc(doc); }} title="Download">
+                                                <Download size={14} />
+                                            </button>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                            
+                            <div className="lg:col-span-2 bg-premium-glass border border-white/5 rounded-[24px] p-2 min-h-[600px] overflow-hidden flex flex-col shadow-glass">
+                                {!selectedDoc ? (
+                                    <div className="flex-1 flex items-center justify-center text-text-secondary">Select a document to preview.</div>
+                                ) : (
+                                    <div className="flex-1 bg-white/[0.02] rounded-2xl overflow-hidden border border-white/5 relative">
+                                        <object
+                                            data={contractService.buildFileUrl(selectedDoc.file_path)}
+                                            type="application/pdf"
+                                            className="w-full h-full"
+                                        >
+                                            <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+                                                <p className="text-text-secondary mb-4">PDF preview unavailable.</p>
+                                                <Button variant="primary" onClick={() => downloadDoc(selectedDoc)}>Download instead</Button>
+                                            </div>
+                                        </object>
                                     </div>
-                                    <div className="doc-actions">
-                                        <button className="ghost-btn" onClick={(e) => { e.stopPropagation(); downloadDoc(doc); }}>
-                                            <Download size={14} /> Download
-                                        </button>
-                                    </div>
-                                </button>
-                            ))}
-                        </div>
-                        <div className="document-preview">
-                            {!selectedDoc ? (
-                                <div className="placeholder">Select a document to preview.</div>
-                            ) : (
-                                <object
-                                    data={contractService.buildFileUrl(selectedDoc.file_path)}
-                                    type="application/pdf"
-                                    width="100%"
-                                    height="100%"
-                                >
-                                    <p>
-                                        PDF preview unavailable.{' '}
-                                        <button className="link-btn" onClick={() => downloadDoc(selectedDoc)}>Download instead</button>
-                                    </p>
-                                </object>
-                            )}
+                                )}
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )}
 
-            {activeTab === 'overview' && (
-                <div className="panel grid-2">
-                    <div>
-                        <h4 className="eyebrow">Key Terms</h4>
-                        <ul className="kv">
-                            <li><span>Type</span><strong>{contract.contract_type || '—'}</strong></li>
-                            <li><span>Status</span><strong>{contract.status || '—'}</strong></li>
-                            <li><span>Effective</span><strong>{contract.start_date || '—'}</strong></li>
-                            <li><span>End</span><strong>{contract.end_date || '—'}</strong></li>
-                            <li><span>Signed</span><strong>{contract.signed_date || '—'}</strong></li>
-                            <li><span>Territory</span><strong>{contract.territory || '—'}</strong></li>
-                            <li><span>Exclusivity</span><strong>{contract.exclusivity || '—'}</strong></li>
-                        </ul>
+                {activeTab === 'overview' && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <Card title="Key Terms" noPadding contentClassName="p-0">
+                            <div className="divide-y divide-white/5">
+                                <div className="flex justify-between items-center p-4">
+                                    <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">Type</span>
+                                    <span className="text-white font-medium">{contract.contract_type || '—'}</span>
+                                </div>
+                                <div className="flex justify-between items-center p-4">
+                                    <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">Status</span>
+                                    <Badge variant={STATUS_COLORS[contract.status] || 'neutral'}>{contract.status || '—'}</Badge>
+                                </div>
+                                <div className="flex justify-between items-center p-4">
+                                    <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">Effective</span>
+                                    <span className="text-white font-medium">{contract.start_date || '—'}</span>
+                                </div>
+                                <div className="flex justify-between items-center p-4">
+                                    <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">End</span>
+                                    <span className="text-white font-medium">{contract.end_date || '—'}</span>
+                                </div>
+                                <div className="flex justify-between items-center p-4">
+                                    <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">Signed</span>
+                                    <span className="text-white font-medium">{contract.signed_date || '—'}</span>
+                                </div>
+                                <div className="flex justify-between items-center p-4">
+                                    <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">Territory</span>
+                                    <span className="text-white font-medium">{contract.territory || '—'}</span>
+                                </div>
+                                <div className="flex justify-between items-center p-4">
+                                    <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">Exclusivity</span>
+                                    <span className="text-white font-medium">{contract.exclusivity || '—'}</span>
+                                </div>
+                            </div>
+                        </Card>
+                        
+                        <Card 
+                            title="Notes" 
+                            headerAction={
+                                <Button variant="ghost" size="sm" onClick={() => setMetaModalOpen(true)}>
+                                    <Edit3 size={14} className="mr-1.5" /> Edit
+                                </Button>
+                            }
+                            contentClassName="p-6 text-white whitespace-pre-wrap"
+                        >
+                            {contract.notes || <span className="text-text-secondary italic">No notes captured yet.</span>}
+                        </Card>
                     </div>
-                    <div>
-                        <div className="panel-header" style={{ marginBottom: 0 }}>
-                            <h4 className="eyebrow">Notes</h4>
-                            <button className="ghost-btn" onClick={() => setMetaModalOpen(true)}>
-                                <Edit3 size={14} /> Edit
-                            </button>
-                        </div>
-                        <p>{contract.notes || 'No notes captured yet.'}</p>
-                    </div>
-                </div>
-            )}
+                )}
 
-            {activeTab === 'parties' && (
-                <div className="panel">
-                    <div className="panel-header">
-                        <h3>Parties</h3>
-                        <button className="btn orange" onClick={() => setPartyModalOpen(true)}>
-                            <Plus size={16} /> Add Party
-                        </button>
-                    </div>
-                    <table className="contracts-table">
-                        <thead>
-                            <tr>
-                                <th>Role</th>
-                                <th>Party</th>
-                                <th>Split%</th>
-                                <th>Notes</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {(contract.parties || []).map((p) => (
-                                <tr key={p.id}>
-                                    <td>{p.role}</td>
-                                    <td>{p.external_name || p.display_name || `${p.entity_type || ''} #${p.entity_id || ''} `}</td>
-                                    <td>{p.split_percent ?? '—'}</td>
-                                    <td className="muted">{p.notes || '—'}</td>
-                                    <td className="actions">
-                                        <button className="ghost-btn danger" onClick={() => removeParty(p.id)}>
-                                            <Trash size={14} />
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-                            {(!contract.parties || contract.parties.length === 0) && (
-                                <tr><td colSpan={5} className="placeholder">No parties yet.</td></tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            )}
+                {activeTab === 'parties' && (
+                    <Card 
+                        title="Parties" 
+                        headerAction={
+                            <Button variant="primary" size="sm" onClick={() => setPartyModalOpen(true)}>
+                                <Plus size={16} className="mr-1.5" /> Add Party
+                            </Button>
+                        }
+                        noPadding
+                    >
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left">
+                                <thead>
+                                    <tr className="border-b border-white/5 bg-white/[0.02]">
+                                        <th className="px-6 py-4 text-[10px] text-text-secondary uppercase tracking-widest font-bold">Role</th>
+                                        <th className="px-6 py-4 text-[10px] text-text-secondary uppercase tracking-widest font-bold">Party</th>
+                                        <th className="px-6 py-4 text-[10px] text-text-secondary uppercase tracking-widest font-bold">Split%</th>
+                                        <th className="px-6 py-4 text-[10px] text-text-secondary uppercase tracking-widest font-bold">Notes</th>
+                                        <th className="px-6 py-4"></th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-white/5">
+                                    {(contract.parties || []).map((p) => (
+                                        <tr key={p.id} className="hover:bg-white/[0.02] transition-colors">
+                                            <td className="px-6 py-4 text-white font-medium">{p.role}</td>
+                                            <td className="px-6 py-4 text-white font-bold">{p.external_name || p.display_name || `${p.entity_type || ''} #${p.entity_id || ''} `}</td>
+                                            <td className="px-6 py-4 text-text-primary">{p.split_percent ? `${p.split_percent}%` : '—'}</td>
+                                            <td className="px-6 py-4 text-text-secondary text-sm">{p.notes || '—'}</td>
+                                            <td className="px-6 py-4 text-right">
+                                                <Button variant="ghost" size="sm" className="text-danger hover:bg-danger/10" onClick={() => removeParty(p.id)}>
+                                                    <Trash size={14} />
+                                                </Button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {(!contract.parties || contract.parties.length === 0) && (
+                                        <tr><td colSpan={5} className="px-6 py-12 text-center text-text-secondary">No parties yet.</td></tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </Card>
+                )}
 
-            {activeTab === 'assets' && (
-                <div className="panel">
-                    <div className="panel-header">
-                        <h3>Assets</h3>
-                        <button className="btn orange" onClick={() => setAssetModalOpen(true)}>
-                            <Plus size={16} /> Link Assets
-                        </button>
-                    </div>
-                    <table className="contracts-table">
-                        <thead>
-                            <tr>
-                                <th>Asset Type</th>
-                                <th>Asset</th>
-                                <th>Scope</th>
-                                <th>Notes</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {(contract.assets || []).map((a) => (
-                                <tr key={a.id}>
-                                    <td>{a.asset_type}</td>
-                                    <td className="mono">ID {a.asset_id}</td>
-                                    <td><span className="tag">{a.scope_type}</span></td>
-                                    <td className="muted">{a.notes || '—'}</td>
-                                    <td className="actions">
-                                        <button className="ghost-btn danger" onClick={() => removeAsset(a.id)}>
-                                            <Trash size={14} />
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-                            {(!contract.assets || contract.assets.length === 0) && (
-                                <tr><td colSpan={5} className="placeholder">No assets linked.</td></tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            )}
+                {activeTab === 'assets' && (
+                    <Card 
+                        title="Assets" 
+                        headerAction={
+                            <Button variant="primary" size="sm" onClick={() => setAssetModalOpen(true)}>
+                                <Plus size={16} className="mr-1.5" /> Link Assets
+                            </Button>
+                        }
+                        noPadding
+                    >
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left">
+                                <thead>
+                                    <tr className="border-b border-white/5 bg-white/[0.02]">
+                                        <th className="px-6 py-4 text-[10px] text-text-secondary uppercase tracking-widest font-bold">Asset Type</th>
+                                        <th className="px-6 py-4 text-[10px] text-text-secondary uppercase tracking-widest font-bold">Asset</th>
+                                        <th className="px-6 py-4 text-[10px] text-text-secondary uppercase tracking-widest font-bold">Scope</th>
+                                        <th className="px-6 py-4 text-[10px] text-text-secondary uppercase tracking-widest font-bold">Notes</th>
+                                        <th className="px-6 py-4"></th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-white/5">
+                                    {(contract.assets || []).map((a) => (
+                                        <tr key={a.id} className="hover:bg-white/[0.02] transition-colors">
+                                            <td className="px-6 py-4 text-white font-medium">{a.asset_type}</td>
+                                            <td className="px-6 py-4 text-text-secondary font-mono text-sm">ID {a.asset_id}</td>
+                                            <td className="px-6 py-4"><Badge variant="gray" size="xs">{a.scope_type}</Badge></td>
+                                            <td className="px-6 py-4 text-text-secondary text-sm">{a.notes || '—'}</td>
+                                            <td className="px-6 py-4 text-right">
+                                                <Button variant="ghost" size="sm" className="text-danger hover:bg-danger/10" onClick={() => removeAsset(a.id)}>
+                                                    <Trash size={14} />
+                                                </Button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {(!contract.assets || contract.assets.length === 0) && (
+                                        <tr><td colSpan={5} className="px-6 py-12 text-center text-text-secondary">No assets linked.</td></tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </Card>
+                )}
 
-            {activeTab === 'financials' && (
-                <div className="panel">
-                    <div className="panel-header">
-                        <h3>Financials</h3>
-                        <button className="btn orange" onClick={() => setFinancialModalOpen(true)}>
-                            <Edit3 size={16} /> Edit
-                        </button>
-                    </div>
-                    <div className="grid-2">
-                        <div>
-                            <h4 className="eyebrow">Royalty Description</h4>
-                            <p>{contract.royalty_description || '—'}</p>
+                {activeTab === 'financials' && (
+                    <Card 
+                        title="Financials" 
+                        headerAction={
+                            <Button variant="secondary" size="sm" onClick={() => setFinancialModalOpen(true)}>
+                                <Edit3 size={14} className="mr-1.5" /> Edit
+                            </Button>
+                        }
+                    >
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div>
+                                <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest block mb-2">Royalty Description</label>
+                                <p className="text-white">{contract.royalty_description || '—'}</p>
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest block mb-2">Advances</label>
+                                <p className="text-white text-lg font-mono">
+                                    {contract.advances_amount
+                                        ? `${contract.advances_currency || 'USD'} ${contract.advances_amount}`
+                                        : '—'}
+                                </p>
+                            </div>
+                            <div className="md:col-span-2">
+                                <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest block mb-2">Recoupment Notes</label>
+                                <p className="text-white">{contract.recoupment_notes || '—'}</p>
+                            </div>
                         </div>
-                        <div>
-                            <h4 className="eyebrow">Advances</h4>
-                            <p>
-                                {contract.advances_amount
-                                    ? `${contract.advances_currency || 'USD'} ${contract.advances_amount} `
-                                    : '—'}
-                            </p>
-                        </div>
-                        <div className="grid-span-2">
-                            <h4 className="eyebrow">Recoupment Notes</h4>
-                            <p>{contract.recoupment_notes || '—'}</p>
-                        </div>
-                    </div>
-                </div>
-            )}
+                    </Card>
+                )}
+            </div>
 
             {/* Metadata Modal */}
             <EntityForm

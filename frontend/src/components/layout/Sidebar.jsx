@@ -31,7 +31,7 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import Logo from './Logo';
 
-const SidebarSection = ({ label, items, activePath }) => {
+const SidebarSection = ({ label, items }) => {
     const [isOpen, setIsOpen] = useState(true);
     const location = useLocation();
 
@@ -41,24 +41,32 @@ const SidebarSection = ({ label, items, activePath }) => {
     };
 
     return (
-        <div className="sidebar-section">
-            <button className="sidebar-section-header" onClick={() => setIsOpen(!isOpen)}>
-                <span className="sidebar-section-label">{label}</span>
-                {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        <div className="mb-md">
+            <button 
+                className="w-full flex items-center justify-between px-md py-sm text-[10px] font-bold text-text-secondary uppercase tracking-widest hover:text-text-primary transition-colors focus:outline-none" 
+                onClick={() => setIsOpen(!isOpen)}
+            >
+                <span>{label}</span>
+                {isOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
             </button>
             {isOpen && (
-                <div className="sidebar-section-items">
+                <div className="mt-xs space-y-1 px-sm">
                     {items.map((item) => {
                         const Icon = item.icon;
+                        const active = isActive(item.path);
                         return (
                             <Link
                                 key={item.path}
                                 to={item.path}
-                                className={`sidebar-item ${isActive(item.path) ? 'active' : ''}`}
+                                className={`flex items-center gap-md px-md py-2 rounded-[12px] transition-all duration-300 group ${
+                                    active 
+                                    ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' 
+                                    : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
+                                }`}
                                 title={item.label}
                             >
-                                <Icon size={18} />
-                                <span className="sidebar-label">{item.label}</span>
+                                <Icon size={18} className={active ? 'text-accent' : 'text-text-secondary group-hover:text-text-primary'} />
+                                <span className="text-sm font-medium">{item.label}</span>
                             </Link>
                         );
                     })}
@@ -119,47 +127,84 @@ const Sidebar = () => {
     ], []);
 
     return (
-        <div className="sidebar">
-            <div className="sidebar-header" style={{ padding: '1rem', display: 'flex', justifyContent: 'center' }}>
+        <div className="fixed top-0 left-0 h-screen w-[280px] bg-premium-glass border-r border-white/5 flex flex-col z-[1000] shadow-glass backdrop-blur-2xl">
+            <div className="p-xl flex justify-center">
                 <Logo size="xl" />
             </div>
 
-            <nav className="sidebar-nav">
+            <nav className="flex-1 overflow-y-auto px-sm pb-xl">
                 <Link
                     to="/dashboard"
-                    className={`sidebar-item ${location.pathname === '/dashboard' ? 'active' : ''}`}
-                    style={{ marginBottom: '1rem' }}
+                    className={`flex items-center gap-md px-md py-2.5 rounded-[12px] transition-all duration-300 mb-6 group ${
+                        location.pathname === '/dashboard' 
+                        ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' 
+                        : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
+                    }`}
                 >
-                    <LayoutDashboard size={20} />
-                    <span className="sidebar-label">Dashboard</span>
+                    <LayoutDashboard size={20} className={location.pathname === '/dashboard' ? 'text-accent' : 'text-text-secondary group-hover:text-text-primary'} />
+                    <span className="text-sm font-medium">Dashboard</span>
                 </Link>
 
                 {sections.map((section) => (
                     <SidebarSection key={section.label} label={section.label} items={section.items} />
                 ))}
 
-                <div style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
-                    <Link to="/ai" className={`sidebar-item ${location.pathname === '/ai' ? 'active' : ''}`}>
-                        <Bot size={20} />
-                        <span className="sidebar-label">AI Assistant</span>
+                <div className="mt-xl pt-lg border-t border-border space-y-1">
+                    <Link 
+                        to="/ai" 
+                        className={`flex items-center gap-md px-md py-2 rounded-[12px] transition-all duration-300 group ${
+                            location.pathname === '/ai' ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
+                        }`}
+                    >
+                        <Bot size={20} className={location.pathname === '/ai' ? 'text-accent' : 'text-text-secondary group-hover:text-text-primary'} />
+                        <span className="text-sm font-medium">AI Assistant</span>
                     </Link>
-                    <Link to="/ai/analytics" className={`sidebar-item ${location.pathname.startsWith('/ai/analytics') ? 'active' : ''}`}>
-                        <BarChart3 size={20} />
-                        <span className="sidebar-label">AI Analytics</span>
+                    <Link 
+                        to="/ai/analytics" 
+                        className={`flex items-center gap-md px-md py-2 rounded-[12px] transition-all duration-300 group ${
+                            location.pathname.startsWith('/ai/analytics') ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
+                        }`}
+                    >
+                        <BarChart3 size={20} className={location.pathname.startsWith('/ai/analytics') ? 'text-accent' : 'text-text-secondary group-hover:text-text-primary'} />
+                        <span className="text-sm font-medium">AI Analytics</span>
                     </Link>
-                    <Link to="/ai/royalties" className={`sidebar-item ${location.pathname.startsWith('/ai/royalties') ? 'active' : ''}`}>
-                        <Calculator size={20} />
-                        <span className="sidebar-label">AI Royalties</span>
+                    <Link 
+                        to="/ai/royalties" 
+                        className={`flex items-center gap-md px-md py-2 rounded-[12px] transition-all duration-300 group ${
+                            location.pathname.startsWith('/ai/royalties') ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
+                        }`}
+                    >
+                        <Calculator size={20} className={location.pathname.startsWith('/ai/royalties') ? 'text-accent' : 'text-text-secondary group-hover:text-text-primary'} />
+                        <span className="text-sm font-medium">AI Royalties</span>
                     </Link>
                     {isAdmin && (
-                        <Link to="/admin" className={`sidebar-item ${location.pathname.startsWith('/admin') ? 'active' : ''}`}>
-                            <ShieldCheck size={20} />
-                            <span className="sidebar-label">Admin Control</span>
+                        <Link 
+                            to="/admin" 
+                            className={`flex items-center gap-md px-md py-2 rounded-[12px] transition-all duration-300 group ${
+                                location.pathname.startsWith('/admin') ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
+                            }`}
+                        >
+                            <ShieldCheck size={20} className={location.pathname.startsWith('/admin') ? 'text-accent' : 'text-text-secondary group-hover:text-text-primary'} />
+                            <span className="text-sm font-medium">Admin Control</span>
                         </Link>
                     )}
-                    <Link to="/settings" className={`sidebar-item ${location.pathname.startsWith('/settings') ? 'active' : ''}`}>
-                        <Settings size={20} />
-                        <span className="sidebar-label">Settings</span>
+                    <Link 
+                        to="/settings" 
+                        className={`flex items-center gap-md px-md py-2 rounded-[12px] transition-all duration-300 group ${
+                            location.pathname.startsWith('/settings') ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
+                        }`}
+                    >
+                        <Settings size={20} className={location.pathname.startsWith('/settings') ? 'text-accent' : 'text-text-secondary group-hover:text-text-primary'} />
+                        <span className="text-sm font-medium">Settings</span>
+                    </Link>
+                    <Link 
+                        to="/billing" 
+                        className={`flex items-center gap-md px-md py-2 rounded-[12px] transition-all duration-300 group ${
+                            location.pathname.startsWith('/billing') ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
+                        }`}
+                    >
+                        <CreditCard size={20} className={location.pathname.startsWith('/billing') ? 'text-accent' : 'text-text-secondary group-hover:text-text-primary'} />
+                        <span className="text-sm font-medium">Billing</span>
                     </Link>
                 </div>
             </nav>
