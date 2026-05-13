@@ -2,8 +2,10 @@ import axios from 'axios';
 
 // Always use same-origin relative API paths.
 // In Vite dev this is proxied to backend via vite.config.js.
-export const BASE_URL = '';
-export const API_URL = '/api';
+// Use environment variable for API base URL in production, fallback to Vercel monorepo path
+export const API_URL = import.meta.env.VITE_API_BASE_URL || '/_/backend/api';
+// Derive BASE_URL from API_URL by removing the /api suffix if present
+export const BASE_URL = API_URL.replace(/\/api\/?$/, '');
 
 // Create axios instance
 const api = axios.create({

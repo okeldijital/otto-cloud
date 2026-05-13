@@ -57,6 +57,13 @@ async def lifespan(app: FastAPI):
         logging.critical(f"🛑 Preflight checks failed: {e}")
         raise RuntimeError(f"Startup failed: {e}")
 
+    # Detect ephemeral storage
+    db_url = getattr(settings, "DATABASE_URL", "")
+    if "sqlite" in db_url and ("/tmp/" in db_url or "cloud" in getattr(settings, "APP_ENV", "")):
+        logging.warning("⚠️  DATABASE PERSISTENCE WARNING: Running with SQLite on an ephemeral filesystem.")
+        logging.warning("    Data will be lost when the serverless function spins down.")
+        logging.warning("    For production, migrate to PostgreSQL.")
+
     yield
 
 app = FastAPI(
@@ -122,6 +129,76 @@ async def api_health():
             "queue_depth": queue_depth,
             "busy_workers": worker_count,
         }
+    }
+
+@app.get("/api/health/db", tags=["Health"])
+async def db_health():
+    """Detailed database health and status check."""
+    from database import engine, SessionLocal
+    from sqlalchemy import text
+    import time
+
+    status = "ok"
+    details = {}
+    
+    # 1. Connectivity & Dialect
+    try:
+        start = time.time()
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+            details["dialect"] = engine.name
+            details["latency_ms"] = round((time.time() - start) * 1000, 2)
+        details["connectivity"] = "ok"
+    except Exception as e:
+        status = "error"
+        details["connectivity"] = "down"
+        details["error"] = str(e)
+
+    # 2. Migration Status
+    try:
+        from alembic.config import Config
+        from alembic import script
+        from alembic.runtime import migration
+        
+        # Resolve absolute paths for Alembic
+        backend_dir = Path(__file__).parent
+        ini_path = str(backend_dir / "alembic.ini")
+        alembic_cfg = Config(ini_path)
+        alembic_cfg.set_main_option("script_location", str(backend_dir / "alembic"))
+        
+        script_dir = script.ScriptDirectory.from_config(alembic_cfg)
+        
+        with engine.connect() as conn:
+            context = migration.MigrationContext.configure(conn)
+            current_rev = context.get_current_revision()
+            head_rev = script_dir.get_current_head()
+            
+            details["migration"] = {
+                "current": current_rev,
+                "head": head_rev,
+                "up_to_date": current_rev == head_rev
+            }
+    except Exception as e:
+        details["migration_error"] = str(e)
+
+    # 3. Basic Org Isolation Check (Existence of canonical dev org)
+    try:
+        db = SessionLocal()
+        import uuid
+        dev_org_id = uuid.UUID(int=1)
+        # Use direct SQL to avoid model registry conflicts (multiple Organization classes exist)
+        result = db.execute(
+            text("SELECT name FROM organizations WHERE organization_id = :id"), 
+            {"id": dev_org_id.int}
+        ).first()
+        details["org_isolation_check"] = "passed" if result else "failed (canonical org missing)"
+        db.close()
+    except Exception as e:
+        details["org_check_error"] = str(e)
+
+    return {
+        "status": status,
+        "database": details
     }
 
 # -----------------------------

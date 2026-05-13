@@ -249,6 +249,32 @@ def _check_dependencies() -> None:
         raise GovernanceError(f"❌ Missing Dependencies: {', '.join(missing)}")
     logger.info("✅ Dependencies Verified")
 
+def _check_path_isolation() -> None:
+    """
+    Ensure STORAGE_ROOT and BACKUP_ROOT are distinct and isolated.
+    Prevents recursive backup loops and storage overlaps.
+    """
+    storage = Path(settings.STORAGE_ROOT).resolve()
+    backup = Path(settings.BACKUP_ROOT).resolve()
+    
+    if storage == backup:
+        raise GovernanceError(f"❌ Storage Violation: STORAGE_ROOT and BACKUP_ROOT cannot be the same path: {storage}")
+    
+    try:
+        if storage.is_relative_to(backup):
+            raise GovernanceError(f"❌ Storage Violation: STORAGE_ROOT ({storage}) cannot be inside BACKUP_ROOT ({backup})")
+        if backup.is_relative_to(storage):
+            raise GovernanceError(f"❌ Storage Violation: BACKUP_ROOT ({backup}) cannot be inside STORAGE_ROOT ({storage})")
+    except AttributeError:
+        # Fallback for Python < 3.9
+        s_str, b_str = str(storage), str(backup)
+        if s_str.startswith(b_str):
+             raise GovernanceError(f"❌ Storage Violation: STORAGE_ROOT ({storage}) cannot be inside BACKUP_ROOT ({backup})")
+        if b_str.startswith(s_str):
+             raise GovernanceError(f"❌ Storage Violation: BACKUP_ROOT ({backup}) cannot be inside STORAGE_ROOT ({storage})")
+
+    logger.info("✅ Path Isolation Verified")
+
 def run_preflight_checks() -> None:
     """
     Main Entry Point for Governance Guard.
@@ -262,7 +288,10 @@ def run_preflight_checks() -> None:
         # 1. Dependencies
         _check_dependencies()
         
-        # 2. DB Path
+        # 2. Path Isolation
+        _check_path_isolation()
+        
+        # 3. DB Path
         _check_db_path(app_data)
         
         # 3. Pragmas & Integrity (if DB exists)

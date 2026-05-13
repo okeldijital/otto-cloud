@@ -29,6 +29,8 @@ class Settings(BaseSettings):
     DATABASE_URL: str = ""
     STORAGE_ROOT: str = ""
     IMPORT_LOGS_ROOT: str = ""
+    TEMP_ROOT: str = ""
+    EVIDENCE_ROOT: str = ""
     UPLOAD_DIR: str = ""
     LOG_FILE: str = ""
     BACKUP_ROOT: str = ""
@@ -116,48 +118,52 @@ class Settings(BaseSettings):
 
         # Resolve Data Directory
         # UNIVERSAL SINGLE SOURCE OF TRUTH
-        # Resolve app data dir with explicit env override, otherwise ~/.otto/data.
+        # Priority: OTTO_APP_DATA_DIR -> /tmp/otto (if cloud) -> ~/.otto/data
         app_data_env = os.getenv("OTTO_APP_DATA_DIR")
         if app_data_env:
             data_parent = Path(app_data_env).expanduser().resolve()
         else:
-            data_parent = (Path.home() / ".otto" / "data").resolve()
+            if self.APP_ENV in ["production", "staging", "cloud"]:
+                data_parent = Path("/tmp/otto/data").resolve()
+            else:
+                data_parent = (Path.home() / ".otto" / "data").resolve()
 
-        data_parent.mkdir(parents=True, exist_ok=True)
+        # In serverless environments, we must ensure we don't crash if we can't create dirs
+        # but /tmp should be writable.
+        try:
+            data_parent.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            logging.warning(f"Could not create data directory {data_parent}: {e}")
+
         self.APP_DATA_DIR = str(data_parent)
         
         # Create subdirectories
         db_dir = data_parent / "db"
-        db_dir.mkdir(exist_ok=True)
-        
-        # STORAGE_ROOT and IMPORT_LOGS_ROOT can be overridden via env
-        storage_root = os.getenv("STORAGE_ROOT")
-        if storage_root:
-            storage_dir = Path(storage_root)
-        else:
-            storage_dir = data_parent / "storage"
-        storage_dir.mkdir(exist_ok=True, parents=True)
-        
-        import_logs_root = os.getenv("IMPORT_LOGS_ROOT")
-        if import_logs_root:
-            import_logs_dir = Path(import_logs_root)
-        else:
-            import_logs_dir = data_parent / "import_logs"
-        import_logs_dir.mkdir(exist_ok=True, parents=True)
-        
+        storage_dir = Path(os.getenv("STORAGE_ROOT", data_parent / "storage"))
+        import_logs_dir = Path(os.getenv("IMPORT_LOGS_ROOT", data_parent / "import_logs"))
+        temp_dir = Path(os.getenv("TEMP_ROOT", data_parent / "temp"))
+        evidence_dir = Path(os.getenv("EVIDENCE_ROOT", data_parent / "evidence"))
         logs_dir = data_parent / "logs"
-        logs_dir.mkdir(exist_ok=True)
         runtime_dir = data_parent / "runtime"
-        runtime_dir.mkdir(exist_ok=True)
+        
+        for d in [db_dir, storage_dir, import_logs_dir, temp_dir, evidence_dir, logs_dir, runtime_dir]:
+            try:
+                d.mkdir(parents=True, exist_ok=True)
+            except Exception as e:
+                logging.warning(f"Could not create directory {d}: {e}")
         
         # BACKUP_ROOT: canonical outside data tree
         backup_root_env = os.getenv("BACKUP_ROOT")
         if backup_root_env:
             backup_dir = Path(backup_root_env).expanduser().resolve()
         else:
-            # Sibling to 'data' -> ~/.otto/backups
             backup_dir = data_parent.parent / "backups"
-        backup_dir.mkdir(exist_ok=True, parents=True)
+        
+        try:
+            backup_dir.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            logging.warning(f"Could not create backup directory {backup_dir}: {e}")
+            
         self.BACKUP_ROOT = str(backup_dir)
         active_db_pointer = runtime_dir / "active_db.json"
         self.ACTIVE_DB_POINTER_FILE = str(active_db_pointer)
@@ -193,6 +199,8 @@ class Settings(BaseSettings):
             
         self.STORAGE_ROOT = str(storage_dir)
         self.IMPORT_LOGS_ROOT = str(import_logs_dir)
+        self.TEMP_ROOT = str(temp_dir)
+        self.EVIDENCE_ROOT = str(evidence_dir)
         self.UPLOAD_DIR = str(storage_dir)
         # Required persistent backend log path
         self.LOG_FILE = str(logs_dir / "backend.log")
