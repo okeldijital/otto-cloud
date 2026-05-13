@@ -55,12 +55,13 @@ def save_upload_file(contract_id: int, file: UploadFile) -> str:
     if ext not in settings.ALLOWED_EXTENSIONS or ext not in ["pdf", "doc", "docx", "png", "jpg", "jpeg"]:
         raise HTTPException(status_code=400, detail="Unsupported file type; PDF preferred.")
 
-    contract_dir = os.path.join(settings.UPLOAD_DIR, "contracts", str(contract_id))
-    os.makedirs(contract_dir, exist_ok=True)
-    dest_path = os.path.join(contract_dir, file.filename)
-    with open(dest_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-    return dest_path
+    from utils.storage import storage_client
+    unique_filename = f"contracts/{contract_id}/{file.filename}"
+    try:
+        saved_path = storage_client.save_file(file.file, unique_filename)
+        return saved_path
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Could not save file: {str(e)}")
 
 
 def _entity_org_id(obj):
@@ -1576,11 +1577,12 @@ async def upload_document(
         raise HTTPException(status_code=404, detail="Contract not found")
 
     saved_path = save_upload_file(contract_id, file)
+    file_path = saved_path if saved_path.startswith("http") else saved_path.replace(settings.UPLOAD_DIR, "/uploads")
     contract_repository.add_document(
         db,
         contract_id,
         org_id,
-        {"file_path": saved_path.replace(settings.UPLOAD_DIR, "/uploads"), "file_name": file.filename, "uploaded_by": current_user.id},
+        {"file_path": file_path, "file_name": file.filename, "uploaded_by": current_user.id},
     )
     audit_service.log(db, "UPLOAD", "ContractDocument", contract_id, current_user.id, changes={"document": file.filename}, organization_id=org_id)
     contract_repository.get_with_details(db, contract_id, org_id)

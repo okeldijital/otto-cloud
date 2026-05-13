@@ -21,6 +21,9 @@ def upgrade() -> None:
     bind = op.get_bind()
     inspector = sa.inspect(bind)
 
+    is_pg = bind.dialect.name == "postgresql"
+    bool_false = "false" if is_pg else "0"
+
     if not inspector.has_table("admin_backup_artifacts"):
         op.create_table(
             "admin_backup_artifacts",
@@ -32,7 +35,7 @@ def upgrade() -> None:
             sa.Column("file_path", sa.String(length=1000), nullable=False),
             sa.Column("size_bytes", sa.Integer(), nullable=False),
             sa.Column("sha256", sa.String(length=64), nullable=False),
-            sa.Column("is_pre_restore_snapshot", sa.Boolean(), nullable=False, server_default=sa.text("0")),
+            sa.Column("is_pre_restore_snapshot", sa.Boolean(), nullable=False, server_default=sa.text(bool_false)),
             sa.Column("source_backup_id", sa.Integer(), nullable=True),
             sa.Column(
                 "created_at",

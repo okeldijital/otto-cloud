@@ -19,6 +19,10 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    bind = op.get_bind()
+    is_pg = bind.dialect.name == 'postgresql'
+    bool_false = 'false' if is_pg else '0'
+
     with op.batch_alter_table("events", schema=None) as batch_op:
         batch_op.add_column(
             sa.Column(
@@ -49,7 +53,7 @@ def upgrade() -> None:
                 "is_deleted",
                 sa.Boolean(),
                 nullable=False,
-                server_default=sa.text("0"),
+                server_default=sa.text(bool_false),
             )
         )
         batch_op.create_index(batch_op.f("ix_events_organization_id"), ["organization_id"], unique=False)

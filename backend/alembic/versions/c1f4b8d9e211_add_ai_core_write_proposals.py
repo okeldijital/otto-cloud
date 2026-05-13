@@ -60,7 +60,7 @@ def upgrade() -> None:
             sa.Column("patch_json", sa.Text(), nullable=False),
             sa.Column("conflicts_json", sa.Text(), nullable=True),
             sa.Column("safe_defaults_json", sa.Text(), nullable=True),
-            sa.Column("requires_user_review", sa.Boolean(), nullable=False, server_default=sa.text("1")),
+            sa.Column("requires_user_review", sa.Boolean(), nullable=False, server_default=sa.text("true" if bind.dialect.name == "postgresql" else "1")),
             sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("(CURRENT_TIMESTAMP)"), nullable=True),
             sa.ForeignKeyConstraint(["run_id"], ["ai_core_write_proposal_runs.id"]),
             sa.PrimaryKeyConstraint("id"),
