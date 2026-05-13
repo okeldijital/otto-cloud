@@ -58,6 +58,14 @@ class Settings(BaseSettings):
     SPOTIFY_CLIENT_SECRET: Optional[str] = None
     MUSICBRAINZ_USER_AGENT: Optional[str] = "OTTO/1.0.1"
     
+    # S3 Storage Configuration
+    S3_ENDPOINT_URL: Optional[str] = None
+    S3_ACCESS_KEY_ID: Optional[str] = None
+    S3_SECRET_ACCESS_KEY: Optional[str] = None
+    S3_BUCKET_NAME: Optional[str] = None
+    S3_REGION_NAME: str = "us-east-1"
+
+    
     # AI Features (Phase 1: Read-only)
     AI_ENABLED: bool = True
     AI_CONTRACT_INTEL_ENABLED: bool = True
@@ -169,27 +177,29 @@ class Settings(BaseSettings):
         self.ACTIVE_DB_POINTER_FILE = str(active_db_pointer)
 
         # Set DATABASE_URL with deterministic priority:
-        # 1) DATABASE_URL env
+        # 1) Already set (via Pydantic from .env or env vars)
         # 2) OTTO_DB_PATH env
         # 3) runtime active_db pointer file
         # 4) default ~/.otto/data/db/otto.sqlite
-        database_url_env = os.getenv("DATABASE_URL")
+        
+        resolved_database_url = self.DATABASE_URL
         db_path_env = os.getenv("OTTO_DB_PATH")
-        resolved_database_url = ""
-        if database_url_env:
-            resolved_database_url = database_url_env
-        elif db_path_env:
-            resolved_database_url = f"sqlite:///{Path(db_path_env).expanduser().resolve()}"
-        elif active_db_pointer.exists():
-            try:
-                pointer_payload = json.loads(active_db_pointer.read_text(encoding="utf-8"))
-                pointer_database_url = pointer_payload.get("database_url")
-                if isinstance(pointer_database_url, str) and pointer_database_url:
-                    resolved_database_url = pointer_database_url
-            except Exception:
-                resolved_database_url = ""
+        
+        if not resolved_database_url:
+            if db_path_env:
+                resolved_database_url = f"sqlite:///{Path(db_path_env).expanduser().resolve()}"
+            elif active_db_pointer.exists():
+                try:
+                    pointer_payload = json.loads(active_db_pointer.read_text(encoding="utf-8"))
+                    pointer_database_url = pointer_payload.get("database_url")
+                    if isinstance(pointer_database_url, str) and pointer_database_url:
+                        resolved_database_url = pointer_database_url
+                except Exception:
+                    pass
+        
         if not resolved_database_url:
             resolved_database_url = f"sqlite:///{db_dir}/otto.sqlite"
+            
         self.DATABASE_URL = resolved_database_url
 
         # Ensure database path is absolute

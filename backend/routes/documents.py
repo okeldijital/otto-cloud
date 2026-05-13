@@ -34,12 +34,15 @@ def upload_file(
     
     # Generate unique filename to avoid collisions
     unique_filename = f"{uuid.uuid4()}.{file_ext}"
-    file_path = os.path.join(settings.UPLOAD_DIR, unique_filename)
     
-    # Save file
+    # Save file using StorageClient
+    from utils.storage import storage_client
     try:
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+        saved_path = storage_client.save_file(file.file, unique_filename)
+        # We need to compute file size from the SpooledTemporaryFile
+        file.file.seek(0, os.SEEK_END)
+        file_size = file.file.tell()
+        file.file.seek(0) # reset
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Could not save file: {str(e)}")
         
@@ -47,8 +50,8 @@ def upload_file(
     return {
         "filename": unique_filename,
         "original_filename": file.filename,
-        "file_path": f"/uploads/{unique_filename}",
-        "file_size": os.path.getsize(file_path),
+        "file_path": saved_path,
+        "file_size": file_size,
         "content_type": file.content_type
     }
 

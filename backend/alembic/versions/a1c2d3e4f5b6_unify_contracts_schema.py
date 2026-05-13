@@ -57,9 +57,9 @@ def upgrade() -> None:
     if "contract_split_groups" not in existing:
         op.create_table(
             "contract_split_groups",
-            sa.Column("id", sa.Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4),
-            sa.Column("contract_id", sa.Uuid(as_uuid=True), sa.ForeignKey("contracts.id"), nullable=False),
-            sa.Column("organization_id", sa.Uuid(as_uuid=True), nullable=False, index=True),
+            sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
+            sa.Column("contract_id", sa.Integer(), sa.ForeignKey("contracts.id"), nullable=False),
+            sa.Column("organization_id", sa.Integer(), nullable=False, index=True),
             sa.Column("group_name", sa.String(length=100), nullable=False),
             sa.Column("group_type", sa.String(length=50), nullable=True),
             sa.Column("notes", sa.Text(), nullable=True),
@@ -70,10 +70,10 @@ def upgrade() -> None:
     if "contract_splits" not in existing:
         op.create_table(
             "contract_splits",
-            sa.Column("id", sa.Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4),
-            sa.Column("group_id", sa.Uuid(as_uuid=True), sa.ForeignKey("contract_split_groups.id", ondelete="CASCADE"), nullable=False),
-            sa.Column("organization_id", sa.Uuid(as_uuid=True), nullable=False, index=True),
-            sa.Column("party_id", sa.Uuid(as_uuid=True), sa.ForeignKey("contract_parties.id", ondelete="SET NULL"), nullable=True),
+            sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
+            sa.Column("group_id", sa.Integer(), sa.ForeignKey("contract_split_groups.id", ondelete="CASCADE"), nullable=False),
+            sa.Column("organization_id", sa.Integer(), nullable=False, index=True),
+            sa.Column("party_id", sa.Integer(), sa.ForeignKey("contract_parties.id", ondelete="SET NULL"), nullable=True),
             sa.Column("external_party_name", sa.String(length=255), nullable=True),
             sa.Column("percent", sa.Numeric(6, 3), nullable=False),
             sa.Column("notes", sa.Text(), nullable=True),

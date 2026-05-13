@@ -42,9 +42,9 @@ def upgrade() -> None:
 
     if 'contracts_v1' not in existing_tables:
         op.create_table('contracts_v1',
-        sa.Column('id', sa.Uuid(), nullable=False),
+        sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
         sa.Column('contract_number', sa.String(length=50), nullable=False),
-        sa.Column('organization_id', sa.Uuid(), nullable=False),
+        sa.Column('organization_id', sa.Integer(), nullable=False),
         sa.Column('title', sa.String(length=255), nullable=False),
         sa.Column('status', sa.String(length=50), nullable=False),
         sa.Column('contract_type', sa.String(length=50), nullable=True),
@@ -56,7 +56,7 @@ def upgrade() -> None:
         sa.Column('advances_amount', sa.Numeric(precision=10, scale=2), nullable=True),
         sa.Column('advances_currency', sa.String(length=3), nullable=True),
         sa.Column('recoupment_notes', sa.Text(), nullable=True),
-        sa.Column('created_by', sa.Uuid(), nullable=True),
+        sa.Column('created_by', sa.Integer(), nullable=True),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
         sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
         sa.PrimaryKeyConstraint('id')
@@ -87,9 +87,9 @@ def upgrade() -> None:
 
     if 'contract_assets_v1' not in existing_tables:
         op.create_table('contract_assets_v1',
-        sa.Column('id', sa.Uuid(), nullable=False),
-        sa.Column('contract_id', sa.Uuid(), nullable=False),
-        sa.Column('organization_id', sa.Uuid(), nullable=False),
+        sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column('contract_id', sa.Integer(), nullable=False),
+        sa.Column('organization_id', sa.Integer(), nullable=False),
         sa.Column('asset_type', sa.String(length=50), nullable=False),
         sa.Column('asset_id', sa.Integer(), nullable=False),
         sa.Column('scope_type', sa.String(length=50), nullable=True),
@@ -103,13 +103,13 @@ def upgrade() -> None:
 
     if 'contract_documents_v1' not in existing_tables:
         op.create_table('contract_documents_v1',
-        sa.Column('id', sa.Uuid(), nullable=False),
-        sa.Column('contract_id', sa.Uuid(), nullable=False),
-        sa.Column('organization_id', sa.Uuid(), nullable=False),
+        sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column('contract_id', sa.Integer(), nullable=False),
+        sa.Column('organization_id', sa.Integer(), nullable=False),
         sa.Column('file_path', sa.String(length=500), nullable=False),
         sa.Column('file_name', sa.String(length=255), nullable=False),
         sa.Column('version', sa.Integer(), nullable=False),
-        sa.Column('uploaded_by', sa.Uuid(), nullable=True),
+        sa.Column('uploaded_by', sa.Integer(), nullable=True),
         sa.Column('uploaded_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
         sa.ForeignKeyConstraint(['contract_id'], ['contracts_v1.id'], ),
         sa.PrimaryKeyConstraint('id')
@@ -121,9 +121,9 @@ def upgrade() -> None:
 
     if 'contract_parties_v1' not in existing_tables:
         op.create_table('contract_parties_v1',
-        sa.Column('id', sa.Uuid(), nullable=False),
-        sa.Column('contract_id', sa.Uuid(), nullable=False),
-        sa.Column('organization_id', sa.Uuid(), nullable=False),
+        sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column('contract_id', sa.Integer(), nullable=False),
+        sa.Column('organization_id', sa.Integer(), nullable=False),
         sa.Column('entity_type', sa.String(length=50), nullable=False),
         sa.Column('entity_id', sa.Integer(), nullable=True),
         sa.Column('external_name', sa.String(length=255), nullable=True),
