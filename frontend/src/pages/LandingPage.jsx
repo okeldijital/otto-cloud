@@ -60,16 +60,16 @@ export default function LandingPage() {
                 <div className="max-w-7xl mx-auto text-center relative z-10">
                     <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-surface-elevated border border-border shadow-sm mb-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
                         <Zap size={16} className="text-accent" />
-                        <span className="text-xs font-bold tracking-widest uppercase">The Future of Music Operations</span>
+                        <span className="text-xs font-bold tracking-widest uppercase">MUSIC BUSINESS OPERATIONS</span>
                     </div>
                     
                     <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tighter mb-8 leading-[1.1] animate-in fade-in slide-in-from-bottom-8 duration-1000">
-                        Operational Intelligence <br />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400">for the Music Era</span>
+                        Run your music business <br />
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400">from one system.</span>
                     </h1>
                     
                     <p className="max-w-2xl mx-auto text-lg md:text-xl text-text-secondary mb-12 animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-200">
-                        Scale your label, publisher, or agency with OTTO. The only all-in-one SaaS for contract intelligence, automated royalty distribution, and rights governance.
+                        Otto helps music teams manage releases, rights data, royalty workflows, documents, and internal operations from a single platform.
                     </p>
 
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-in fade-in slide-in-from-bottom-16 duration-1000 delay-300">
@@ -79,14 +79,14 @@ export default function LandingPage() {
                             className="rounded-full px-10 h-14 text-base font-bold shadow-glow hover:shadow-[0_0_30px_rgba(14,165,233,0.5)] transition-all"
                             onClick={() => navigate('/register')}
                         >
-                            Start Free Trial <ArrowRight size={20} className="ml-2" />
+                            Request Access <ArrowRight size={20} className="ml-2" />
                         </Button>
                         <Button 
                             variant="ghost" 
                             size="lg" 
                             className="rounded-full px-10 h-14 border border-border/50 bg-surface hover:bg-surface-elevated transition-colors"
                         >
-                            Book a Demo
+                            View Platform
                         </Button>
                     </div>
 
@@ -108,7 +108,7 @@ export default function LandingPage() {
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-elevated border border-border text-[10px] text-text-secondary uppercase tracking-widest mb-6">
                             Trusted
                         </div>
-                        <h2 className="text-2xl font-medium text-white mb-8">Trusted by 300+ businesses</h2>
+                        <h2 className="text-2xl font-medium text-white mb-8">Built for modern music teams</h2>
                         <div className="flex flex-wrap justify-center items-center gap-8 opacity-50 grayscale hover:grayscale-0 transition-all duration-500">
                             {/* Music Industry Placeholders */}
                             <span className="text-xl font-bold tracking-tighter">SONY MUSIC</span>
@@ -129,8 +129,8 @@ export default function LandingPage() {
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-elevated border border-border text-[10px] text-text-secondary uppercase tracking-widest mb-4">
                             Features
                         </div>
-                        <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-4">Built for Scale. Powered by AI.</h2>
-                        <p className="text-text-secondary max-w-xl mx-auto">Everything you need to manage complex music rights and operations in a single, unified cloud workspace.</p>
+                        <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-4">Infrastructure for music operations.</h2>
+                        <p className="text-text-secondary max-w-xl mx-auto">Everything you need to manage complex music rights, releases, and workflows in a single cloud workspace.</p>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -141,13 +141,13 @@ export default function LandingPage() {
                         />
                         <FeatureCard 
                             icon={<Workflow className="text-purple-400" />}
-                            title="Release Orchestration"
-                            description="From distribution setup to royalty splitting, OTTO automates the entire release lifecycle."
+                            title="Release Operations"
+                            description="Manage release information, metadata, assets, and workflow status from a centralized workspace."
                         />
                         <FeatureCard 
                             icon={<LayoutDashboard className="text-emerald-400" />}
-                            title="Rights Governance"
-                            description="Real-time monitoring of compliance gaps and catalog integrity across your organization."
+                            title="Rights & Catalog Management"
+                            description="Maintain organized ownership, contributor, and catalog records across your music projects."
                         />
                     </div>
                 </div>
@@ -157,8 +157,8 @@ export default function LandingPage() {
             <section className="py-32 px-6 relative overflow-hidden bg-background">
                 <div className="max-w-5xl mx-auto rounded-[48px] bg-premium-glass border border-accent/20 p-16 md:p-24 text-center relative overflow-hidden shadow-glass">
                     <div className="absolute inset-0 bg-hero-glow pointer-events-none opacity-40" />
-                    <h2 className="text-4xl md:text-6xl font-bold tracking-tight mb-8 relative z-10 text-white">Ready to modernize your <br /> music business?</h2>
-                    <p className="text-xl text-text-secondary mb-12 max-w-2xl mx-auto relative z-10">Join 500+ labels and agencies using OTTO to automate their back-office.</p>
+                    <h2 className="text-4xl md:text-6xl font-bold tracking-tight mb-8 relative z-10 text-white">Built for day-to-day <br /> music operations.</h2>
+                    <p className="text-xl text-text-secondary mb-12 max-w-2xl mx-auto relative z-10">Track releases, organize rights data, manage operational workflows, and keep your business information in one place.</p>
                     <div className="relative z-10">
                         <Button 
                             variant="primary" 
@@ -166,7 +166,7 @@ export default function LandingPage() {
                             className="rounded-full px-12 h-16 text-lg font-bold shadow-glow"
                             onClick={() => navigate('/register')}
                         >
-                            Get Started Free
+                            Request Access
                         </Button>
                     </div>
                 </div>
