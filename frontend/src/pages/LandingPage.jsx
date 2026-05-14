@@ -103,22 +103,7 @@ export default function LandingPage() {
                         </div>
                     </div>
 
-                    {/* Trusted By Section */}
-                    <div className="mt-24 max-w-4xl mx-auto">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-elevated border border-border text-[10px] text-text-secondary uppercase tracking-widest mb-6">
-                            Trusted
-                        </div>
-                        <h2 className="text-2xl font-medium text-white mb-8">Built for modern music teams</h2>
-                        <div className="flex flex-wrap justify-center items-center gap-8 opacity-50 grayscale hover:grayscale-0 transition-all duration-500">
-                            {/* Music Industry Placeholders */}
-                            <span className="text-xl font-bold tracking-tighter">SONY MUSIC</span>
-                            <span className="text-xl font-bold tracking-tighter">UNIVERSAL</span>
-                            <span className="text-xl font-bold tracking-tighter">WARNER</span>
-                            <span className="text-xl font-bold tracking-tighter">believe</span>
-                            <span className="text-xl font-bold tracking-tighter">AWAL</span>
-                            <span className="text-xl font-bold tracking-tighter">EMPIRE</span>
-                        </div>
-                    </div>
+
                 </div>
             </section>
 
