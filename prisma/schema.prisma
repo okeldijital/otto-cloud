@@ -1,0 +1,1300 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id                                     Int                             @id @default(autoincrement())
+  email                                  String                          @unique(map: "ix_users_email") @db.VarChar(255)
+  hashed_password                        String                          @db.VarChar(255)
+  name                                   String?                         @map("full_name") @db.VarChar(255)
+  is_active                              Boolean?
+  is_superuser                           Boolean?
+  role                                   String?                         @db.VarChar(50)
+  createdAt                              DateTime?                       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                              DateTime?                       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  last_login                             DateTime?                       @db.Timestamptz(6)
+  avatar_url                             String?                         @db.VarChar(500)
+  organization_id                        String                          @default(dbgenerated("'00000000-0000-0000-0000-000000000001'::uuid")) @db.Uuid
+  activities                             activities[]
+  admin_backup_artifacts                 admin_backup_artifacts[]
+  admin_backup_restore_events            admin_backup_restore_events[]
+  admin_restore_audit                    admin_restore_audit[]
+  ai_contract_attach_runs                ai_contract_attach_runs[]
+  ai_contract_documents                  ai_contract_documents[]
+  ai_contract_drafts                     ai_contract_drafts[]
+  ai_contract_resolution_runs            ai_contract_resolution_runs[]
+  ai_core_write_apply_events             ai_core_write_apply_events[]
+  ai_core_write_proposal_runs            ai_core_write_proposal_runs[]
+  ai_release_integration_runs            ai_release_integration_runs[]
+  ai_royalty_simulation_runs             ai_royalty_simulation_runs[]
+  ai_sessions                            ai_sessions[]
+  audit_logs                             audit_logs[]
+  contract_intake_release_links          contract_intake_release_links[]
+  documents                              documents[]
+  events                                 events[]
+  jobs                                   jobs[]
+  notes                                  notes[]
+  office_documents                       office_documents[]
+  office_notes                           office_notes[]
+  playlists                              playlists[]
+  report_definitions                     report_definitions[]
+  report_runs                            report_runs[]
+  status_quo_items                       status_quo_items[]
+  tasks_tasks_assigned_to_user_idTousers tasks[]                         @relation("tasks_assigned_to_user_idTousers")
+  tasks_tasks_created_by_user_idTousers  tasks[]                         @relation("tasks_created_by_user_idTousers")
+
+  @@index([id], map: "ix_users_id")
+  @@index([organization_id], map: "ix_users_organization_id")
+  @@map("users")
+}
+
+model activities {
+  id          Int      @id @default(autoincrement())
+  user_id     Int
+  action      String   @db.VarChar
+  entity_type String   @db.VarChar
+  entity_id   Int
+  entity_name String?  @db.VarChar
+  timestamp   DateTime @db.Timestamp(6)
+  users       User     @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([id], map: "ix_activities_id")
+}
+
+model admin_backup_artifacts {
+  id                      Int       @id @default(autoincrement())
+  organization_id         Int
+  created_by              Int
+  backup_kind             String    @db.VarChar(32)
+  filename                String    @db.VarChar(255)
+  file_path               String    @db.VarChar(1000)
+  size_bytes              Int
+  sha256                  String    @db.VarChar(64)
+  is_pre_restore_snapshot Boolean   @default(false)
+  source_backup_id        Int?
+  created_at              DateTime? @default(now()) @db.Timestamptz(6)
+  users                   User      @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([organization_id, sha256], map: "uq_admin_backup_artifact_org_sha256")
+  @@index([backup_kind], map: "ix_admin_backup_artifacts_backup_kind")
+  @@index([created_at], map: "ix_admin_backup_artifacts_created_at")
+  @@index([created_by], map: "ix_admin_backup_artifacts_created_by")
+  @@index([id], map: "ix_admin_backup_artifacts_id")
+  @@index([is_pre_restore_snapshot], map: "ix_admin_backup_artifacts_is_pre_restore_snapshot")
+  @@index([organization_id], map: "ix_admin_backup_artifacts_organization_id")
+  @@index([sha256], map: "ix_admin_backup_artifacts_sha256")
+  @@index([source_backup_id], map: "ix_admin_backup_artifacts_source_backup_id")
+}
+
+model admin_backup_restore_events {
+  id                 Int       @id @default(autoincrement())
+  backup_id          Int
+  snapshot_backup_id Int?
+  initiator_user_id  Int
+  initiator_org_id   Int
+  status             String    @db.VarChar(16)
+  error              String?
+  duration_ms        Int?
+  created_at         DateTime? @default(now()) @db.Timestamptz(6)
+  users              User      @relation(fields: [initiator_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([backup_id], map: "ix_admin_backup_restore_events_backup_id")
+  @@index([created_at], map: "ix_admin_backup_restore_events_created_at")
+  @@index([id], map: "ix_admin_backup_restore_events_id")
+  @@index([initiator_org_id], map: "ix_admin_backup_restore_events_initiator_org_id")
+  @@index([initiator_user_id], map: "ix_admin_backup_restore_events_initiator_user_id")
+  @@index([snapshot_backup_id], map: "ix_admin_backup_restore_events_snapshot_backup_id")
+  @@index([status], map: "ix_admin_backup_restore_events_status")
+}
+
+model admin_restore_audit {
+  id                      Int       @id @default(autoincrement())
+  organization_id         Int
+  user_id                 Int
+  backup_id               Int
+  pre_restore_snapshot_id Int?
+  request_hash            String    @db.VarChar(64)
+  result                  String    @db.VarChar(16)
+  error_hash              String?   @db.VarChar(64)
+  created_at              DateTime? @default(now()) @db.Timestamptz(6)
+  users                   User      @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([backup_id], map: "ix_admin_restore_audit_backup_id")
+  @@index([created_at], map: "ix_admin_restore_audit_created_at")
+  @@index([id], map: "ix_admin_restore_audit_id")
+  @@index([organization_id], map: "ix_admin_restore_audit_organization_id")
+  @@index([pre_restore_snapshot_id], map: "ix_admin_restore_audit_pre_restore_snapshot_id")
+  @@index([request_hash], map: "ix_admin_restore_audit_request_hash")
+  @@index([result], map: "ix_admin_restore_audit_result")
+  @@index([user_id], map: "ix_admin_restore_audit_user_id")
+}
+
+model ai_audit_log {
+  id              Int       @id @default(autoincrement())
+  organization_id String    @db.Uuid
+  user_id         Int
+  action          String    @db.VarChar(50)
+  tool            String?   @db.VarChar(50)
+  request_hash    String    @db.VarChar(64)
+  created_at      DateTime? @default(now()) @db.Timestamptz(6)
+  parser_version  String?   @db.VarChar(20)
+
+  @@index([created_at], map: "ix_ai_audit_log_created_at")
+  @@index([id], map: "ix_ai_audit_log_id")
+  @@index([organization_id], map: "ix_ai_audit_log_organization_id")
+  @@index([user_id], map: "ix_ai_audit_log_user_id")
+}
+
+model ai_contract_attach_links {
+  id                      Int                     @id @default(autoincrement())
+  organization_id         String                  @db.Uuid
+  run_id                  Int
+  action_type             String                  @db.VarChar(64)
+  target_name             String?                 @db.VarChar(255)
+  entity_id               Int?
+  confidence              Float
+  details_json            String?
+  created_at              DateTime?               @default(now()) @db.Timestamptz(6)
+  ai_contract_attach_runs ai_contract_attach_runs @relation(fields: [run_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([action_type], map: "ix_ai_contract_attach_links_action_type")
+  @@index([created_at], map: "ix_ai_contract_attach_links_created_at")
+  @@index([id], map: "ix_ai_contract_attach_links_id")
+  @@index([organization_id], map: "ix_ai_contract_attach_links_organization_id")
+  @@index([run_id], map: "ix_ai_contract_attach_links_run_id")
+}
+
+model ai_contract_attach_runs {
+  id                       Int                        @id @default(autoincrement())
+  organization_id          String                     @db.Uuid
+  user_id                  Int
+  contract_id              Int
+  release_id               Int
+  request_hash             String                     @db.VarChar(64)
+  warnings_json            String?
+  created_at               DateTime?                  @default(now()) @db.Timestamptz(6)
+  ai_contract_attach_links ai_contract_attach_links[]
+  users                    User                       @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([organization_id, request_hash], map: "uq_ai_contract_attach_runs_org_reqhash")
+  @@index([contract_id], map: "ix_ai_contract_attach_runs_contract_id")
+  @@index([created_at], map: "ix_ai_contract_attach_runs_created_at")
+  @@index([id], map: "ix_ai_contract_attach_runs_id")
+  @@index([organization_id], map: "ix_ai_contract_attach_runs_organization_id")
+  @@index([release_id], map: "ix_ai_contract_attach_runs_release_id")
+  @@index([request_hash], map: "ix_ai_contract_attach_runs_request_hash")
+  @@index([user_id], map: "ix_ai_contract_attach_runs_user_id")
+}
+
+model ai_contract_documents {
+  id                     Int                      @id @default(autoincrement())
+  organization_id        Int
+  release_id             Int
+  file_path              String                   @db.VarChar(1000)
+  file_hash              String                   @db.VarChar(64)
+  uploaded_by            Int
+  created_at             DateTime?                @default(now()) @db.Timestamptz(6)
+  users                  User                     @relation(fields: [uploaded_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ai_contract_work_links ai_contract_work_links[]
+
+  @@unique([organization_id, release_id, file_hash], map: "uq_ai_contract_document_org_release_hash")
+  @@index([created_at], map: "ix_ai_contract_documents_created_at")
+  @@index([file_hash], map: "ix_ai_contract_documents_file_hash")
+  @@index([id], map: "ix_ai_contract_documents_id")
+  @@index([organization_id], map: "ix_ai_contract_documents_organization_id")
+  @@index([release_id], map: "ix_ai_contract_documents_release_id")
+  @@index([uploaded_by], map: "ix_ai_contract_documents_uploaded_by")
+}
+
+model ai_contract_drafts {
+  id                      String    @id @db.VarChar(64)
+  organization_id         String    @db.Uuid
+  created_by              Int
+  source                  String?   @db.VarChar(32)
+  file_path               String    @db.VarChar(1000)
+  file_name               String    @db.VarChar(255)
+  file_hash               String    @db.VarChar(64)
+  size_bytes              Int
+  extraction_json         String
+  suggested_defaults_json String
+  created_at              DateTime? @default(now()) @db.Timestamptz(6)
+  users                   User      @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([organization_id, file_hash], map: "uq_ai_contract_drafts_org_hash")
+  @@index([created_at], map: "ix_ai_contract_drafts_created_at")
+  @@index([created_by], map: "ix_ai_contract_drafts_created_by")
+  @@index([file_hash], map: "ix_ai_contract_drafts_file_hash")
+  @@index([id], map: "ix_ai_contract_drafts_id")
+  @@index([organization_id], map: "ix_ai_contract_drafts_organization_id")
+}
+
+model ai_contract_resolution_links {
+  id                          Int                         @id @default(autoincrement())
+  run_id                      Int
+  entity_type                 String                      @db.VarChar(50)
+  entity_id                   Int?
+  action                      String                      @db.VarChar(20)
+  confidence                  Int?
+  rationale                   String?
+  created_at                  DateTime?                   @default(now()) @db.Timestamptz(6)
+  ai_contract_resolution_runs ai_contract_resolution_runs @relation(fields: [run_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([id], map: "ix_ai_contract_resolution_links_id")
+  @@index([run_id], map: "ix_ai_contract_resolution_links_run_id")
+}
+
+model ai_contract_resolution_runs {
+  id                            Int                             @id @default(autoincrement())
+  organization_id               String                          @db.Uuid
+  user_id                       Int
+  contract_hash                 String                          @db.VarChar(64)
+  extractor_version             String?                         @db.VarChar(50)
+  linker_version                String?                         @db.VarChar(50)
+  created_at                    DateTime?                       @default(now()) @db.Timestamptz(6)
+  ai_contract_resolution_links  ai_contract_resolution_links[]
+  users                         User                            @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  contract_intake_release_links contract_intake_release_links[]
+
+  @@index([contract_hash], map: "ix_ai_contract_resolution_runs_contract_hash")
+  @@index([created_at], map: "ix_ai_contract_resolution_runs_created_at")
+  @@index([id], map: "ix_ai_contract_resolution_runs_id")
+  @@index([organization_id], map: "ix_ai_contract_resolution_runs_organization_id")
+}
+
+model ai_contract_work_links {
+  id                    Int                   @id @default(autoincrement())
+  organization_id       Int
+  contract_document_id  Int
+  work_id               Int
+  confidence            Float
+  match_strategy        String                @db.VarChar(20)
+  created_at            DateTime?             @default(now()) @db.Timestamptz(6)
+  ai_contract_documents ai_contract_documents @relation(fields: [contract_document_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([organization_id, contract_document_id, work_id], map: "uq_ai_contract_work_link_org_doc_work")
+  @@index([contract_document_id], map: "ix_ai_contract_work_links_contract_document_id")
+  @@index([created_at], map: "ix_ai_contract_work_links_created_at")
+  @@index([id], map: "ix_ai_contract_work_links_id")
+  @@index([organization_id], map: "ix_ai_contract_work_links_organization_id")
+  @@index([work_id], map: "ix_ai_contract_work_links_work_id")
+}
+
+model ai_core_write_apply_events {
+  id                          Int                         @id @default(autoincrement())
+  organization_id             Int
+  user_id                     Int
+  run_id                      Int
+  request_hash                String                      @db.VarChar(64)
+  status                      String                      @db.VarChar(16)
+  applied_count               Int                         @default(0)
+  created_count               Int                         @default(0)
+  conflict_count              Int                         @default(0)
+  details_json                String?
+  created_at                  DateTime?                   @default(now()) @db.Timestamptz(6)
+  ai_core_write_proposal_runs ai_core_write_proposal_runs @relation(fields: [run_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users                       User                        @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([created_at], map: "ix_ai_core_write_apply_events_created_at")
+  @@index([id], map: "ix_ai_core_write_apply_events_id")
+  @@index([organization_id], map: "ix_ai_core_write_apply_events_organization_id")
+  @@index([request_hash], map: "ix_ai_core_write_apply_events_request_hash")
+  @@index([run_id], map: "ix_ai_core_write_apply_events_run_id")
+  @@index([status], map: "ix_ai_core_write_apply_events_status")
+  @@index([user_id], map: "ix_ai_core_write_apply_events_user_id")
+}
+
+model ai_core_write_proposal_items {
+  id                          Int                         @id @default(autoincrement())
+  organization_id             Int
+  run_id                      Int
+  entity_type                 String                      @db.VarChar(64)
+  entity_id                   Int?
+  operation                   String                      @db.VarChar(16)
+  patch_json                  String
+  conflicts_json              String?
+  safe_defaults_json          String?
+  requires_user_review        Boolean                     @default(true)
+  created_at                  DateTime?                   @default(now()) @db.Timestamptz(6)
+  ai_core_write_proposal_runs ai_core_write_proposal_runs @relation(fields: [run_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([created_at], map: "ix_ai_core_write_proposal_items_created_at")
+  @@index([entity_id], map: "ix_ai_core_write_proposal_items_entity_id")
+  @@index([entity_type], map: "ix_ai_core_write_proposal_items_entity_type")
+  @@index([id], map: "ix_ai_core_write_proposal_items_id")
+  @@index([operation], map: "ix_ai_core_write_proposal_items_operation")
+  @@index([organization_id], map: "ix_ai_core_write_proposal_items_organization_id")
+  @@index([requires_user_review], map: "ix_ai_core_write_proposal_items_requires_user_review")
+  @@index([run_id], map: "ix_ai_core_write_proposal_items_run_id")
+}
+
+model ai_core_write_proposal_runs {
+  id                           Int                            @id @default(autoincrement())
+  organization_id              Int
+  user_id                      Int
+  contract_id                  Int
+  release_id                   Int?
+  contract_document_id         Int?
+  request_hash                 String                         @db.VarChar(64)
+  parser_version               String?                        @db.VarChar(64)
+  linker_version               String?                        @db.VarChar(64)
+  planner_version              String?                        @db.VarChar(64)
+  created_at                   DateTime?                      @default(now()) @db.Timestamptz(6)
+  ai_core_write_apply_events   ai_core_write_apply_events[]
+  ai_core_write_proposal_items ai_core_write_proposal_items[]
+  users                        User                           @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([contract_document_id], map: "ix_ai_core_write_proposal_runs_contract_document_id")
+  @@index([contract_id], map: "ix_ai_core_write_proposal_runs_contract_id")
+  @@index([created_at], map: "ix_ai_core_write_proposal_runs_created_at")
+  @@index([id], map: "ix_ai_core_write_proposal_runs_id")
+  @@index([organization_id], map: "ix_ai_core_write_proposal_runs_organization_id")
+  @@index([release_id], map: "ix_ai_core_write_proposal_runs_release_id")
+  @@index([request_hash], map: "ix_ai_core_write_proposal_runs_request_hash")
+  @@index([user_id], map: "ix_ai_core_write_proposal_runs_user_id")
+}
+
+model ai_messages {
+  id          Int         @id @default(autoincrement())
+  session_id  Int
+  role        String      @db.VarChar(20)
+  content     String
+  created_at  DateTime?   @default(now()) @db.Timestamptz(6)
+  ai_sessions ai_sessions @relation(fields: [session_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([id], map: "ix_ai_messages_id")
+  @@index([session_id], map: "ix_ai_messages_session_id")
+}
+
+model ai_release_integration_links {
+  id                          Int                         @id @default(autoincrement())
+  organization_id             Int
+  run_id                      Int
+  entity_type                 String                      @db.VarChar(32)
+  entity_id                   Int?
+  display_name                String                      @db.VarChar(255)
+  action                      String                      @db.VarChar(32)
+  confidence                  Float?
+  match_strategy              String                      @db.VarChar(20)
+  rationale                   String?
+  created_at                  DateTime?                   @default(now()) @db.Timestamptz(6)
+  ai_release_integration_runs ai_release_integration_runs @relation(fields: [run_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([organization_id, run_id, entity_type, entity_id, action], map: "uq_ai_release_integration_link_org_run_entity_action")
+  @@index([action], map: "ix_ai_release_integration_links_action")
+  @@index([created_at], map: "ix_ai_release_integration_links_created_at")
+  @@index([entity_id], map: "ix_ai_release_integration_links_entity_id")
+  @@index([entity_type], map: "ix_ai_release_integration_links_entity_type")
+  @@index([id], map: "ix_ai_release_integration_links_id")
+  @@index([organization_id], map: "ix_ai_release_integration_links_organization_id")
+  @@index([run_id], map: "ix_ai_release_integration_links_run_id")
+}
+
+model ai_release_integration_runs {
+  id                           Int                            @id @default(autoincrement())
+  organization_id              Int
+  user_id                      Int
+  release_id                   Int
+  contract_id                  Int?
+  request_hash                 String                         @db.VarChar(64)
+  planner_version              String                         @db.VarChar(50)
+  created_at                   DateTime?                      @default(now()) @db.Timestamptz(6)
+  ai_release_integration_links ai_release_integration_links[]
+  users                        User                           @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([organization_id, release_id, request_hash], map: "uq_ai_release_integration_run_org_release_hash")
+  @@index([contract_id], map: "ix_ai_release_integration_runs_contract_id")
+  @@index([created_at], map: "ix_ai_release_integration_runs_created_at")
+  @@index([id], map: "ix_ai_release_integration_runs_id")
+  @@index([organization_id], map: "ix_ai_release_integration_runs_organization_id")
+  @@index([release_id], map: "ix_ai_release_integration_runs_release_id")
+  @@index([user_id], map: "ix_ai_release_integration_runs_user_id")
+}
+
+model ai_royalty_simulation_runs {
+  id                         Int       @id @default(autoincrement())
+  organization_id            Int
+  user_id                    Int
+  release_id                 Int
+  contract_document_id       Int?
+  request_hash               String    @db.VarChar(64)
+  royalty_version            String    @db.VarChar(50)
+  splits_total               Float
+  integrity_total_equals_100 Boolean
+  integrity_over_allocated   Boolean
+  integrity_under_allocated  Boolean
+  created_at                 DateTime? @default(now()) @db.Timestamptz(6)
+  users                      User      @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([organization_id, release_id, request_hash], map: "uq_ai_royalty_run_org_release_hash")
+  @@index([contract_document_id], map: "ix_ai_royalty_simulation_runs_contract_document_id")
+  @@index([created_at], map: "ix_ai_royalty_simulation_runs_created_at")
+  @@index([id], map: "ix_ai_royalty_simulation_runs_id")
+  @@index([organization_id], map: "ix_ai_royalty_simulation_runs_organization_id")
+  @@index([release_id], map: "ix_ai_royalty_simulation_runs_release_id")
+  @@index([user_id], map: "ix_ai_royalty_simulation_runs_user_id")
+}
+
+model ai_sessions {
+  id              Int           @id @default(autoincrement())
+  organization_id String        @db.Uuid
+  user_id         Int
+  created_at      DateTime?     @default(now()) @db.Timestamptz(6)
+  ai_messages     ai_messages[]
+  users           User          @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([id], map: "ix_ai_sessions_id")
+  @@index([organization_id], map: "ix_ai_sessions_organization_id")
+}
+
+model alembic_version {
+  version_num String @id(map: "alembic_version_pkc") @db.VarChar(32)
+}
+
+model artist_memberships {
+  id                                            Int       @id @default(autoincrement())
+  group_id                                      Int
+  member_id                                     Int
+  organization_id                               Int?
+  role                                          String?   @db.VarChar(100)
+  joined_at                                     DateTime? @default(now()) @db.Timestamptz(6)
+  artists_artist_memberships_group_idToartists  artists   @relation("artist_memberships_group_idToartists", fields: [group_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  artists_artist_memberships_member_idToartists artists   @relation("artist_memberships_member_idToartists", fields: [member_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([group_id, member_id], map: "ix_membership_group_member")
+  @@index([group_id], map: "ix_artist_memberships_group_id")
+  @@index([member_id], map: "ix_artist_memberships_member_id")
+  @@index([organization_id, group_id], map: "ix_membership_org_group")
+}
+
+model artists {
+  id                                                       Int                  @id @default(autoincrement())
+  artist_id                                                String?              @unique(map: "ix_artists_artist_id") @db.VarChar(50)
+  name                                                     String               @db.VarChar(255)
+  aka                                                      String?              @db.VarChar(255)
+  id_number                                                String?              @db.VarChar(100)
+  ipi_number                                               String?              @db.VarChar(50)
+  contact_email                                            String?              @db.VarChar(255)
+  contact_phone                                            String?              @db.VarChar(50)
+  physical_address                                         String?
+  banking_details                                          Json?                @db.Json
+  profile_image_url                                        String?              @db.VarChar(500)
+  streaming_links                                          Json?                @db.Json
+  social_media                                             Json?                @db.Json
+  label_id                                                 Int?
+  publisher_id                                             Int?
+  pro_id                                                   Int?
+  created_at                                               DateTime?            @default(now()) @db.Timestamptz(6)
+  updated_at                                               DateTime?            @db.Timestamptz(6)
+  nationality                                              String?              @db.VarChar(100)
+  organization_id                                          String               @default(dbgenerated("'00000000-0000-0000-0000-000000000001'::uuid")) @db.Uuid
+  is_deleted                                               Boolean              @default(false)
+  artist_kind                                              String               @default("solo") @db.VarChar(20)
+  legal_name                                               String?              @db.VarChar(255)
+  artist_memberships_artist_memberships_group_idToartists  artist_memberships[] @relation("artist_memberships_group_idToartists")
+  artist_memberships_artist_memberships_member_idToartists artist_memberships[] @relation("artist_memberships_member_idToartists")
+  labels                                                   labels?              @relation(fields: [label_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  pros                                                     pros?                @relation(fields: [pro_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  publishers                                               publishers?          @relation(fields: [publisher_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  releases                                                 releases[]
+  royalties                                                royalties[]
+
+  @@index([id], map: "ix_artists_id")
+  @@index([name], map: "ix_artists_name")
+  @@index([organization_id], map: "ix_artists_organization_id")
+}
+
+model audit_logs {
+  id              Int       @id @default(autoincrement())
+  action          String?   @db.VarChar(50)
+  entity_type     String?   @db.VarChar(50)
+  entity_id       Int?
+  entity_name     String?   @db.VarChar(255)
+  changes         Json?     @db.Json
+  user_id         Int?
+  ip_address      String?   @db.VarChar(45)
+  user_agent      String?   @db.VarChar(500)
+  created_at      DateTime? @default(now()) @db.Timestamptz(6)
+  entity_uuid     Int?
+  organization_id Int?
+  users           User?     @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([action], map: "ix_audit_logs_action")
+  @@index([created_at], map: "ix_audit_logs_created_at")
+  @@index([entity_type], map: "ix_audit_logs_entity_type")
+  @@index([entity_uuid], map: "ix_audit_logs_entity_uuid")
+  @@index([id], map: "ix_audit_logs_id")
+  @@index([organization_id], map: "ix_audit_logs_organization_id")
+}
+
+model contract_assets {
+  id              Int       @id(map: "contract_assets_v1_pkey") @default(autoincrement())
+  contract_id     Int
+  organization_id Int
+  asset_type      String    @db.VarChar(50)
+  asset_id        Int
+  scope_type      String?   @db.VarChar(50)
+  notes           String?
+  contracts       contracts @relation(fields: [contract_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "contract_assets_v1_contract_id_fkey")
+
+  @@index([organization_id, contract_id], map: "ix_contract_assets_org_contract")
+}
+
+model contract_documents {
+  id              Int       @id(map: "contract_documents_v1_pkey") @default(autoincrement())
+  contract_id     Int
+  organization_id Int
+  file_path       String    @db.VarChar(500)
+  file_name       String    @db.VarChar(255)
+  version         Int
+  uploaded_by     Int?
+  uploaded_at     DateTime? @default(now()) @db.Timestamptz(6)
+  checksum        String?   @db.VarChar(64)
+  mime_type       String?   @default("application/pdf") @db.VarChar(100)
+  size_bytes      Int?
+  contracts       contracts @relation(fields: [contract_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "contract_documents_v1_contract_id_fkey")
+
+  @@unique([contract_id, version], map: "ix_contract_documents_unique_version")
+  @@index([organization_id, contract_id], map: "ix_contract_documents_org_contract")
+}
+
+model contract_intake_release_links {
+  id                          Int                         @id @default(autoincrement())
+  organization_id             Int
+  resolution_run_id           Int
+  release_id                  Int
+  linked_by_user_id           Int
+  created_at                  DateTime?                   @default(now()) @db.Timestamptz(6)
+  users                       User                        @relation(fields: [linked_by_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  releases                    releases                    @relation(fields: [release_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ai_contract_resolution_runs ai_contract_resolution_runs @relation(fields: [resolution_run_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([organization_id, resolution_run_id, release_id], map: "uq_contract_intake_release_link_org_run_release")
+  @@index([created_at], map: "ix_contract_intake_release_links_created_at")
+  @@index([id], map: "ix_contract_intake_release_links_id")
+  @@index([organization_id], map: "ix_contract_intake_release_links_organization_id")
+  @@index([release_id], map: "ix_contract_intake_release_links_release_id")
+  @@index([resolution_run_id], map: "ix_contract_intake_release_links_resolution_run_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model contract_parties {
+  id              Int               @id(map: "contract_parties_v1_pkey") @default(autoincrement())
+  contract_id     Int
+  organization_id Int
+  entity_type     String            @db.VarChar(50)
+  entity_id       Int?
+  external_name   String?           @db.VarChar(255)
+  role            String            @db.VarChar(100)
+  split_percent   Decimal?          @db.Decimal(6, 3)
+  notes           String?
+  contracts       contracts         @relation(fields: [contract_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "contract_parties_v1_contract_id_fkey")
+  contract_splits contract_splits[]
+
+  @@index([organization_id, contract_id], map: "ix_contract_parties_org_contract")
+}
+
+model contract_split_groups {
+  id              Int               @id @default(autoincrement())
+  contract_id     Int
+  organization_id Int
+  group_name      String            @db.VarChar(100)
+  group_type      String?           @db.VarChar(50)
+  notes           String?
+  created_at      DateTime?         @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime?         @db.Timestamptz(6)
+  contracts       contracts         @relation(fields: [contract_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  contract_splits contract_splits[]
+
+  @@index([organization_id, contract_id], map: "ix_contract_split_groups_org_contract")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model contract_splits {
+  id                    Int                   @id @default(autoincrement())
+  group_id              Int
+  organization_id       Int
+  party_id              Int?
+  external_party_name   String?               @db.VarChar(255)
+  percent               Decimal               @db.Decimal(6, 3)
+  notes                 String?
+  contract_split_groups contract_split_groups @relation(fields: [group_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  contract_parties      contract_parties?     @relation(fields: [party_id], references: [id], onUpdate: NoAction)
+
+  @@index([organization_id, group_id], map: "ix_contract_splits_org_group")
+}
+
+model contract_track_links {
+  id              Int       @id @default(autoincrement())
+  organization_id String    @db.Uuid
+  contract_id     Int
+  track_id        Int
+  created_at      DateTime? @default(now()) @db.Timestamptz(6)
+  contracts       contracts @relation(fields: [contract_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tracks          tracks    @relation(fields: [track_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([organization_id, contract_id, track_id], map: "uq_contract_track_link_org_contract_track")
+  @@index([contract_id], map: "ix_contract_track_links_contract_id")
+  @@index([id], map: "ix_contract_track_links_id")
+  @@index([organization_id], map: "ix_contract_track_links_organization_id")
+  @@index([track_id], map: "ix_contract_track_links_track_id")
+}
+
+model contracts {
+  id                    Int                     @id(map: "contracts_v1_pkey") @default(autoincrement())
+  contract_number       String                  @db.VarChar(50)
+  organization_id       Int
+  title                 String                  @db.VarChar(255)
+  status                String                  @db.VarChar(50)
+  type                  String?                 @db.VarChar(50)
+  start_date            DateTime?               @db.Date
+  end_date              DateTime?               @db.Date
+  territory             String?                 @db.VarChar(255)
+  exclusivity           Boolean?
+  royalty_description   String?
+  advances_amount       Decimal?                @db.Decimal(10, 2)
+  advances_currency     String?                 @db.VarChar(3)
+  recoupment_notes      String?
+  created_at            DateTime?               @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime?               @db.Timestamptz(6)
+  created_by            Int?
+  signed_date           DateTime?               @db.Date
+  notes                 String?
+  status_quo_override   String?                 @db.VarChar(50)
+  contract_assets       contract_assets[]
+  contract_documents    contract_documents[]
+  contract_parties      contract_parties[]
+  contract_split_groups contract_split_groups[]
+  contract_track_links  contract_track_links[]
+
+  @@unique([organization_id, contract_number], map: "ix_contracts_org_number")
+  @@index([organization_id], map: "ix_contracts_organization_id")
+}
+
+model documents {
+  id                  Int         @id @default(autoincrement())
+  filename            String      @db.VarChar(255)
+  original_filename   String      @db.VarChar(255)
+  file_path           String      @db.VarChar(500)
+  file_type           String?     @db.VarChar(50)
+  mime_type           String?     @db.VarChar(100)
+  file_size           BigInt?
+  version             Int?
+  parent_document_id  Int?
+  title               String?     @db.VarChar(255)
+  description         String?
+  tags                Json?       @db.Json
+  category            String?     @db.VarChar(100)
+  related_entity_type String?     @db.VarChar(50)
+  related_entity_id   Int?
+  uploaded_by         Int?
+  created_at          DateTime?   @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime?   @db.Timestamptz(6)
+  organization_id     String      @db.Uuid
+  checksum            String?     @db.VarChar(64)
+  is_deleted          Boolean
+  documents           documents?  @relation("documentsTodocuments", fields: [parent_document_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  other_documents     documents[] @relation("documentsTodocuments")
+  users               User?       @relation(fields: [uploaded_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([category], map: "ix_documents_category")
+  @@index([file_type], map: "ix_documents_file_type")
+  @@index([id], map: "ix_documents_id")
+  @@index([organization_id], map: "ix_documents_organization_id")
+}
+
+model events {
+  id                  Int       @id @default(autoincrement())
+  title               String    @db.VarChar(255)
+  description         String?
+  start_datetime      DateTime  @db.Timestamptz(6)
+  end_datetime        DateTime? @db.Timestamptz(6)
+  all_day             Boolean?
+  category            String?   @db.VarChar(100)
+  color               String?   @db.VarChar(20)
+  location            String?   @db.VarChar(255)
+  recurrence_rule     String?   @db.VarChar(500)
+  recurrence_end_date DateTime? @db.Timestamptz(6)
+  reminder_minutes    Int?
+  related_entity_type String?   @db.VarChar(50)
+  related_entity_id   Int?
+  created_by          Int?
+  created_at          DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime? @db.Timestamptz(6)
+  organization_id     String    @default(dbgenerated("'00000000-0000-0000-0000-000000000001'::uuid")) @db.Uuid
+  event_type          String?   @default("Other") @db.VarChar(100)
+  status              String?   @default("Planned") @db.VarChar(50)
+  is_deleted          Boolean   @default(false)
+  users               User?     @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([category], map: "ix_events_category")
+  @@index([event_type], map: "ix_events_event_type")
+  @@index([id], map: "ix_events_id")
+  @@index([organization_id], map: "ix_events_organization_id")
+  @@index([start_datetime], map: "ix_events_start_datetime")
+  @@index([status], map: "ix_events_status")
+  @@index([title], map: "ix_events_title")
+}
+
+model individual_organizations {
+  individual_id   Int
+  organization_id Int
+  individuals     individuals   @relation(fields: [individual_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  organizations   organizations @relation(fields: [organization_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([individual_id, organization_id])
+}
+
+model individuals {
+  id                       Int                        @id(map: "contacts_pkey") @default(autoincrement())
+  first_name               String?                    @db.VarChar(100)
+  last_name                String?                    @db.VarChar(100)
+  email                    String?                    @db.VarChar(255)
+  phone                    String?                    @db.VarChar(50)
+  role                     String?                    @db.VarChar(100)
+  image_url                String?                    @db.VarChar(500)
+  created_at               DateTime?                  @default(now()) @db.Timestamptz(6)
+  updated_at               DateTime?                  @db.Timestamptz(6)
+  relationship_strength    String?                    @default("Regular") @db.VarChar(50)
+  organization_id          Int
+  individual_organizations individual_organizations[]
+
+  @@index([email], map: "ix_individuals_email")
+  @@index([id], map: "ix_individuals_id")
+  @@index([organization_id], map: "ix_individuals_organization_id")
+}
+
+model jobs {
+  id              String    @id @db.Uuid
+  organization_id String    @db.Uuid
+  user_id         Int
+  status          String    @db.VarChar(50)
+  input           Json      @db.Json
+  output          Json?     @db.Json
+  error           String?
+  created_at      DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime? @default(now()) @db.Timestamptz(6)
+  users           User      @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([organization_id], map: "ix_jobs_organization_id")
+  @@index([user_id], map: "ix_jobs_user_id")
+}
+
+model labels {
+  id             Int        @id @default(autoincrement())
+  label_id       String?    @unique(map: "ix_labels_label_id") @db.VarChar(50)
+  name           String     @db.VarChar(255)
+  address        String?
+  contact_email  String?    @db.VarChar(255)
+  contact_phone  String?    @db.VarChar(50)
+  website        String?    @db.VarChar(255)
+  artist_ids     Json?      @db.Json
+  created_at     DateTime?  @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime?  @db.Timestamptz(6)
+  logo_url       String?    @db.VarChar(255)
+  contact_person String?    @db.VarChar(255)
+  artists        artists[]
+  releases       releases[]
+
+  @@index([id], map: "ix_labels_id")
+  @@index([name], map: "ix_labels_name")
+}
+
+model network_relationships {
+  id                Int       @id @default(autoincrement())
+  relationship_type String?   @db.VarChar(100)
+  source_type       String?   @db.VarChar(50)
+  source_id         Int?
+  target_type       String?   @db.VarChar(50)
+  target_id         Int?
+  start_date        DateTime? @db.Timestamptz(6)
+  end_date          DateTime? @db.Timestamptz(6)
+  notes             String?
+  created_at        DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime? @db.Timestamptz(6)
+
+  @@index([id], map: "ix_network_relationships_id")
+}
+
+model notes {
+  id                  Int       @id @default(autoincrement())
+  title               String    @db.VarChar(255)
+  content             String?
+  content_markdown    String?
+  tags                Json?     @db.Json
+  category            String?   @db.VarChar(100)
+  color               String?   @db.VarChar(20)
+  pinned              Boolean?
+  attachments         Json?     @db.Json
+  related_entity_type String?   @db.VarChar(50)
+  related_entity_id   Int?
+  created_by          Int?
+  created_at          DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime? @db.Timestamptz(6)
+  organization_id     String    @default(dbgenerated("'00000000-0000-0000-0000-000000000001'::uuid")) @db.Uuid
+  is_deleted          Boolean   @default(false)
+  users               User?     @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([category], map: "ix_notes_category")
+  @@index([id], map: "ix_notes_id")
+  @@index([organization_id], map: "ix_notes_organization_id")
+  @@index([pinned], map: "ix_notes_pinned")
+  @@index([title], map: "ix_notes_title")
+}
+
+model office_document_links {
+  id               Int              @id @default(autoincrement())
+  organization_id  String           @db.Uuid
+  document_id      Int
+  entity_type      String           @db.VarChar(50)
+  entity_id        Int
+  office_documents office_documents @relation(fields: [document_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([document_id, entity_type, entity_id], map: "uq_office_document_links_document_entity")
+  @@index([document_id], map: "ix_office_document_links_document_id")
+  @@index([entity_id], map: "ix_office_document_links_entity_id")
+  @@index([entity_type], map: "ix_office_document_links_entity_type")
+  @@index([organization_id], map: "ix_office_document_links_organization_id")
+}
+
+model office_documents {
+  id                    Int                     @id @default(autoincrement())
+  organization_id       String                  @db.Uuid
+  doc_type              String                  @db.VarChar(50)
+  title                 String?                 @db.VarChar(255)
+  description           String?
+  storage_path          String                  @db.VarChar(500)
+  storage_filename      String                  @db.VarChar(255)
+  original_filename     String                  @db.VarChar(255)
+  mime_type             String?                 @db.VarChar(100)
+  file_size_bytes       BigInt
+  checksum              String?                 @db.VarChar(64)
+  uploaded_by_user_id   Int
+  created_at            DateTime?               @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime?               @db.Timestamptz(6)
+  office_document_links office_document_links[]
+  users                 User                    @relation(fields: [uploaded_by_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([doc_type], map: "ix_office_documents_doc_type")
+  @@index([organization_id, doc_type], map: "ix_office_documents_org_doc_type")
+  @@index([organization_id], map: "ix_office_documents_organization_id")
+}
+
+model office_note_links {
+  id              Int          @id @default(autoincrement())
+  organization_id String       @db.Uuid
+  note_id         Int
+  entity_type     String       @db.VarChar(50)
+  entity_id       Int
+  created_at      DateTime?    @default(now()) @db.Timestamptz(6)
+  office_notes    office_notes @relation(fields: [note_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([note_id, entity_type, entity_id], map: "uq_office_note_links_note_entity")
+  @@index([entity_id], map: "ix_office_note_links_entity_id")
+  @@index([entity_type], map: "ix_office_note_links_entity_type")
+  @@index([note_id], map: "ix_office_note_links_note_id")
+  @@index([organization_id], map: "ix_office_note_links_organization_id")
+}
+
+model office_notes {
+  id                 Int                 @id @default(autoincrement())
+  organization_id    String              @db.Uuid
+  title              String?             @db.VarChar(255)
+  body               String
+  tags               String?             @db.VarChar(255)
+  created_by_user_id Int
+  created_at         DateTime?           @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime?           @db.Timestamptz(6)
+  office_note_links  office_note_links[]
+  users              User                @relation(fields: [created_by_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([organization_id], map: "ix_office_notes_organization_id")
+}
+
+model organizations {
+  id                       Int                        @id(map: "companies_pkey") @default(autoincrement())
+  name                     String                     @db.VarChar(255)
+  org_type                 String?                    @db.VarChar(100)
+  website                  String?                    @db.VarChar(255)
+  address                  String?
+  created_at               DateTime?                  @default(now()) @db.Timestamptz(6)
+  updated_at               DateTime?                  @db.Timestamptz(6)
+  organization_id          Int
+  individual_organizations individual_organizations[]
+  releases                 releases[]
+
+  @@index([id], map: "ix_organizations_id")
+  @@index([name], map: "ix_organizations_name")
+  @@index([org_type], map: "ix_organizations_org_type")
+  @@index([organization_id], map: "ix_organizations_organization_id")
+}
+
+model plans {
+  id            Int             @id @default(autoincrement())
+  name          String          @unique @db.VarChar(50)
+  job_limit     Int
+  price         Decimal?        @db.Decimal(10, 2)
+  subscriptions subscriptions[]
+
+  @@index([id], map: "ix_plans_id")
+}
+
+model platforms {
+  id                 Int       @id @default(autoincrement())
+  name               String    @db.VarChar(255)
+  platform_type      String?   @db.VarChar(100)
+  portal_url         String?   @db.VarChar(255)
+  account_reference  String?   @db.VarChar(255)
+  territory_coverage String?
+  created_at         DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime? @db.Timestamptz(6)
+
+  @@index([id], map: "ix_platforms_id")
+  @@index([name], map: "ix_platforms_name")
+  @@index([platform_type], map: "ix_platforms_platform_type")
+}
+
+model playing_with_neon {
+  id    Int    @id @default(autoincrement())
+  name  String
+  value Float? @db.Real
+}
+
+model playlists {
+  id          Int       @id @default(autoincrement())
+  playlist_id String?   @unique(map: "ix_playlists_playlist_id") @db.VarChar(50)
+  name        String    @db.VarChar(255)
+  description String?
+  track_ids   Json?     @db.Json
+  is_public   Boolean?
+  share_link  String?   @unique @db.VarChar(255)
+  play_count  Int?
+  created_by  Int?
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime? @db.Timestamptz(6)
+  users       User?     @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([id], map: "ix_playlists_id")
+  @@index([name], map: "ix_playlists_name")
+}
+
+model pros {
+  id            Int       @id @default(autoincrement())
+  pro_id        String?   @unique(map: "ix_pros_pro_id") @db.VarChar(50)
+  name          String    @db.VarChar(255)
+  address       String?
+  contact_email String?   @db.VarChar(255)
+  contact_phone String?   @db.VarChar(50)
+  website       String?   @db.VarChar(255)
+  territory     String?   @db.VarChar(100)
+  created_at    DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime? @db.Timestamptz(6)
+  artists       artists[]
+  works         works[]
+
+  @@index([id], map: "ix_pros_id")
+  @@index([name], map: "ix_pros_name")
+}
+
+model publishers {
+  id             Int       @id @default(autoincrement())
+  publisher_id   String?   @unique(map: "ix_publishers_publisher_id") @db.VarChar(50)
+  name           String    @db.VarChar(255)
+  address        String?
+  contact_email  String?   @db.VarChar(255)
+  contact_phone  String?   @db.VarChar(50)
+  rights_type    String?   @db.VarChar(100)
+  artist_ids     Json?     @db.Json
+  created_at     DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime? @db.Timestamptz(6)
+  contact_person String?   @db.VarChar(255)
+  artists        artists[]
+  works          works[]
+
+  @@index([id], map: "ix_publishers_id")
+  @@index([name], map: "ix_publishers_name")
+}
+
+model releases {
+  id                            Int                             @id @default(autoincrement())
+  release_id                    String?                         @unique(map: "ix_releases_release_id") @db.VarChar(50)
+  title                         String                          @db.VarChar(255)
+  upc_code                      String?                         @unique @db.VarChar(50)
+  release_date                  DateTime?                       @db.Date
+  release_type                  String?                         @db.VarChar(50)
+  cover_art_url                 String?                         @db.VarChar(500)
+  label_id                      Int?
+  artist_id                     Int?
+  distributor_id                Int?
+  created_at                    DateTime?                       @default(now()) @db.Timestamptz(6)
+  updated_at                    DateTime?                       @db.Timestamptz(6)
+  catalog_number                String?                         @unique(map: "ix_releases_catalog_number") @db.VarChar(50)
+  artist_ids                    Json?                           @db.Json
+  credits                       Json?                           @db.Json
+  organization_id               String                          @default(dbgenerated("'00000000-0000-0000-0000-000000000001'::uuid")) @db.Uuid
+  is_deleted                    Boolean                         @default(false)
+  contract_intake_release_links contract_intake_release_links[]
+  organizations                 organizations?                  @relation(fields: [distributor_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_releases_distributor_id_organizations")
+  artists                       artists?                        @relation(fields: [artist_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  labels                        labels?                         @relation(fields: [label_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  track_releases                track_releases[]
+  tracks                        tracks[]
+
+  @@index([id], map: "ix_releases_id")
+  @@index([organization_id], map: "ix_releases_organization_id")
+  @@index([title], map: "ix_releases_title")
+}
+
+model report_artifacts {
+  id              Int         @id @default(autoincrement())
+  organization_id String      @db.Uuid
+  report_run_id   Int
+  format          String      @db.VarChar(10)
+  storage_path    String      @db.VarChar(500)
+  filename        String      @db.VarChar(255)
+  mime_type       String      @db.VarChar(100)
+  file_size_bytes Int
+  created_at      DateTime?   @default(now()) @db.Timestamptz(6)
+  report_runs     report_runs @relation(fields: [report_run_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([organization_id], map: "ix_report_artifacts_organization_id")
+  @@index([report_run_id], map: "ix_report_artifacts_report_run_id")
+}
+
+model report_definitions {
+  id                 Int           @id @default(autoincrement())
+  organization_id    String        @db.Uuid
+  name               String        @db.VarChar(255)
+  description        String?
+  report_type        String        @db.VarChar(100)
+  config_json        String
+  created_by_user_id Int
+  created_at         DateTime?     @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime?     @db.Timestamptz(6)
+  users              User          @relation(fields: [created_by_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  report_runs        report_runs[]
+
+  @@unique([organization_id, name], map: "uq_report_definitions_org_name")
+  @@index([organization_id], map: "ix_report_definitions_organization_id")
+  @@index([report_type], map: "ix_report_definitions_report_type")
+}
+
+model report_runs {
+  id                   Int                 @id @default(autoincrement())
+  organization_id      String              @db.Uuid
+  report_definition_id Int?
+  status               String              @db.VarChar(50)
+  requested_by_user_id Int
+  parameters_json      String
+  row_count            Int?
+  error                String?
+  created_at           DateTime?           @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime?           @db.Timestamptz(6)
+  report_artifacts     report_artifacts[]
+  report_definitions   report_definitions? @relation(fields: [report_definition_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users                User                @relation(fields: [requested_by_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([organization_id], map: "ix_report_runs_organization_id")
+  @@index([report_definition_id], map: "ix_report_runs_report_definition_id")
+  @@index([status], map: "ix_report_runs_status")
+}
+
+model royalties {
+  id             Int       @id @default(autoincrement())
+  royalty_id     String?   @unique(map: "ix_royalties_royalty_id") @db.VarChar(50)
+  artist_id      Int?
+  work_id        Int?
+  track_id       Int?
+  source         String?   @db.VarChar(100)
+  amount         Decimal?  @db.Decimal(15, 2)
+  currency       String?   @db.VarChar(3)
+  statement_date DateTime? @db.Date
+  fees           Decimal?  @db.Decimal(15, 2)
+  advances       Decimal?  @db.Decimal(15, 2)
+  created_at     DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime? @db.Timestamptz(6)
+  artists        artists?  @relation(fields: [artist_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tracks         tracks?   @relation(fields: [track_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  works          works?    @relation(fields: [work_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([id], map: "ix_royalties_id")
+  @@index([source], map: "ix_royalties_source")
+  @@index([statement_date], map: "ix_royalties_statement_date")
+}
+
+model status_quo_items {
+  id                  Int       @id @default(autoincrement())
+  organization_id     String    @db.Uuid
+  entity_type         String    @db.VarChar(50)
+  entity_id           Int
+  issue_type          String    @db.VarChar(100)
+  severity            String    @db.VarChar(20)
+  summary             String    @db.VarChar(255)
+  details_json        String?
+  created_at          DateTime? @default(now()) @db.Timestamptz(6)
+  resolved_at         DateTime? @db.Timestamptz(6)
+  resolved_by_user_id Int?
+  users               User?     @relation(fields: [resolved_by_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([entity_id], map: "ix_status_quo_items_entity_id")
+  @@index([entity_type], map: "ix_status_quo_items_entity_type")
+  @@index([id], map: "ix_status_quo_items_id")
+  @@index([issue_type], map: "ix_status_quo_items_issue_type")
+  @@index([organization_id], map: "ix_status_quo_items_organization_id")
+}
+
+model subscriptions {
+  id                   Int       @id @default(autoincrement())
+  organization_id      String    @db.Uuid
+  plan_id              Int
+  status               String    @db.VarChar(50)
+  current_period_start DateTime? @default(now()) @db.Timestamptz(6)
+  current_period_end   DateTime  @db.Timestamptz(6)
+  plans                plans     @relation(fields: [plan_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([id], map: "ix_subscriptions_id")
+  @@index([organization_id], map: "ix_subscriptions_organization_id")
+}
+
+model tasks {
+  id                                     Int       @id @default(autoincrement())
+  title                                  String?   @db.VarChar
+  description                            String?
+  status                                 String?   @db.VarChar
+  priority                               String?   @db.VarChar
+  due_date                               DateTime? @db.Timestamp(6)
+  created_at                             DateTime? @db.Timestamp(6)
+  updated_at                             DateTime? @db.Timestamp(6)
+  organization_id                        String    @default(dbgenerated("'00000000-0000-0000-0000-000000000001'::uuid")) @db.Uuid
+  assigned_to_user_id                    Int?
+  created_by_user_id                     Int       @default(1)
+  linked_entity_type                     String?   @db.VarChar(50)
+  linked_entity_id                       Int?
+  is_deleted                             Boolean   @default(false)
+  source_type                            String?   @db.VarChar(50)
+  source_id                              Int?
+  users_tasks_assigned_to_user_idTousers User?     @relation("tasks_assigned_to_user_idTousers", fields: [assigned_to_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_tasks_assigned_to_user_id")
+  users_tasks_created_by_user_idTousers  User      @relation("tasks_created_by_user_idTousers", fields: [created_by_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_tasks_created_by_user_id")
+
+  @@unique([organization_id, source_type, source_id], map: "uq_task_org_source")
+  @@index([id], map: "ix_tasks_id")
+  @@index([organization_id], map: "ix_tasks_organization_id")
+  @@index([source_id], map: "ix_tasks_source_id")
+  @@index([source_type], map: "ix_tasks_source_type")
+  @@index([title], map: "ix_tasks_title")
+}
+
+model track_releases {
+  track_id   Int
+  release_id Int
+  releases   releases @relation(fields: [release_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tracks     tracks   @relation(fields: [track_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([track_id, release_id])
+}
+
+model tracks {
+  id                   Int                    @id @default(autoincrement())
+  track_id             String?                @unique(map: "ix_tracks_track_id") @db.VarChar(50)
+  title                String                 @db.VarChar(255)
+  duration             DateTime?              @db.Time(6)
+  genre                String?                @db.VarChar(100)
+  release_date         DateTime?              @db.Date
+  isrc_code            String?                @unique @db.VarChar(50)
+  streaming_link       String?                @db.VarChar(500)
+  artist_ids           Json?                  @db.Json
+  file_location        String?                @db.VarChar(500)
+  release_id           Int?
+  work_id              Int?
+  created_at           DateTime?              @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime?              @db.Timestamptz(6)
+  credits              Json?                  @db.Json
+  contract_track_links contract_track_links[]
+  royalties            royalties[]
+  track_releases       track_releases[]
+  releases             releases?              @relation(fields: [release_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  works                works?                 @relation(fields: [work_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([genre], map: "ix_tracks_genre")
+  @@index([id], map: "ix_tracks_id")
+  @@index([title], map: "ix_tracks_title")
+}
+
+model usage {
+  id              Int    @id @default(autoincrement())
+  organization_id String @db.Uuid
+  metric          String @db.VarChar(50)
+  value           Int
+  tokens_used     BigInt
+  period          String @db.VarChar(10)
+
+  @@index([id], map: "ix_usage_id")
+  @@index([organization_id, metric, period], map: "ix_usage_org_metric_period")
+  @@index([organization_id], map: "ix_usage_organization_id")
+}
+
+model works {
+  id              Int          @id @default(autoincrement())
+  work_id         String?      @unique(map: "ix_works_work_id") @db.VarChar(50)
+  title           String       @db.VarChar(255)
+  iswc_code       String?      @db.VarChar(50)
+  composers       Json?        @db.Json
+  composers_text  String?
+  arrangers       Json?        @db.Json
+  arrangers_text  String?
+  publisher_id    Int?
+  pro_id          Int?
+  created_at      DateTime?    @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime?    @db.Timestamptz(6)
+  organization_id String       @default(dbgenerated("'00000000-0000-0000-0000-000000000001'::uuid")) @db.Uuid
+  is_deleted      Boolean      @default(false)
+  royalties       royalties[]
+  tracks          tracks[]
+  pros            pros?        @relation(fields: [pro_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  publishers      publishers?  @relation(fields: [publisher_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  works_admin     works_admin?
+
+  @@index([id], map: "ix_works_id")
+  @@index([organization_id], map: "ix_works_organization_id")
+  @@index([title], map: "ix_works_title")
+}
+
+model works_admin {
+  id                     String                  @id @db.Uuid
+  organization_id        String                  @db.Uuid
+  work_id                Int                     @unique
+  registration_status    String                  @default("Unknown") @db.VarChar(50)
+  registered_with        String?                 @db.VarChar(255)
+  registration_date      DateTime?               @db.Date
+  registration_reference String?                 @db.VarChar(255)
+  notes                  String?
+  created_by             Int?
+  created_at             DateTime?               @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime?               @db.Timestamptz(6)
+  works                  works                   @relation(fields: [work_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  works_admin_documents  works_admin_documents[]
+
+  @@unique([organization_id, work_id], map: "ix_works_admin_org_work")
+}
+
+model works_admin_documents {
+  id              String      @id @db.Uuid
+  organization_id String      @db.Uuid
+  works_admin_id  String      @db.Uuid
+  doc_type        String      @db.VarChar(100)
+  file_path       String      @db.VarChar(500)
+  file_name       String      @db.VarChar(255)
+  mime_type       String?     @default("application/pdf") @db.VarChar(100)
+  size_bytes      Int?
+  checksum        String?     @db.VarChar(64)
+  uploaded_by     Int?
+  uploaded_at     DateTime?   @default(now()) @db.Timestamptz(6)
+  works_admin     works_admin @relation(fields: [works_admin_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([organization_id], map: "ix_works_admin_documents_organization_id")
+}

@@ -1,6 +1,17 @@
+import { prisma } from "@/lib/prisma";
+
 export async function GET() {
-  return Response.json({
-    ok: true,
-    time: Date.now()
-  });
+  try {
+    const users = await prisma.user.findMany();
+
+    return Response.json({
+      ok: true,
+      count: users.length,
+    });
+  } catch (error) {
+    return Response.json({
+      ok: false,
+      error: String(error),
+    });
+  }
 }
