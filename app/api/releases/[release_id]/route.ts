@@ -91,7 +91,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ release_
               where: { id: t.id },
               data: {
                 release_id: id,
-                credits: !t.credits && updated.credits ? updated.credits : t.credits,
+                credits: !t.credits && updated.credits ? updated.credits : (t.credits ?? undefined),
               },
             })
           )

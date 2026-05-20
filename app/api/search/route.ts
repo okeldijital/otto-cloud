@@ -70,7 +70,6 @@ export async function GET(req: Request) {
 
       prisma.tracks.findMany({
         where: {
-          organization_id: orgId,
           OR: [
             { title: searchFilter },
             { isrc_code: searchFilter },

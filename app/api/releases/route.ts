@@ -83,7 +83,7 @@ export async function POST(req: Request) {
             where: { id: t.id },
             data: {
               release_id: newRelease.id,
-              credits: !t.credits && newRelease.credits ? newRelease.credits : t.credits,
+              credits: !t.credits && newRelease.credits ? newRelease.credits : (t.credits ?? undefined),
             },
           })
         )
