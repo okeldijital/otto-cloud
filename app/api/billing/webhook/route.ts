@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
-import { stripe } from "@/lib/stripe";
+import { getStripe } from "@/lib/stripe";
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || "";
 
@@ -14,6 +14,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing signature or webhook secret" }, { status: 400 });
     }
 
+    const stripe = getStripe();
     let event: Stripe.Event;
 
     try {

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { stripe } from "@/lib/stripe";
+import { getStripe } from "@/lib/stripe";
 
 export async function POST(req: Request) {
   try {
@@ -20,6 +20,7 @@ export async function POST(req: Request) {
     };
 
     const planInfo = planMap[planId] || planMap["pro"];
+    const stripe = getStripe();
 
     const user = await prisma.user.findUnique({
       where: { email: session.user.email as string },
