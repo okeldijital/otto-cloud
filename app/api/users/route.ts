@@ -6,7 +6,6 @@ import { prisma } from "@/lib/prisma";
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
-
     if (!session || !session.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -20,7 +19,6 @@ export async function GET() {
     }
 
     const { hashed_password, ...userWithoutPassword } = user;
-
     return NextResponse.json(userWithoutPassword);
   } catch (error: any) {
     console.error("Error fetching me:", error);
@@ -31,7 +29,6 @@ export async function GET() {
 export async function PUT(req: Request) {
   try {
     const session = await getServerSession(authOptions);
-
     if (!session || !session.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -41,7 +38,6 @@ export async function PUT(req: Request) {
     const updateData: any = {};
     if (body.full_name) updateData.name = body.full_name;
     if (body.avatar_url) updateData.avatar_url = body.avatar_url;
-    // Add other fields as necessary
 
     const updatedUser = await prisma.user.update({
       where: { email: session.user.email as string },
@@ -49,7 +45,6 @@ export async function PUT(req: Request) {
     });
 
     const { hashed_password, ...userWithoutPassword } = updatedUser;
-
     return NextResponse.json(userWithoutPassword);
   } catch (error: any) {
     console.error("Error updating me:", error);
