@@ -1,57 +1,38 @@
-import { Navigate } from 'react-router-dom';
+"use client";
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '../contexts/AuthContext';
-import logo from '../assets/logo.png';
 
 export const ProtectedRoute = ({ children, adminOnly = false }) => {
-    const { isAuthenticated, loading, user, statusMessage } = useAuth();
+    const { isAuthenticated, loading, user } = useAuth();
+    const router = useRouter();
+
+    useEffect(() => {
+        if (!loading && !isAuthenticated) {
+            router.push('/login');
+        }
+    }, [loading, isAuthenticated, router]);
 
     if (loading) {
         return (
-            <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
-                alignItems: 'center',
-                height: '100vh',
-                backgroundColor: '#f8fafc',
-                gap: '1.5rem',
-                fontFamily: 'Inter, system-ui, sans-serif'
-            }}>
-                <img src={logo} alt="OTTO" style={{ width: '120px', height: 'auto', marginBottom: '0.5rem' }} />
-                <div style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: '0.5rem'
-                }}>
-                    <div style={{
-                        fontSize: '1rem',
-                        color: '#1e293b',
-                        fontWeight: 600,
-                        animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
-                    }}>
-                        {statusMessage || 'Initializing local workspace...'}
-                    </div>
-                    <div style={{ fontSize: '0.875rem', color: '#64748b' }}>
-                        This may take a moment on first launch
+            <div className="flex flex-col items-center justify-center min-h-screen bg-app-default gap-6 font-sans">
+                <div className="w-[120px] h-auto" />
+                <div className="flex flex-col items-center gap-2">
+                    <div className="text-base text-[#1e293b] font-semibold animate-pulse">
+                        Loading...
                     </div>
                 </div>
-                <style>{`
-                    @keyframes pulse {
-                        0%, 100% { opacity: 1; }
-                        50% { opacity: .5; }
-                    }
-                `}</style>
             </div>
         );
     }
 
     if (!isAuthenticated) {
-        return <Navigate to="/login" replace />;
+        return null;
     }
 
     if (adminOnly && user?.role !== 'admin' && !user?.is_superuser) {
-        return <Navigate to="/dashboard" replace />;
+        router.push('/dashboard');
+        return null;
     }
 
     return children;

@@ -2,13 +2,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, Bell, User, Settings as SettingsIcon, LogOut, Music, Users, FileText, Layout, X, Building2, BookOpen, Globe, File, StickyNote, ListMusic, Sun, Moon, CreditCard } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
 import api, { BASE_URL } from '../../lib/api';
 import ThemeToggle from '../ui/ThemeToggle';
 
 const TopBar = () => {
     const { user, logout } = useAuth();
-    const navigate = useNavigate();
+    const router = useRouter();
     const dropdownRef = useRef(null);
     const [showNotifications, setShowNotifications] = useState(false);
 
@@ -25,7 +25,7 @@ const TopBar = () => {
 
     const handleLogout = () => {
         logout();
-        navigate('/login');
+        router.push('/login');
     };
 
     useEffect(() => {
@@ -85,50 +85,50 @@ const TopBar = () => {
 
         switch (result.type) {
             case 'artist':
-                navigate(`/catalog/artists/${result.id}`);
+                router.push(`/catalog/artists/${result.id}`);
                 break;
             case 'release':
-                navigate(`/catalog/releases/${result.id}`);
+                router.push(`/catalog/releases/${result.id}`);
                 break;
             case 'track':
                 if (result.release_id) {
-                    navigate(`/catalog/releases/${result.release_id}`);
+                    router.push(`/catalog/releases/${result.release_id}`);
                 } else {
-                    navigate(`/catalog/tracks/${result.id}`);
+                    router.push(`/catalog/tracks/${result.id}`);
                 }
                 break;
             case 'work':
-                navigate(`/catalog/works/${result.id}`);
+                router.push(`/catalog/works/${result.id}`);
                 break;
             case 'contract':
-                navigate(`/admin-of-works/contracts/${result.id}`);
+                router.push(`/admin-of-works/contracts/${result.id}`);
                 break;
             case 'label':
-                navigate(`/catalog/labels/${result.id}`);
+                router.push(`/catalog/labels/${result.id}`);
                 break;
             case 'publisher':
-                navigate(`/catalog/publishers/${result.id}`);
+                router.push(`/catalog/publishers/${result.id}`);
                 break;
             case 'pro':
-                navigate(`/catalog/pros`); // PROs don't have a detail page yet, keeping as list
+                router.push(`/catalog/pros`); // PROs don't have a detail page yet, keeping as list
                 break;
             case 'individual':
-                navigate(`/network/individuals/${result.id}`);
+                router.push(`/network/individuals/${result.id}`);
                 break;
             case 'organization':
-                navigate(`/network/organizations/${result.id}`);
+                router.push(`/network/organizations/${result.id}`);
                 break;
             case 'platform':
-                navigate(`/network/platforms/${result.id}`);
+                router.push(`/network/platforms/${result.id}`);
                 break;
             case 'document':
-                navigate(`/documents`);
+                router.push(`/documents`);
                 break;
             case 'note':
-                navigate(`/notes`);
+                router.push(`/notes`);
                 break;
             case 'playlist':
-                navigate(`/playlists`);
+                router.push(`/playlists`);
                 break;
             default:
                 break;
@@ -339,7 +339,7 @@ const TopBar = () => {
                                         className="w-full flex items-center gap-3 px-3 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-surface-elevated rounded-md transition-all"
                                         onClick={() => {
                                             setShowUserMenu(false);
-                                            navigate('/settings');
+                                            router.push('/settings');
                                         }}
                                     >
                                         <SettingsIcon size={16} />
@@ -349,7 +349,7 @@ const TopBar = () => {
                                         className="w-full flex items-center gap-3 px-3 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-surface-elevated rounded-md transition-all"
                                         onClick={() => {
                                             setShowUserMenu(false);
-                                            navigate('/billing');
+                                            router.push('/billing');
                                         }}
                                     >
                                         <CreditCard size={16} />

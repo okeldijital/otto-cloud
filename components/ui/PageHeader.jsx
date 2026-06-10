@@ -1,5 +1,6 @@
 import React from 'react';
 
+/** @type {import('react').FC<{ title?: any; subtitle?: any; actions?: any; breadcrumb?: any; className?: string }>} */
 const PageHeader = ({
     title,
     subtitle,

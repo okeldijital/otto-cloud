@@ -1,13 +1,20 @@
+"use client";
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
 const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
-    const [theme, setTheme] = useState(() => {
+    const [theme, setTheme] = useState('dark');
+
+    useEffect(() => {
         const saved = localStorage.getItem('otto-theme');
-        if (saved) return saved;
-        return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    });
+        if (saved) {
+            setTheme(saved);
+        } else {
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            setTheme(prefersDark ? 'dark' : 'light');
+        }
+    }, []);
 
     useEffect(() => {
         document.documentElement.setAttribute('data-theme', theme);

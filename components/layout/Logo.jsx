@@ -1,8 +1,7 @@
+"use client";
 import React from 'react';
-import logoImg from '../../assets/logo.png';
 
 const Logo = ({ size = 'md', className = '' }) => {
-    // Height focused sizing
     const sizes = {
         sm: { height: 48 },
         md: { height: 80 },
@@ -15,7 +14,7 @@ const Logo = ({ size = 'md', className = '' }) => {
     return (
         <div className={`logo-container ${className}`} style={{ display: 'flex', alignItems: 'center' }}>
             <img
-                src={logoImg}
+                src="/otto-logo.png"
                 alt="OTTO OS"
                 style={{
                     height: `${config.height}px`,

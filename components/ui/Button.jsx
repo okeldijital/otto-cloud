@@ -1,5 +1,6 @@
 import React from 'react';
 
+/** @type {import('react').FC<{ children?: any; onClick?: any; type?: string; variant?: string; size?: string; disabled?: boolean; className?: string; icon?: any; loading?: boolean; fullWidth?: boolean; [key: string]: any }>} */
 const Button = ({
     children,
     onClick,

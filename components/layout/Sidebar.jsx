@@ -1,5 +1,7 @@
+"use client";
 import React, { useMemo, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import {
     LayoutDashboard,
     FolderOpen,
@@ -33,11 +35,11 @@ import Logo from './Logo';
 
 const SidebarSection = ({ label, items }) => {
     const [isOpen, setIsOpen] = useState(true);
-    const location = useLocation();
+    const pathname = usePathname();
 
     const isActive = (path) => {
-        if (path === '/dashboard') return location.pathname === '/dashboard';
-        return location.pathname.startsWith(path);
+        if (path === '/dashboard') return pathname === '/dashboard';
+        return pathname.startsWith(path);
     };
 
     return (
@@ -57,7 +59,7 @@ const SidebarSection = ({ label, items }) => {
                         return (
                             <Link
                                 key={item.path}
-                                to={item.path}
+                                href={item.path}
                                 className={`flex items-center gap-md px-md py-2 rounded-[12px] transition-all duration-300 group ${
                                     active 
                                     ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' 
@@ -77,7 +79,7 @@ const SidebarSection = ({ label, items }) => {
 };
 
 const Sidebar = () => {
-    const location = useLocation();
+    const pathname = usePathname();
     const { user } = useAuth();
     const isAdmin = user?.role === 'admin' || user?.is_superuser;
 
@@ -134,14 +136,14 @@ const Sidebar = () => {
 
             <nav className="flex-1 overflow-y-auto px-sm pb-xl">
                 <Link
-                    to="/dashboard"
+                    href="/dashboard"
                     className={`flex items-center gap-md px-md py-2.5 rounded-[12px] transition-all duration-300 mb-6 group ${
-                        location.pathname === '/dashboard' 
+                        pathname === '/dashboard' 
                         ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' 
                         : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
                     }`}
                 >
-                    <LayoutDashboard size={20} className={location.pathname === '/dashboard' ? 'text-accent' : 'text-text-secondary group-hover:text-text-primary'} />
+                    <LayoutDashboard size={20} className={pathname === '/dashboard' ? 'text-accent' : 'text-text-secondary group-hover:text-text-primary'} />
                     <span className="text-sm font-medium">Dashboard</span>
                 </Link>
 
@@ -151,59 +153,59 @@ const Sidebar = () => {
 
                 <div className="mt-xl pt-lg border-t border-border space-y-1">
                     <Link 
-                        to="/ai" 
+                        href="/ai" 
                         className={`flex items-center gap-md px-md py-2 rounded-[12px] transition-all duration-300 group ${
-                            location.pathname === '/ai' ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
+                            pathname === '/ai' ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
                         }`}
                     >
-                        <Bot size={20} className={location.pathname === '/ai' ? 'text-accent' : 'text-text-secondary group-hover:text-text-primary'} />
+                        <Bot size={20} className={pathname === '/ai' ? 'text-accent' : 'text-text-secondary group-hover:text-text-primary'} />
                         <span className="text-sm font-medium">AI Assistant</span>
                     </Link>
                     <Link 
-                        to="/ai/analytics" 
+                        href="/ai/analytics" 
                         className={`flex items-center gap-md px-md py-2 rounded-[12px] transition-all duration-300 group ${
-                            location.pathname.startsWith('/ai/analytics') ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
+                            pathname.startsWith('/ai/analytics') ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
                         }`}
                     >
-                        <BarChart3 size={20} className={location.pathname.startsWith('/ai/analytics') ? 'text-accent' : 'text-text-secondary group-hover:text-text-primary'} />
+                        <BarChart3 size={20} className={pathname.startsWith('/ai/analytics') ? 'text-accent' : 'text-text-secondary group-hover:text-text-primary'} />
                         <span className="text-sm font-medium">AI Analytics</span>
                     </Link>
                     <Link 
-                        to="/ai/royalties" 
+                        href="/ai/royalties" 
                         className={`flex items-center gap-md px-md py-2 rounded-[12px] transition-all duration-300 group ${
-                            location.pathname.startsWith('/ai/royalties') ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
+                            pathname.startsWith('/ai/royalties') ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
                         }`}
                     >
-                        <Calculator size={20} className={location.pathname.startsWith('/ai/royalties') ? 'text-accent' : 'text-text-secondary group-hover:text-text-primary'} />
+                        <Calculator size={20} className={pathname.startsWith('/ai/royalties') ? 'text-accent' : 'text-text-secondary group-hover:text-text-primary'} />
                         <span className="text-sm font-medium">AI Royalties</span>
                     </Link>
                     {isAdmin && (
                         <Link 
-                            to="/admin" 
+                            href="/admin" 
                             className={`flex items-center gap-md px-md py-2 rounded-[12px] transition-all duration-300 group ${
-                                location.pathname.startsWith('/admin') ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
+                                pathname.startsWith('/admin') ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
                             }`}
                         >
-                            <ShieldCheck size={20} className={location.pathname.startsWith('/admin') ? 'text-accent' : 'text-text-secondary group-hover:text-text-primary'} />
+                            <ShieldCheck size={20} className={pathname.startsWith('/admin') ? 'text-accent' : 'text-text-secondary group-hover:text-text-primary'} />
                             <span className="text-sm font-medium">Admin Control</span>
                         </Link>
                     )}
                     <Link 
-                        to="/settings" 
+                        href="/settings" 
                         className={`flex items-center gap-md px-md py-2 rounded-[12px] transition-all duration-300 group ${
-                            location.pathname.startsWith('/settings') ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
+                            pathname.startsWith('/settings') ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
                         }`}
                     >
-                        <Settings size={20} className={location.pathname.startsWith('/settings') ? 'text-accent' : 'text-text-secondary group-hover:text-text-primary'} />
+                        <Settings size={20} className={pathname.startsWith('/settings') ? 'text-accent' : 'text-text-secondary group-hover:text-text-primary'} />
                         <span className="text-sm font-medium">Settings</span>
                     </Link>
                     <Link 
-                        to="/billing" 
+                        href="/billing" 
                         className={`flex items-center gap-md px-md py-2 rounded-[12px] transition-all duration-300 group ${
-                            location.pathname.startsWith('/billing') ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
+                            pathname.startsWith('/billing') ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
                         }`}
                     >
-                        <CreditCard size={20} className={location.pathname.startsWith('/billing') ? 'text-accent' : 'text-text-secondary group-hover:text-text-primary'} />
+                        <CreditCard size={20} className={pathname.startsWith('/billing') ? 'text-accent' : 'text-text-secondary group-hover:text-text-primary'} />
                         <span className="text-sm font-medium">Billing</span>
                     </Link>
                 </div>
