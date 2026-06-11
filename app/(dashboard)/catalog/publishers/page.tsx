@@ -79,6 +79,7 @@ export default function PublishersPage() {
         columns={columns}
         data={data}
         isLoading={loading}
+        onRowClick={(row: any) => router.push(`/catalog/publishers/${row.id}`)}
         onEdit={(row: any) => router.push(`/catalog/publishers/${row.id}`)}
         onDelete={handleDelete}
       />

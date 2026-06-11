@@ -86,6 +86,7 @@ export default function ArtistsPage() {
         columns={columns}
         data={data}
         isLoading={loading}
+        onRowClick={(row: any) => router.push(`/catalog/artists/${row.id}`)}
         onEdit={(row: any) => router.push(`/catalog/artists/${row.id}`)}
         onDelete={handleDelete}
       />

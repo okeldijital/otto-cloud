@@ -53,6 +53,7 @@ export default function ContractsPage() {
         columns={columns}
         data={data}
         isLoading={loading}
+        onRowClick={(row: any) => window.location.href = `/admin-of-works/contracts/${row.id}`}
         onEdit={(row: any) => window.location.href = `/admin-of-works/contracts/${row.id}`}
         onDelete={() => {}}
       />

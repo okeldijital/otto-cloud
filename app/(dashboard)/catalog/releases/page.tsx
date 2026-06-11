@@ -90,6 +90,7 @@ export default function ReleasesPage() {
         columns={columns}
         data={data}
         isLoading={loading}
+        onRowClick={(row: any) => router.push(`/catalog/releases/${row.id}`)}
         onEdit={(row: any) => router.push(`/catalog/releases/${row.id}`)}
         onDelete={handleDelete}
       />

@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Edit2, Trash2, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import Skeleton from './Skeleton';
 
-const DataTable = ({ columns, data, onEdit, onDelete, isLoading }) => {
+const DataTable = ({ columns, data, onEdit, onDelete, isLoading, onRowClick }) => {
     const [sortConfig, setSortConfig] = useState(null);
 
     const handleSort = (key) => {
@@ -24,12 +24,10 @@ const DataTable = ({ columns, data, onEdit, onDelete, isLoading }) => {
                 if (aValue === null || aValue === undefined) return 1;
                 if (bValue === null || bValue === undefined) return -1;
 
-                // Handle numbers
                 if (typeof aValue === 'number' && typeof bValue === 'number') {
                     return sortConfig.direction === 'ascending' ? aValue - bValue : bValue - aValue;
                 }
 
-                // Handle strings (including dates as strings)
                 const aStr = String(aValue).toLowerCase();
                 const bStr = String(bValue).toLowerCase();
 
@@ -117,7 +115,11 @@ const DataTable = ({ columns, data, onEdit, onDelete, isLoading }) => {
                     </thead>
                     <tbody>
                         {sortedData.map((row, index) => (
-                            <tr key={row.id || index} className="border-b border-white/5 last:border-0 hover:bg-white/[0.03] transition-colors group">
+                            <tr
+                                key={row.id || index}
+                                className={`border-b border-white/5 last:border-0 hover:bg-white/[0.03] transition-colors group ${onRowClick ? 'cursor-pointer' : ''}`}
+                                onClick={() => onRowClick?.(row)}
+                            >
                                 {columns.map((col, cIndex) => (
                                     <td key={`${row.id}-${cIndex}`} className="px-6 py-5 text-sm text-white font-medium">
                                         {col.render ? col.render(row) : row[col.key]}
@@ -128,7 +130,7 @@ const DataTable = ({ columns, data, onEdit, onDelete, isLoading }) => {
                                         <button
                                             type="button"
                                             className="p-2 text-text-secondary hover:text-accent hover:bg-accent/10 rounded-lg transition-all focus:outline-none"
-                                            onClick={() => onEdit(row)}
+                                            onClick={(e) => { e.stopPropagation(); onEdit(row); }}
                                             title="Edit"
                                         >
                                             <Edit2 size={16} />
@@ -136,7 +138,7 @@ const DataTable = ({ columns, data, onEdit, onDelete, isLoading }) => {
                                         <button
                                             type="button"
                                             className="p-2 text-text-secondary hover:text-danger hover:bg-danger/10 rounded-lg transition-all focus:outline-none"
-                                            onClick={() => onDelete(row)}
+                                            onClick={(e) => { e.stopPropagation(); onDelete(row); }}
                                             title="Delete"
                                         >
                                             <Trash2 size={16} />

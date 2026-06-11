@@ -85,6 +85,7 @@ export default function WorksPage() {
         columns={columns}
         data={data}
         isLoading={loading}
+        onRowClick={(row: any) => router.push(`/catalog/works/${row.id}`)}
         onEdit={(row: any) => router.push(`/catalog/works/${row.id}`)}
         onDelete={handleDelete}
       />

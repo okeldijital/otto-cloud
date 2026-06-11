@@ -100,6 +100,7 @@ export default function ProsPage() {
         columns={columns}
         data={data}
         isLoading={loading}
+        onRowClick={handleEdit}
         onEdit={handleEdit}
         onDelete={handleDelete}
       />

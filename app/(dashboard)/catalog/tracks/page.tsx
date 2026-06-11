@@ -11,7 +11,7 @@ import api from "@/lib/api";
 
 const columns = [
   { key: "title", label: "Title", sortable: true },
-  { key: "isrc", label: "ISRC", render: (row: any) => row.isrc || "—" },
+  { key: "isrc_code", label: "ISRC", render: (row: any) => row.isrc_code || "—" },
   { key: "genre", label: "Genre", render: (row: any) => row.genre || "—" },
   {
     key: "duration",
@@ -85,6 +85,7 @@ export default function TracksPage() {
         columns={columns}
         data={data}
         isLoading={loading}
+        onRowClick={(row: any) => router.push(`/catalog/tracks/${row.id}`)}
         onEdit={(row: any) => router.push(`/catalog/tracks/${row.id}`)}
         onDelete={handleDelete}
       />

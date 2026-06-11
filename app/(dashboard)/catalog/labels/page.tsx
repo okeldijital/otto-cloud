@@ -79,6 +79,7 @@ export default function LabelsPage() {
         columns={columns}
         data={data}
         isLoading={loading}
+        onRowClick={(row: any) => router.push(`/catalog/labels/${row.id}`)}
         onEdit={(row: any) => router.push(`/catalog/labels/${row.id}`)}
         onDelete={handleDelete}
       />
