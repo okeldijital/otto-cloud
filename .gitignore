@@ -53,9 +53,6 @@ scheduler_config.json
 .DS_Store
 dist-desktop/
 dist-electron/
-public/
-resources/
-frontend/frontend/
 installer/frontend/dist/
 installer/backend/dist/
 installer/electron/dist/
