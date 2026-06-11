@@ -936,11 +936,18 @@ model organizations {
 }
 
 model plans {
-  id            Int             @id @default(autoincrement())
-  name          String          @unique @db.VarChar(50)
-  job_limit     Int
-  price         Decimal?        @db.Decimal(10, 2)
-  subscriptions subscriptions[]
+  id                  Int             @id @default(autoincrement())
+  name                String          @unique @db.VarChar(50)
+  description         String?         @db.Text
+  price               Decimal?        @db.Decimal(10, 2)
+  job_limit           Int
+  max_team_members    Int             @default(1)
+  max_storage_mb      Int             @default(100)
+  ai_enabled          Boolean         @default(false)
+  reports_enabled     Boolean         @default(false)
+  advanced_contracts  Boolean         @default(false)
+  stripe_price_id     String?         @db.VarChar(255)
+  subscriptions       subscriptions[]
 
   @@index([id], map: "ix_plans_id")
 }

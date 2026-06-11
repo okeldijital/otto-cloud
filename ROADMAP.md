@@ -26,18 +26,27 @@ Production-readiness of the migrated platform.
 
 ---
 
-## Phase 12 — Subscription System
+## Phase 12 — Subscription System ✅
 
 Restore billing components removed during migration.
 
-### Plans
-- Trial, Solo, Professional, Enterprise
+### Plans ✅
+- Trial, Solo, Professional, Enterprise seeded
+- `/api/plans` returns all plans with feature metadata
+- Schema extended with feature columns (ai_enabled, reports_enabled, advanced_contracts, max_team_members, max_storage_mb)
 
-### Organization Subscription
-- Plan, status, renewal, limits
+### Organization Subscription ✅
+- `/api/subscriptions` — GET (current), POST (create/change), PUT (update) with plan details
+- Billing page wired to live data with plan selection cards
 
-### Feature Gating
-- AI, Team size, Storage, Reports, Advanced contracts
+### Feature Gating ✅
+- `lib/features.ts` — `checkFeature()` and `checkUsageLimit()` helpers
+- `/api/usage` — track and query usage metrics per org per period
+
+### Remaining
+- Stripe checkout session creation + webhook handler
+- Automatic trial subscription on org registration
+- Feature gating enforcement in API routes/middleware
 
 ---
 
