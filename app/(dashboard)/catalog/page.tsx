@@ -21,13 +21,13 @@ export default function CatalogPage() {
 
   useEffect(() => {
     Promise.allSettled([
-      api.get("/artists").then(r => Array.isArray(r.data) ? r.data.length : 0).catch(() => 0),
-      api.get("/releases").then(r => Array.isArray(r.data) ? r.data.length : 0).catch(() => 0),
-      api.get("/tracks").then(r => Array.isArray(r.data) ? r.data.length : 0).catch(() => 0),
-      api.get("/works").then(r => Array.isArray(r.data) ? r.data.length : 0).catch(() => 0),
-      api.get("/labels").then(r => Array.isArray(r.data) ? r.data.length : 0).catch(() => 0),
-      api.get("/publishers").then(r => Array.isArray(r.data) ? r.data.length : 0).catch(() => 0),
-      api.get("/pros").then(r => Array.isArray(r.data) ? r.data.length : 0).catch(() => 0),
+      api.get("/artists").then(r => r.data?.total ?? 0).catch(() => 0),
+      api.get("/releases").then(r => r.data?.total ?? 0).catch(() => 0),
+      api.get("/tracks").then(r => r.data?.total ?? 0).catch(() => 0),
+      api.get("/works").then(r => r.data?.total ?? 0).catch(() => 0),
+      api.get("/labels").then(r => r.data?.total ?? 0).catch(() => 0),
+      api.get("/publishers").then(r => r.data?.total ?? 0).catch(() => 0),
+      api.get("/pros").then(r => r.data?.total ?? 0).catch(() => 0),
     ]).then((results) => {
       const keys = ["Artists", "Releases", "Tracks", "Works", "Labels", "Publishers", "PROs"];
       const newCounts: Record<string, number> = {};

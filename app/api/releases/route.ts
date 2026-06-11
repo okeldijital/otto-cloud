@@ -63,12 +63,15 @@ export async function GET(req: Request) {
     const skip = parseInt(searchParams.get("skip") || "0");
     const limit = parseInt(searchParams.get("limit") || "100");
 
-    const releases = await prisma.releases.findMany({
-      where: { organization_id: orgId, is_deleted: false },
-      skip,
-      take: limit,
-      orderBy: { created_at: "desc" },
-    });
+    const [releases, total] = await Promise.all([
+      prisma.releases.findMany({
+        where: { organization_id: orgId, is_deleted: false },
+        skip,
+        take: limit,
+        orderBy: { created_at: "desc" },
+      }),
+      prisma.releases.count({ where: { organization_id: orgId, is_deleted: false } }),
+    ]);
 
     const enriched = await Promise.all(
       releases.map(async (r) => {
@@ -99,7 +102,7 @@ export async function GET(req: Request) {
       })
     );
 
-    return NextResponse.json(enriched);
+    return NextResponse.json({ total, items: enriched });
   } catch (err: any) {
     console.error("[GET /api/releases]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

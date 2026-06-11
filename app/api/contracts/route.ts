@@ -124,16 +124,19 @@ export async function GET(req: Request) {
     const limit = parseInt(searchParams.get("limit") || "100");
     const skip = parseInt(searchParams.get("skip") || "0");
 
-    const contracts = await prisma.contracts.findMany({
-      where: { organization_id: orgId },
-      skip,
-      take: limit,
-      orderBy: { created_at: "desc" },
-      include: {
-        contract_parties: true,
-        contract_documents: true,
-      },
-    });
+    const [contracts, total] = await Promise.all([
+      prisma.contracts.findMany({
+        where: { organization_id: orgId },
+        skip,
+        take: limit,
+        orderBy: { created_at: "desc" },
+        include: {
+          contract_parties: true,
+          contract_documents: true,
+        },
+      }),
+      prisma.contracts.count({ where: { organization_id: orgId } }),
+    ]);
 
     const withCounts = contracts.map((c) => ({
       ...c,
@@ -148,7 +151,7 @@ export async function GET(req: Request) {
       }),
     }));
 
-    return NextResponse.json(withCounts);
+    return NextResponse.json({ total, items: withCounts });
   } catch (err: any) {
     console.error("[GET /api/contracts]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

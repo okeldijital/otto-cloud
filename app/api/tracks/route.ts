@@ -39,19 +39,22 @@ export async function GET(req: Request) {
           }
         : {};
 
-      const items = await prisma.tracks.findMany({
-        where,
-        take: limit,
-        skip: offset,
-        include: { track_releases: true },
-      });
+      const [items, total] = await Promise.all([
+        prisma.tracks.findMany({
+          where,
+          take: limit,
+          skip: offset,
+          include: { track_releases: true },
+        }),
+        prisma.tracks.count({ where }),
+      ]);
 
       return NextResponse.json({
         items: items.map((t) => ({
           ...t,
           secondary_release_ids: t.track_releases.map((tr) => tr.release_id),
         })),
-        total: items.length,
+        total,
       });
     }
 
@@ -73,18 +76,22 @@ export async function GET(req: Request) {
     const skip = parseInt(searchParams.get("skip") || "0");
     const limit = parseInt(searchParams.get("limit") || "100");
 
-    const tracks = await prisma.tracks.findMany({
-      skip,
-      take: limit,
-      include: { track_releases: true },
-    });
+    const [tracks, total] = await Promise.all([
+      prisma.tracks.findMany({
+        skip,
+        take: limit,
+        include: { track_releases: true },
+      }),
+      prisma.tracks.count(),
+    ]);
 
-    return NextResponse.json(
-      tracks.map((t) => ({
+    return NextResponse.json({
+      total,
+      items: tracks.map((t) => ({
         ...t,
         secondary_release_ids: t.track_releases.map((tr) => tr.release_id),
-      }))
-    );
+      })),
+    });
   } catch (err: any) {
     console.error("[GET /api/tracks]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

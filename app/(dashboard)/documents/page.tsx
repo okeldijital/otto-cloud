@@ -1,13 +1,10 @@
 "use client";
 
-import PageHeader from "@/components/ui/PageHeader";
-import Card from "@/components/ui/Card";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
-export default function DocumentsPage() {
-  return (
-    <div className="space-y-6">
-      <PageHeader title="Documents" subtitle="Document management" />
-      <Card title="Coming Soon" subtitle="Document management is under development." />
-    </div>
-  );
+export default function DocumentsRedirectPage() {
+  const router = useRouter();
+  useEffect(() => { router.replace("/office/documents"); }, [router]);
+  return null;
 }

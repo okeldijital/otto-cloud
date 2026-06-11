@@ -22,14 +22,17 @@ export async function GET(req: Request) {
     const limit = parseInt(searchParams.get("limit") || "100");
     const orgId = (session.user as any).organization_id;
 
-    const works = await prisma.works.findMany({
-      where: { organization_id: orgId, is_deleted: false },
-      skip,
-      take: limit,
-      orderBy: { created_at: "desc" },
-    });
+    const [works, total] = await Promise.all([
+      prisma.works.findMany({
+        where: { organization_id: orgId, is_deleted: false },
+        skip,
+        take: limit,
+        orderBy: { created_at: "desc" },
+      }),
+      prisma.works.count({ where: { organization_id: orgId, is_deleted: false } }),
+    ]);
 
-    return NextResponse.json(works);
+    return NextResponse.json({ total, items: works });
   } catch (err: any) {
     console.error("[GET /api/works]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

@@ -157,14 +157,17 @@ export async function GET(req: Request) {
     const where: any = { organization_id: orgId };
     if (kind) where.artist_kind = kind.toLowerCase();
 
-    const artists = await prisma.artists.findMany({
-      where,
-      skip,
-      take: limit,
-      include: includeMemberships,
-    });
+    const [artists, total] = await Promise.all([
+      prisma.artists.findMany({
+        where,
+        skip,
+        take: limit,
+        include: includeMemberships,
+      }),
+      prisma.artists.count({ where }),
+    ]);
 
-    return NextResponse.json(artists.map(serializeArtist));
+    return NextResponse.json({ total, items: artists.map(serializeArtist) });
   } catch (err: any) {
     console.error("[GET /api/artists]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

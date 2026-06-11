@@ -6,7 +6,7 @@ import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import api from "@/lib/api";
-import { ChevronLeft, Disc, Music, User, Calendar, Tag, FileText, Edit, Trash2, ExternalLink } from "lucide-react";
+import { ChevronLeft, Disc, Music, User, Calendar, Tag, FileText, Edit, Trash2, ExternalLink, Upload, Loader } from "lucide-react";
 
 function formatDuration(d: string | null): string {
   if (!d) return "";
@@ -30,6 +30,30 @@ export default function ReleaseDetailPage() {
   const [artists, setArtists] = useState<any[]>([]);
   const [distributors, setDistributors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+
+  const handleArtworkUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("release_id", id);
+      const { data } = await api.post("/releases/upload", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      if (data?.url) {
+        await api.put(`/releases?id=${id}`, { cover_art_url: data.url });
+        setRelease((prev: any) => ({ ...prev, cover_art_url: data.url }));
+      }
+    } catch (err) {
+      console.error("Upload failed:", err);
+      alert("Failed to upload artwork");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -83,14 +107,22 @@ export default function ReleaseDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <div className="lg:col-span-3 space-y-6">
           <div style={{ display: "flex", gap: "2rem", flexWrap: "wrap" }}>
-            <div style={{ width: 240, height: 240, flexShrink: 0, borderRadius: 16, overflow: "hidden", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}>
-              {release.cover_art_url ? (
+            <div style={{ width: 240, height: 240, flexShrink: 0, borderRadius: 16, overflow: "hidden", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", position: "relative" }} className="group">
+              {uploading ? (
+                <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#94a3b8" }}>
+                  <Loader size={32} className="animate-spin" />
+                </div>
+              ) : release.cover_art_url ? (
                 <img src={release.cover_art_url} alt={release.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               ) : (
                 <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#94a3b8" }}>
                   <Disc size={64} />
                 </div>
               )}
+              <label style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)", opacity: 0, cursor: "pointer", transition: "opacity 0.2s" }} className="group-hover:opacity-100">
+                <Upload size={24} className="text-white" />
+                <input type="file" accept="image/*" style={{ display: "none" }} onChange={handleArtworkUpload} />
+              </label>
             </div>
             <div className="flex-1 min-w-[200px]">
               <div className="flex items-center gap-2 mb-3">

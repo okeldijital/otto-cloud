@@ -1,13 +1,10 @@
 "use client";
 
-import PageHeader from "@/components/ui/PageHeader";
-import Card from "@/components/ui/Card";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
-export default function NotesPage() {
-  return (
-    <div className="space-y-6">
-      <PageHeader title="Notes" subtitle="Internal notes and reminders" />
-      <Card title="Coming Soon" subtitle="Notes management is under development." />
-    </div>
-  );
+export default function NotesRedirectPage() {
+  const router = useRouter();
+  useEffect(() => { router.replace("/office/notes"); }, [router]);
+  return null;
 }

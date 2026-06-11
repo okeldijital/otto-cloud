@@ -35,8 +35,11 @@ export async function GET(req: Request) {
     const skip = parseInt(searchParams.get("skip") || "0");
     const limit = parseInt(searchParams.get("limit") || "100");
 
-    const labels = await prisma.labels.findMany({ skip, take: limit, orderBy: { name: "asc" } });
-    return NextResponse.json(labels);
+    const [labels, total] = await Promise.all([
+      prisma.labels.findMany({ skip, take: limit, orderBy: { name: "asc" } }),
+      prisma.labels.count(),
+    ]);
+    return NextResponse.json({ total, items: labels });
   } catch (err: any) {
     console.error("[GET /api/labels]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
