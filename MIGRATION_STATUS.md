@@ -258,24 +258,98 @@ The Prisma `royalties` model already had full column parity with the desktop mod
 
 ---
 
+## Milestone 8: AI Platform Restoration
+
+**Status:** ✅ COMPLETE
+
+### Database Parity
+
+All 16 AI models were already defined in Prisma schema — no schema changes required.
+
+| Model | Desktop | Cloud | Status |
+|---|---|---|---|
+| `ai_sessions` | organization_id, user_id, messages, timestamps | Same | ✅ COMPLETE |
+| `ai_messages` | session_id, role, content, timestamps | Same | ✅ COMPLETE |
+| `ai_audit_log` | action, tool, request_hash, org_id, user_id, timestamps | Same | ✅ COMPLETE |
+| `ai_contract_resolution_runs` | org_id, user_id, contract_hash, versions, links, timestamps | Same | ✅ COMPLETE |
+| `ai_contract_resolution_links` | run_id, entity_type, entity_id, action, confidence, rationale | Same | ✅ COMPLETE |
+| `ai_contract_attach_runs` | org_id, user_id, contract_id, release_id, request_hash, links | Same | ✅ COMPLETE |
+| `ai_contract_attach_links` | run_id, action_type, target_name, entity_id, confidence, details | Same | ✅ COMPLETE |
+| `ai_contract_documents` | org_id, release_id, file_path, file_hash, uploaded_by, work_links | Same | ✅ COMPLETE |
+| `ai_contract_drafts` | org_id, created_by, file metadata, extraction/suggested JSON | Same | ✅ COMPLETE |
+| `ai_contract_work_links` | contract_document_id, work_id, confidence, match_strategy | Same | ✅ COMPLETE |
+| `ai_core_write_proposal_runs` | org_id, user_id, contract_id, release_id, versions, items, events | Same | ✅ COMPLETE |
+| `ai_core_write_proposal_items` | run_id, entity_type, entity_id, operation, patch, requires_review | Same | ✅ COMPLETE |
+| `ai_core_write_apply_events` | run_id, user_id, status, applied/created/conflict counts, details | Same | ✅ COMPLETE |
+| `ai_release_integration_runs` | org_id, user_id, release_id, contract_id, planner_version, links | Same | ✅ COMPLETE |
+| `ai_release_integration_links` | run_id, entity_type, entity_id, display_name, action, confidence, rationale | Same | ✅ COMPLETE |
+| `ai_royalty_simulation_runs` | org_id, user_id, release_id, integrity flags, splits_total, version | Same | ✅ COMPLETE |
+
+### API Parity
+
+| Endpoint | Status |
+|---|---|
+| `GET/POST /api/ai` — Health, sessions list, chat (create/continue session), archive | ✅ |
+| `GET/POST /api/ai/analytics` — Overview summary, contract analytics (by status/type), catalog analytics | ✅ |
+| `GET/POST /api/ai/contracts` — Extract runs, resolve links (create/attach), link suggestions, track map plan, intake wizard | ✅ |
+| `GET/POST /api/ai/core-write` — Health, propose runs with items, apply proposals with events | ✅ |
+| `GET/POST /api/ai/release-integration` — Health, plan runs (auto-detect artists/tracks), attach links, ingest | ✅ |
+| `GET/POST /api/ai/royalty` — Health, simulate with integrity checks, persist runs idempotently | ✅ |
+
+### Frontend Parity
+
+| Page | Status |
+|---|---|
+| AI Dashboard (`/ai`) — Health bar, chat interface (create/resume sessions), tool cards grid, quick actions | ✅ |
+| AI Analytics (`/ai/analytics`) — Summary KPI cards (contracts/artists/releases/tracks/works/sessions/runs), contract status breakdown, by-status/by-type tables, catalog analytics, refresh | ✅ |
+| AI Royalty Simulation (`/ai/royalties`) — Release search/dropdown, simulation params, result table with integrity/warnings, manual split fallback | ✅ |
+| AI Contract Extraction (`/ai/contracts`) — Extract form (contract hash + versions), runs list table, resolve links with entity detail, link suggestions | ✅ |
+| AI Core Write (`/ai/core-write`) — Health/version, propose form (contract/release/doc IDs), proposals list, proposal detail with items/events, apply action | ✅ |
+| AI Release Integration (`/ai/release-integration`) — Health, plan form (release/contract/planner), runs list table, attach entities form | ✅ |
+
+### Business Rules
+
+| Rule | Status |
+|---|---|
+| Proposal → Review → Apply → Audit workflow | ✅ |
+| AI assists, does not modify production data silently | ✅ |
+| Apply events record all changes with status/applied/conflict counts | ✅ |
+| Royalty simulation includes integrity checks (over/under 100%) | ✅ |
+| Idempotent persistence for royalty simulation runs | ✅ |
+| Chat sessions are organized, auditable, and isolated per org | ✅ |
+| All AI operations are traceable via ai_audit_log structure | ✅ |
+
+### Integration
+
+| Entity | Status |
+|---|---|
+| Artists — Lookup in link suggestions, analytics counts, release integration | ✅ |
+| Works — AI contract work links, analytics, catalog queries | ✅ |
+| Tracks — Release integration auto-detect, analytics | ✅ |
+| Releases — Royalty simulation, release integration planner, analytics | ✅ |
+| Contracts — Core write proposals, contract extraction runs, analytics | ✅ |
+| Royalties — Simulation results, integrity validation against splits | ✅ |
+
+---
+
 ## Overall Progress
 
 | Metric | Value |
 |---|---|
-| Database Parity | ~100% (all core entity models verified — Royalty now confirmed) |
-| API Parity | ~55% (contracts + network CRM + office suite + royalties restored) |
-| Frontend Parity | ~85% (44 of ~50 pages real; all 3 royalty pages built) |
-| Detail Page Parity | 7/7 completed (royalty detail added) |
+| Database Parity | ~100% (all core + AI entity models verified) |
+| API Parity | ~75% (contracts + network CRM + office suite + royalties + AI platform restored) |
+| Frontend Parity | ~95% (49 of ~50 pages real; all 6 AI pages built) |
+| Detail Page Parity | 7/7 completed |
 
 ## Outstanding Gaps (Critical Path)
 
-1. AI contract extraction pipeline (wizard step depends on AI services not yet migrated)
-2. Remaining placeholders (~6 pages need real implementations)
-3. `individuals.organization_id` — Prisma field is Int but desktop uses SafeUuid (UUID); non-blocking for current workflow
+1. ~1 remaining placeholder page needs real implementation
+2. `individuals.organization_id` — Prisma field is Int but desktop uses SafeUuid (UUID); non-blocking for current workflow
+3. Actual LLM/ML service integration (AI endpoints exist but use deterministic logic — real AI extraction requires external AI service)
 
 ## Next Milestone
 
-TBD — AI pipeline integration or remaining placeholder pages
+TBD — Final cleanup, remaining placeholder, or Vercel deployment readiness
 
 ### Royalty Restoration Report
 
@@ -286,3 +360,15 @@ TBD — AI pipeline integration or remaining placeholder pages
 | Royalty UI | ✅ COMPLETE — Dashboard list, detail view, AI simulation page |
 | Split Validation | ✅ COMPLETE — Contract split vs royalty amount comparison |
 | Reporting Hooks | ✅ COMPLETE — Summary aggregation (by source, by artist) with cumulative totals |
+
+### AI Restoration Report
+
+| Component | Status |
+|---|---|
+| AI Sessions | ✅ COMPLETE — Create, resume, list, archive, chat message storage |
+| AI Messages | ✅ COMPLETE — Role-based messages with session association |
+| Contract AI | ✅ COMPLETE — Extraction runs, resolution links, link suggestions, intake wizard, track map plan |
+| Core Write | ✅ COMPLETE — Proposal generation with items, apply with events, health |
+| Release Integration | ✅ COMPLETE — Integration plan with auto-detected entities, attach links, ingest |
+| Track Mapping | ✅ COMPLETE — Track map plan endpoint via contract AI routes |
+| Royalty Simulation | ✅ COMPLETE — Simulation with integrity checks, idempotent persistence, health |
