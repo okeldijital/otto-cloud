@@ -475,7 +475,7 @@ model artist_memberships {
 model artists {
   id                                                       Int                  @id @default(autoincrement())
   artist_id                                                String?              @unique(map: "ix_artists_artist_id") @db.VarChar(50)
-  name                                                     String               @db.VarChar(255)
+  name                                                     String               @unique(map: "ix_artists_name_unique") @db.VarChar(255)
   aka                                                      String?              @db.VarChar(255)
   id_number                                                String?              @db.VarChar(100)
   ipi_number                                               String?              @db.VarChar(50)
@@ -485,6 +485,7 @@ model artists {
   banking_details                                          Json?                @db.Json
   profile_image_url                                        String?              @db.VarChar(500)
   streaming_links                                          Json?                @db.Json
+  streaming_link                                           String?              @db.VarChar(500)
   social_media                                             Json?                @db.Json
   label_id                                                 Int?
   publisher_id                                             Int?
@@ -1028,6 +1029,7 @@ model releases {
   release_date                  DateTime?                       @db.Date
   release_type                  String?                         @db.VarChar(50)
   cover_art_url                 String?                         @db.VarChar(500)
+  streaming_link                String?                         @db.VarChar(500)
   label_id                      Int?
   artist_id                     Int?
   distributor_id                Int?
