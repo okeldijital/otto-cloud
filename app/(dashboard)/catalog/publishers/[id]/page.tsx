@@ -11,11 +11,7 @@ export default function PublisherDetailPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get(`/publishers`).then(r => {
-      const items = Array.isArray(r.data) ? r.data : [];
-      const found = items.find((p: any) => String(p.id) === id);
-      setPublisher(found || null);
-    }).catch(() => {}).finally(() => setLoading(false));
+    api.get(`/publishers?id=${id}`).then(r => setPublisher(r.data)).catch(() => {}).finally(() => setLoading(false));
   }, [id]);
 
   if (loading) return <div className="p-12 text-center text-text-secondary">Loading...</div>;

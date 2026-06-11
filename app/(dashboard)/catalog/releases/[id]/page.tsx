@@ -58,7 +58,7 @@ export default function ReleaseDetailPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const { data: releaseData } = await api.get(`/releases?id=${id}&relation=tracks`);
+        const { data: releaseData } = await api.get(`/releases?id=${id}`);
         setRelease(releaseData);
         const [labelsRes, artistsRes, orgsRes] = await Promise.all([
           api.get(`/labels`),
