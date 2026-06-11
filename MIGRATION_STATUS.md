@@ -215,21 +215,74 @@ All 7 Office models already had full column parity with desktop SQLAlchemy model
 
 ---
 
+## Milestone 7: Royalty Management Restoration
+
+**Status:** ✅ COMPLETE
+
+### Database Parity
+
+| Model | Desktop Columns | Cloud Columns | Status |
+|---|---|---|---|
+| `royalties` | id, royalty_id, artist_id, work_id, track_id, source, amount (Numeric 15,2), currency, statement_date, fees (Numeric 15,2), advances (Numeric 15,2), created_at, updated_at | id, royalty_id, artist_id, work_id, track_id, source, amount (Decimal 15,2), currency, statement_date, fees (Decimal 15,2), advances (Decimal 15,2), created_at, updated_at | ✅ COMPLETE |
+
+The Prisma `royalties` model already had full column parity with the desktop model — no schema changes were required. Monetary values use `Decimal(15,2)` for financial precision.
+
+### API Parity
+
+| Endpoint | Status |
+|---|---|
+| `GET /api/royalties` — List with filters (artist_id, work_id, track_id, source, date range, search) | ✅ |
+| `GET /api/royalties?id=N` — Single with artist/track/work relations | ✅ |
+| `GET ?action=summary` — Aggregated totals (total_amount, total_fees, total_advances, net_amount, by_source, by_artist, count) | ✅ |
+| `GET ?action=validate-splits&contract_id=N` — Contract split validation against royalty data | ✅ |
+| `POST /api/royalties` — Create with auto-generated royalty_id | ✅ |
+| `PUT /api/royalties?id=N` — Update any fields | ✅ |
+| `DELETE /api/royalties?id=N` — Hard delete | ✅ |
+
+### Frontend Parity
+
+| Page | Status |
+|---|---|
+| Royalty Dashboard (`/royalties`) — Summary cards (Total/Fees/Net), source/artist/work/track filters, sortable table, create/edit modal with EntityForm, Split Validation section with contract ID lookup, delete with confirmation | ✅ |
+| Royalty Detail (`/royalties/[id]`) — Back navigation, Card grid with all fields + linked artist/work/track, inline edit modal, delete with confirmation, 404 handling | ✅ |
+| AI Royalty Simulation (`/ai/royalties`) — Release search/dropdown, simulation params form, result table with integrity checks/warnings, manual split entry fallback, graceful 404 handling | ✅ |
+
+### Business Rules
+
+| Rule | Status |
+|---|---|
+| Split Validation — Loads contract split_groups + splits, compares percentages against matching royalty amounts, reports discrepancies | ✅ |
+| By-Entity Aggregation — Royalties groupable by source/artist for reporting | ✅ |
+| Financial Precision — Decimal(15,2) for monetary values, no floating point | ✅ |
+| Referential Integrity — FK relations to artists/works/tracks preserved | ✅ |
+
+---
+
 ## Overall Progress
 
 | Metric | Value |
 |---|---|
-| Database Parity | ~100% (all core entity models verified — Office Suite now confirmed complete) |
-| API Parity | ~50% (contracts + network CRM + office suite restored) |
-| Frontend Parity | ~80% (41 of ~50 pages real; all 6 office pages built) |
-| Detail Page Parity | 6/6 completed (was 4/4, now +2: orgs + individuals) |
+| Database Parity | ~100% (all core entity models verified — Royalty now confirmed) |
+| API Parity | ~55% (contracts + network CRM + office suite + royalties restored) |
+| Frontend Parity | ~85% (44 of ~50 pages real; all 3 royalty pages built) |
+| Detail Page Parity | 7/7 completed (royalty detail added) |
 
 ## Outstanding Gaps (Critical Path)
 
 1. AI contract extraction pipeline (wizard step depends on AI services not yet migrated)
-2. Remaining placeholders (~9 pages need real implementations)
+2. Remaining placeholders (~6 pages need real implementations)
 3. `individuals.organization_id` — Prisma field is Int but desktop uses SafeUuid (UUID); non-blocking for current workflow
 
 ## Next Milestone
 
 TBD — AI pipeline integration or remaining placeholder pages
+
+### Royalty Restoration Report
+
+| Component | Status |
+|---|---|
+| Royalty Model | ✅ COMPLETE — Full column parity, no schema changes needed |
+| Royalty APIs | ✅ COMPLETE — CRUD + summary + split validation + per-entity queries |
+| Royalty UI | ✅ COMPLETE — Dashboard list, detail view, AI simulation page |
+| Split Validation | ✅ COMPLETE — Contract split vs royalty amount comparison |
+| Reporting Hooks | ✅ COMPLETE — Summary aggregation (by source, by artist) with cumulative totals |
