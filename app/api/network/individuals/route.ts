@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getOrgIds } from "@/lib/org";
 
 export async function GET(req: Request) {
   try {
@@ -9,12 +10,13 @@ export async function GET(req: Request) {
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
+    const { intOrgId } = getOrgIds(session);
     const idStr = searchParams.get("id");
 
     if (idStr) {
       const id = parseInt(idStr);
-      const individual = await prisma.individuals.findUnique({
-        where: { id },
+      const individual = await prisma.individuals.findFirst({
+        where: { id, organization_id: intOrgId },
         include: {
           individual_organizations: {
             include: { organizations: true },
@@ -28,6 +30,7 @@ export async function GET(req: Request) {
     const skip = parseInt(searchParams.get("skip") || "0");
     const limit = parseInt(searchParams.get("limit") || "200");
     const individuals = await prisma.individuals.findMany({
+      where: { organization_id: intOrgId },
       skip,
       take: limit,
       orderBy: [{ last_name: "asc" }, { first_name: "asc" }],
@@ -49,13 +52,11 @@ export async function POST(req: Request) {
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+    const { intOrgId } = getOrgIds(session);
     const body = await req.json();
     if (!body.first_name && !body.last_name) {
       return NextResponse.json({ error: "First or last name is required" }, { status: 400 });
     }
-
-    const orgIdStr = (session.user as any).organization_id;
-    const orgId = typeof orgIdStr === "string" ? parseInt(orgIdStr) || 1 : orgIdStr;
 
     const individual = await prisma.individuals.create({
       data: {
@@ -66,7 +67,7 @@ export async function POST(req: Request) {
         role: body.role || null,
         relationship_strength: body.relationship_strength || "Regular",
         image_url: body.image_url || null,
-        organization_id: orgId,
+        organization_id: intOrgId,
       },
     });
 
@@ -91,11 +92,12 @@ export async function PUT(req: Request) {
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
+    const { intOrgId } = getOrgIds(session);
     const idStr = searchParams.get("id");
     if (!idStr) return NextResponse.json({ error: "Missing id" }, { status: 400 });
     const id = parseInt(idStr);
 
-    const existing = await prisma.individuals.findUnique({ where: { id } });
+    const existing = await prisma.individuals.findFirst({ where: { id, organization_id: intOrgId } });
     if (!existing) return NextResponse.json({ error: "Individual not found" }, { status: 404 });
 
     const body = await req.json();
@@ -134,11 +136,12 @@ export async function DELETE(req: Request) {
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
+    const { intOrgId } = getOrgIds(session);
     const idStr = searchParams.get("id");
     if (!idStr) return NextResponse.json({ error: "Missing id" }, { status: 400 });
     const id = parseInt(idStr);
 
-    const existing = await prisma.individuals.findUnique({ where: { id } });
+    const existing = await prisma.individuals.findFirst({ where: { id, organization_id: intOrgId } });
     if (!existing) return NextResponse.json({ error: "Individual not found" }, { status: 404 });
 
     await prisma.individual_organizations.deleteMany({ where: { individual_id: id } });

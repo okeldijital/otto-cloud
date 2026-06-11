@@ -10,8 +10,13 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const userId = parseInt((session.user as any).id);
+    if (isNaN(userId)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const user = await prisma.user.findUnique({
-      where: { email: session.user.email as string },
+      where: { id: userId },
     });
 
     if (!user) {

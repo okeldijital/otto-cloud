@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getOrgIds } from "@/lib/org";
 
 export async function GET(req: Request) {
   try {
@@ -9,13 +10,13 @@ export async function GET(req: Request) {
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
-    const orgIdStr = (session.user as any).organization_id;
+    const { uuidOrgId } = getOrgIds(session);
 
     const idStr = searchParams.get("id");
     if (idStr) {
       const id = parseInt(idStr);
       const note = await prisma.notes.findFirst({
-        where: { id, organization_id: orgIdStr, is_deleted: false },
+        where: { id, organization_id: uuidOrgId, is_deleted: false },
       });
       if (!note) return NextResponse.json({ error: "Note not found" }, { status: 404 });
       return NextResponse.json(note);
@@ -29,7 +30,7 @@ export async function GET(req: Request) {
     const limit = parseInt(searchParams.get("limit") || "100");
     const skip = parseInt(searchParams.get("skip") || "0");
 
-    const where: any = { organization_id: orgIdStr, is_deleted: false };
+    const where: any = { organization_id: uuidOrgId, is_deleted: false };
     if (category) where.category = category;
     if (pinned === "true") where.pinned = true;
     if (pinned === "false") where.pinned = false;
@@ -64,7 +65,7 @@ export async function POST(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const action = searchParams.get("action");
-    const orgIdStr = (session.user as any).organization_id;
+    const { uuidOrgId } = getOrgIds(session);
     const userId = parseInt((session.user as any).id) || 1;
 
     if (action === "create") {
@@ -81,7 +82,7 @@ export async function POST(req: Request) {
           related_entity_type: body.related_entity_type || undefined,
           related_entity_id: body.related_entity_id ? parseInt(body.related_entity_id) : undefined,
           created_by: userId,
-          organization_id: orgIdStr,
+          organization_id: uuidOrgId,
           is_deleted: false,
         },
       });
@@ -102,7 +103,7 @@ export async function POST(req: Request) {
         related_entity_type: body.related_entity_type || undefined,
         related_entity_id: body.related_entity_id ? parseInt(body.related_entity_id) : undefined,
         created_by: userId,
-        organization_id: orgIdStr,
+        organization_id: uuidOrgId,
         is_deleted: false,
       },
     });
@@ -119,11 +120,12 @@ export async function PUT(req: Request) {
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
+    const { uuidOrgId } = getOrgIds(session);
     const idStr = searchParams.get("id");
     if (!idStr) return NextResponse.json({ error: "Missing note ID" }, { status: 400 });
     const id = parseInt(idStr);
 
-    const existing = await prisma.notes.findUnique({ where: { id } });
+    const existing = await prisma.notes.findFirst({ where: { id, organization_id: uuidOrgId, is_deleted: false } });
     if (!existing) return NextResponse.json({ error: "Note not found" }, { status: 404 });
 
     const body = await req.json();
@@ -155,11 +157,12 @@ export async function DELETE(req: Request) {
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
+    const { uuidOrgId } = getOrgIds(session);
     const idStr = searchParams.get("id");
     if (!idStr) return NextResponse.json({ error: "Missing note ID" }, { status: 400 });
     const id = parseInt(idStr);
 
-    const existing = await prisma.notes.findUnique({ where: { id } });
+    const existing = await prisma.notes.findFirst({ where: { id, organization_id: uuidOrgId, is_deleted: false } });
     if (!existing) return NextResponse.json({ error: "Note not found" }, { status: 404 });
 
     await prisma.notes.update({

@@ -18,10 +18,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
     }
 
+    if (!user.is_active) {
+      return NextResponse.json({ error: "Account is deactivated" }, { status: 403 });
+    }
+
     const isValid = await bcrypt.compare(password, user.hashed_password);
     if (!isValid) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
     }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { last_login: new Date() },
+    });
 
     const { hashed_password, ...userWithoutPassword } = user;
     return NextResponse.json(userWithoutPassword);
