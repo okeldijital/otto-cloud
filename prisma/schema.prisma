@@ -921,9 +921,12 @@ model office_notes {
 model organizations {
   id                       Int                        @id(map: "companies_pkey") @default(autoincrement())
   name                     String                     @db.VarChar(255)
+  display_name             String?                    @db.VarChar(255)
   org_type                 String?                    @db.VarChar(100)
   website                  String?                    @db.VarChar(255)
   address                  String?
+  logo_url                 String?                    @db.VarChar(500)
+  brand_color              String?                    @default("#6366f1") @db.VarChar(7)
   created_at               DateTime?                  @default(now()) @db.Timestamptz(6)
   updated_at               DateTime?                  @db.Timestamptz(6)
   organization_id          Int
@@ -934,6 +937,22 @@ model organizations {
   @@index([name], map: "ix_organizations_name")
   @@index([org_type], map: "ix_organizations_org_type")
   @@index([organization_id], map: "ix_organizations_organization_id")
+}
+
+model sso_providers {
+  id              Int        @id @default(autoincrement())
+  organization_id String     @db.Uuid
+  provider        String     @db.VarChar(50)
+  client_id       String     @db.VarChar(255)
+  client_secret   String     @db.VarChar(500)
+  issuer_url      String?    @db.VarChar(500)
+  metadata_url    String?    @db.VarChar(500)
+  is_active       Boolean    @default(true)
+  created_at      DateTime?  @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime?  @db.Timestamptz(6)
+
+  @@unique([organization_id, provider], map: "uq_sso_providers_org_provider")
+  @@index([organization_id], map: "ix_sso_providers_organization_id")
 }
 
 model plans {
