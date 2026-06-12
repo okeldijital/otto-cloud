@@ -1,0 +1,242 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { BookOpen, Key, Shield, Terminal, Copy, Check } from "lucide-react";
+import PageHeader from "@/components/ui/PageHeader";
+import Card from "@/components/ui/Card";
+import Badge from "@/components/ui/Badge";
+import Button from "@/components/ui/Button";
+import api from "@/lib/api";
+
+const ENDPOINTS = [
+  {
+    method: "GET",
+    path: "/api/v1",
+    description: "API root — returns available endpoints and version info",
+    scopes: [],
+  },
+  {
+    method: "GET",
+    path: "/api/v1/catalog?entity={type}",
+    description: "List catalog entities. Supported types: artists, releases, tracks, works, labels",
+    scopes: ["catalog:read"],
+    params: [
+      { name: "entity", type: "string", required: true, description: "Entity type" },
+      { name: "limit", type: "int", default: "50", description: "Max results (1-100)" },
+      { name: "offset", type: "int", default: "0", description: "Pagination offset" },
+    ],
+    example: `curl -H "Authorization: Bearer otto_..." "/api/v1/catalog?entity=artists&limit=10"`,
+  },
+  {
+    method: "GET",
+    path: "/api/v1/royalties",
+    description: "List royalties with summary grouped by source",
+    scopes: ["royalties:read"],
+    params: [
+      { name: "source", type: "string", required: false, description: "Filter by source" },
+      { name: "limit", type: "int", default: "50", description: "Max results (1-100)" },
+      { name: "offset", type: "int", default: "0", description: "Pagination offset" },
+    ],
+    example: `curl -H "Authorization: Bearer otto_..." "/api/v1/royalties?source=Spotify&limit=5"`,
+  },
+  {
+    method: "GET",
+    path: "/api/v1/contracts",
+    description: "List contracts with party/document counts",
+    scopes: ["contracts:read"],
+    params: [
+      { name: "status", type: "string", required: false, description: "Filter by status (e.g. Active, Draft)" },
+      { name: "limit", type: "int", default: "50", description: "Max results (1-100)" },
+      { name: "offset", type: "int", default: "0", description: "Pagination offset" },
+    ],
+    example: `curl -H "Authorization: Bearer otto_..." "/api/v1/contracts?status=Active"`,
+  },
+];
+
+const METHOD_COLORS: Record<string, string> = {
+  GET: "text-green-400",
+  POST: "text-blue-400",
+  PUT: "text-yellow-400",
+  DELETE: "text-red-400",
+};
+
+export default function DevelopersPage() {
+  const [copied, setCopied] = useState<string | null>(null);
+
+  const copyExample = async (key: string, text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(key);
+      setTimeout(() => setCopied(null), 2000);
+    } catch {}
+  };
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Developer Portal"
+        subtitle="API documentation and developer resources"
+        actions={
+          <Button variant="secondary" size="sm" onClick={() => window.open("/settings", "_self")}>
+            <Key size={14} /> Manage API Keys
+          </Button>
+        }
+      />
+
+      <Card>
+        <div className="flex items-start gap-4">
+          <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center shrink-0">
+            <BookOpen size={20} className="text-accent" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-sm font-bold text-white">OTTO Cloud API v1</h3>
+            <p className="text-xs text-text-secondary mt-1">
+              The OTTO Cloud API provides programmatic access to your catalog, royalties, and contracts.
+              All requests require authentication via API key sent as a Bearer token.
+            </p>
+          </div>
+        </div>
+      </Card>
+
+      {/* Authentication */}
+      <Card title="Authentication">
+        <div className="space-y-3">
+          <p className="text-sm text-text-primary">
+            All API requests require an API key. Generate one from the{" "}
+            <a href="/settings" className="text-accent hover:underline">Settings → API Keys</a> page.
+          </p>
+          <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-text-secondary font-bold uppercase tracking-wider">Request Header</span>
+            </div>
+            <code className="text-sm font-mono text-white">Authorization: Bearer otto_&lt;your_api_key&gt;</code>
+          </div>
+          <div className="flex items-start gap-2 bg-warning/10 border border-warning/20 rounded-xl p-3">
+            <Shield size={14} className="text-warning shrink-0 mt-0.5" />
+            <p className="text-xs text-text-secondary">
+              API keys are scoped to specific resources. Choose the minimum scope needed for your integration.
+            </p>
+          </div>
+        </div>
+      </Card>
+
+      {/* Rate Limiting */}
+      <Card title="Rate Limiting">
+        <div className="space-y-3">
+          <p className="text-sm text-text-primary">
+            Rate limiting is applied per API key. Default limit is <strong>100 requests per minute</strong>.
+            Limits are configurable per key. Rate limit headers are returned with every response:
+          </p>
+          <div className="bg-white/5 border border-white/10 rounded-xl p-3 space-y-1">
+            <code className="text-xs font-mono text-text-secondary block">X-RateLimit-Limit: 100</code>
+            <code className="text-xs font-mono text-text-secondary block">X-RateLimit-Remaining: 99</code>
+            <code className="text-xs font-mono text-text-secondary block">X-RateLimit-Reset: 1718200000</code>
+          </div>
+          <p className="text-xs text-text-secondary">
+            When exceeded, returns <Badge variant="critical" size="sm">429 Too Many Requests</Badge>
+          </p>
+        </div>
+      </Card>
+
+      {/* Endpoints */}
+      <Card title="Endpoints">
+        <div className="space-y-6">
+          {ENDPOINTS.map((ep, idx) => (
+            <div key={idx} className="border border-white/10 rounded-xl p-4">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <span className={`text-sm font-bold font-mono ${METHOD_COLORS[ep.method]}`}>{ep.method}</span>
+                  <code className="text-sm font-mono text-white">{ep.path}</code>
+                </div>
+                <div className="flex gap-1">
+                  {ep.scopes.map((s) => (
+                    <Badge key={s} variant="neutral" size="sm">{s}</Badge>
+                  ))}
+                </div>
+              </div>
+              <p className="text-sm text-text-secondary mb-3">{ep.description}</p>
+
+              {ep.params && ep.params.length > 0 && (
+                <div className="mb-3">
+                  <h5 className="text-xs text-text-secondary font-bold uppercase tracking-wider mb-2">Parameters</h5>
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="text-left text-xs text-text-secondary border-b border-white/5">
+                          <th className="p-2 font-bold">Name</th>
+                          <th className="p-2 font-bold">Type</th>
+                          <th className="p-2 font-bold">Default</th>
+                          <th className="p-2 font-bold">Description</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {ep.params.map((p) => (
+                          <tr key={p.name} className="border-b border-white/5">
+                            <td className="p-2 text-sm font-mono text-white">
+                              {p.name}
+                              {p.required && <span className="text-danger ml-1">*</span>}
+                            </td>
+                            <td className="p-2 text-sm text-text-secondary">{p.type}</td>
+                            <td className="p-2 text-sm text-text-secondary font-mono">{p.default || "\u2014"}</td>
+                            <td className="p-2 text-sm text-text-secondary">{p.description}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {ep.example && (
+                <div className="relative">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs text-text-secondary font-bold uppercase tracking-wider">Example</span>
+                    <button
+                      className="text-xs text-accent hover:underline flex items-center gap-1"
+                      onClick={() => copyExample(`ex-${idx}`, ep.example)}
+                    >
+                      {copied === `ex-${idx}` ? <Check size={12} /> : <Copy size={12} />}
+                      {copied === `ex-${idx}` ? "Copied" : "Copy"}
+                    </button>
+                  </div>
+                  <pre className="bg-black/30 border border-white/5 rounded-xl p-3 text-sm font-mono text-text-secondary overflow-x-auto">
+                    {ep.example}
+                  </pre>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* Errors */}
+      <Card title="Error Codes">
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="text-left text-xs uppercase tracking-wider text-text-secondary border-b border-white/5">
+                <th className="p-3 font-bold">Status</th>
+                <th className="p-3 font-bold">Code</th>
+                <th className="p-3 font-bold">Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                { status: 401, code: "unauthorized", desc: "Invalid or missing API key" },
+                { status: 403, code: "insufficient_scope", desc: "API key lacks required scope" },
+                { status: 429, code: "rate_limit_exceeded", desc: "Too many requests" },
+                { status: 500, code: "internal_error", desc: "Server error — retry later" },
+              ].map((e) => (
+                <tr key={e.status} className="border-b border-white/5">
+                  <td className="p-3"><Badge variant="critical" size="sm">{e.status}</Badge></td>
+                  <td className="p-3 text-sm font-mono text-white">{e.code}</td>
+                  <td className="p-3 text-sm text-text-secondary">{e.desc}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </div>
+  );
+}

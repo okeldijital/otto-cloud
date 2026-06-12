@@ -48,6 +48,7 @@ model User {
   status_quo_items                       status_quo_items[]
   tasks_tasks_assigned_to_user_idTousers tasks[]                         @relation("tasks_assigned_to_user_idTousers")
   tasks_tasks_created_by_user_idTousers  tasks[]                         @relation("tasks_created_by_user_idTousers")
+  api_keys                               api_keys[]
 
   @@index([id], map: "ix_users_id")
   @@index([organization_id], map: "ix_users_organization_id")
@@ -1168,6 +1169,28 @@ model subscriptions {
 
   @@index([id], map: "ix_subscriptions_id")
   @@index([organization_id], map: "ix_subscriptions_organization_id")
+}
+
+model api_keys {
+  id              Int       @id @default(autoincrement())
+  organization_id String    @db.Uuid
+  name            String    @db.VarChar(255)
+  prefix          String    @db.VarChar(10)
+  key_hash        String    @db.VarChar(128)
+  key_last_four   String    @db.VarChar(4)
+  scopes          String?   @db.VarChar(500)
+  rate_limit      Int?      @default(100)
+  last_used_at    DateTime? @db.Timestamptz(6)
+  expires_at      DateTime? @db.Timestamptz(6)
+  is_active       Boolean   @default(true)
+  created_by      Int
+  created_at      DateTime? @default(now()) @db.Timestamptz(6)
+  revoked_at      DateTime? @db.Timestamptz(6)
+  users           User      @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([prefix, key_hash], map: "uq_api_keys_prefix_hash")
+  @@index([organization_id], map: "ix_api_keys_organization_id")
+  @@index([prefix], map: "ix_api_keys_prefix")
 }
 
 model tasks {
