@@ -1,0 +1,25 @@
+import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+
+export async function GET(req: Request, { params }: { params: Promise<{ runId: string }> }) {
+  const { runId: runIdStr } = await params;
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const orgId = (session.user as any).organization_id;
+    const runId = parseInt(runIdStr);
+
+    const run = await prisma.report_runs.findFirst({
+      where: { id: runId, organization_id: orgId },
+    });
+    if (!run) return NextResponse.json({ error: "Report run not found" }, { status: 404 });
+
+    return NextResponse.json(run);
+  } catch (err: any) {
+    console.error("[GET /api/reports/[runId]]", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}

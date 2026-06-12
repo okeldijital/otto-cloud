@@ -101,9 +101,30 @@ Customer data portability.
 
 ---
 
-## Phase 15 — Reporting Engine
+## Phase 15 — Reporting Engine ✅
 
 Restore and improve reporting for artists, releases, royalties, contracts, tasks. Export support.
+
+### Report Engine ✅
+- `lib/reports.ts` — `ReportEngine` with 6 report definitions:
+  - `catalog_summary` — entity counts across all catalog types
+  - `contracts_audit` — contract completeness, status distribution
+  - `royalties_summary` — totals by source and artist
+  - `tasks_progress` — task status distribution
+  - `status_quo` — active issues by severity
+  - `activity_log` — recent activity history
+
+### API Routes ✅
+- `GET /api/reports` — list run history
+- `POST /api/reports` — run a report, stores result
+- `DELETE /api/reports?id=` — delete a run
+- `GET /api/reports/[runId]/data` — re-execute report and return live data
+- `GET /api/office/reports/runs/[runId]/data` — compatibility endpoint for ReportVisualizer
+
+### UI ✅
+- `/office/reports` page updated — real run history, "Run" buttons per type, view/delete runs
+- Reports page counts dashboard (tasks, events, status-quo) preserved
+- Existing `ReportVisualizer` component wired to the new data endpoint
 
 ---
 
