@@ -238,6 +238,16 @@ const Sidebar = () => {
                         </Link>
                     )}
                     <Link 
+                        href="/systems" 
+                        onClick={handleNav}
+                        className={`flex items-center gap-md px-md py-2 rounded-[12px] transition-all duration-300 group ${
+                            pathname.startsWith('/systems') ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
+                        }`}
+                    >
+                        <HardDrive size={20} className={pathname.startsWith('/systems') ? 'text-accent' : 'text-text-secondary group-hover:text-text-primary'} />
+                        <span className="text-sm font-medium">Systems</span>
+                    </Link>
+                    <Link 
                         href="/settings" 
                         onClick={handleNav}
                         className={`flex items-center gap-md px-md py-2 rounded-[12px] transition-all duration-300 group ${
