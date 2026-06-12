@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Brain, MessageSquare, Send, Cpu, BarChart3, DollarSign,
-  FileText, PenTool, RefreshCw, AlertCircle, Loader2
+  FileText, PenTool, RefreshCw, AlertCircle, Loader2, Shield
 } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import Card from "@/components/ui/Card";
@@ -17,6 +17,8 @@ const TOOL_LINKS = {
   analytics: "/ai/analytics",
   royalties: "/ai/royalties",
   contracts: "/ai/contracts",
+  "ai_audit": "/ai/audit",
+  "ai_draft": "/ai/draft",
   "core-write": "/ai/core-write",
   "release-integration": "/ai/release-integration",
 };
@@ -268,18 +270,15 @@ export default function AIDashboardPage() {
 
       {/* Quick Actions */}
       <Card title="Quick Actions">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <Button variant="secondary" size="sm" fullWidth onClick={() => router.push("/ai/audit")}>
+            <Shield size={14} /> Run Audit
+          </Button>
+          <Button variant="secondary" size="sm" fullWidth onClick={() => router.push("/ai/draft")}>
+            <FileText size={14} /> Draft Contract
+          </Button>
           <Button variant="secondary" size="sm" fullWidth onClick={() => router.push("/ai/analytics")}>
-            <BarChart3 size={14} /> Run Analytics
-          </Button>
-          <Button variant="secondary" size="sm" fullWidth onClick={() => router.push("/ai/royalties")}>
-            <DollarSign size={14} /> Royalty Simulation
-          </Button>
-          <Button variant="secondary" size="sm" fullWidth onClick={() => router.push("/ai/contracts")}>
-            <FileText size={14} /> Contract AI
-          </Button>
-          <Button variant="secondary" size="sm" fullWidth onClick={() => router.push("/ai/core-write")}>
-            <PenTool size={14} /> Core Write
+            <BarChart3 size={14} /> Analytics
           </Button>
         </div>
       </Card>

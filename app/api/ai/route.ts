@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { complete } from "@/lib/ai-provider";
 
 export async function GET(req: Request) {
   try {
@@ -22,6 +23,8 @@ export async function GET(req: Request) {
           core_write: { enabled: true },
           release_integration: { enabled: true },
           royalty: { enabled: true },
+          audit: { enabled: true },
+          draft: { enabled: true },
         },
       });
     }
@@ -54,6 +57,8 @@ export async function GET(req: Request) {
           { name: "ai_core_write", description: "AI-assisted core write proposals" },
           { name: "ai_release_integration", description: "Release integration and entity linking" },
           { name: "ai_royalty", description: "Royalty simulation and split validation" },
+          { name: "ai_audit", description: "Catalog consistency, release quality, royalty anomaly, contract audit checks" },
+          { name: "ai_draft", description: "Contract drafting assistant with review-first workflow" },
         ],
       });
     }
@@ -99,11 +104,24 @@ export async function POST(req: Request) {
         },
       });
 
+      const prevMessages = await prisma.ai_messages.findMany({
+        where: { session_id: aiSession.id },
+        orderBy: { created_at: "asc" },
+        take: 10,
+      });
+
+      const ctx = prevMessages.map((m) => `${m.role}: ${m.content}`).join("\n");
+      const result = await complete({
+        systemPrompt: "You are an AI assistant for a music label management platform called OTTO Cloud. You help with contract extraction, catalog management, royalty analysis, reporting, and general label operations. Be concise and helpful.",
+        userPrompt: `${ctx}\n\nuser: ${content}\n\nassistant:`,
+        maxTokens: 256,
+      });
+
       await prisma.ai_messages.create({
         data: {
           session_id: aiSession.id,
           role: "assistant",
-          content: "AI analysis is available. Use specific AI tools for contract extraction, core write proposals, release integration, or royalty simulation.",
+          content: result.text,
         },
       });
 
