@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
+import { storeFile } from "@/lib/storage";
 
 export async function POST(req: Request) {
   try {
@@ -17,22 +16,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "File and release_id are required" }, { status: 400 });
     }
 
-    const ext = file.name.split(".").pop() || "jpg";
-    const fileName = `release_${releaseId}_${Date.now()}.${ext}`;
-    const uploadsDir = path.join(process.cwd(), "public", "uploads", "releases", "artwork");
-    const filePath = path.join(uploadsDir, fileName);
+    const stored = await storeFile(file, `release_${releaseId}`, {
+      domain: "releases",
+      entityId: releaseId,
+      allowedMime: ["image/jpeg", "image/png", "image/webp", "image/gif"],
+      maxSizeBytes: 10 * 1024 * 1024,
+    });
 
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-
-    await mkdir(uploadsDir, { recursive: true });
-    await writeFile(filePath, buffer);
-
-    const url = `/uploads/releases/artwork/${fileName}`;
-
-    return NextResponse.json({ url, filename: fileName });
+    return NextResponse.json({ url: stored.url, filename: stored.filename, checksum: stored.checksum });
   } catch (err: any) {
     console.error("[POST /api/releases/upload]", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: err.message || "Internal server error" }, { status: 500 });
   }
 }

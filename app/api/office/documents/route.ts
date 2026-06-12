@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { writeFile } from "fs/promises";
-import path from "path";
+import { storeFile } from "@/lib/storage";
 
 export async function GET(req: Request) {
   try {
@@ -94,29 +93,33 @@ export async function POST(req: Request) {
       const relatedEntityType = formData.get("related_entity_type") as string | null;
       const relatedEntityId = formData.get("related_entity_id") as string | null;
 
-      const uploadsDir = path.join(process.cwd(), "public", "uploads", "office", "documents");
-      const fileName = `${Date.now()}_${file.name}`;
-      const filePath = path.join(uploadsDir, fileName);
-
-      const bytes = await file.arrayBuffer();
-      const buffer = Buffer.from(bytes);
-
-      const { mkdir } = await import("fs/promises");
-      await mkdir(uploadsDir, { recursive: true });
-      await writeFile(filePath, buffer);
+      const stored = await storeFile(file, "doc", {
+        domain: "office",
+        allowedMime: [
+          "application/pdf",
+          "image/jpeg", "image/png", "image/webp",
+          "application/msword",
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "application/vnd.ms-excel",
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          "text/plain", "text/csv",
+        ],
+        maxSizeBytes: 50 * 1024 * 1024,
+      });
 
       const doc = await prisma.documents.create({
         data: {
-          filename: fileName,
+          filename: stored.filename,
           original_filename: file.name,
-          file_path: `/uploads/office/documents/${fileName}`,
+          file_path: stored.url,
           file_type: fileType || undefined,
-          mime_type: file.type || null,
-          file_size: BigInt(file.size),
+          mime_type: stored.mime_type,
+          file_size: BigInt(stored.size_bytes),
           version: 1,
           title: title || file.name,
           description: description || undefined,
           category: category || undefined,
+          checksum: stored.checksum,
           related_entity_type: relatedEntityType || undefined,
           related_entity_id: relatedEntityId ? parseInt(relatedEntityId) : undefined,
           uploaded_by: userId,

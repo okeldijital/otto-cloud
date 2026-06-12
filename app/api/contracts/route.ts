@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { writeFile } from "fs/promises";
-import path from "path";
+import { storeFile } from "@/lib/storage";
 
 function computeCompleteness(contract: any) {
   const reasons: string[] = [];
@@ -295,27 +294,24 @@ export async function POST(req: Request) {
       });
       const nextVersion = (existingDocs[0]?.version ?? 0) + 1;
 
-      const uploadsDir = path.join(process.cwd(), "public", "uploads", "contracts", String(id));
-      const fileName = `v${nextVersion}_${file.name}`;
-      const filePath = path.join(uploadsDir, fileName);
-
-      const bytes = await file.arrayBuffer();
-      const buffer = Buffer.from(bytes);
-
-      const { mkdir } = await import("fs/promises");
-      await mkdir(uploadsDir, { recursive: true });
-      await writeFile(filePath, buffer);
+      const stored = await storeFile(file, `v${nextVersion}`, {
+        domain: "contracts",
+        entityId: id,
+        allowedMime: ["application/pdf"],
+        maxSizeBytes: 50 * 1024 * 1024,
+      });
 
       const doc = await prisma.contract_documents.create({
         data: {
           contract_id: id,
           organization_id: orgId,
-          file_path: `/uploads/contracts/${id}/${fileName}`,
+          file_path: stored.url,
           file_name: file.name,
           version: nextVersion,
           uploaded_by: userId,
-          mime_type: file.type || "application/pdf",
-          size_bytes: file.size,
+          checksum: stored.checksum,
+          mime_type: stored.mime_type,
+          size_bytes: stored.size_bytes,
         },
       });
 

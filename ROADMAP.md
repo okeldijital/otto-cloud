@@ -50,11 +50,28 @@ Restore billing components removed during migration.
 
 ---
 
-## Phase 13 — File Storage
+## Phase 13 — File Storage ✅
 
 Production storage for contract documents, office documents, artwork, attachments.
 
-- Versioning, checksums, secure access, organization isolation
+### Storage Abstraction ✅
+- `lib/storage.ts` — unified storage service supporting `local` (default) and `s3` (configurable) drivers
+- SHA-256 checksums computed on all uploads, stored in DB (contract_documents, documents)
+- File validation — MIME type enforcement per domain, size limits
+- Sanitized filenames, organized by domain/entityId
+
+### Upload Routes Rewritten ✅
+- `POST /api/releases/upload` — uses storage service, 10MB limit, image-only
+- `POST /api/contracts?action=upload_document` — uses storage service, 50MB limit, PDF-only, checksums stored
+- `POST /api/office/documents?action=upload` — uses storage service, 50MB limit, multi-type support, checksums stored
+
+### Secure File Serving ✅
+- `GET /api/files?path=...` — authenticated file serving endpoint with MIME detection
+- S3 driver ready (imports `@aws-sdk/client-s3`, configured via env vars: `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_PUBLIC_URL`)
+
+### Remaining
+- `@aws-sdk/client-s3` installed as dependency
+- File deletion on document/record delete (calls `deleteFile()`)
 
 ---
 

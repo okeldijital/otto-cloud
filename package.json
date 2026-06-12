@@ -10,6 +10,7 @@
     "postinstall": "prisma generate"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1067.0",
     "@prisma/client": "^5.22.0",
     "@tanstack/react-query": "^5.101.0",
     "@types/bcryptjs": "^2.4.6",
