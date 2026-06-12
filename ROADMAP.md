@@ -75,12 +75,29 @@ Production storage for contract documents, office documents, artwork, attachment
 
 ---
 
-## Phase 14 — Import / Export
+## Phase 14 — Import / Export ✅
 
 Customer data portability.
 
-- Import: CSV, XLSX, JSON
-- Export: CSV, XLSX, PDF, Full backup
+### Libraries ✅
+- `papaparse` — CSV parsing/stringify
+- `xlsx` (SheetJS) — XLSX read/write
+
+### Import ✅
+- `POST /api/import` — accepts CSV/XLSX/JSON, detects format from MIME/extension
+- `lib/import.ts` — per-entity field mapping, validation, coercion, bulk create
+- Supports: artists, releases, tracks, works, labels, publishers, contracts, individuals, organizations
+- `/contracts/bulk` page rewritten to use `/api/import` with drag-drop, results summary
+
+### Export ✅
+- `GET /api/export?entity=&format=` — exports data as CSV/XLSX/JSON download
+- `lib/export.ts` — per-entity field definitions, flattening, org-scoped filtering
+- `ExportButton` component — dropdown menu (CSV/XLSX/JSON) for list pages
+
+### Remaining
+- PDF report generation (deferred to Phase 15 — Reporting Engine)
+- Import field-mapping UI (auto-detect columns from headers)
+- Full backup export (all entities at once)
 
 ---
 
