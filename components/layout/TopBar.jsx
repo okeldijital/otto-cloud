@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Bell, User, Settings as SettingsIcon, LogOut, Music, Users, FileText, Layout, X, Building2, BookOpen, Globe, File, StickyNote, ListMusic, Sun, Moon, CreditCard } from 'lucide-react';
+import { Search, Bell, User, Settings as SettingsIcon, LogOut, Music, Users, FileText, Layout, X, Building2, BookOpen, Globe, File, StickyNote, ListMusic, Sun, Moon, CreditCard, Menu } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useSidebar } from '../../contexts/SidebarContext';
 import { useRouter } from 'next/navigation';
 import api, { BASE_URL } from '../../lib/api';
 import ThemeToggle from '../ui/ThemeToggle';
@@ -9,6 +10,7 @@ import ThemeToggle from '../ui/ThemeToggle';
 const TopBar = () => {
     const { user, logout } = useAuth();
     const router = useRouter();
+    const { toggleSidebar } = useSidebar();
     const dropdownRef = useRef(null);
     const [showNotifications, setShowNotifications] = useState(false);
 
@@ -150,7 +152,15 @@ const TopBar = () => {
 
     return (
         <div className="h-16 bg-surface border-b border-border flex items-center justify-between px-lg sticky top-0 z-[999]">
-            <div className="relative flex-1 max-w-[600px]" ref={dropdownRef}>
+            <div className="flex items-center gap-2">
+                <button 
+                    className="lg:hidden p-2 text-text-secondary hover:text-white transition-colors" 
+                    onClick={toggleSidebar}
+                    title="Toggle menu"
+                >
+                    <Menu size={20} />
+                </button>
+                <div className="relative flex-1 max-w-[600px]" ref={dropdownRef}>
                 <form className="flex items-center bg-surface-elevated border border-transparent rounded-xl px-2 h-11 transition-all focus-within:border-accent focus-within:shadow-[0_0_0_4px_rgba(59,130,246,0.1)]" onSubmit={(e) => e.preventDefault()}>
                     <div className="flex items-center justify-center pr-3 mr-2 border-r border-border h-3/5 text-text-secondary pl-2">
                         <Search size={20} />
@@ -247,6 +257,7 @@ const TopBar = () => {
                         )}
                     </div>
                 )}
+            </div>
             </div>
 
             <div className="flex items-center gap-md">

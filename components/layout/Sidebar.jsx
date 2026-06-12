@@ -29,11 +29,14 @@ import {
     Users,
     Bot,
     Calculator,
+    X,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useSidebar } from '../../contexts/SidebarContext';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import Logo from './Logo';
 
-const SidebarSection = ({ label, items }) => {
+const SidebarSection = ({ label, items, onNav }) => {
     const [isOpen, setIsOpen] = useState(true);
     const pathname = usePathname();
 
@@ -60,6 +63,7 @@ const SidebarSection = ({ label, items }) => {
                             <Link
                                 key={item.path}
                                 href={item.path}
+                                onClick={onNav}
                                 className={`flex items-center gap-md px-md py-2 rounded-[12px] transition-all duration-300 group ${
                                     active 
                                     ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' 
@@ -78,10 +82,35 @@ const SidebarSection = ({ label, items }) => {
     );
 };
 
+// Use function declarations for nav items with onClick
+function NavLink({ href, icon: Icon, label, pathname, activeCheck, onNav }) {
+    const active = activeCheck ? activeCheck() : pathname === href;
+    return (
+        <Link
+            href={href}
+            onClick={onNav}
+            className={`flex items-center gap-md px-md py-2 rounded-[12px] transition-all duration-300 group ${
+                active 
+                ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' 
+                : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
+            }`}
+        >
+            <Icon size={18} className={active ? 'text-accent' : 'text-text-secondary group-hover:text-text-primary'} />
+            <span className="text-sm font-medium">{label}</span>
+        </Link>
+    );
+}
+
 const Sidebar = () => {
     const pathname = usePathname();
     const { user } = useAuth();
+    const { sidebarOpen, closeSidebar } = useSidebar();
+    const isMobile = useIsMobile();
     const isAdmin = user?.role === 'admin' || user?.is_superuser;
+
+    const handleNav = () => {
+        if (isMobile) closeSidebar();
+    };
 
     const sections = useMemo(() => [
         {
@@ -129,14 +158,28 @@ const Sidebar = () => {
     ], []);
 
     return (
-        <div className="fixed top-0 left-0 h-screen w-[280px] bg-premium-glass border-r border-white/5 flex flex-col z-[1000] shadow-glass backdrop-blur-2xl">
-            <div className="p-xl flex justify-center">
-                <Logo size="xl" />
-            </div>
+        <>
+            {isMobile && sidebarOpen && (
+                <div className="fixed inset-0 bg-black/50 z-[999]" onClick={closeSidebar} />
+            )}
+            <div className={`
+                fixed top-0 left-0 h-screen w-[280px] bg-premium-glass border-r border-white/5 flex flex-col z-[1000] shadow-glass backdrop-blur-2xl
+                transition-transform duration-300 ease-in-out
+                ${isMobile ? (sidebarOpen ? 'translate-x-0' : '-translate-x-full') : ''}
+            `}>
+                <div className="p-xl flex justify-between items-center">
+                    <Logo size="xl" />
+                    {isMobile && (
+                        <button onClick={closeSidebar} className="p-1 text-text-secondary hover:text-white transition-colors">
+                            <X size={20} />
+                        </button>
+                    )}
+                </div>
 
             <nav className="flex-1 overflow-y-auto px-sm pb-xl">
                 <Link
                     href="/dashboard"
+                    onClick={handleNav}
                     className={`flex items-center gap-md px-md py-2.5 rounded-[12px] transition-all duration-300 mb-6 group ${
                         pathname === '/dashboard' 
                         ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' 
@@ -148,12 +191,13 @@ const Sidebar = () => {
                 </Link>
 
                 {sections.map((section) => (
-                    <SidebarSection key={section.label} label={section.label} items={section.items} />
+                    <SidebarSection key={section.label} label={section.label} items={section.items} onNav={handleNav} />
                 ))}
 
                 <div className="mt-xl pt-lg border-t border-border space-y-1">
                     <Link 
                         href="/ai" 
+                        onClick={handleNav}
                         className={`flex items-center gap-md px-md py-2 rounded-[12px] transition-all duration-300 group ${
                             pathname === '/ai' ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
                         }`}
@@ -163,6 +207,7 @@ const Sidebar = () => {
                     </Link>
                     <Link 
                         href="/ai/analytics" 
+                        onClick={handleNav}
                         className={`flex items-center gap-md px-md py-2 rounded-[12px] transition-all duration-300 group ${
                             pathname.startsWith('/ai/analytics') ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
                         }`}
@@ -172,6 +217,7 @@ const Sidebar = () => {
                     </Link>
                     <Link 
                         href="/ai/royalties" 
+                        onClick={handleNav}
                         className={`flex items-center gap-md px-md py-2 rounded-[12px] transition-all duration-300 group ${
                             pathname.startsWith('/ai/royalties') ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
                         }`}
@@ -182,6 +228,7 @@ const Sidebar = () => {
                     {isAdmin && (
                         <Link 
                             href="/admin" 
+                            onClick={handleNav}
                             className={`flex items-center gap-md px-md py-2 rounded-[12px] transition-all duration-300 group ${
                                 pathname.startsWith('/admin') ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
                             }`}
@@ -192,6 +239,7 @@ const Sidebar = () => {
                     )}
                     <Link 
                         href="/settings" 
+                        onClick={handleNav}
                         className={`flex items-center gap-md px-md py-2 rounded-[12px] transition-all duration-300 group ${
                             pathname.startsWith('/settings') ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
                         }`}
@@ -201,6 +249,7 @@ const Sidebar = () => {
                     </Link>
                     <Link 
                         href="/billing" 
+                        onClick={handleNav}
                         className={`flex items-center gap-md px-md py-2 rounded-[12px] transition-all duration-300 group ${
                             pathname.startsWith('/billing') ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
                         }`}
@@ -210,6 +259,7 @@ const Sidebar = () => {
                         </Link>
                         <Link 
                             href="/developers" 
+                            onClick={handleNav}
                             className={`flex items-center gap-md px-md py-2 rounded-[12px] transition-all duration-300 group ${
                                 pathname.startsWith('/developers') ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
                             }`}
@@ -220,6 +270,7 @@ const Sidebar = () => {
                 </div>
             </nav>
         </div>
+            </>
     );
 };
 
