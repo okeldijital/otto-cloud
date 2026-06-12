@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { User, Save, Key, Copy, Eye, EyeOff, X, Plus, Trash2 } from "lucide-react";
+import { User, Save, Key, Copy, Eye, EyeOff, X, Plus, Trash2, Users, Mail, Shield, Clock } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
@@ -18,7 +18,7 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState("");
-  const [tab, setTab] = useState<"profile" | "api-keys">("profile");
+  const [tab, setTab] = useState<"profile" | "api-keys" | "team">("profile");
 
   const [keys, setKeys] = useState<any[]>([]);
   const [loadingKeys, setLoadingKeys] = useState(false);
@@ -28,6 +28,15 @@ export default function SettingsPage() {
   const [keyExpiry, setKeyExpiry] = useState("");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
+
+  const [team, setTeam] = useState<any[]>([]);
+  const [loadingTeam, setLoadingTeam] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [invitePassword, setInvitePassword] = useState("");
+  const [inviteName, setInviteName] = useState("");
+  const [inviteRole, setInviteRole] = useState("user");
+  const [inviting, setInviting] = useState(false);
+  const [inviteSuccess, setInviteSuccess] = useState("");
 
   useEffect(() => {
     api.get("/users").then(r => {
@@ -46,6 +55,36 @@ export default function SettingsPage() {
   };
 
   useEffect(() => { if (tab === "api-keys") fetchKeys(); }, [tab]);
+
+  const fetchTeam = async () => {
+    setLoadingTeam(true);
+    try {
+      const res = await api.get("/users", { params: { action: "team" } });
+      setTeam(Array.isArray(res.data) ? res.data : []);
+    } catch { setTeam([]); }
+    finally { setLoadingTeam(false); }
+  };
+
+  useEffect(() => { if (tab === "team") fetchTeam(); }, [tab]);
+
+  const handleInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inviteEmail.trim() || !invitePassword.trim()) return;
+    setInviting(true);
+    setError("");
+    setInviteSuccess("");
+    try {
+      await api.post("/users", { email: inviteEmail, password: invitePassword, name: inviteName || undefined, role: inviteRole }, { params: { action: "invite" } });
+      setInviteSuccess(`Invited ${inviteEmail}`);
+      setInviteEmail("");
+      setInvitePassword("");
+      setInviteName("");
+      setInviteRole("user");
+      fetchTeam();
+    } catch (err: any) {
+      setError(err?.response?.data?.error || "Failed to invite");
+    } finally { setInviting(false); }
+  };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,6 +141,12 @@ export default function SettingsPage() {
           onClick={() => setTab("api-keys")}
         >
           <Key size={14} className="inline mr-1" /> API Keys
+        </button>
+        <button
+          className={`px-4 py-2 text-sm font-bold transition-colors ${tab === "team" ? "text-white border-b-2 border-accent" : "text-text-secondary hover:text-white"}`}
+          onClick={() => setTab("team")}
+        >
+          <Users size={14} className="inline mr-1" /> Team
         </button>
       </div>
 
@@ -234,6 +279,62 @@ export default function SettingsPage() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+          </Card>
+        </div>
+      )}
+
+      {tab === "team" && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card title="Invite Member" subtitle="Add a new user to your organization">
+            <form onSubmit={handleInvite} className="space-y-4">
+              <div>
+                <label className="text-xs text-text-secondary font-bold block mb-1">Email <span className="text-danger">*</span></label>
+                <input className="input w-full" type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="colleague@example.com" required />
+              </div>
+              <div>
+                <label className="text-xs text-text-secondary font-bold block mb-1">Temporary Password <span className="text-danger">*</span></label>
+                <input className="input w-full" type="text" value={invitePassword} onChange={(e) => setInvitePassword(e.target.value)} placeholder="Set an initial password" required />
+              </div>
+              <div>
+                <label className="text-xs text-text-secondary font-bold block mb-1">Full Name</label>
+                <input className="input w-full" value={inviteName} onChange={(e) => setInviteName(e.target.value)} placeholder="Optional" />
+              </div>
+              <div>
+                <label className="text-xs text-text-secondary font-bold block mb-1">Role</label>
+                <select className="input w-full" value={inviteRole} onChange={(e) => setInviteRole(e.target.value)}>
+                  <option value="user">User</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+              <Button variant="primary" size="sm" type="submit" disabled={inviting || !inviteEmail.trim() || !invitePassword.trim()}>
+                {inviting ? "Inviting..." : <><Mail size={14} /> Send Invite</>}
+              </Button>
+              {inviteSuccess && <p className="text-xs text-success mt-2">{inviteSuccess}</p>}
+            </form>
+          </Card>
+          <Card title="Team Members">
+            {loadingTeam ? (
+              <div className="p-8 text-center text-text-secondary">Loading...</div>
+            ) : team.length === 0 ? (
+              <p className="text-sm text-text-secondary">No team members yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {team.map((m) => (
+                  <div key={m.id} className="flex items-center justify-between p-3 bg-white/5 rounded-xl">
+                    <div>
+                      <p className="text-sm text-white font-medium">{m.name || m.email}</p>
+                      <p className="text-xs text-text-secondary">{m.email}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={m.is_active ? "success" : "critical"} size="sm">{m.is_active ? "Active" : "Inactive"}</Badge>
+                      <Badge variant={m.role === "admin" ? "neutral" : "default"} size="sm">
+                        {m.role || "user"}
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </Card>
