@@ -30,6 +30,7 @@ import {
     Bot,
     Calculator,
     X,
+    Layout,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSidebar } from '../../contexts/SidebarContext';
@@ -113,6 +114,12 @@ const Sidebar = () => {
     };
 
     const sections = useMemo(() => [
+        {
+            label: 'Workspaces',
+            items: [
+                { icon: Layout, label: 'All Workspaces', path: '/workspaces' },
+            ]
+        },
         {
             label: 'Catalog Management',
             items: [
@@ -251,11 +258,21 @@ const Sidebar = () => {
                         href="/settings" 
                         onClick={handleNav}
                         className={`flex items-center gap-md px-md py-2 rounded-[12px] transition-all duration-300 group ${
-                            pathname.startsWith('/settings') ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
+                            pathname === '/settings' ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
                         }`}
                     >
-                        <Settings size={20} className={pathname.startsWith('/settings') ? 'text-accent' : 'text-text-secondary group-hover:text-text-primary'} />
+                        <Settings size={20} className={pathname === '/settings' ? 'text-accent' : 'text-text-secondary group-hover:text-text-primary'} />
                         <span className="text-sm font-medium">Settings</span>
+                    </Link>
+                    <Link 
+                        href="/settings/organization" 
+                        onClick={handleNav}
+                        className={`flex items-center gap-md px-md py-2 rounded-[12px] transition-all duration-300 group ${
+                            pathname.startsWith('/settings/organization') ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
+                        }`}
+                    >
+                        <Building2 size={20} className={pathname.startsWith('/settings/organization') ? 'text-accent' : 'text-text-secondary group-hover:text-text-primary'} />
+                        <span className="text-sm font-medium">Organization</span>
                     </Link>
                     <Link 
                         href="/billing" 

@@ -21,7 +21,10 @@ model User {
   last_login                             DateTime?                       @db.Timestamptz(6)
   avatar_url                             String?                         @db.VarChar(500)
   organization_id                        String                          @default(dbgenerated("'00000000-0000-0000-0000-000000000001'::uuid")) @db.Uuid
+  tenant_id    String?   @db.Uuid
+  tenants      tenants?  @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   department                             String?                         @db.VarChar(100)
+  tenant_users   tenant_users[]
   activities                             activities[]
   admin_backup_artifacts                 admin_backup_artifacts[]
   admin_backup_restore_events            admin_backup_restore_events[]
@@ -52,6 +55,12 @@ model User {
   api_keys                               api_keys[]
   user_roles                             user_roles[]
   team_members                           team_members[]
+  owned_organizations                    tenants[]                            @relation("organization_owner")
+  invited_invitations invitations[]  @relation("invitations_invited_by")
+  workspace_members                     workspace_members[]
+  workspace_timeline_events             workspace_timeline_events[]
+  workspace_files                       workspace_files[]
+  workspace_notifications               workspace_notifications[]
 
   @@index([id], map: "ix_users_id")
   @@index([organization_id], map: "ix_users_organization_id")
@@ -74,6 +83,7 @@ model activities {
 model admin_backup_artifacts {
   id                      Int       @id @default(autoincrement())
   organization_id         Int
+  tenant_id String? @db.Uuid
   created_by              Int
   backup_kind             String    @db.VarChar(32)
   filename                String    @db.VarChar(255)
@@ -98,6 +108,7 @@ model admin_backup_artifacts {
 
 model admin_backup_restore_events {
   id                 Int       @id @default(autoincrement())
+  tenant_id String? @db.Uuid
   backup_id          Int
   snapshot_backup_id Int?
   initiator_user_id  Int
@@ -120,6 +131,7 @@ model admin_backup_restore_events {
 model admin_restore_audit {
   id                      Int       @id @default(autoincrement())
   organization_id         Int
+  tenant_id String? @db.Uuid
   user_id                 Int
   backup_id               Int
   pre_restore_snapshot_id Int?
@@ -142,6 +154,7 @@ model admin_restore_audit {
 model ai_audit_log {
   id              Int       @id @default(autoincrement())
   organization_id String    @db.Uuid
+  tenant_id String? @db.Uuid
   user_id         Int
   action          String    @db.VarChar(50)
   tool            String?   @db.VarChar(50)
@@ -158,6 +171,7 @@ model ai_audit_log {
 model ai_contract_attach_links {
   id                      Int                     @id @default(autoincrement())
   organization_id         String                  @db.Uuid
+  tenant_id String? @db.Uuid
   run_id                  Int
   action_type             String                  @db.VarChar(64)
   target_name             String?                 @db.VarChar(255)
@@ -177,6 +191,7 @@ model ai_contract_attach_links {
 model ai_contract_attach_runs {
   id                       Int                        @id @default(autoincrement())
   organization_id          String                     @db.Uuid
+  tenant_id String? @db.Uuid
   user_id                  Int
   contract_id              Int
   release_id               Int
@@ -199,6 +214,7 @@ model ai_contract_attach_runs {
 model ai_contract_documents {
   id                     Int                      @id @default(autoincrement())
   organization_id        Int
+  tenant_id String? @db.Uuid
   release_id             Int
   file_path              String                   @db.VarChar(1000)
   file_hash              String                   @db.VarChar(64)
@@ -219,6 +235,7 @@ model ai_contract_documents {
 model ai_contract_drafts {
   id                      String    @id @db.VarChar(64)
   organization_id         String    @db.Uuid
+  tenant_id String? @db.Uuid
   created_by              Int
   source                  String?   @db.VarChar(32)
   file_path               String    @db.VarChar(1000)
@@ -240,6 +257,7 @@ model ai_contract_drafts {
 
 model ai_contract_resolution_links {
   id                          Int                         @id @default(autoincrement())
+  tenant_id String? @db.Uuid
   run_id                      Int
   entity_type                 String                      @db.VarChar(50)
   entity_id                   Int?
@@ -256,6 +274,7 @@ model ai_contract_resolution_links {
 model ai_contract_resolution_runs {
   id                            Int                             @id @default(autoincrement())
   organization_id               String                          @db.Uuid
+  tenant_id String? @db.Uuid
   user_id                       Int
   contract_hash                 String                          @db.VarChar(64)
   extractor_version             String?                         @db.VarChar(50)
@@ -274,6 +293,7 @@ model ai_contract_resolution_runs {
 model ai_contract_work_links {
   id                    Int                   @id @default(autoincrement())
   organization_id       Int
+  tenant_id String? @db.Uuid
   contract_document_id  Int
   work_id               Int
   confidence            Float
@@ -292,6 +312,7 @@ model ai_contract_work_links {
 model ai_core_write_apply_events {
   id                          Int                         @id @default(autoincrement())
   organization_id             Int
+  tenant_id String? @db.Uuid
   user_id                     Int
   run_id                      Int
   request_hash                String                      @db.VarChar(64)
@@ -316,6 +337,7 @@ model ai_core_write_apply_events {
 model ai_core_write_proposal_items {
   id                          Int                         @id @default(autoincrement())
   organization_id             Int
+  tenant_id String? @db.Uuid
   run_id                      Int
   entity_type                 String                      @db.VarChar(64)
   entity_id                   Int?
@@ -340,6 +362,7 @@ model ai_core_write_proposal_items {
 model ai_core_write_proposal_runs {
   id                           Int                            @id @default(autoincrement())
   organization_id              Int
+  tenant_id String? @db.Uuid
   user_id                      Int
   contract_id                  Int
   release_id                   Int?
@@ -365,6 +388,7 @@ model ai_core_write_proposal_runs {
 
 model ai_messages {
   id          Int         @id @default(autoincrement())
+  tenant_id String? @db.Uuid
   session_id  Int
   role        String      @db.VarChar(20)
   content     String
@@ -378,6 +402,7 @@ model ai_messages {
 model ai_release_integration_links {
   id                          Int                         @id @default(autoincrement())
   organization_id             Int
+  tenant_id String? @db.Uuid
   run_id                      Int
   entity_type                 String                      @db.VarChar(32)
   entity_id                   Int?
@@ -402,6 +427,7 @@ model ai_release_integration_links {
 model ai_release_integration_runs {
   id                           Int                            @id @default(autoincrement())
   organization_id              Int
+  tenant_id String? @db.Uuid
   user_id                      Int
   release_id                   Int
   contract_id                  Int?
@@ -423,6 +449,7 @@ model ai_release_integration_runs {
 model ai_royalty_simulation_runs {
   id                         Int       @id @default(autoincrement())
   organization_id            Int
+  tenant_id String? @db.Uuid
   user_id                    Int
   release_id                 Int
   contract_document_id       Int?
@@ -447,6 +474,7 @@ model ai_royalty_simulation_runs {
 model ai_sessions {
   id              Int           @id @default(autoincrement())
   organization_id String        @db.Uuid
+  tenant_id String? @db.Uuid
   user_id         Int
   created_at      DateTime?     @default(now()) @db.Timestamptz(6)
   ai_messages     ai_messages[]
@@ -498,6 +526,7 @@ model artists {
   updated_at                                               DateTime?            @db.Timestamptz(6)
   nationality                                              String?              @db.VarChar(100)
   organization_id                                          String               @default(dbgenerated("'00000000-0000-0000-0000-000000000001'::uuid")) @db.Uuid
+  tenant_id String? @db.Uuid
   is_deleted                                               Boolean              @default(false)
   artist_kind                                              String               @default("solo") @db.VarChar(20)
   legal_name                                               String?              @db.VarChar(255)
@@ -527,6 +556,7 @@ model audit_logs {
   created_at      DateTime? @default(now()) @db.Timestamptz(6)
   entity_uuid     Int?
   organization_id Int?
+  tenant_id String? @db.Uuid
   users           User?     @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([action], map: "ix_audit_logs_action")
@@ -541,6 +571,7 @@ model contract_assets {
   id              Int       @id(map: "contract_assets_v1_pkey") @default(autoincrement())
   contract_id     Int
   organization_id Int
+  tenant_id String? @db.Uuid
   asset_type      String    @db.VarChar(50)
   asset_id        Int
   scope_type      String?   @db.VarChar(50)
@@ -554,6 +585,7 @@ model contract_documents {
   id              Int       @id(map: "contract_documents_v1_pkey") @default(autoincrement())
   contract_id     Int
   organization_id Int
+  tenant_id String? @db.Uuid
   file_path       String    @db.VarChar(500)
   file_name       String    @db.VarChar(255)
   version         Int
@@ -571,6 +603,7 @@ model contract_documents {
 model contract_intake_release_links {
   id                          Int                         @id @default(autoincrement())
   organization_id             Int
+  tenant_id String? @db.Uuid
   resolution_run_id           Int
   release_id                  Int
   linked_by_user_id           Int
@@ -592,6 +625,7 @@ model contract_parties {
   id              Int               @id(map: "contract_parties_v1_pkey") @default(autoincrement())
   contract_id     Int
   organization_id Int
+  tenant_id String? @db.Uuid
   entity_type     String            @db.VarChar(50)
   entity_id       Int?
   external_name   String?           @db.VarChar(255)
@@ -608,6 +642,7 @@ model contract_split_groups {
   id              Int               @id @default(autoincrement())
   contract_id     Int
   organization_id Int
+  tenant_id String? @db.Uuid
   group_name      String            @db.VarChar(100)
   group_type      String?           @db.VarChar(50)
   notes           String?
@@ -624,6 +659,7 @@ model contract_splits {
   id                    Int                   @id @default(autoincrement())
   group_id              Int
   organization_id       Int
+  tenant_id String? @db.Uuid
   party_id              Int?
   external_party_name   String?               @db.VarChar(255)
   percent               Decimal               @db.Decimal(6, 3)
@@ -637,6 +673,7 @@ model contract_splits {
 model contract_track_links {
   id              Int       @id @default(autoincrement())
   organization_id String    @db.Uuid
+  tenant_id String? @db.Uuid
   contract_id     Int
   track_id        Int
   created_at      DateTime? @default(now()) @db.Timestamptz(6)
@@ -654,6 +691,7 @@ model contracts {
   id                    Int                     @id(map: "contracts_v1_pkey") @default(autoincrement())
   contract_number       String                  @db.VarChar(50)
   organization_id       Int
+  tenant_id String? @db.Uuid
   title                 String                  @db.VarChar(255)
   status                String                  @db.VarChar(50)
   type                  String?                 @db.VarChar(50)
@@ -701,6 +739,7 @@ model documents {
   created_at          DateTime?   @default(now()) @db.Timestamptz(6)
   updated_at          DateTime?   @db.Timestamptz(6)
   organization_id     String      @db.Uuid
+  tenant_id String? @db.Uuid
   checksum            String?     @db.VarChar(64)
   is_deleted          Boolean
   documents           documents?  @relation("documentsTodocuments", fields: [parent_document_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -732,6 +771,7 @@ model events {
   created_at          DateTime? @default(now()) @db.Timestamptz(6)
   updated_at          DateTime? @db.Timestamptz(6)
   organization_id     String    @default(dbgenerated("'00000000-0000-0000-0000-000000000001'::uuid")) @db.Uuid
+  tenant_id String? @db.Uuid
   event_type          String?   @default("Other") @db.VarChar(100)
   status              String?   @default("Planned") @db.VarChar(50)
   is_deleted          Boolean   @default(false)
@@ -767,6 +807,7 @@ model individuals {
   updated_at               DateTime?                  @db.Timestamptz(6)
   relationship_strength    String?                    @default("Regular") @db.VarChar(50)
   organization_id          Int
+  tenant_id String? @db.Uuid
   individual_organizations individual_organizations[]
 
   @@index([email], map: "ix_individuals_email")
@@ -777,6 +818,7 @@ model individuals {
 model jobs {
   id              String    @id @db.Uuid
   organization_id String    @db.Uuid
+  tenant_id String? @db.Uuid
   user_id         Int
   status          String    @db.VarChar(50)
   input           Json      @db.Json
@@ -842,6 +884,7 @@ model notes {
   created_at          DateTime? @default(now()) @db.Timestamptz(6)
   updated_at          DateTime? @db.Timestamptz(6)
   organization_id     String    @default(dbgenerated("'00000000-0000-0000-0000-000000000001'::uuid")) @db.Uuid
+  tenant_id String? @db.Uuid
   is_deleted          Boolean   @default(false)
   users               User?     @relation(fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
@@ -855,6 +898,7 @@ model notes {
 model office_document_links {
   id               Int              @id @default(autoincrement())
   organization_id  String           @db.Uuid
+  tenant_id String? @db.Uuid
   document_id      Int
   entity_type      String           @db.VarChar(50)
   entity_id        Int
@@ -870,6 +914,7 @@ model office_document_links {
 model office_documents {
   id                    Int                     @id @default(autoincrement())
   organization_id       String                  @db.Uuid
+  tenant_id String? @db.Uuid
   doc_type              String                  @db.VarChar(50)
   title                 String?                 @db.VarChar(255)
   description           String?
@@ -893,6 +938,7 @@ model office_documents {
 model office_note_links {
   id              Int          @id @default(autoincrement())
   organization_id String       @db.Uuid
+  tenant_id String? @db.Uuid
   note_id         Int
   entity_type     String       @db.VarChar(50)
   entity_id       Int
@@ -909,6 +955,7 @@ model office_note_links {
 model office_notes {
   id                 Int                 @id @default(autoincrement())
   organization_id    String              @db.Uuid
+  tenant_id String? @db.Uuid
   title              String?             @db.VarChar(255)
   body               String
   tags               String?             @db.VarChar(255)
@@ -945,6 +992,7 @@ model organizations {
 model sso_providers {
   id              Int        @id @default(autoincrement())
   organization_id String     @db.Uuid
+  tenant_id String? @db.Uuid
   provider        String     @db.VarChar(50)
   client_id       String     @db.VarChar(255)
   client_secret   String     @db.VarChar(500)
@@ -998,6 +1046,7 @@ model playing_with_neon {
 
 model playlists {
   id          Int       @id @default(autoincrement())
+  tenant_id String? @db.Uuid
   playlist_id String?   @unique(map: "ix_playlists_playlist_id") @db.VarChar(50)
   name        String    @db.VarChar(255)
   description String?
@@ -1069,6 +1118,7 @@ model releases {
   artist_ids                    Json?                           @db.Json
   credits                       Json?                           @db.Json
   organization_id               String                          @default(dbgenerated("'00000000-0000-0000-0000-000000000001'::uuid")) @db.Uuid
+  tenant_id String? @db.Uuid
   is_deleted                    Boolean                         @default(false)
   contract_intake_release_links contract_intake_release_links[]
   organizations                 organizations?                  @relation(fields: [distributor_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_releases_distributor_id_organizations")
@@ -1085,6 +1135,7 @@ model releases {
 model report_artifacts {
   id              Int         @id @default(autoincrement())
   organization_id String      @db.Uuid
+  tenant_id String? @db.Uuid
   report_run_id   Int
   format          String      @db.VarChar(10)
   storage_path    String      @db.VarChar(500)
@@ -1101,6 +1152,7 @@ model report_artifacts {
 model report_definitions {
   id                 Int           @id @default(autoincrement())
   organization_id    String        @db.Uuid
+  tenant_id String? @db.Uuid
   name               String        @db.VarChar(255)
   description        String?
   report_type        String        @db.VarChar(100)
@@ -1119,6 +1171,7 @@ model report_definitions {
 model report_runs {
   id                   Int                 @id @default(autoincrement())
   organization_id      String              @db.Uuid
+  tenant_id String? @db.Uuid
   report_definition_id Int?
   status               String              @db.VarChar(50)
   requested_by_user_id Int
@@ -1138,6 +1191,7 @@ model report_runs {
 
 model royalties {
   id             Int       @id @default(autoincrement())
+  tenant_id String? @db.Uuid
   royalty_id     String?   @unique(map: "ix_royalties_royalty_id") @db.VarChar(50)
   artist_id      Int?
   work_id        Int?
@@ -1162,6 +1216,7 @@ model royalties {
 model status_quo_items {
   id                  Int       @id @default(autoincrement())
   organization_id     String    @db.Uuid
+  tenant_id String? @db.Uuid
   entity_type         String    @db.VarChar(50)
   entity_id           Int
   issue_type          String    @db.VarChar(100)
@@ -1183,11 +1238,13 @@ model status_quo_items {
 model subscriptions {
   id                   Int       @id @default(autoincrement())
   organization_id      String    @db.Uuid
+  tenant_id String? @db.Uuid
   plan_id              Int
   status               String    @db.VarChar(50)
   current_period_start DateTime? @default(now()) @db.Timestamptz(6)
   current_period_end   DateTime  @db.Timestamptz(6)
   plans                plans     @relation(fields: [plan_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tenants              tenants?  @relation(fields: [tenant_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([id], map: "ix_subscriptions_id")
   @@index([organization_id], map: "ix_subscriptions_organization_id")
@@ -1196,6 +1253,7 @@ model subscriptions {
 model api_keys {
   id              Int       @id @default(autoincrement())
   organization_id String    @db.Uuid
+  tenant_id String? @db.Uuid
   name            String    @db.VarChar(255)
   prefix          String    @db.VarChar(10)
   key_hash        String    @db.VarChar(128)
@@ -1215,12 +1273,115 @@ model api_keys {
   @@index([prefix], map: "ix_api_keys_prefix")
 }
 
+model tenants {
+  id              String          @id @default(uuid()) @db.Uuid
+  name            String          @db.VarChar(255)
+  display_name    String?         @db.VarChar(255)
+  legal_name      String?         @db.VarChar(255)
+  org_type        String?         @db.VarChar(100)
+
+  // Branding
+  logo_url        String?         @db.VarChar(500)
+  banner_url      String?         @db.VarChar(500)
+  brand_color     String?         @default("#6366f1") @db.VarChar(7)
+  secondary_color String?         @default("#8b5cf6") @db.VarChar(7)
+  accent_color    String?         @default("#06b6d4") @db.VarChar(7)
+  email_signature String?         @db.Text
+  report_branding Json?           @db.Json
+  pdf_branding    Json?           @db.Json
+  invoice_branding Json?          @db.Json
+
+  // Contact
+  website         String?         @db.VarChar(255)
+  email           String?         @db.VarChar(255)
+  phone           String?         @db.VarChar(50)
+  physical_address String?        @db.Text
+
+  // Location
+  country         String?         @db.VarChar(100)
+  province_state  String?         @db.VarChar(100)
+  city            String?         @db.VarChar(100)
+
+  // Configuration
+  currency        String?         @default("USD") @db.VarChar(3)
+  timezone        String?         @default("America/New_York") @db.VarChar(50)
+  tax_number      String?         @db.VarChar(100)
+  registration_number String?     @db.VarChar(100)
+  subscription_plan String?       @db.VarChar(50)
+
+  // AI Configuration
+  ai_model        String?         @default("gpt-4") @db.VarChar(100)
+  ai_prompt_library Json?         @db.Json
+  ai_knowledge_base Json?         @db.Json
+  ai_allowed_agents Json?         @db.Json
+  ai_monthly_budget Decimal?      @default(100.0) @db.Decimal(10, 2)
+
+  // Ownership & Status
+  owner_id        Int?
+  is_active       Boolean         @default(true)
+  created_at      DateTime?       @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime?       @default(now()) @db.Timestamptz(6)
+
+  // Relations
+  owner           User?           @relation("organization_owner", fields: [owner_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users           User[]
+  tenant_users    tenant_users[]
+  invitations     invitations[]
+  roles           roles[]
+  teams           teams[]
+  subscriptions    subscriptions[]
+
+  @@index([name], map: "ix_tenants_name")
+  @@map("tenants")
+}
+
+
+
+model tenant_users {
+  id              Int             @id @default(autoincrement())
+  tenant_id       String          @db.Uuid
+  user_id         Int
+  role_id         Int?
+  is_default      Boolean         @default(false)
+  invited_at      DateTime?       @default(now()) @db.Timestamptz(6)
+  accepted_at     DateTime?       @db.Timestamptz(6)
+  invited_by      Int?
+  tenants         tenants         @relation(fields: [tenant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users           User            @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([tenant_id, user_id], map: "uq_tenant_users")
+  @@index([tenant_id], map: "ix_tenant_users_tenant_id")
+  @@index([user_id], map: "ix_tenant_users_user_id")
+  @@map("tenant_users")
+}
+
+model invitations {
+  id              Int             @id @default(autoincrement())
+  tenant_id       String          @db.Uuid
+  email           String          @db.VarChar(255)
+  invited_by      Int
+  invited_by_user User?     @relation("invitations_invited_by", fields: [invited_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  token           String          @unique @db.VarChar(64)
+  role_id         Int?
+  message         String?
+  expires_at      DateTime        @db.Timestamptz(6)
+  accepted_at     DateTime?       @db.Timestamptz(6)
+  created_at      DateTime?       @default(now()) @db.Timestamptz(6)
+  tenants         tenants         @relation(fields: [tenant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([tenant_id], map: "ix_invitations_tenant_id")
+  @@index([email], map: "ix_invitations_email")
+  @@index([token], map: "ix_invitations_token")
+  @@map("invitations")
+}
+
 model roles {
   id              Int              @id @default(autoincrement())
   name            String           @unique @db.VarChar(100)
   description     String?          @db.Text
   is_system       Boolean          @default(false)
   organization_id String?          @db.Uuid
+  tenants        tenants?  @relation(fields: [organization_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   created_at      DateTime?        @default(now()) @db.Timestamptz(6)
   updated_at      DateTime?        @default(now()) @db.Timestamptz(6)
   role_permissions role_permissions[]
@@ -1276,6 +1437,7 @@ model teams {
   name            String         @db.VarChar(100)
   description     String?        @db.Text
   organization_id String         @db.Uuid
+  tenants        tenants  @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   created_at      DateTime?      @default(now()) @db.Timestamptz(6)
   updated_at      DateTime?      @default(now()) @db.Timestamptz(6)
   team_members    team_members[]
@@ -1309,6 +1471,7 @@ model tasks {
   created_at                             DateTime? @db.Timestamp(6)
   updated_at                             DateTime? @db.Timestamp(6)
   organization_id                        String    @default(dbgenerated("'00000000-0000-0000-0000-000000000001'::uuid")) @db.Uuid
+  tenant_id String? @db.Uuid
   assigned_to_user_id                    Int?
   created_by_user_id                     Int       @default(1)
   linked_entity_type                     String?   @db.VarChar(50)
@@ -1338,6 +1501,7 @@ model track_releases {
 
 model tracks {
   id                   Int                    @id @default(autoincrement())
+  tenant_id String? @db.Uuid
   track_id             String?                @unique(map: "ix_tracks_track_id") @db.VarChar(50)
   title                String                 @db.VarChar(255)
   duration             DateTime?              @db.Time(6)
@@ -1366,6 +1530,7 @@ model tracks {
 model usage {
   id              Int    @id @default(autoincrement())
   organization_id String @db.Uuid
+  tenant_id String? @db.Uuid
   metric          String @db.VarChar(50)
   value           Int
   tokens_used     BigInt
@@ -1390,6 +1555,7 @@ model works {
   created_at      DateTime?    @default(now()) @db.Timestamptz(6)
   updated_at      DateTime?    @db.Timestamptz(6)
   organization_id String       @default(dbgenerated("'00000000-0000-0000-0000-000000000001'::uuid")) @db.Uuid
+  tenant_id String? @db.Uuid
   is_deleted      Boolean      @default(false)
   royalties       royalties[]
   tracks          tracks[]
@@ -1405,6 +1571,7 @@ model works {
 model works_admin {
   id                     String                  @id @db.Uuid
   organization_id        String                  @db.Uuid
+  tenant_id String? @db.Uuid
   work_id                Int                     @unique
   registration_status    String                  @default("Unknown") @db.VarChar(50)
   registered_with        String?                 @db.VarChar(255)
@@ -1423,6 +1590,7 @@ model works_admin {
 model works_admin_documents {
   id              String      @id @db.Uuid
   organization_id String      @db.Uuid
+  tenant_id String? @db.Uuid
   works_admin_id  String      @db.Uuid
   doc_type        String      @db.VarChar(100)
   file_path       String      @db.VarChar(500)
@@ -1435,4 +1603,154 @@ model works_admin_documents {
   works_admin     works_admin @relation(fields: [works_admin_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([organization_id], map: "ix_works_admin_documents_organization_id")
+}
+
+model workspace_templates {
+  id          Int     @id @default(autoincrement())
+  name        String  @db.VarChar(100)
+  slug        String  @unique @db.VarChar(100)
+  description String?
+  icon        String? @db.VarChar(50)
+  color       String? @db.VarChar(7)
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+
+  sections   workspace_template_sections[]
+  statuses   workspace_template_statuses[]
+  workspaces workspaces[]
+
+  @@index([id], map: "ix_workspace_templates_id")
+  @@map("workspace_templates")
+}
+
+model workspace_template_sections {
+  id          Int     @id @default(autoincrement())
+  template_id Int
+  name        String  @db.VarChar(100)
+  slug        String  @db.VarChar(100)
+  description String?
+  icon        String? @db.VarChar(50)
+  sort_order  Int     @default(0)
+
+  template workspace_templates @relation(fields: [template_id], references: [id], onDelete: Cascade)
+
+  @@index([template_id], map: "ix_workspace_template_sections_template_id")
+  @@map("workspace_template_sections")
+}
+
+model workspace_template_statuses {
+  id          Int     @id @default(autoincrement())
+  template_id Int
+  name        String  @db.VarChar(100)
+  slug        String  @db.VarChar(100)
+  sort_order  Int     @default(0)
+  color       String? @db.VarChar(7)
+
+  template workspace_templates @relation(fields: [template_id], references: [id], onDelete: Cascade)
+
+  @@index([template_id], map: "ix_workspace_template_statuses_template_id")
+  @@map("workspace_template_statuses")
+}
+
+model workspaces {
+  id              Int       @id @default(autoincrement())
+  name            String    @db.VarChar(255)
+  description     String?
+  template_id     Int?
+  status          String    @default("planning") @db.VarChar(50)
+  cover_image_url String?   @db.VarChar(500)
+  organization_id String    @default(dbgenerated("'00000000-0000-0000-0000-000000000001'::uuid")) @db.Uuid
+  tenant_id       String?   @db.Uuid
+  created_by      Int?
+  created_at      DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime? @db.Timestamptz(6)
+  archived_at     DateTime? @db.Timestamptz(6)
+  is_deleted      Boolean   @default(false)
+
+  template        workspace_templates?          @relation(fields: [template_id], references: [id], onDelete: SetNull)
+  members         workspace_members[]
+  timeline_events workspace_timeline_events[]
+  files           workspace_files[]
+  notifications   workspace_notifications[]
+
+  @@index([id], map: "ix_workspaces_id")
+  @@index([organization_id], map: "ix_workspaces_organization_id")
+  @@index([template_id], map: "ix_workspaces_template_id")
+  @@index([status], map: "ix_workspaces_status")
+  @@map("workspaces")
+}
+
+model workspace_members {
+  id           Int       @id @default(autoincrement())
+  workspace_id Int
+  user_id      Int?
+  name         String?   @db.VarChar(255)
+  email        String?   @db.VarChar(255)
+  role         String    @default("member") @db.VarChar(50)
+  invited_at   DateTime? @default(now()) @db.Timestamptz(6)
+  accepted_at  DateTime? @db.Timestamptz(6)
+
+  workspace workspaces @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  user      User?      @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+  @@unique([workspace_id, user_id], map: "uq_workspace_members_workspace_user")
+  @@index([workspace_id], map: "ix_workspace_members_workspace_id")
+  @@index([user_id], map: "ix_workspace_members_user_id")
+  @@map("workspace_members")
+}
+
+model workspace_timeline_events {
+  id           Int       @id @default(autoincrement())
+  workspace_id Int
+  user_id      Int?
+  event_type   String    @db.VarChar(50)
+  summary      String    @db.VarChar(255)
+  details      String?
+  created_at   DateTime? @default(now()) @db.Timestamptz(6)
+
+  workspace workspaces @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  user      User?      @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+  @@index([workspace_id], map: "ix_workspace_timeline_events_workspace_id")
+  @@index([created_at], map: "ix_workspace_timeline_events_created_at")
+  @@map("workspace_timeline_events")
+}
+
+model workspace_files {
+  id            Int       @id @default(autoincrement())
+  workspace_id  Int
+  category      String    @db.VarChar(100)
+  filename      String    @db.VarChar(255)
+  original_name String    @db.VarChar(255)
+  file_path     String    @db.VarChar(500)
+  mime_type     String?   @db.VarChar(100)
+  file_size     Int?
+  uploaded_by   Int?
+  created_at    DateTime? @default(now()) @db.Timestamptz(6)
+
+  workspace workspaces @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  user      User?      @relation(fields: [uploaded_by], references: [id], onDelete: SetNull)
+
+  @@index([workspace_id], map: "ix_workspace_files_workspace_id")
+  @@index([category], map: "ix_workspace_files_category")
+  @@map("workspace_files")
+}
+
+model workspace_notifications {
+  id           Int       @id @default(autoincrement())
+  workspace_id Int
+  user_id      Int?
+  type         String    @db.VarChar(50)
+  title        String    @db.VarChar(255)
+  message      String?
+  is_read      Boolean   @default(false)
+  link         String?   @db.VarChar(500)
+  created_at   DateTime? @default(now()) @db.Timestamptz(6)
+
+  workspace workspaces @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  user      User?      @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+  @@index([workspace_id], map: "ix_workspace_notifications_workspace_id")
+  @@index([user_id], map: "ix_workspace_notifications_user_id")
+  @@index([is_read], map: "ix_workspace_notifications_is_read")
+  @@map("workspace_notifications")
 }
