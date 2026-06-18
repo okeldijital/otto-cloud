@@ -127,6 +127,45 @@ export async function POST(req: Request) {
 
     const newRelease = await prisma.releases.create({ data: releaseData });
 
+    // Auto-create Release Workspace
+    try {
+      const userId = (session.user as any).id;
+      const template = await prisma.workspace_templates.findFirst({ where: { slug: "release" } });
+      const workspaceName = `${newRelease.title} - ${newRelease.release_type || "Single"} Release`;
+      const workspace = await prisma.workspaces.create({
+        data: {
+          name: workspaceName,
+          description: `Release workspace for "${newRelease.title}"`,
+          template_id: template?.id,
+          release_id: newRelease.id,
+          status: "planning",
+          organization_id: newRelease.organization_id,
+          created_by: userId,
+        },
+      });
+      await prisma.workspace_members.create({
+        data: { workspace_id: workspace.id, user_id: userId, role: "owner" },
+      });
+      await prisma.workspace_timeline_events.create({
+        data: {
+          workspace_id: workspace.id, user_id: userId,
+          event_type: "system", summary: `Release workspace created for "${newRelease.title}"`,
+        },
+      });
+      const channels = ["General", "Artwork", "Marketing", "Distribution", "Production", "Legal"];
+      for (let i = 0; i < channels.length; i++) {
+        await prisma.workspace_discussion_channels.create({
+          data: {
+            workspace_id: workspace.id, organization_id: newRelease.organization_id,
+            name: channels[i], slug: channels[i].toLowerCase(), sort_order: i,
+            created_by: userId,
+          },
+        });
+      }
+    } catch (wsErr) {
+      console.error("[Release Workspace auto-create failed]", wsErr);
+    }
+
     if (track_ids?.length) {
       const tracksToAssign = await prisma.tracks.findMany({ where: { id: { in: track_ids } } });
       await Promise.all(

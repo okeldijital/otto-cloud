@@ -6,6 +6,7 @@ import { useSidebar } from '../../contexts/SidebarContext';
 import { useRouter } from 'next/navigation';
 import api, { BASE_URL } from '../../lib/api';
 import ThemeToggle from '../ui/ThemeToggle';
+import OrganizationSwitcher from '../org/OrganizationSwitcher';
 
 const TopBar = () => {
     const { user, logout } = useAuth();
@@ -15,9 +16,8 @@ const TopBar = () => {
     const [showNotifications, setShowNotifications] = useState(false);
 
     // Notifications State
-    const [notifications, setNotifications] = useState([
-        { id: 1, message: 'Welcome to OTTO v1.0.1', time: 'Just now', unread: true }
-    ]);
+    const [notifications, setNotifications] = useState([]);
+    const [unreadCount, setUnreadCount] = useState(0);
 
     const [showUserMenu, setShowUserMenu] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -30,22 +30,25 @@ const TopBar = () => {
         router.push('/login');
     };
 
-    useEffect(() => {
-        // Weekly Backup Check
-        const checkBackup = () => {
-            const lastBackup = localStorage.getItem('last_backup_check');
-            const now = new Date().getTime();
-            const oneWeek = 7 * 24 * 60 * 60 * 1000;
+    const fetchNotifications = async () => {
+        try {
+            const { data } = await api.get('/notifications');
+            setNotifications(data.notifications || []);
+            setUnreadCount(data.unreadCount || 0);
+        } catch { /* */ }
+    };
 
-            if (!lastBackup || now - parseInt(lastBackup) > oneWeek) {
-                setNotifications(prev => [
-                    { id: Date.now(), message: 'Reminder: Weekly Backup Recommended', time: 'Now', unread: true },
-                    ...prev
-                ]);
-                localStorage.setItem('last_backup_check', now.toString()); // Reset to avoid spamming
-            }
-        };
-        checkBackup();
+    const fetchUnreadCount = async () => {
+        try {
+            const { data } = await api.get('/notifications?scope=unread-count');
+            setUnreadCount(data.count || 0);
+        } catch { /* */ }
+    };
+
+    useEffect(() => {
+        fetchNotifications();
+        const interval = setInterval(fetchUnreadCount, 30000);
+        return () => clearInterval(interval);
     }, []);
 
     useEffect(() => {
@@ -137,15 +140,34 @@ const TopBar = () => {
         }
     };
 
-    const handleMarkAllRead = () => {
-        setNotifications(prev => prev.map(n => ({ ...n, unread: false })));
+    const handleMarkAllRead = async () => {
+        try {
+            await api.put('/notifications', { action: 'mark_all_read' });
+            setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+            setUnreadCount(0);
+        } catch { /* */ }
     };
 
-    const handleClearNotifications = () => {
-        setNotifications([]);
+    const handleClearNotifications = async () => {
+        try {
+            await api.put('/notifications', { action: 'clear_all' });
+            setNotifications([]);
+            setUnreadCount(0);
+        } catch { /* */ }
     };
 
-    const unreadCount = notifications.filter(n => n.unread).length;
+    const handleNotificationClick = async (notification) => {
+        try {
+            await api.put('/notifications', { action: 'mark_read', notification_id: notification.id });
+            setNotifications(prev => prev.map(n => n.id === notification.id ? { ...n, is_read: true } : n));
+            setUnreadCount(prev => Math.max(0, prev - 1));
+        } catch { /* */ }
+        if (notification.link) {
+            router.push(notification.link);
+        }
+        setShowNotifications(false);
+    };
+
     const API_URL = BASE_URL;
 
     const hasResults = searchResults && Object.values(searchResults).some(arr => arr.length > 0);
@@ -160,7 +182,10 @@ const TopBar = () => {
                 >
                     <Menu size={20} />
                 </button>
-                <div className="relative flex-1 max-w-[600px]" ref={dropdownRef}>
+                <div className="hidden md:block">
+          <OrganizationSwitcher />
+        </div>
+        <div className="relative flex-1 max-w-[600px]" ref={dropdownRef}>
                 <form className="flex items-center bg-surface-elevated border border-transparent rounded-xl px-2 h-11 transition-all focus-within:border-accent focus-within:shadow-[0_0_0_4px_rgba(59,130,246,0.1)]" onSubmit={(e) => e.preventDefault()}>
                     <div className="flex items-center justify-center pr-3 mr-2 border-r border-border h-3/5 text-text-secondary pl-2">
                         <Search size={20} />
@@ -292,10 +317,12 @@ const TopBar = () => {
                                         notifications.map(notification => (
                                             <div
                                                 key={notification.id}
-                                                className={`p-4 border-b border-border last:border-0 ${notification.unread ? 'bg-accent/5' : ''}`}
+                                                className={`p-4 border-b border-border last:border-0 cursor-pointer hover:bg-surface-elevated transition-all ${!notification.is_read ? 'bg-accent/5' : ''}`}
+                                                onClick={() => handleNotificationClick(notification)}
                                             >
-                                                <div className="text-sm text-text-primary mb-1">{notification.message}</div>
-                                                <div className="text-[10px] text-text-secondary">{notification.time}</div>
+                                                <div className="text-sm font-semibold text-text-primary mb-1">{notification.title}</div>
+                                                {notification.message && <div className="text-xs text-text-secondary mb-1">{notification.message}</div>}
+                                                <div className="text-[10px] text-text-secondary">{notification.created_at ? new Date(notification.created_at).toLocaleString() : ''}</div>
                                             </div>
                                         ))
                                     )}

@@ -10,13 +10,14 @@ export async function GET(req: Request) {
 
   const { searchParams } = new URL(req.url);
   const orgId = (user as any).organization_id;
+  const tenantId = (user as any).tenant_id || orgId;
   const limit = Math.min(parseInt(searchParams.get("limit") || "50"), 200);
   const offset = parseInt(searchParams.get("offset") || "0");
   const action = searchParams.get("action");
   const entityType = searchParams.get("entity_type");
   const userId = searchParams.get("user_id") ? parseInt(searchParams.get("user_id")!) : undefined;
 
-  const where: any = { organization_id: parseInt(orgId) || orgId };
+  const where: any = { tenant_id: tenantId };
   if (action) where.action = action;
   if (entityType) where.entity_type = entityType;
   if (userId) where.user_id = userId;

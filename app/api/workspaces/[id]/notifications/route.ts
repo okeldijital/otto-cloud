@@ -3,13 +3,14 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const orgId = (session.user as any).organization_id;
-    const workspaceId = parseInt(params.id);
+    const { id } = await params;
+    const workspaceId = parseInt(id);
 
     const workspace = await prisma.workspaces.findUnique({ where: { id: workspaceId } });
     if (!workspace || workspace.organization_id !== orgId) {
@@ -29,13 +30,14 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   }
 }
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const orgId = (session.user as any).organization_id;
-    const workspaceId = parseInt(params.id);
+    const { id } = await params;
+    const workspaceId = parseInt(id);
     const { searchParams } = new URL(req.url);
     const notificationId = parseInt(searchParams.get("notification_id") || "");
     const markAll = searchParams.get("all") === "true";

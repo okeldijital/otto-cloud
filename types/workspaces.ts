@@ -9,6 +9,7 @@ export const WorkspaceRole = {
 
 export const WorkspaceStatus = {
   PLANNING: "planning",
+  PRE_PRODUCTION: "pre-production",
   WRITING: "writing",
   RECORDING: "recording",
   PRODUCTION: "production",
@@ -17,6 +18,7 @@ export const WorkspaceStatus = {
   ARTWORK: "artwork",
   MARKETING: "marketing",
   DISTRIBUTION: "distribution",
+  LAUNCH_READY: "launch-ready",
   RELEASED: "released",
   ARCHIVED: "archived",
 } as const;
@@ -58,9 +60,9 @@ export const NotificationType = {
 } as const;
 
 const workspaceStatusSchema = z.enum([
-  "planning", "writing", "recording", "production",
+  "planning", "pre-production", "writing", "recording", "production",
   "mixing", "mastering", "artwork", "marketing",
-  "distribution", "released", "archived",
+  "distribution", "launch-ready", "released", "archived",
 ]);
 
 const workspaceRoleSchema = z.enum(["owner", "manager", "member", "guest"]);

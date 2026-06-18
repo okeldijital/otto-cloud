@@ -134,3 +134,23 @@ export function clearPermissionCache() {
   permissionCache = null;
   cacheTimestamp = 0;
 }
+
+export async function canManageOrgBilling(userId: number): Promise<boolean> {
+  return hasPermission(userId, "billing.manage");
+}
+
+export async function canManageOrganization(userId: number): Promise<boolean> {
+  return hasPermission(userId, "organization.edit");
+}
+
+export async function canInviteTeamMembers(userId: number): Promise<boolean> {
+  return hasPermission(userId, "team.invite");
+}
+
+export async function isOrgOwner(userId: number, tenantId: string): Promise<boolean> {
+  const org = await prisma.tenants.findUnique({
+    where: { id: tenantId },
+    select: { owner_id: true },
+  });
+  return org?.owner_id === userId;
+}

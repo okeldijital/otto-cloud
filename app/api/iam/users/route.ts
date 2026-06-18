@@ -12,6 +12,7 @@ export async function GET(req: Request) {
 
   const { searchParams } = new URL(req.url);
   const orgId = (session.user as any).organization_id;
+  const tenantId = (session.user as any).tenant_id || orgId;
   const action = searchParams.get("action");
 
   if (action === "detail") {
@@ -34,7 +35,7 @@ export async function GET(req: Request) {
   }
 
   const users = await prisma.user.findMany({
-    where: { organization_id: orgId },
+    where: { tenant_id: tenantId },
     select: { id: true, email: true, name: true, is_active: true, is_superuser: true, role: true, department: true, last_login: true, createdAt: true },
     orderBy: { id: "asc" },
   });

@@ -1656,6 +1656,7 @@ model workspaces {
   name            String    @db.VarChar(255)
   description     String?
   template_id     Int?
+  release_id      Int?       @unique(map: "uq_workspaces_release_id")
   status          String    @default("planning") @db.VarChar(50)
   cover_image_url String?   @db.VarChar(500)
   organization_id String    @default(dbgenerated("'00000000-0000-0000-0000-000000000001'::uuid")) @db.Uuid
@@ -1666,11 +1667,20 @@ model workspaces {
   archived_at     DateTime? @db.Timestamptz(6)
   is_deleted      Boolean   @default(false)
 
-  template        workspace_templates?          @relation(fields: [template_id], references: [id], onDelete: SetNull)
-  members         workspace_members[]
-  timeline_events workspace_timeline_events[]
-  files           workspace_files[]
-  notifications   workspace_notifications[]
+  template          workspace_templates?             @relation(fields: [template_id], references: [id], onDelete: SetNull)
+  members           workspace_members[]
+  timeline_events   workspace_timeline_events[]
+  files             workspace_files[]
+  notifications     workspace_notifications[]
+  deliverables      workspace_deliverables[]
+  milestones        workspace_milestones[]
+  approvals         workspace_approvals[]
+  publications      workspace_publications[]
+  videos            workspace_videos[]
+  marketing_phases  workspace_marketing_phases[]
+  discussion_channels workspace_discussion_channels[]
+  readiness_scores  workspace_readiness_scores[]
+  dependencies      workspace_deliverable_dependencies[]
 
   @@index([id], map: "ix_workspaces_id")
   @@index([organization_id], map: "ix_workspaces_organization_id")
@@ -1736,21 +1746,399 @@ model workspace_files {
 }
 
 model workspace_notifications {
-  id           Int       @id @default(autoincrement())
-  workspace_id Int
-  user_id      Int?
-  type         String    @db.VarChar(50)
-  title        String    @db.VarChar(255)
-  message      String?
-  is_read      Boolean   @default(false)
-  link         String?   @db.VarChar(500)
-  created_at   DateTime? @default(now()) @db.Timestamptz(6)
+  id              Int       @id @default(autoincrement())
+  workspace_id    Int
+  organization_id String    @db.Uuid
+  user_id         Int?
+  type            String    @db.VarChar(50)
+  title           String    @db.VarChar(255)
+  message         String?
+  is_read         Boolean   @default(false)
+  link            String?   @db.VarChar(500)
+  created_at      DateTime? @default(now()) @db.Timestamptz(6)
 
   workspace workspaces @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
   user      User?      @relation(fields: [user_id], references: [id], onDelete: SetNull)
 
   @@index([workspace_id], map: "ix_workspace_notifications_workspace_id")
+  @@index([organization_id], map: "ix_workspace_notifications_organization_id")
   @@index([user_id], map: "ix_workspace_notifications_user_id")
   @@index([is_read], map: "ix_workspace_notifications_is_read")
   @@map("workspace_notifications")
+}
+
+// ─── Release Workspace Models ───────────────────────────────────────────
+
+model release_playbooks {
+  id              Int      @id @default(autoincrement())
+  organization_id String   @db.Uuid
+  tenant_id       String?  @db.Uuid
+  name            String   @db.VarChar(200)
+  slug            String   @db.VarChar(200)
+  description     String?
+  release_type    String?  @db.VarChar(50)
+  icon            String?  @db.VarChar(50)
+  color           String?  @db.VarChar(7)
+  is_built_in     Boolean  @default(false)
+  created_by      Int?
+  created_at      DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime? @db.Timestamptz(6)
+
+  playbook_tasks       playbook_tasks[]
+  playbook_milestones  playbook_milestones[]
+  playbook_deliverables playbook_deliverables[]
+  playbook_approvals   playbook_approvals[]
+
+  @@unique([organization_id, slug], map: "uq_release_playbooks_org_slug")
+  @@index([organization_id], map: "ix_release_playbooks_organization_id")
+  @@map("release_playbooks")
+}
+
+model playbook_tasks {
+  id            Int      @id @default(autoincrement())
+  playbook_id   Int
+  organization_id String @db.Uuid
+  tenant_id     String?  @db.Uuid
+  title         String   @db.VarChar(255)
+  description   String?
+  section       String?  @db.VarChar(100)
+  department    String?  @db.VarChar(100)
+  priority      String?  @default("medium") @db.VarChar(20)
+  sort_order    Int      @default(0)
+  days_before_release Int?
+  created_at    DateTime? @default(now()) @db.Timestamptz(6)
+
+  playbook release_playbooks @relation(fields: [playbook_id], references: [id], onDelete: Cascade)
+
+  @@index([playbook_id], map: "ix_playbook_tasks_playbook_id")
+  @@map("playbook_tasks")
+}
+
+model playbook_milestones {
+  id            Int      @id @default(autoincrement())
+  playbook_id   Int
+  organization_id String @db.Uuid
+  tenant_id     String?  @db.Uuid
+  name          String   @db.VarChar(255)
+  description   String?
+  section       String?  @db.VarChar(100)
+  sort_order    Int      @default(0)
+  days_before_release Int?
+  created_at    DateTime? @default(now()) @db.Timestamptz(6)
+
+  playbook release_playbooks @relation(fields: [playbook_id], references: [id], onDelete: Cascade)
+
+  @@index([playbook_id], map: "ix_playbook_milestones_playbook_id")
+  @@map("playbook_milestones")
+}
+
+model playbook_deliverables {
+  id            Int      @id @default(autoincrement())
+  playbook_id   Int
+  organization_id String @db.Uuid
+  tenant_id     String?  @db.Uuid
+  name          String   @db.VarChar(255)
+  description   String?
+  deliverable_type String? @db.VarChar(100)
+  sort_order    Int      @default(0)
+  days_before_release Int?
+  created_at    DateTime? @default(now()) @db.Timestamptz(6)
+
+  playbook release_playbooks @relation(fields: [playbook_id], references: [id], onDelete: Cascade)
+
+  @@index([playbook_id], map: "ix_playbook_deliverables_playbook_id")
+  @@map("playbook_deliverables")
+}
+
+model playbook_approvals {
+  id            Int      @id @default(autoincrement())
+  playbook_id   Int
+  organization_id String @db.Uuid
+  tenant_id     String?  @db.Uuid
+  name          String   @db.VarChar(255)
+  description   String?
+  item_type     String?  @db.VarChar(100)
+  sort_order    Int      @default(0)
+  days_before_release Int?
+  created_at    DateTime? @default(now()) @db.Timestamptz(6)
+
+  playbook release_playbooks @relation(fields: [playbook_id], references: [id], onDelete: Cascade)
+
+  @@index([playbook_id], map: "ix_playbook_approvals_playbook_id")
+  @@map("playbook_approvals")
+}
+
+model workspace_deliverables {
+  id            Int       @id @default(autoincrement())
+  workspace_id  Int
+  organization_id String  @db.Uuid
+  tenant_id     String?   @db.Uuid
+  name          String    @db.VarChar(255)
+  description   String?
+  deliverable_type String? @db.VarChar(100)
+  status        String    @default("not_started") @db.VarChar(50)
+  priority      String?   @default("medium") @db.VarChar(20)
+  due_date      DateTime? @db.Timestamptz(6)
+  assigned_to   Int?
+  approved_by   Int?
+  approved_at   DateTime? @db.Timestamptz(6)
+  version       Int       @default(1)
+  file_path     String?   @db.VarChar(500)
+  notes         String?
+  sort_order    Int       @default(0)
+  is_deleted    Boolean   @default(false)
+  created_by    Int?
+  created_at    DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime? @db.Timestamptz(6)
+
+  workspace workspaces @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  dependencies_as_source workspace_deliverable_dependencies[] @relation("dependency_source")
+  dependencies_as_target workspace_deliverable_dependencies[] @relation("dependency_target")
+
+  @@index([workspace_id], map: "ix_workspace_deliverables_workspace_id")
+  @@index([status], map: "ix_workspace_deliverables_status")
+  @@index([organization_id], map: "ix_workspace_deliverables_organization_id")
+  @@map("workspace_deliverables")
+}
+
+model workspace_deliverable_dependencies {
+  id              Int      @id @default(autoincrement())
+  workspace_id    Int
+  organization_id String   @db.Uuid
+  source_id       Int
+  target_id       Int
+  dependency_type String   @default("blocks") @db.VarChar(50)
+  created_by      Int?
+  created_at      DateTime? @default(now()) @db.Timestamptz(6)
+
+  source    workspace_deliverables @relation("dependency_source", fields: [source_id], references: [id], onDelete: Cascade)
+  target    workspace_deliverables @relation("dependency_target", fields: [target_id], references: [id], onDelete: Cascade)
+  workspace workspaces             @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@unique([source_id, target_id, dependency_type])
+  @@index([workspace_id], map: "ix_workspace_dep_workspace")
+  @@index([source_id], map: "ix_workspace_dep_source")
+  @@index([target_id], map: "ix_workspace_dep_target")
+  @@map("workspace_deliverable_dependencies")
+}
+
+model workspace_milestones {
+  id            Int       @id @default(autoincrement())
+  workspace_id  Int
+  organization_id String  @db.Uuid
+  tenant_id     String?   @db.Uuid
+  name          String    @db.VarChar(255)
+  description   String?
+  section       String?   @db.VarChar(100)
+  due_date      DateTime? @db.Timestamptz(6)
+  completed_at  DateTime? @db.Timestamptz(6)
+  status        String    @default("pending") @db.VarChar(50)
+  sort_order    Int       @default(0)
+  is_deleted    Boolean   @default(false)
+  created_by    Int?
+  created_at    DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime? @db.Timestamptz(6)
+
+  workspace workspaces @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id], map: "ix_workspace_milestones_workspace_id")
+  @@index([status], map: "ix_workspace_milestones_status")
+  @@index([organization_id], map: "ix_workspace_milestones_organization_id")
+  @@map("workspace_milestones")
+}
+
+model workspace_approvals {
+  id              Int       @id @default(autoincrement())
+  workspace_id    Int
+  organization_id String    @db.Uuid
+  tenant_id       String?   @db.Uuid
+  name            String    @db.VarChar(255)
+  description     String?
+  item_type       String?   @db.VarChar(100)
+  item_id         Int?
+  status          String    @default("pending") @db.VarChar(50)
+  requested_by    Int?
+  approved_by     Int?
+  approved_at     DateTime? @db.Timestamptz(6)
+  comments        String?
+  due_date        DateTime? @db.Timestamptz(6)
+  is_deleted      Boolean   @default(false)
+  created_at      DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime? @db.Timestamptz(6)
+
+  workspace workspaces @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id], map: "ix_workspace_approvals_workspace_id")
+  @@index([status], map: "ix_workspace_approvals_status")
+  @@index([organization_id], map: "ix_workspace_approvals_organization_id")
+  @@map("workspace_approvals")
+}
+
+model workspace_publications {
+  id              Int       @id @default(autoincrement())
+  workspace_id    Int
+  organization_id String    @db.Uuid
+  tenant_id       String?   @db.Uuid
+  platform        String    @db.VarChar(100)
+  content_type    String?   @db.VarChar(100)
+  title           String?   @db.VarChar(255)
+  content         String?
+  status          String    @default("draft") @db.VarChar(50)
+  scheduled_at    DateTime? @db.Timestamptz(6)
+  published_at    DateTime? @db.Timestamptz(6)
+  url             String?   @db.VarChar(500)
+  created_by      Int?
+  is_deleted      Boolean   @default(false)
+  created_at      DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime? @db.Timestamptz(6)
+
+  workspace workspaces @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id], map: "ix_workspace_publications_workspace_id")
+  @@index([platform], map: "ix_workspace_publications_platform")
+  @@index([status], map: "ix_workspace_publications_status")
+  @@index([organization_id], map: "ix_workspace_publications_organization_id")
+  @@map("workspace_publications")
+}
+
+model workspace_videos {
+  id              Int       @id @default(autoincrement())
+  workspace_id    Int
+  organization_id String    @db.Uuid
+  tenant_id       String?   @db.Uuid
+  title           String    @db.VarChar(255)
+  video_type      String    @db.VarChar(100)
+  description     String?
+  status          String    @default("planning") @db.VarChar(50)
+  due_date        DateTime? @db.Timestamptz(6)
+  editor_id       Int?
+  script          String?
+  file_path       String?   @db.VarChar(500)
+  url             String?   @db.VarChar(500)
+  duration_seconds Int?
+  approved        Boolean   @default(false)
+  approved_by     Int?
+  approved_at     DateTime? @db.Timestamptz(6)
+  is_deleted      Boolean   @default(false)
+  created_by      Int?
+  created_at      DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime? @db.Timestamptz(6)
+
+  workspace workspaces @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id], map: "ix_workspace_videos_workspace_id")
+  @@index([video_type], map: "ix_workspace_videos_video_type")
+  @@index([status], map: "ix_workspace_videos_status")
+  @@index([organization_id], map: "ix_workspace_videos_organization_id")
+  @@map("workspace_videos")
+}
+
+model workspace_marketing_phases {
+  id              Int       @id @default(autoincrement())
+  workspace_id    Int
+  organization_id String    @db.Uuid
+  tenant_id       String?   @db.Uuid
+  name            String    @db.VarChar(200)
+  slug            String?   @db.VarChar(200)
+  description     String?
+  start_date      DateTime? @db.Timestamptz(6)
+  end_date        DateTime? @db.Timestamptz(6)
+  sort_order      Int       @default(0)
+  is_deleted      Boolean   @default(false)
+  created_by      Int?
+  created_at      DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime? @db.Timestamptz(6)
+
+  workspace workspaces @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  tasks     workspace_marketing_tasks[]
+
+  @@index([workspace_id], map: "ix_workspace_marketing_phases_workspace_id")
+  @@index([organization_id], map: "ix_workspace_marketing_phases_organization_id")
+  @@map("workspace_marketing_phases")
+}
+
+model workspace_marketing_tasks {
+  id              Int       @id @default(autoincrement())
+  phase_id        Int
+  organization_id String    @db.Uuid
+  tenant_id       String?   @db.Uuid
+  title           String    @db.VarChar(255)
+  description     String?
+  status          String    @default("not_started") @db.VarChar(50)
+  priority        String?   @default("medium") @db.VarChar(20)
+  assigned_to     Int?
+  due_date        DateTime? @db.Timestamptz(6)
+  sort_order      Int       @default(0)
+  is_deleted      Boolean   @default(false)
+  created_by      Int?
+  created_at      DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime? @db.Timestamptz(6)
+
+  phase workspace_marketing_phases @relation(fields: [phase_id], references: [id], onDelete: Cascade)
+
+  @@index([phase_id], map: "ix_workspace_marketing_tasks_phase_id")
+  @@index([organization_id], map: "ix_workspace_marketing_tasks_organization_id")
+  @@map("workspace_marketing_tasks")
+}
+
+model workspace_discussion_channels {
+  id              Int       @id @default(autoincrement())
+  workspace_id    Int
+  organization_id String    @db.Uuid
+  tenant_id       String?   @db.Uuid
+  name            String    @db.VarChar(200)
+  slug            String    @db.VarChar(200)
+  description     String?
+  sort_order      Int       @default(0)
+  is_deleted      Boolean   @default(false)
+  created_by      Int?
+  created_at      DateTime? @default(now()) @db.Timestamptz(6)
+
+  workspace workspaces @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  messages  workspace_discussion_messages[]
+
+  @@unique([workspace_id, slug], map: "uq_workspace_discussion_channels_slug")
+  @@index([workspace_id], map: "ix_workspace_discussion_channels_workspace_id")
+  @@index([organization_id], map: "ix_workspace_discussion_channels_organization_id")
+  @@map("workspace_discussion_channels")
+}
+
+model workspace_discussion_messages {
+  id              Int       @id @default(autoincrement())
+  channel_id      Int
+  organization_id String    @db.Uuid
+  tenant_id       String?   @db.Uuid
+  content         String
+  user_id         Int?
+  edited_at       DateTime? @db.Timestamptz(6)
+  is_deleted      Boolean   @default(false)
+  created_at      DateTime? @default(now()) @db.Timestamptz(6)
+
+  channel workspace_discussion_channels @relation(fields: [channel_id], references: [id], onDelete: Cascade)
+
+  @@index([channel_id], map: "ix_workspace_discussion_messages_channel_id")
+  @@index([organization_id], map: "ix_workspace_discussion_messages_organization_id")
+  @@map("workspace_discussion_messages")
+}
+
+model workspace_readiness_scores {
+  id              Int       @id @default(autoincrement())
+  workspace_id    Int
+  organization_id String    @db.Uuid
+  tenant_id       String?   @db.Uuid
+  overall_score   Float     @default(0)
+  metadata_score  Float     @default(0)
+  artwork_score   Float     @default(0)
+  marketing_score Float     @default(0)
+  distribution_score Float  @default(0)
+  approvals_score Float     @default(0)
+  videos_score    Float     @default(0)
+  breakdown_json  String?
+  calculated_at   DateTime? @default(now()) @db.Timestamptz(6)
+
+  workspace workspaces @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id], map: "ix_workspace_readiness_scores_workspace_id")
+  @@index([organization_id], map: "ix_workspace_readiness_scores_organization_id")
+  @@map("workspace_readiness_scores")
 }

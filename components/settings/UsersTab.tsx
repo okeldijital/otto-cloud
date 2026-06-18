@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Mail, Shield, UserX, UserCheck, Key, Users, Plus, X, Trash2 } from "lucide-react";
+import { Mail, Shield, UserX, UserCheck, Key, Users, Plus, X, Trash2, Link } from "lucide-react";
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
@@ -11,10 +11,13 @@ export default function UsersTab({ onError }: { onError: (msg: string) => void }
   const [loading, setLoading] = useState(true);
   const [roles, setRoles] = useState<any[]>([]);
   const [showInvite, setShowInvite] = useState(false);
+  const [inviteMethod, setInviteMethod] = useState<"direct" | "link">("direct");
   const [inviteEmail, setInviteEmail] = useState("");
   const [invitePassword, setInvitePassword] = useState("");
   const [inviteName, setInviteName] = useState("");
+  const [inviteMessage, setInviteMessage] = useState("");
   const [inviting, setInviting] = useState(false);
+  const [inviteResult, setInviteResult] = useState<string | null>(null);
   const [resetPassUserId, setResetPassUserId] = useState<number | null>(null);
   const [resetPass, setResetPass] = useState("");
 
@@ -35,12 +38,20 @@ export default function UsersTab({ onError }: { onError: (msg: string) => void }
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inviteEmail.trim() || !invitePassword.trim()) return;
+    if (!inviteEmail.trim()) return;
+    if (inviteMethod === "direct" && !invitePassword.trim()) return;
     setInviting(true);
+    setInviteResult(null);
     try {
-      await api.post("/users", { email: inviteEmail, password: invitePassword, name: inviteName || undefined }, { params: { action: "invite" } });
-      setInviteEmail(""); setInvitePassword(""); setInviteName(""); setShowInvite(false);
-      fetchUsers();
+      if (inviteMethod === "link") {
+        const res = await api.post("/invitations", { email: inviteEmail, message: inviteMessage || undefined });
+        setInviteResult(`Invite link: ${res.data.invite_url}`);
+      } else {
+        await api.post("/users", { email: inviteEmail, password: invitePassword, name: inviteName || undefined }, { params: { action: "invite" } });
+        setInviteEmail(""); setInvitePassword(""); setInviteName(""); setInviteMessage("");
+        setShowInvite(false);
+        fetchUsers();
+      }
     } catch (err: any) { onError(err?.response?.data?.error || "Failed to invite"); }
     finally { setInviting(false); }
   };
@@ -85,14 +96,28 @@ export default function UsersTab({ onError }: { onError: (msg: string) => void }
       </div>
       {showInvite && (
         <Card title="Invite User" subtitle="Add a new user to your organization">
+          <div className="flex gap-2 mb-4">
+            <button className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${inviteMethod === "link" ? "bg-accent text-black" : "bg-white/5 text-text-secondary"}`} onClick={() => setInviteMethod("link")}><Link size={12} className="inline mr-1" /> Invite by Link</button>
+            <button className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${inviteMethod === "direct" ? "bg-accent text-black" : "bg-white/5 text-text-secondary"}`} onClick={() => setInviteMethod("direct")}><Mail size={12} className="inline mr-1" /> Direct Invite</button>
+          </div>
           <form onSubmit={handleInvite} className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <input className="input" type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="Email *" required />
-              <input className="input" type="text" value={invitePassword} onChange={e => setInvitePassword(e.target.value)} placeholder="Password *" required />
-              <input className="input" value={inviteName} onChange={e => setInviteName(e.target.value)} placeholder="Full name (optional)" />
+              {inviteMethod === "direct" && <input className="input" type="text" value={invitePassword} onChange={e => setInvitePassword(e.target.value)} placeholder="Password *" required />}
+              {inviteMethod === "direct" && <input className="input" value={inviteName} onChange={e => setInviteName(e.target.value)} placeholder="Full name" />}
             </div>
+            {inviteMethod === "link" && (
+              <input className="input w-full" value={inviteMessage} onChange={e => setInviteMessage(e.target.value)} placeholder="Personal message (optional)" />
+            )}
+            {inviteResult && (
+              <div className="bg-accent/10 border border-accent/20 rounded-xl p-3">
+                <p className="text-xs text-accent break-all">{inviteResult}</p>
+                <Button variant="ghost" size="sm" onClick={() => navigator.clipboard.writeText(inviteResult?.replace("Invite link: ", "") || "")} className="mt-1">Copy Link</Button>
+              </div>
+            )}
             <Button variant="primary" size="sm" type="submit" disabled={inviting}>
-              <Mail size={14} /> {inviting ? "Sending..." : "Send Invite"}
+              {inviteMethod === "link" ? <Link size={14} /> : <Mail size={14} />}
+              {inviting ? "Sending..." : inviteMethod === "link" ? "Generate Invite Link" : "Send Invite"}
             </Button>
           </form>
         </Card>

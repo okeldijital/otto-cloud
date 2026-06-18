@@ -94,6 +94,9 @@ export default function ReleaseDetailPage() {
         </button>
         <PageHeader title={release.title} subtitle={artistNames} actions={
           <div className="flex gap-2">
+            <Button variant="primary" size="sm" onClick={() => router.push(`/catalog/releases/${id}/workspace`)}>
+              <ExternalLink size={14} /> Release Workspace
+            </Button>
             <Button variant="danger" size="sm" onClick={async () => {
               if (window.confirm(`Delete "${release.title}"?`)) {
                 try { await api.delete(`/releases?id=${id}`); router.push("/catalog/releases"); }

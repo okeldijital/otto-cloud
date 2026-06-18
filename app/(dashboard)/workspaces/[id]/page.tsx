@@ -2,33 +2,45 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import {
-  ChevronLeft, Layout, Users, Clock, FileText, Activity,
-  MessageSquare, CheckSquare, Bot, Calendar, ListTodo,
-  Image, Music, MoreHorizontal, Trash2,
-} from "lucide-react";
+import { ChevronLeft, Layout, Trash2 } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import Button from "@/components/ui/Button";
-import Card from "@/components/ui/Card";
-import Badge from "@/components/ui/Badge";
-import TimelineFeed from "@/components/workspaces/TimelineFeed";
 import StatusKanban from "@/components/workspaces/StatusKanban";
 import api from "@/lib/api";
+import { registerSection, getSectionsForTemplate, SECTION_ICONS } from "@/lib/workspace-engine";
+import type { SectionPlugin } from "@/lib/workspace-engine";
 
-const DASHBOARD_SECTIONS = [
-  { key: "overview", label: "Overview", icon: Layout },
-  { key: "tasks", label: "Tasks", icon: ListTodo },
-  { key: "files", label: "Files", icon: FileText },
-  { key: "music", label: "Music", icon: Music },
-  { key: "people", label: "People", icon: Users },
-  { key: "timeline", label: "Timeline", icon: Clock },
-  { key: "calendar", label: "Calendar", icon: Calendar },
-  { key: "messages", label: "Messages", icon: MessageSquare },
-  { key: "approvals", label: "Approvals", icon: CheckSquare },
-  { key: "notes", label: "Notes", icon: FileText },
-  { key: "ai", label: "AI Assistant", icon: Bot },
-  { key: "reports", label: "Reports", icon: Activity },
-];
+import OverviewSection from "@/components/workspace-sections/OverviewSection";
+import DeliverablesSection from "@/components/workspace-sections/DeliverablesSection";
+import ApprovalsSection from "@/components/workspace-sections/ApprovalsSection";
+import PublicationsSection from "@/components/workspace-sections/PublicationsSection";
+import VideosSection from "@/components/workspace-sections/VideosSection";
+import MilestonesSection from "@/components/workspace-sections/MilestonesSection";
+import MarketingSection from "@/components/workspace-sections/MarketingSection";
+import DiscussionsSection from "@/components/workspace-sections/DiscussionsSection";
+import FilesSection from "@/components/workspace-sections/FilesSection";
+import TimelineSection from "@/components/workspace-sections/TimelineSection";
+import ReadinessSection from "@/components/workspace-sections/ReadinessSection";
+import SettingsSection from "@/components/workspace-sections/SettingsSection";
+import AISection from "@/components/workspace-sections/AISection";
+import ReportsSection from "@/components/workspace-sections/ReportsSection";
+import DependencySection from "@/components/workspace-sections/DependencySection";
+
+registerSection({ key: "overview", label: "Overview", component: OverviewSection, icon: "layout" });
+registerSection({ key: "deliverables", label: "Tasks", component: DeliverablesSection, icon: "checkSquare" });
+registerSection({ key: "dependencies", label: "Dependencies", component: DependencySection, icon: "gitBranch" });
+registerSection({ key: "milestones", label: "Milestones", component: MilestonesSection, icon: "calendar" });
+registerSection({ key: "approvals", label: "Approvals", component: ApprovalsSection, icon: "checkCircle" });
+registerSection({ key: "publications", label: "Publications", component: PublicationsSection, icon: "share2" });
+registerSection({ key: "videos", label: "Videos", component: VideosSection, icon: "video" });
+registerSection({ key: "marketing", label: "Marketing", component: MarketingSection, icon: "megaphone" });
+registerSection({ key: "discussions", label: "Discussions", component: DiscussionsSection, icon: "messageSquare" });
+registerSection({ key: "files", label: "Files", component: FilesSection, icon: "fileText" });
+registerSection({ key: "timeline", label: "Timeline", component: TimelineSection, icon: "clock" });
+registerSection({ key: "readiness", label: "Readiness", component: ReadinessSection, icon: "activity" });
+registerSection({ key: "settings", label: "Settings", component: SettingsSection, icon: "settings" });
+registerSection({ key: "ai", label: "AI Assistant", component: AISection, icon: "bot" });
+registerSection({ key: "reports", label: "Reports", component: ReportsSection, icon: "barChart" });
 
 export default function WorkspaceDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -40,7 +52,7 @@ export default function WorkspaceDetailPage() {
 
   const fetchWorkspace = async () => {
     try {
-      const { data } = await api.get(`/workspaces?id=${id}`);
+      const { data } = await api.get(`/workspace/${id}`);
       setWorkspace(data);
       setError(null);
     } catch (err: any) {
@@ -57,7 +69,7 @@ export default function WorkspaceDetailPage() {
 
   const handleStatusChange = async (newStatus: string) => {
     try {
-      await api.put(`/workspaces/${id}`, { status: newStatus });
+      await api.put(`/workspace/${id}`, { status: newStatus });
       fetchWorkspace();
     } catch (err) {
       console.error("Failed to update status:", err);
@@ -67,12 +79,16 @@ export default function WorkspaceDetailPage() {
   const handleDelete = async () => {
     if (!window.confirm(`Delete workspace "${workspace?.name}"?`)) return;
     try {
-      await api.delete(`/workspaces/${id}`);
+      await api.delete(`/workspace/${id}`);
       router.push("/workspaces");
     } catch (err: any) {
       alert(err?.response?.data?.error || "Failed to delete workspace");
     }
   };
+
+  const activeSectionPlugin = workspace
+    ? getSectionsForTemplate(workspace.template?.slug).find((s) => s.key === activeSection)
+    : undefined;
 
   if (loading) {
     return (
@@ -107,7 +123,7 @@ export default function WorkspaceDetailPage() {
 
   if (!workspace) return null;
 
-  const templateColor = workspace.template?.color || "#6366f1";
+  const sections = getSectionsForTemplate(workspace.template?.slug);
 
   return (
     <div className="space-y-6">
@@ -137,8 +153,8 @@ export default function WorkspaceDetailPage() {
 
       <div className="border-b border-white/5 overflow-x-auto">
         <div className="flex gap-1 min-w-max">
-          {DASHBOARD_SECTIONS.map((section) => {
-            const Icon = section.icon;
+          {sections.map((section) => {
+            const Icon = SECTION_ICONS[section.icon as keyof typeof SECTION_ICONS] || Layout;
             return (
               <button
                 key={section.key}
@@ -157,224 +173,17 @@ export default function WorkspaceDetailPage() {
         </div>
       </div>
 
-      {activeSection === "overview" && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
-            <Card title="Activity Feed">
-              <TimelineFeed events={workspace.timeline_events} loading={false} />
-            </Card>
-
-            <Card title="Recent Files">
-              {workspace.files?.length > 0 ? (
-                <div className="space-y-2">
-                  {workspace.files.slice(0, 5).map((file: any) => (
-                    <div key={file.id} className="flex items-center justify-between py-2 px-3 rounded-lg bg-white/5">
-                      <div className="flex items-center gap-3">
-                        <FileText size={16} className="text-text-secondary" />
-                        <div>
-                          <p className="text-sm font-medium text-white">{file.original_name}</p>
-                          <p className="text-[10px] text-text-secondary uppercase">{file.category}</p>
-                        </div>
-                      </div>
-                      <Badge variant="primary">{file.category}</Badge>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-text-secondary text-sm py-4 text-center">No files uploaded yet</p>
-              )}
-            </Card>
-          </div>
-
-          <div className="space-y-6">
-            <Card title="Members">
-              {workspace.members?.length > 0 ? (
-                <div className="space-y-2">
-                  {workspace.members.map((member: any) => (
-                    <div key={member.id} className="flex items-center gap-3 p-2 rounded-lg bg-white/5">
-                      <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center text-accent text-xs font-bold">
-                        {member.user?.name?.[0] || member.name?.[0] || "?"}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-white truncate">
-                          {member.user?.name || member.name || "Unknown"}
-                        </p>
-                        <p className="text-[10px] text-text-secondary uppercase">{member.role}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-text-secondary text-sm py-4 text-center">No members yet</p>
-              )}
-            </Card>
-
-            <Card title="Quick Info">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-text-secondary">Status</span>
-                  <Badge variant="primary">{workspace.status}</Badge>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-text-secondary">Template</span>
-                  <span className="text-sm text-white">{workspace.template?.name || "Custom"}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-text-secondary">Members</span>
-                  <span className="text-sm text-white">{workspace.members?.length || 0}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-text-secondary">Files</span>
-                  <span className="text-sm text-white">{workspace.files?.length || 0}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-text-secondary">Activities</span>
-                  <span className="text-sm text-white">{workspace.timeline_events?.length || 0}</span>
-                </div>
-              </div>
-            </Card>
-
-            {workspace.template?.sections && (
-              <Card title="Workspace Sections">
-                <div className="grid grid-cols-2 gap-2">
-                  {workspace.template.sections.map((section: any) => (
-                    <button
-                      key={section.id}
-                      onClick={() => setActiveSection(section.slug)}
-                      className="flex items-center gap-2 p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-left"
-                    >
-                      <span
-                        className="w-2 h-2 rounded-full shrink-0"
-                        style={{ backgroundColor: templateColor }}
-                      />
-                      <span className="text-xs font-medium text-white truncate">{section.name}</span>
-                    </button>
-                  ))}
-                </div>
-              </Card>
-            )}
-
-            <div className="bg-gradient-to-br from-accent/10 to-transparent border border-accent/20 rounded-2xl p-6">
-              <div className="flex items-center gap-3 mb-3">
-                <Bot size={20} className="text-accent" />
-                <h3 className="text-sm font-bold text-white">AI Workspace Assistant</h3>
-              </div>
-              <p className="text-xs text-text-secondary mb-4">
-                Ask about this workspace's files, tasks, and history.
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {["Summarize progress", "Find missing items", "Generate report"].map((prompt) => (
-                  <button
-                    key={prompt}
-                    className="px-3 py-1.5 text-[10px] font-bold bg-white/5 hover:bg-white/10 rounded-lg text-text-secondary hover:text-white transition-colors"
-                  >
-                    {prompt}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
+      {activeSectionPlugin ? (
+        <activeSectionPlugin.component
+          workspace={workspace}
+          workspaceId={parseInt(id)}
+          onRefresh={fetchWorkspace}
+          onNavigate={(key: string) => setActiveSection(key)}
+        />
+      ) : (
+        <div className="py-16 text-center text-text-secondary">
+          <p>Section not found</p>
         </div>
-      )}
-
-      {activeSection === "timeline" && (
-        <Card title="Full Timeline">
-          <TimelineFeed events={workspace.timeline_events} loading={false} />
-        </Card>
-      )}
-
-      {activeSection === "people" && (
-        <Card title="Members">
-          {workspace.members?.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {workspace.members.map((member: any) => (
-                <div key={member.id} className="flex items-center gap-4 p-4 rounded-xl bg-white/5">
-                  <div className="w-12 h-12 rounded-full bg-accent/20 flex items-center justify-center text-accent text-lg font-bold">
-                    {member.user?.name?.[0] || member.name?.[0] || "?"}
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-white">{member.user?.name || member.name || "Unknown"}</p>
-                    <p className="text-xs text-text-secondary">{member.user?.email || member.email || ""}</p>
-                    <Badge variant="primary">{member.role}</Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-text-secondary text-sm py-8 text-center">No members yet</p>
-          )}
-        </Card>
-      )}
-
-      {activeSection === "files" && (
-        <Card title="Files">
-          {workspace.files?.length > 0 ? (
-            <div className="space-y-2">
-              {workspace.files.map((file: any) => (
-                <div key={file.id} className="flex items-center justify-between py-3 px-4 rounded-lg bg-white/5">
-                  <div className="flex items-center gap-3">
-                    <FileText size={18} className="text-text-secondary" />
-                    <div>
-                      <p className="text-sm font-medium text-white">{file.original_name}</p>
-                      <p className="text-[10px] text-text-secondary">
-                        {file.category} &middot; {file.file_size ? `${(file.file_size / 1024).toFixed(1)} KB` : ""}
-                      </p>
-                    </div>
-                  </div>
-                  <Badge variant="primary">{file.category}</Badge>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-text-secondary text-sm py-8 text-center">No files uploaded yet</p>
-          )}
-        </Card>
-      )}
-
-      {activeSection === "tasks" && (
-        <Card title="Tasks">
-          <p className="text-text-secondary text-sm py-8 text-center">
-            Tasks will be available in a future update. Tasks from the existing task system will integrate here.
-          </p>
-        </Card>
-      )}
-
-      {activeSection === "notes" && (
-        <Card title="Notes">
-          <p className="text-text-secondary text-sm py-8 text-center">
-            Workspace notes will integrate with the existing notes system.
-          </p>
-        </Card>
-      )}
-
-      {activeSection === "ai" && (
-        <Card title="AI Workspace Assistant">
-          <div className="py-8 text-center">
-            <Bot size={48} className="mx-auto mb-4 text-accent opacity-50" />
-            <p className="text-text-secondary text-sm mb-4">
-              The AI assistant knows about this workspace's files, tasks, members, and history.
-            </p>
-            <div className="flex flex-wrap justify-center gap-2 max-w-md mx-auto">
-              {[
-                "Summarize today's progress",
-                "Generate release notes",
-                "Create a marketing strategy",
-                "Write social captions",
-                "Identify missing deliverables",
-                "Check publishing metadata",
-                "Generate meeting minutes",
-                "Suggest next tasks",
-              ].map((prompt) => (
-                <button
-                  key={prompt}
-                  className="px-4 py-2 text-xs font-medium bg-white/5 hover:bg-white/10 rounded-xl text-text-secondary hover:text-white transition-colors border border-white/5"
-                >
-                  {prompt}
-                </button>
-              ))}
-            </div>
-          </div>
-        </Card>
       )}
     </div>
   );
