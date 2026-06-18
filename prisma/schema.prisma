@@ -21,6 +21,7 @@ model User {
   last_login                             DateTime?                       @db.Timestamptz(6)
   avatar_url                             String?                         @db.VarChar(500)
   organization_id                        String                          @default(dbgenerated("'00000000-0000-0000-0000-000000000001'::uuid")) @db.Uuid
+  department                             String?                         @db.VarChar(100)
   activities                             activities[]
   admin_backup_artifacts                 admin_backup_artifacts[]
   admin_backup_restore_events            admin_backup_restore_events[]
@@ -49,6 +50,8 @@ model User {
   tasks_tasks_assigned_to_user_idTousers tasks[]                         @relation("tasks_assigned_to_user_idTousers")
   tasks_tasks_created_by_user_idTousers  tasks[]                         @relation("tasks_created_by_user_idTousers")
   api_keys                               api_keys[]
+  user_roles                             user_roles[]
+  team_members                           team_members[]
 
   @@index([id], map: "ix_users_id")
   @@index([organization_id], map: "ix_users_organization_id")
@@ -1210,6 +1213,90 @@ model api_keys {
   @@unique([prefix, key_hash], map: "uq_api_keys_prefix_hash")
   @@index([organization_id], map: "ix_api_keys_organization_id")
   @@index([prefix], map: "ix_api_keys_prefix")
+}
+
+model roles {
+  id              Int              @id @default(autoincrement())
+  name            String           @unique @db.VarChar(100)
+  description     String?          @db.Text
+  is_system       Boolean          @default(false)
+  organization_id String?          @db.Uuid
+  created_at      DateTime?        @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime?        @default(now()) @db.Timestamptz(6)
+  role_permissions role_permissions[]
+  user_roles      user_roles[]
+
+  @@index([name], map: "ix_roles_name")
+  @@index([organization_id], map: "ix_roles_organization_id")
+  @@map("roles")
+}
+
+model permissions {
+  id               Int              @id @default(autoincrement())
+  code             String           @unique @db.VarChar(100)
+  name             String           @db.VarChar(200)
+  description      String?          @db.Text
+  module           String           @db.VarChar(50)
+  created_at       DateTime?        @default(now()) @db.Timestamptz(6)
+  role_permissions role_permissions[]
+
+  @@index([code], map: "ix_permissions_code")
+  @@index([module], map: "ix_permissions_module")
+  @@map("permissions")
+}
+
+model role_permissions {
+  id            Int         @id @default(autoincrement())
+  role_id       Int
+  permission_id Int
+  roles         roles       @relation(fields: [role_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  permissions   permissions @relation(fields: [permission_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([role_id, permission_id], map: "uq_role_permissions")
+  @@index([role_id], map: "ix_role_permissions_role_id")
+  @@index([permission_id], map: "ix_role_permissions_permission_id")
+  @@map("role_permissions")
+}
+
+model user_roles {
+  id      Int   @id @default(autoincrement())
+  user_id Int
+  role_id Int
+  roles   roles @relation(fields: [role_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users   User  @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, role_id], map: "uq_user_roles")
+  @@index([user_id], map: "ix_user_roles_user_id")
+  @@index([role_id], map: "ix_user_roles_role_id")
+  @@map("user_roles")
+}
+
+model teams {
+  id              Int            @id @default(autoincrement())
+  name            String         @db.VarChar(100)
+  description     String?        @db.Text
+  organization_id String         @db.Uuid
+  created_at      DateTime?      @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime?      @default(now()) @db.Timestamptz(6)
+  team_members    team_members[]
+
+  @@unique([organization_id, name], map: "uq_teams_org_name")
+  @@index([organization_id], map: "ix_teams_organization_id")
+  @@map("teams")
+}
+
+model team_members {
+  id      Int   @id @default(autoincrement())
+  team_id Int
+  user_id Int
+  role    String? @db.VarChar(50)
+  teams   teams @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users   User  @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([team_id, user_id], map: "uq_team_members")
+  @@index([team_id], map: "ix_team_members_team_id")
+  @@index([user_id], map: "ix_team_members_user_id")
+  @@map("team_members")
 }
 
 model tasks {
