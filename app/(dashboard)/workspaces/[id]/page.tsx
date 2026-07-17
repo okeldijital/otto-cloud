@@ -25,10 +25,12 @@ import SettingsSection from "@/components/workspace-sections/SettingsSection";
 import AISection from "@/components/workspace-sections/AISection";
 import ReportsSection from "@/components/workspace-sections/ReportsSection";
 import DependencySection from "@/components/workspace-sections/DependencySection";
+import DynamicFieldsSection from "@/components/workspace-sections/DynamicFieldsSection";
 
 registerSection({ key: "overview", label: "Overview", component: OverviewSection, icon: "layout" });
 registerSection({ key: "deliverables", label: "Tasks", component: DeliverablesSection, icon: "checkSquare" });
 registerSection({ key: "dependencies", label: "Dependencies", component: DependencySection, icon: "gitBranch" });
+registerSection({ key: "fields", label: "Fields", component: DynamicFieldsSection, icon: "settings" });
 registerSection({ key: "milestones", label: "Milestones", component: MilestonesSection, icon: "calendar" });
 registerSection({ key: "approvals", label: "Approvals", component: ApprovalsSection, icon: "checkCircle" });
 registerSection({ key: "publications", label: "Publications", component: PublicationsSection, icon: "share2" });

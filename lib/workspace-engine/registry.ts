@@ -133,6 +133,11 @@ export async function ensureSectionsLoaded(): Promise<void> {
     sectionModules.dependencies = dependencies;
   } catch { /* optional */ }
 
+  try {
+    const dynamicFields = await import("@/components/workspace-sections/DynamicFieldsSection");
+    sectionModules.dynamicFields = dynamicFields;
+  } catch { /* optional */ }
+
   const defaults: Array<{ key: string; label: string; icon: string; order: number }> = [
     { key: "overview", label: "Overview", icon: "LayoutDashboard", order: 0 },
     { key: "deliverables", label: "Deliverables", icon: "Package", order: 3 },

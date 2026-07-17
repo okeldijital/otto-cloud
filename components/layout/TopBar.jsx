@@ -173,7 +173,7 @@ const TopBar = () => {
     const hasResults = searchResults && Object.values(searchResults).some(arr => arr.length > 0);
 
     return (
-        <div className="h-16 bg-surface border-b border-border flex items-center justify-between px-lg sticky top-0 z-[999]">
+        <div className="h-16 bg-surface border-b border-border flex items-center justify-between px-lg sticky top-0 z-sticky">
             <div className="flex items-center gap-2">
                 <button 
                     className="lg:hidden p-2 text-text-secondary hover:text-white transition-colors" 
@@ -186,7 +186,7 @@ const TopBar = () => {
           <OrganizationSwitcher />
         </div>
         <div className="relative flex-1 max-w-[600px]" ref={dropdownRef}>
-                <form className="flex items-center bg-surface-elevated border border-transparent rounded-xl px-2 h-11 transition-all focus-within:border-accent focus-within:shadow-[0_0_0_4px_rgba(59,130,246,0.1)]" onSubmit={(e) => e.preventDefault()}>
+                <form className="flex items-center bg-surface-elevated border border-transparent rounded-xl px-2 h-11 transition-all focus-within:border-accent focus-within:ring-accent" onSubmit={(e) => e.preventDefault()}>
                     <div className="flex items-center justify-center pr-3 mr-2 border-r border-border h-3/5 text-text-secondary pl-2">
                         <Search size={20} />
                     </div>
@@ -211,12 +211,12 @@ const TopBar = () => {
                 </form>
 
                 {showSearchResults && (
-                    <div className="absolute top-[calc(100%+0.75rem)] left-0 right-0 bg-surface rounded-md shadow-lg border border-border z-[1001] max-h-[400px] overflow-y-auto">
+                    <div className="absolute top-[calc(100%+0.75rem)] left-0 right-0 bg-surface rounded-md shadow-lg border border-border z-dropdown max-h-[400px] overflow-y-auto">
                         {hasResults ? (
                             <div className="py-2">
                                 {searchResults.artists?.length > 0 && (
                                     <div className="mb-2">
-                                        <h4 className="px-4 py-2 text-[10px] font-bold text-text-secondary uppercase tracking-widest bg-surface-elevated flex items-center gap-2"><Users size={12} /> Artists</h4>
+                                        <h4 className="px-4 py-2 text-2xs font-bold text-text-secondary uppercase tracking-widest bg-surface-elevated flex items-center gap-2"><Users size={12} /> Artists</h4>
                                         {searchResults.artists.map(a => (
                                             <div key={a.id} className="px-4 py-3 cursor-pointer text-sm text-text-primary hover:bg-surface-elevated hover:text-accent transition-all" onClick={() => handleResultClick(a)}>
                                                 {a.name}
@@ -226,7 +226,7 @@ const TopBar = () => {
                                 )}
                                 {searchResults.releases?.length > 0 && (
                                     <div className="mb-2">
-                                        <h4 className="px-4 py-2 text-[10px] font-bold text-text-secondary uppercase tracking-widest bg-surface-elevated flex items-center gap-2"><Layout size={12} /> Releases</h4>
+                                        <h4 className="px-4 py-2 text-2xs font-bold text-text-secondary uppercase tracking-widest bg-surface-elevated flex items-center gap-2"><Layout size={12} /> Releases</h4>
                                         {searchResults.releases.map(r => (
                                             <div key={r.id} className="px-4 py-3 cursor-pointer text-sm text-text-primary hover:bg-surface-elevated hover:text-accent transition-all" onClick={() => handleResultClick(r)}>
                                                 {r.title}
@@ -236,7 +236,7 @@ const TopBar = () => {
                                 )}
                                 {searchResults.tracks?.length > 0 && (
                                     <div className="mb-2">
-                                        <h4 className="px-4 py-2 text-[10px] font-bold text-text-secondary uppercase tracking-widest bg-surface-elevated flex items-center gap-2"><Music size={12} /> Tracks</h4>
+                                        <h4 className="px-4 py-2 text-2xs font-bold text-text-secondary uppercase tracking-widest bg-surface-elevated flex items-center gap-2"><Music size={12} /> Tracks</h4>
                                         {searchResults.tracks.map(t => (
                                             <div key={t.id} className="px-4 py-3 cursor-pointer text-sm text-text-primary hover:bg-surface-elevated hover:text-accent transition-all" onClick={() => handleResultClick(t)}>
                                                 {t.title}
@@ -246,7 +246,7 @@ const TopBar = () => {
                                 )}
                                 {searchResults.works?.length > 0 && (
                                     <div className="mb-2">
-                                        <h4 className="px-4 py-2 text-[10px] font-bold text-text-secondary uppercase tracking-widest bg-surface-elevated flex items-center gap-2"><FileText size={12} /> Works</h4>
+                                        <h4 className="px-4 py-2 text-2xs font-bold text-text-secondary uppercase tracking-widest bg-surface-elevated flex items-center gap-2"><FileText size={12} /> Works</h4>
                                         {searchResults.works.map(w => (
                                             <div key={w.id} className="px-4 py-3 cursor-pointer text-sm text-text-primary hover:bg-surface-elevated hover:text-accent transition-all" onClick={() => handleResultClick(w)}>
                                                 {w.title}
@@ -256,7 +256,7 @@ const TopBar = () => {
                                 )}
                                 {searchResults.contracts?.length > 0 && (
                                     <div className="mb-2">
-                                        <h4 className="px-4 py-2 text-[10px] font-bold text-text-secondary uppercase tracking-widest bg-surface-elevated flex items-center gap-2"><FileText size={12} /> Contracts</h4>
+                                        <h4 className="px-4 py-2 text-2xs font-bold text-text-secondary uppercase tracking-widest bg-surface-elevated flex items-center gap-2"><FileText size={12} /> Contracts</h4>
                                         {searchResults.contracts.map(c => (
                                             <div key={c.id} className="px-4 py-3 cursor-pointer text-sm text-text-primary hover:bg-surface-elevated hover:text-accent transition-all" onClick={() => handleResultClick(c)}>
                                                 {c.title}
@@ -266,10 +266,10 @@ const TopBar = () => {
                                 )}
                                 {searchResults.network?.length > 0 && (
                                     <div className="mb-2">
-                                        <h4 className="px-4 py-2 text-[10px] font-bold text-text-secondary uppercase tracking-widest bg-surface-elevated flex items-center gap-2"><Globe size={12} /> Network</h4>
+                                        <h4 className="px-4 py-2 text-2xs font-bold text-text-secondary uppercase tracking-widest bg-surface-elevated flex items-center gap-2"><Globe size={12} /> Network</h4>
                                         {searchResults.network.map(n => (
                                             <div key={`${n.type}-${n.id}`} className="px-4 py-3 cursor-pointer text-sm text-text-primary hover:bg-surface-elevated hover:text-accent transition-all" onClick={() => handleResultClick(n)}>
-                                                <span className="opacity-50 mr-2 text-[10px] uppercase">{n.type}</span> {n.name}
+                                                <span className="opacity-50 mr-2 text-2xs uppercase">{n.type}</span> {n.name}
                                             </div>
                                         ))}
                                     </div>
@@ -295,19 +295,19 @@ const TopBar = () => {
                     >
                         <Bell size={20} />
                         {unreadCount > 0 && (
-                            <span className="absolute top-1 right-1 w-4 h-4 bg-danger text-white text-[10px] font-bold flex items-center justify-center rounded-full border border-surface">{unreadCount}</span>
+                            <span className="absolute top-1 right-1 w-4 h-4 bg-danger text-white text-2xs font-bold flex items-center justify-center rounded-full border border-surface">{unreadCount}</span>
                         )}
                     </button>
 
                     {showNotifications && (
                         <>
                             <div className="fixed inset-0 z-[-1]" onClick={() => setShowNotifications(false)} />
-                            <div className="absolute top-full right-0 mt-2 w-80 bg-surface border border-border rounded-lg shadow-xl overflow-hidden">
+                            <div className="absolute top-full right-0 mt-2 w-80 bg-surface border border-border rounded-lg shadow-lg overflow-hidden">
                                 <div className="px-4 py-3 border-b border-border bg-surface-elevated flex items-center justify-between">
                                     <h3 className="text-sm font-semibold text-text-primary">Notifications</h3>
                                     <div className="flex gap-2">
-                                        <button className="text-[10px] text-accent font-bold uppercase hover:underline" onClick={handleMarkAllRead}>Read</button>
-                                        <button className="text-[10px] text-danger font-bold uppercase hover:underline" onClick={handleClearNotifications}>Clear</button>
+                                        <button className="text-2xs text-accent font-bold uppercase hover:underline" onClick={handleMarkAllRead}>Read</button>
+                                        <button className="text-2xs text-danger font-bold uppercase hover:underline" onClick={handleClearNotifications}>Clear</button>
                                     </div>
                                 </div>
                                 <div className="max-h-96 overflow-y-auto">
@@ -322,7 +322,7 @@ const TopBar = () => {
                                             >
                                                 <div className="text-sm font-semibold text-text-primary mb-1">{notification.title}</div>
                                                 {notification.message && <div className="text-xs text-text-secondary mb-1">{notification.message}</div>}
-                                                <div className="text-[10px] text-text-secondary">{notification.created_at ? new Date(notification.created_at).toLocaleString() : ''}</div>
+                                                <div className="text-2xs text-text-secondary">{notification.created_at ? new Date(notification.created_at).toLocaleString() : ''}</div>
                                             </div>
                                         ))
                                     )}
@@ -347,14 +347,14 @@ const TopBar = () => {
                         </div>
                         <div className="flex flex-col items-start leading-tight hidden md:flex">
                             <span className="text-sm font-medium text-text-primary">{user?.full_name || 'User'}</span>
-                            <span className="text-[10px] font-bold text-accent uppercase tracking-wider">Cloud Edition</span>
+                            <span className="text-2xs font-bold text-accent uppercase tracking-wider">Cloud Edition</span>
                         </div>
                     </div>
 
                     {showUserMenu && (
                         <>
                             <div className="fixed inset-0 z-[-1]" onClick={() => setShowUserMenu(false)} />
-                            <div className="absolute top-full right-0 mt-2 w-64 bg-surface border border-border rounded-lg shadow-xl overflow-hidden">
+                            <div className="absolute top-full right-0 mt-2 w-64 bg-surface border border-border rounded-lg shadow-lg overflow-hidden">
                                 <div className="p-4 bg-surface-elevated flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-full bg-surface border border-border flex items-center justify-center overflow-hidden">
                                         {user?.avatar_url ? (

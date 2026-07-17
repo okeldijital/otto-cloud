@@ -6,57 +6,22 @@ const ConfirmDialog = ({ isOpen, title, message, onConfirm, onCancel, confirmLab
     if (!isOpen) return null;
 
     return (
-        <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0,0,0,0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 9999,
-            backdropFilter: 'blur(4px)'
-        }}>
-            <div style={{
-                background: 'var(--surface-color)',
-                borderRadius: '12px',
-                width: '100%',
-                maxWidth: '400px',
-                padding: '1.5rem',
-                border: '1px solid var(--border-color)',
-                boxShadow: 'var(--shadow-xl)',
-                animation: 'slideUp 0.15s ease-out'
-            }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <div style={{
-                            width: '40px',
-                            height: '40px',
-                            borderRadius: '50%',
-                            background: '#fef2f2',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: '#ef4444'
-                        }}>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-overlay backdrop-blur-sm">
+            <div className="bg-surface border border-border rounded-md w-full max-w-sm p-lg shadow-lg animate-[slideUp_0.15s_ease-out]">
+                <div className="flex justify-between items-start mb-md">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-danger/10 flex items-center justify-center text-danger">
                             <AlertTriangle size={20} />
                         </div>
-                        <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600 }}>{title}</h3>
+                        <h3 className="text-h3 font-semibold text-text-primary m-0">{title}</h3>
                     </div>
                 </div>
 
-                <p style={{
-                    color: 'var(--text-muted)',
-                    marginBottom: '1.5rem',
-                    fontSize: '0.9375rem',
-                    lineHeight: 1.5
-                }}>
+                <p className="text-small text-text-secondary mb-lg leading-relaxed">
                     {message}
                 </p>
 
-                <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                <div className="flex gap-3 justify-end">
                     <Button variant="secondary" onClick={onCancel}>
                         Cancel
                     </Button>

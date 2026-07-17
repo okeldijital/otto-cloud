@@ -45,25 +45,25 @@ const DataTable = ({ columns, data, onEdit, onDelete, isLoading, onRowClick }) =
 
     if (isLoading) {
         return (
-            <div className="bg-premium-glass border border-white/5 rounded-[24px] shadow-glass overflow-hidden backdrop-blur-xl">
+            <div className="bg-premium-glass border border-border rounded-xl shadow-glass overflow-hidden backdrop-blur-xl">
                 <table className="w-full border-collapse">
-                    <thead className="bg-white/[0.02]">
+                    <thead className="bg-surface">
                         <tr>
                             {columns.map((col, index) => (
-                                <th key={index} className="px-6 py-5 text-left text-[10px] font-bold text-text-secondary uppercase tracking-widest border-b border-white/5">{col.label}</th>
+                                <th key={index} className="px-lg py-5 text-left text-2xs font-bold text-text-secondary uppercase tracking-widest border-b border-border">{col.label}</th>
                             ))}
-                            <th className="px-6 py-5 text-left text-[10px] font-bold text-text-secondary uppercase tracking-widest border-b border-white/5">Actions</th>
+                            <th className="px-lg py-5 text-left text-2xs font-bold text-text-secondary uppercase tracking-widest border-b border-border">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {[...Array(5)].map((_, index) => (
-                            <tr key={index} className="border-b border-white/5 last:border-0">
+                            <tr key={index} className="border-b border-border last:border-0">
                                 {columns.map((col, cIndex) => (
-                                    <td key={cIndex} className="px-6 py-5">
+                                    <td key={cIndex} className="px-lg py-5">
                                         <Skeleton />
                                     </td>
                                 ))}
-                                <td className="px-6 py-5">
+                                <td className="px-lg py-5">
                                     <Skeleton width="60px" />
                                 </td>
                             </tr>
@@ -76,7 +76,7 @@ const DataTable = ({ columns, data, onEdit, onDelete, isLoading, onRowClick }) =
 
     if (!data || data.length === 0) {
         return (
-            <div className="bg-premium-glass border border-white/5 rounded-[24px] py-16 text-center text-text-secondary text-sm backdrop-blur-xl">
+            <div className="bg-premium-glass border border-border rounded-xl py-16 text-center text-text-secondary text-small backdrop-blur-xl">
                 No records found.
             </div>
         );
@@ -93,16 +93,16 @@ const DataTable = ({ columns, data, onEdit, onDelete, isLoading, onRowClick }) =
     };
 
     return (
-        <div className="bg-premium-glass border border-white/5 rounded-[24px] shadow-glass overflow-hidden backdrop-blur-xl">
+        <div className="bg-premium-glass border border-border rounded-xl shadow-glass overflow-hidden backdrop-blur-xl">
             <div className="overflow-x-auto">
                 <table className="w-full border-collapse">
-                    <thead className="bg-white/[0.02]">
+                    <thead className="bg-surface">
                         <tr>
                             {columns.map((col, index) => (
                                 <th
                                     key={col.key || index}
                                     onClick={() => col.sortable && handleSort(col.key)}
-                                    className={`px-6 py-5 text-left text-[10px] font-bold text-text-secondary uppercase tracking-widest border-b border-white/5 transition-colors ${col.sortable ? 'cursor-pointer hover:text-white select-none' : 'cursor-default'}`}
+                                    className={`px-lg py-5 text-left text-2xs font-bold text-text-secondary uppercase tracking-widest border-b border-border transition-colors ${col.sortable ? 'cursor-pointer hover:text-text-primary select-none' : 'cursor-default'}`}
                                 >
                                     <div className="flex items-center">
                                         {col.label}
@@ -110,26 +110,26 @@ const DataTable = ({ columns, data, onEdit, onDelete, isLoading, onRowClick }) =
                                     </div>
                                 </th>
                             ))}
-                            <th className="px-6 py-5 text-left text-[10px] font-bold text-text-secondary uppercase tracking-widest border-b border-white/5 w-[100px]">Actions</th>
+                            <th className="px-lg py-5 text-left text-2xs font-bold text-text-secondary uppercase tracking-widest border-b border-border w-[100px]">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {sortedData.map((row, index) => (
                             <tr
                                 key={row.id || index}
-                                className={`border-b border-white/5 last:border-0 hover:bg-white/[0.03] transition-colors group ${onRowClick ? 'cursor-pointer' : ''}`}
+                                className={`border-b border-border last:border-0 hover:bg-surface-elevated transition-colors group ${onRowClick ? 'cursor-pointer' : ''}`}
                                 onClick={() => onRowClick?.(row)}
                             >
                                 {columns.map((col, cIndex) => (
-                                    <td key={`${row.id}-${cIndex}`} className="px-6 py-5 text-sm text-white font-medium">
+                                    <td key={`${row.id}-${cIndex}`} className="px-lg py-5 text-small text-text-primary font-medium">
                                         {col.render ? col.render(row) : row[col.key]}
                                     </td>
                                 ))}
-                                <td className="px-6 py-5">
-                                    <div className="flex items-center gap-2 opacity-50 group-hover:opacity-100 transition-opacity">
+                                <td className="px-lg py-5">
+                                    <div className="flex items-center gap-sm opacity-50 group-hover:opacity-100 transition-opacity">
                                         <button
                                             type="button"
-                                            className="p-2 text-text-secondary hover:text-accent hover:bg-accent/10 rounded-lg transition-all focus:outline-none"
+                                            className="p-sm text-text-secondary hover:text-accent hover:bg-accent/10 rounded-lg transition-all focus:outline-none"
                                             onClick={(e) => { e.stopPropagation(); onEdit(row); }}
                                             title="Edit"
                                         >
@@ -137,7 +137,7 @@ const DataTable = ({ columns, data, onEdit, onDelete, isLoading, onRowClick }) =
                                         </button>
                                         <button
                                             type="button"
-                                            className="p-2 text-text-secondary hover:text-danger hover:bg-danger/10 rounded-lg transition-all focus:outline-none"
+                                            className="p-sm text-text-secondary hover:text-danger hover:bg-danger/10 rounded-lg transition-all focus:outline-none"
                                             onClick={(e) => { e.stopPropagation(); onDelete(row); }}
                                             title="Delete"
                                         >

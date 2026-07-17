@@ -1,71 +1,54 @@
 import React, { useState } from 'react';
 import { AlertTriangle, CheckCircle, AlertCircle } from 'lucide-react';
 
+const STATUS_STYLES = {
+    GREEN: 'bg-success/10 text-success border-success/30 shadow-success',
+    AMBER: 'bg-warning/10 text-warning border-warning/30 shadow-warning',
+    RED: 'bg-danger/10 text-danger border-danger/30 shadow-danger',
+    DEFAULT: 'bg-surface-elevated text-text-secondary border-border shadow-sm',
+};
+
+const STATUS_ICONS = {
+    GREEN: CheckCircle,
+    AMBER: AlertTriangle,
+    RED: AlertCircle,
+    DEFAULT: AlertCircle,
+};
+
+const STATUS_LABELS = {
+    GREEN: 'Healthy',
+    AMBER: 'Attention',
+    RED: 'Critical',
+    DEFAULT: 'Unknown',
+};
+
 const HealthBadge = ({ status, reasons = [] }) => {
     const [showTooltip, setShowTooltip] = useState(false);
 
-    // Normalize input
     const currentStatus = (status || 'GREEN').toUpperCase();
-
-    // Config based on status
-    const config = {
-        GREEN: {
-            color: '#166534',
-            bg: '#dcfce7',
-            icon: CheckCircle,
-            label: 'Healthy'
-        },
-        AMBER: {
-            color: '#b45309',
-            bg: '#fef3c7',
-            icon: AlertTriangle,
-            label: 'Attention'
-        },
-        RED: {
-            color: '#b91c1c',
-            bg: '#fee2e2',
-            icon: AlertCircle,
-            label: 'Critical'
-        },
-        // Fallback
-        DEFAULT: {
-            color: '#475569',
-            bg: '#f1f5f9',
-            icon: AlertCircle,
-            label: 'Unknown'
-        }
-    };
-
-    const theme = config[currentStatus] || config.DEFAULT;
-    const Icon = theme.icon;
+    const normalizedStatus = STATUS_STYLES[currentStatus] ? currentStatus : 'DEFAULT';
+    const Icon = STATUS_ICONS[normalizedStatus];
+    const label = STATUS_LABELS[normalizedStatus];
 
     return (
         <div
-            className="health-badge-wrapper"
+            className="inline-flex flex-col relative"
             onMouseEnter={() => setShowTooltip(true)}
             onMouseLeave={() => setShowTooltip(false)}
         >
-            <div
-                className="health-badge-pill"
-                style={{
-                    backgroundColor: theme.bg,
-                    color: theme.color,
-                    border: `1px solid ${theme.color}20`
-                }}
-            >
+            <div className={`inline-flex items-center gap-1.5 px-sm py-0.5 rounded-full border text-2xs font-bold ${STATUS_STYLES[normalizedStatus]}`}>
                 <Icon size={12} strokeWidth={2.5} />
-                <span className="health-badge-label">{theme.label}</span>
+                <span>{label}</span>
             </div>
 
-            {/* Tooltip */}
             {showTooltip && reasons && reasons.length > 0 && (
-                <div className="health-badge-tooltip">
-                    <div className="tooltip-header" style={{ color: theme.color }}>
+                <div className="absolute top-full mt-1 left-0 bg-surface border border-border rounded-md shadow-lg p-md z-dropdown min-w-[200px]">
+                    <div className={`text-xs font-bold mb-1 ${normalizedStatus === 'GREEN' ? 'text-success' : normalizedStatus === 'AMBER' ? 'text-warning' : normalizedStatus === 'RED' ? 'text-danger' : 'text-text-secondary'}`}>
                         Issues Found ({reasons.length})
                     </div>
-                    <ul className="tooltip-list">
+                    <ul className="space-y-1">
                         {reasons.map((reason, idx) => (
-                            <li key={idx}>{reason}</li>
+                            <li key={idx} className="text-xs text-text-secondary">{reason}</li>
                         ))}
                     </ul>
                 </div>

@@ -28,10 +28,12 @@ import ReleaseMetadataSection from "@/components/workspace-sections/release/Meta
 import DistributionSection from "@/components/workspace-sections/release/DistributionSection";
 import CalendarSection from "@/components/workspace-sections/release/CalendarSection";
 import PlaybookSection from "@/components/workspace-sections/release/PlaybookSection";
+import DynamicFieldsSection from "@/components/workspace-sections/DynamicFieldsSection";
 
 registerSection({ key: "overview", label: "Overview", component: OverviewSection, icon: "overview" });
 registerSection({ key: "metadata", label: "Metadata", component: ReleaseMetadataSection, icon: "metadata", templates: ["release"] });
 registerSection({ key: "playbook", label: "Playbook", component: PlaybookSection, icon: "playbook", templates: ["release"] });
+registerSection({ key: "fields", label: "Fields", component: DynamicFieldsSection, icon: "settings" });
 registerSection({ key: "deliverables", label: "Deliverables", component: DeliverablesSection, icon: "deliverables" });
 registerSection({ key: "milestones", label: "Milestones", component: MilestonesSection, icon: "milestones" });
 registerSection({ key: "approvals", label: "Approvals", component: ApprovalsSection, icon: "approvals" });

@@ -1,5 +1,31 @@
 -- Create new release workspace tables
 
+-- Workspaces (prerequisite for workspace_* foreign keys below)
+CREATE TABLE "workspaces" (
+    "id" SERIAL NOT NULL,
+    "name" VARCHAR(255) NOT NULL,
+    "description" TEXT,
+    "template_id" INTEGER,
+    "release_id" INTEGER,
+    "status" VARCHAR(50) DEFAULT 'planning',
+    "cover_image_url" VARCHAR(500),
+    "organization_id" UUID DEFAULT '00000000-0000-0000-0000-000000000001',
+    "tenant_id" UUID,
+    "created_by" INTEGER,
+    "created_at" TIMESTAMPTZ(6) DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMPTZ(6),
+    "archived_at" TIMESTAMPTZ(6),
+    "is_deleted" BOOLEAN DEFAULT false,
+
+    CONSTRAINT "workspaces_pkey" PRIMARY KEY ("id")
+);
+
+CREATE INDEX "ix_workspaces_id" ON "workspaces"("id");
+CREATE INDEX "ix_workspaces_organization_id" ON "workspaces"("organization_id");
+CREATE INDEX "ix_workspaces_template_id" ON "workspaces"("template_id");
+CREATE INDEX "ix_workspaces_status" ON "workspaces"("status");
+ALTER TABLE "workspaces" ADD CONSTRAINT "uq_workspaces_release_id" UNIQUE ("release_id");
+
 -- Release Playbooks
 CREATE TABLE "release_playbooks" (
     "id" SERIAL NOT NULL,
@@ -41,7 +67,7 @@ CREATE TABLE "playbook_tasks" (
 );
 
 CREATE INDEX "ix_playbook_tasks_playbook_id" ON "playbook_tasks"("playbook_id");
-ALTER TABLE "playbook_tasks" ADD CONSTRAINT "playbook_tasks_playbook_id_fkey" FOREIGN KEY ("playbook_id") REFERENCES "release_playbooks"("id") ON DELETE CASCADE;
+ALTER TABLE "playbook_tasks" ADD CONSTRAINT "playbook_tasks_playbook_id_fkey" FOREIGN KEY ("playbook_id") REFERENCES "release_playbooks"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- Playbook Milestones
 CREATE TABLE "playbook_milestones" (
@@ -60,7 +86,7 @@ CREATE TABLE "playbook_milestones" (
 );
 
 CREATE INDEX "ix_playbook_milestones_playbook_id" ON "playbook_milestones"("playbook_id");
-ALTER TABLE "playbook_milestones" ADD CONSTRAINT "playbook_milestones_playbook_id_fkey" FOREIGN KEY ("playbook_id") REFERENCES "release_playbooks"("id") ON DELETE CASCADE;
+ALTER TABLE "playbook_milestones" ADD CONSTRAINT "playbook_milestones_playbook_id_fkey" FOREIGN KEY ("playbook_id") REFERENCES "release_playbooks"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- Playbook Deliverables
 CREATE TABLE "playbook_deliverables" (
@@ -79,7 +105,7 @@ CREATE TABLE "playbook_deliverables" (
 );
 
 CREATE INDEX "ix_playbook_deliverables_playbook_id" ON "playbook_deliverables"("playbook_id");
-ALTER TABLE "playbook_deliverables" ADD CONSTRAINT "playbook_deliverables_playbook_id_fkey" FOREIGN KEY ("playbook_id") REFERENCES "release_playbooks"("id") ON DELETE CASCADE;
+ALTER TABLE "playbook_deliverables" ADD CONSTRAINT "playbook_deliverables_playbook_id_fkey" FOREIGN KEY ("playbook_id") REFERENCES "release_playbooks"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- Playbook Approvals
 CREATE TABLE "playbook_approvals" (
@@ -98,7 +124,7 @@ CREATE TABLE "playbook_approvals" (
 );
 
 CREATE INDEX "ix_playbook_approvals_playbook_id" ON "playbook_approvals"("playbook_id");
-ALTER TABLE "playbook_approvals" ADD CONSTRAINT "playbook_approvals_playbook_id_fkey" FOREIGN KEY ("playbook_id") REFERENCES "release_playbooks"("id") ON DELETE CASCADE;
+ALTER TABLE "playbook_approvals" ADD CONSTRAINT "playbook_approvals_playbook_id_fkey" FOREIGN KEY ("playbook_id") REFERENCES "release_playbooks"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- Workspace Deliverables
 CREATE TABLE "workspace_deliverables" (
@@ -130,7 +156,7 @@ CREATE TABLE "workspace_deliverables" (
 CREATE INDEX "ix_workspace_deliverables_workspace_id" ON "workspace_deliverables"("workspace_id");
 CREATE INDEX "ix_workspace_deliverables_status" ON "workspace_deliverables"("status");
 CREATE INDEX "ix_workspace_deliverables_organization_id" ON "workspace_deliverables"("organization_id");
-ALTER TABLE "workspace_deliverables" ADD CONSTRAINT "workspace_deliverables_workspace_id_fkey" FOREIGN KEY ("workspace_id") REFERENCES "workspaces"("id") ON DELETE CASCADE;
+ALTER TABLE "workspace_deliverables" ADD CONSTRAINT "workspace_deliverables_workspace_id_fkey" FOREIGN KEY ("workspace_id") REFERENCES "workspaces"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- Workspace Milestones
 CREATE TABLE "workspace_milestones" (
@@ -156,7 +182,7 @@ CREATE TABLE "workspace_milestones" (
 CREATE INDEX "ix_workspace_milestones_workspace_id" ON "workspace_milestones"("workspace_id");
 CREATE INDEX "ix_workspace_milestones_status" ON "workspace_milestones"("status");
 CREATE INDEX "ix_workspace_milestones_organization_id" ON "workspace_milestones"("organization_id");
-ALTER TABLE "workspace_milestones" ADD CONSTRAINT "workspace_milestones_workspace_id_fkey" FOREIGN KEY ("workspace_id") REFERENCES "workspaces"("id") ON DELETE CASCADE;
+ALTER TABLE "workspace_milestones" ADD CONSTRAINT "workspace_milestones_workspace_id_fkey" FOREIGN KEY ("workspace_id") REFERENCES "workspaces"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- Workspace Approvals
 CREATE TABLE "workspace_approvals" (
@@ -184,7 +210,7 @@ CREATE TABLE "workspace_approvals" (
 CREATE INDEX "ix_workspace_approvals_workspace_id" ON "workspace_approvals"("workspace_id");
 CREATE INDEX "ix_workspace_approvals_status" ON "workspace_approvals"("status");
 CREATE INDEX "ix_workspace_approvals_organization_id" ON "workspace_approvals"("organization_id");
-ALTER TABLE "workspace_approvals" ADD CONSTRAINT "workspace_approvals_workspace_id_fkey" FOREIGN KEY ("workspace_id") REFERENCES "workspaces"("id") ON DELETE CASCADE;
+ALTER TABLE "workspace_approvals" ADD CONSTRAINT "workspace_approvals_workspace_id_fkey" FOREIGN KEY ("workspace_id") REFERENCES "workspaces"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- Workspace Publications
 CREATE TABLE "workspace_publications" (
@@ -212,7 +238,7 @@ CREATE INDEX "ix_workspace_publications_workspace_id" ON "workspace_publications
 CREATE INDEX "ix_workspace_publications_platform" ON "workspace_publications"("platform");
 CREATE INDEX "ix_workspace_publications_status" ON "workspace_publications"("status");
 CREATE INDEX "ix_workspace_publications_organization_id" ON "workspace_publications"("organization_id");
-ALTER TABLE "workspace_publications" ADD CONSTRAINT "workspace_publications_workspace_id_fkey" FOREIGN KEY ("workspace_id") REFERENCES "workspaces"("id") ON DELETE CASCADE;
+ALTER TABLE "workspace_publications" ADD CONSTRAINT "workspace_publications_workspace_id_fkey" FOREIGN KEY ("workspace_id") REFERENCES "workspaces"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- Workspace Videos
 CREATE TABLE "workspace_videos" (
@@ -245,7 +271,7 @@ CREATE INDEX "ix_workspace_videos_workspace_id" ON "workspace_videos"("workspace
 CREATE INDEX "ix_workspace_videos_video_type" ON "workspace_videos"("video_type");
 CREATE INDEX "ix_workspace_videos_status" ON "workspace_videos"("status");
 CREATE INDEX "ix_workspace_videos_organization_id" ON "workspace_videos"("organization_id");
-ALTER TABLE "workspace_videos" ADD CONSTRAINT "workspace_videos_workspace_id_fkey" FOREIGN KEY ("workspace_id") REFERENCES "workspaces"("id") ON DELETE CASCADE;
+ALTER TABLE "workspace_videos" ADD CONSTRAINT "workspace_videos_workspace_id_fkey" FOREIGN KEY ("workspace_id") REFERENCES "workspaces"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- Workspace Marketing Phases
 CREATE TABLE "workspace_marketing_phases" (
@@ -269,7 +295,7 @@ CREATE TABLE "workspace_marketing_phases" (
 
 CREATE INDEX "ix_workspace_marketing_phases_workspace_id" ON "workspace_marketing_phases"("workspace_id");
 CREATE INDEX "ix_workspace_marketing_phases_organization_id" ON "workspace_marketing_phases"("organization_id");
-ALTER TABLE "workspace_marketing_phases" ADD CONSTRAINT "workspace_marketing_phases_workspace_id_fkey" FOREIGN KEY ("workspace_id") REFERENCES "workspaces"("id") ON DELETE CASCADE;
+ALTER TABLE "workspace_marketing_phases" ADD CONSTRAINT "workspace_marketing_phases_workspace_id_fkey" FOREIGN KEY ("workspace_id") REFERENCES "workspaces"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- Workspace Marketing Tasks
 CREATE TABLE "workspace_marketing_tasks" (
@@ -294,7 +320,7 @@ CREATE TABLE "workspace_marketing_tasks" (
 
 CREATE INDEX "ix_workspace_marketing_tasks_phase_id" ON "workspace_marketing_tasks"("phase_id");
 CREATE INDEX "ix_workspace_marketing_tasks_organization_id" ON "workspace_marketing_tasks"("organization_id");
-ALTER TABLE "workspace_marketing_tasks" ADD CONSTRAINT "workspace_marketing_tasks_phase_id_fkey" FOREIGN KEY ("phase_id") REFERENCES "workspace_marketing_phases"("id") ON DELETE CASCADE;
+ALTER TABLE "workspace_marketing_tasks" ADD CONSTRAINT "workspace_marketing_tasks_phase_id_fkey" FOREIGN KEY ("phase_id") REFERENCES "workspace_marketing_phases"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- Workspace Discussion Channels
 CREATE TABLE "workspace_discussion_channels" (
@@ -316,7 +342,7 @@ CREATE TABLE "workspace_discussion_channels" (
 CREATE UNIQUE INDEX "uq_workspace_discussion_channels_slug" ON "workspace_discussion_channels"("workspace_id", "slug");
 CREATE INDEX "ix_workspace_discussion_channels_workspace_id" ON "workspace_discussion_channels"("workspace_id");
 CREATE INDEX "ix_workspace_discussion_channels_organization_id" ON "workspace_discussion_channels"("organization_id");
-ALTER TABLE "workspace_discussion_channels" ADD CONSTRAINT "workspace_discussion_channels_workspace_id_fkey" FOREIGN KEY ("workspace_id") REFERENCES "workspaces"("id") ON DELETE CASCADE;
+ALTER TABLE "workspace_discussion_channels" ADD CONSTRAINT "workspace_discussion_channels_workspace_id_fkey" FOREIGN KEY ("workspace_id") REFERENCES "workspaces"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- Workspace Discussion Messages
 CREATE TABLE "workspace_discussion_messages" (
@@ -335,7 +361,7 @@ CREATE TABLE "workspace_discussion_messages" (
 
 CREATE INDEX "ix_workspace_discussion_messages_channel_id" ON "workspace_discussion_messages"("channel_id");
 CREATE INDEX "ix_workspace_discussion_messages_organization_id" ON "workspace_discussion_messages"("organization_id");
-ALTER TABLE "workspace_discussion_messages" ADD CONSTRAINT "workspace_discussion_messages_channel_id_fkey" FOREIGN KEY ("channel_id") REFERENCES "workspace_discussion_channels"("id") ON DELETE CASCADE;
+ALTER TABLE "workspace_discussion_messages" ADD CONSTRAINT "workspace_discussion_messages_channel_id_fkey" FOREIGN KEY ("channel_id") REFERENCES "workspace_discussion_channels"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- Workspace Readiness Scores
 CREATE TABLE "workspace_readiness_scores" (
@@ -358,7 +384,4 @@ CREATE TABLE "workspace_readiness_scores" (
 
 CREATE INDEX "ix_workspace_readiness_scores_workspace_id" ON "workspace_readiness_scores"("workspace_id");
 CREATE INDEX "ix_workspace_readiness_scores_organization_id" ON "workspace_readiness_scores"("organization_id");
-ALTER TABLE "workspace_readiness_scores" ADD CONSTRAINT "workspace_readiness_scores_workspace_id_fkey" FOREIGN KEY ("workspace_id") REFERENCES "workspaces"("id") ON DELETE CASCADE;
-
--- Add release_id to workspaces
-CREATE UNIQUE INDEX "uq_workspaces_release_id" ON "workspaces"("release_id");
+ALTER TABLE "workspace_readiness_scores" ADD CONSTRAINT "workspace_readiness_scores_workspace_id_fkey" FOREIGN KEY ("workspace_id") REFERENCES "workspaces"("id") ON DELETE CASCADE ON UPDATE CASCADE;

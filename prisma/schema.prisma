@@ -1616,6 +1616,7 @@ model workspace_templates {
 
   sections   workspace_template_sections[]
   statuses   workspace_template_statuses[]
+  fields     workspace_template_fields[]
   workspaces workspaces[]
 
   @@index([id], map: "ix_workspace_templates_id")
@@ -1681,6 +1682,7 @@ model workspaces {
   discussion_channels workspace_discussion_channels[]
   readiness_scores  workspace_readiness_scores[]
   dependencies      workspace_deliverable_dependencies[]
+  dynamic_fields    workspace_dynamic_fields[]
 
   @@index([id], map: "ix_workspaces_id")
   @@index([organization_id], map: "ix_workspaces_organization_id")
@@ -2141,4 +2143,94 @@ model workspace_readiness_scores {
   @@index([workspace_id], map: "ix_workspace_readiness_scores_workspace_id")
   @@index([organization_id], map: "ix_workspace_readiness_scores_organization_id")
   @@map("workspace_readiness_scores")
+}
+
+model workspace_template_fields {
+  id            Int      @id @default(autoincrement())
+  template_id   Int
+  section_slug  String?  @db.VarChar(100)
+  field_key     String   @db.VarChar(100)
+  label         String   @db.VarChar(200)
+  field_type    String   @default("string") @db.VarChar(50)
+  options       String?
+  is_required   Boolean  @default(false)
+  placeholder   String?  @db.VarChar(500)
+  sort_order    Int      @default(0)
+  default_value String?
+  created_at    DateTime? @default(now())
+
+  template workspace_templates @relation(fields: [template_id], references: [id], onDelete: Cascade)
+
+  @@unique([template_id, field_key], map: "uq_template_field_key")
+  @@index([template_id], map: "ix_template_fields_template")
+  @@map("workspace_template_fields")
+}
+
+model workspace_dynamic_fields {
+  id               Int       @id @default(autoincrement())
+  workspace_id     Int
+  organization_id  String    @db.Uuid
+  template_field_id Int?
+  field_key        String    @db.VarChar(100)
+  field_value      String?
+  updated_by       Int?
+  updated_at       DateTime? @default(now()) @updatedAt @db.Timestamptz(6)
+
+  workspace workspaces @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@unique([workspace_id, field_key], map: "uq_workspace_dynamic_field_key")
+  @@index([workspace_id], map: "ix_workspace_dynamic_fields_workspace")
+  @@index([organization_id], map: "ix_workspace_dynamic_fields_org")
+  @@map("workspace_dynamic_fields")
+}
+
+// ---------------------------------------------------------------------------
+// Universal Attachment model
+//
+// Every uploaded file in Otto Cloud becomes an Attachment, regardless of the
+// business entity it belongs to (Release, Artist, Song, Contract, Workspace,
+// Office, ...). Application modules reference attachments instead of storing
+// raw file metadata on their own tables. The storage object key is kept here
+// and never exposed to clients; access is always mediated by the Otto Storage
+// Service and signed URLs.
+//
+// This model is intentionally decoupled from other tables (no foreign keys) so
+// it can support future features: file versioning, image optimisation, audio
+// transcoding, virus scanning, OCR, thumbnails, encryption, lifecycle policies
+// and multi-provider storage.
+// ---------------------------------------------------------------------------
+model Attachment {
+  id             String   @id @default(cuid())
+
+  organizationId String
+  workspaceId    String?
+
+  entityType     String
+  entityId       String
+
+  fileName       String
+  originalName   String
+
+  mimeType       String
+  category       String
+
+  fileSize       Int
+
+  bucket         String
+  storageKey     String
+
+  checksum       String?
+
+  version        Int      @default(1)
+
+  uploadedBy     String
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId], map: "ix_attachments_organization")
+  @@index([workspaceId], map: "ix_attachments_workspace")
+  @@index([entityType, entityId], map: "ix_attachments_entity")
+  @@index([createdAt], map: "ix_attachments_created")
+  @@map("attachments")
 }

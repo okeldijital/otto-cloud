@@ -20,11 +20,11 @@ export default function ToastContainer() {
     const { toasts, removeToast } = useToastStore();
 
     return (
-        <div className="fixed bottom-xl right-xl z-[10000] flex flex-col gap-md max-w-[400px] w-full pointer-events-none">
+        <div className="fixed bottom-xl right-xl z-toast flex flex-col gap-md max-w-[400px] w-full pointer-events-none">
             {toasts.map((toast) => (
                 <div
                     key={toast.id}
-                    className={`pointer-events-auto flex items-start gap-4 p-md rounded-xl border shadow-2xl backdrop-blur-md animate-in slide-in-from-right-full fade-in duration-300 ${BORDERS[toast.type] || BORDERS.info}`}
+                    className={`pointer-events-auto flex items-start gap-4 p-md rounded-xl border shadow-lg backdrop-blur-md animate-in slide-in-from-right-full fade-in duration-slow ${BORDERS[toast.type] || BORDERS.info}`}
                 >
                     <div className="flex-shrink-0 mt-0.5">
                         {ICONS[toast.type] || ICONS.info}
@@ -34,7 +34,7 @@ export default function ToastContainer() {
                     </div>
                     <button
                         onClick={() => removeToast(toast.id)}
-                        className="flex-shrink-0 p-1 hover:bg-black/5 rounded transition-colors text-text-secondary"
+                        className="flex-shrink-0 p-1 hover:bg-surface-elevated rounded transition-colors text-text-secondary"
                     >
                         <X size={16} />
                     </button>

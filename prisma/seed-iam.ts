@@ -91,10 +91,12 @@ const ROLES: { name: string; description: string; is_system: boolean; permission
   { name: "Guest", description: "Read-only access to view catalog and basic data", is_system: true, permissionCodes: ["artists.view", "songs.view", "releases.view", "works.view", "contracts.view", "network.view", "reports.view", "office.view", "tasks.view"] },
 ];
 
-async function main() {
+export async function seedIAM(): Promise<void> {
   console.log("Seeding IAM: permissions and roles...");
 
-  // Batch upsert permissions
+  const allPerms = await prisma.permissions.findMany();
+  const permMap = new Map(allPerms.map(p => [p.code, p.id]));
+
   for (let i = 0; i < PERMISSIONS.length; i += 20) {
     const batch = PERMISSIONS.slice(i, i + 20);
     await Promise.all(batch.map(p =>
@@ -107,9 +109,6 @@ async function main() {
   }
   const permCount = await prisma.permissions.count();
   console.log(`  ${permCount} permissions ready`);
-
-  const allPerms = await prisma.permissions.findMany();
-  const permMap = new Map(allPerms.map(p => [p.code, p.id]));
 
   for (let i = 0; i < ROLES.length; i++) {
     const r = ROLES[i];
@@ -135,6 +134,13 @@ async function main() {
   console.log("IAM seeding complete.");
 }
 
-main()
-  .catch((e) => { console.error(e); process.exit(1); })
-  .finally(() => prisma.$disconnect());
+if (require.main === module) {
+  async function main() {
+    await seedIAM();
+    await prisma.$disconnect();
+  }
+  main()
+    .then(() => process.exit(0))
+    .catch((e) => { console.error(e); process.exit(1); })
+    .finally(() => prisma.$disconnect());
+}

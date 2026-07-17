@@ -1,0 +1,13 @@
+{
+  "generatedAt": "2026-07-17T16:47:54.526Z",
+  "totalDiscovered": 558,
+  "successfullyMigrated": 558,
+  "failedUploads": 0,
+  "missingLocalFiles": 0,
+  "missingDbReferences": 558,
+  "orphanedFiles": 558,
+  "duplicateFiles": 274,
+  "totalBytesMigrated": 515776595,
+  "durationMs": null,
+  "failureReasons": []
+}

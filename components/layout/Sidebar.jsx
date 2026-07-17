@@ -49,7 +49,7 @@ const SidebarSection = ({ label, items, onNav }) => {
     return (
         <div className="mb-md">
             <button 
-                className="w-full flex items-center justify-between px-md py-sm text-[10px] font-bold text-text-secondary uppercase tracking-widest hover:text-text-primary transition-colors focus:outline-none" 
+                className="w-full flex items-center justify-between px-md py-sm text-2xs font-bold text-text-secondary uppercase tracking-widest hover:text-text-primary transition-colors focus:outline-none" 
                 onClick={() => setIsOpen(!isOpen)}
             >
                 <span>{label}</span>
@@ -65,10 +65,10 @@ const SidebarSection = ({ label, items, onNav }) => {
                                 key={item.path}
                                 href={item.path}
                                 onClick={onNav}
-                                className={`flex items-center gap-md px-md py-2 rounded-[12px] transition-all duration-300 group ${
+                                className={`flex items-center gap-md px-md py-2 rounded-md transition-all duration-300 group ${
                                     active 
-                                    ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' 
-                                    : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
+                                    ? 'text-text-primary bg-white/10 font-bold shadow-glow border border-border' 
+                                    : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated border border-transparent'
                                 }`}
                                 title={item.label}
                             >
@@ -90,10 +90,10 @@ function NavLink({ href, icon: Icon, label, pathname, activeCheck, onNav }) {
         <Link
             href={href}
             onClick={onNav}
-            className={`flex items-center gap-md px-md py-2 rounded-[12px] transition-all duration-300 group ${
+            className={`flex items-center gap-md px-md py-2 rounded-md transition-all duration-300 group ${
                 active 
-                ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' 
-                : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
+                ? 'text-text-primary bg-white/10 font-bold shadow-glow border border-border' 
+                : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated border border-transparent'
             }`}
         >
             <Icon size={18} className={active ? 'text-accent' : 'text-text-secondary group-hover:text-text-primary'} />
@@ -167,10 +167,10 @@ const Sidebar = () => {
     return (
         <>
             {isMobile && sidebarOpen && (
-                <div className="fixed inset-0 bg-black/50 z-[999]" onClick={closeSidebar} />
+                <div className="fixed inset-0 bg-black/50 z-sticky" onClick={closeSidebar} />
             )}
             <div className={`
-                fixed top-0 left-0 h-screen w-[280px] bg-premium-glass border-r border-white/5 flex flex-col z-[1000] shadow-glass backdrop-blur-2xl
+                fixed top-0 left-0 h-screen w-[280px] bg-premium-glass border-r border-border flex flex-col z-dropdown shadow-glass backdrop-blur-2xl
                 transition-transform duration-300 ease-in-out
                 ${isMobile ? (sidebarOpen ? 'translate-x-0' : '-translate-x-full') : ''}
             `}>
@@ -187,7 +187,7 @@ const Sidebar = () => {
                 <Link
                     href="/dashboard"
                     onClick={handleNav}
-                    className={`flex items-center gap-md px-md py-2.5 rounded-[12px] transition-all duration-300 mb-6 group ${
+                    className={`flex items-center gap-md px-md py-2.5 rounded-md transition-all duration-300 mb-6 group ${
                         pathname === '/dashboard' 
                         ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' 
                         : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
@@ -205,7 +205,7 @@ const Sidebar = () => {
                     <Link 
                         href="/ai" 
                         onClick={handleNav}
-                        className={`flex items-center gap-md px-md py-2 rounded-[12px] transition-all duration-300 group ${
+                        className={`flex items-center gap-md px-md py-2 rounded-md transition-all duration-300 group ${
                             pathname === '/ai' ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
                         }`}
                     >
@@ -215,7 +215,7 @@ const Sidebar = () => {
                     <Link 
                         href="/ai/analytics" 
                         onClick={handleNav}
-                        className={`flex items-center gap-md px-md py-2 rounded-[12px] transition-all duration-300 group ${
+                        className={`flex items-center gap-md px-md py-2 rounded-md transition-all duration-300 group ${
                             pathname.startsWith('/ai/analytics') ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
                         }`}
                     >
@@ -225,7 +225,7 @@ const Sidebar = () => {
                     <Link 
                         href="/ai/royalties" 
                         onClick={handleNav}
-                        className={`flex items-center gap-md px-md py-2 rounded-[12px] transition-all duration-300 group ${
+                        className={`flex items-center gap-md px-md py-2 rounded-md transition-all duration-300 group ${
                             pathname.startsWith('/ai/royalties') ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
                         }`}
                     >
@@ -236,7 +236,7 @@ const Sidebar = () => {
                         <Link 
                             href="/admin" 
                             onClick={handleNav}
-                            className={`flex items-center gap-md px-md py-2 rounded-[12px] transition-all duration-300 group ${
+                            className={`flex items-center gap-md px-md py-2 rounded-md transition-all duration-300 group ${
                                 pathname.startsWith('/admin') ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
                             }`}
                         >
@@ -247,7 +247,7 @@ const Sidebar = () => {
                     <Link 
                         href="/systems" 
                         onClick={handleNav}
-                        className={`flex items-center gap-md px-md py-2 rounded-[12px] transition-all duration-300 group ${
+                        className={`flex items-center gap-md px-md py-2 rounded-md transition-all duration-300 group ${
                             pathname.startsWith('/systems') ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
                         }`}
                     >
@@ -257,7 +257,7 @@ const Sidebar = () => {
                     <Link 
                         href="/settings" 
                         onClick={handleNav}
-                        className={`flex items-center gap-md px-md py-2 rounded-[12px] transition-all duration-300 group ${
+                        className={`flex items-center gap-md px-md py-2 rounded-md transition-all duration-300 group ${
                             pathname === '/settings' ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
                         }`}
                     >
@@ -267,7 +267,7 @@ const Sidebar = () => {
                     <Link 
                         href="/settings/organization" 
                         onClick={handleNav}
-                        className={`flex items-center gap-md px-md py-2 rounded-[12px] transition-all duration-300 group ${
+                        className={`flex items-center gap-md px-md py-2 rounded-md transition-all duration-300 group ${
                             pathname.startsWith('/settings/organization') ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
                         }`}
                     >
@@ -277,7 +277,7 @@ const Sidebar = () => {
                     <Link 
                         href="/billing" 
                         onClick={handleNav}
-                        className={`flex items-center gap-md px-md py-2 rounded-[12px] transition-all duration-300 group ${
+                        className={`flex items-center gap-md px-md py-2 rounded-md transition-all duration-300 group ${
                             pathname.startsWith('/billing') ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
                         }`}
                     >
@@ -287,7 +287,7 @@ const Sidebar = () => {
                         <Link 
                             href="/developers" 
                             onClick={handleNav}
-                            className={`flex items-center gap-md px-md py-2 rounded-[12px] transition-all duration-300 group ${
+                            className={`flex items-center gap-md px-md py-2 rounded-md transition-all duration-300 group ${
                                 pathname.startsWith('/developers') ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
                             }`}
                         >

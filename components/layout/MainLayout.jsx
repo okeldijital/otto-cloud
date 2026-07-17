@@ -14,13 +14,13 @@ const MainContent = ({ children }) => {
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden lg:ml-[280px]">
             <TopBar />
             {isHealthy === false && !isChecking && (
-                <div className="bg-danger/10 border-b border-danger/20 px-xl py-3 flex items-center gap-3">
+                <div className="bg-danger/10 border-b border-danger/20 px-xl py-3 flex items-center gap-md">
                     <WifiOff size={18} className="text-danger" />
                     <div className="flex-1">
                         <p className="text-sm font-semibold text-danger">
                             Backend Connection Lost
                         </p>
-                        <p className="text-xs text-danger/80">
+                        <p className="text-2xs text-danger/80">
                             Cannot connect to the backend server. CRUD operations and imports will not work.
                         </p>
                     </div>
