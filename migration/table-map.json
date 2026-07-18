@@ -1,0 +1,485 @@
+{
+  "activities": {
+    "source": "activities",
+    "target": "activities",
+    "strategy": "direct",
+    "phase": "system"
+  },
+  "admin_backup_artifacts": {
+    "source": "admin_backup_artifacts",
+    "target": "admin_backup_artifacts",
+    "strategy": "ignored",
+    "phase": "workspace",
+    "notes": "Cloud workspace engine is source of truth"
+  },
+  "admin_backup_restore_events": {
+    "source": "admin_backup_restore_events",
+    "target": "admin_backup_restore_events",
+    "strategy": "ignored",
+    "phase": "workspace",
+    "notes": "Cloud workspace engine is source of truth"
+  },
+  "admin_restore_audit": {
+    "source": "admin_restore_audit",
+    "target": "admin_restore_audit",
+    "strategy": "ignored",
+    "phase": "workspace",
+    "notes": "Cloud workspace engine is source of truth"
+  },
+  "ai_audit_log": {
+    "source": "ai_audit_log",
+    "target": "ai_audit_log",
+    "strategy": "ignored",
+    "phase": "ai",
+    "notes": "AI run history optional; enable per customer if needed"
+  },
+  "ai_contract_documents": {
+    "source": "ai_contract_documents",
+    "target": "ai_contract_documents",
+    "strategy": "ignored",
+    "phase": "ai",
+    "notes": "AI run history optional; enable per customer if needed"
+  },
+  "ai_contract_resolution_links": {
+    "source": "ai_contract_resolution_links",
+    "target": "ai_contract_resolution_links",
+    "strategy": "ignored",
+    "phase": "ai",
+    "notes": "AI run history optional; enable per customer if needed"
+  },
+  "ai_contract_resolution_runs": {
+    "source": "ai_contract_resolution_runs",
+    "target": "ai_contract_resolution_runs",
+    "strategy": "ignored",
+    "phase": "ai",
+    "notes": "AI run history optional; enable per customer if needed"
+  },
+  "ai_contract_work_links": {
+    "source": "ai_contract_work_links",
+    "target": "ai_contract_work_links",
+    "strategy": "ignored",
+    "phase": "ai",
+    "notes": "AI run history optional; enable per customer if needed"
+  },
+  "ai_core_write_apply_events": {
+    "source": "ai_core_write_apply_events",
+    "target": "ai_core_write_apply_events",
+    "strategy": "ignored",
+    "phase": "ai",
+    "notes": "AI run history optional; enable per customer if needed"
+  },
+  "ai_core_write_proposal_items": {
+    "source": "ai_core_write_proposal_items",
+    "target": "ai_core_write_proposal_items",
+    "strategy": "ignored",
+    "phase": "ai",
+    "notes": "AI run history optional; enable per customer if needed"
+  },
+  "ai_core_write_proposal_runs": {
+    "source": "ai_core_write_proposal_runs",
+    "target": "ai_core_write_proposal_runs",
+    "strategy": "ignored",
+    "phase": "ai",
+    "notes": "AI run history optional; enable per customer if needed"
+  },
+  "ai_link_commits": {
+    "source": "ai_link_commits",
+    "target": "ai_link_commits",
+    "strategy": "ignored",
+    "phase": "ai",
+    "notes": "AI run history optional; enable per customer if needed"
+  },
+  "ai_link_suggestions": {
+    "source": "ai_link_suggestions",
+    "target": "ai_link_suggestions",
+    "strategy": "ignored",
+    "phase": "ai",
+    "notes": "AI run history optional; enable per customer if needed"
+  },
+  "ai_messages": {
+    "source": "ai_messages",
+    "target": "ai_messages",
+    "strategy": "ignored",
+    "phase": "ai",
+    "notes": "AI run history optional; enable per customer if needed"
+  },
+  "ai_release_integration_links": {
+    "source": "ai_release_integration_links",
+    "target": "ai_release_integration_links",
+    "strategy": "ignored",
+    "phase": "ai",
+    "notes": "AI run history optional; enable per customer if needed"
+  },
+  "ai_release_integration_runs": {
+    "source": "ai_release_integration_runs",
+    "target": "ai_release_integration_runs",
+    "strategy": "ignored",
+    "phase": "ai",
+    "notes": "AI run history optional; enable per customer if needed"
+  },
+  "ai_royalty_runs": {
+    "source": "ai_royalty_runs",
+    "target": "ai_royalty_runs",
+    "strategy": "ignored",
+    "phase": "ai",
+    "notes": "AI run history optional; enable per customer if needed"
+  },
+  "ai_royalty_simulation_runs": {
+    "source": "ai_royalty_simulation_runs",
+    "target": "ai_royalty_simulation_runs",
+    "strategy": "ignored",
+    "phase": "ai",
+    "notes": "AI run history optional; enable per customer if needed"
+  },
+  "ai_sessions": {
+    "source": "ai_sessions",
+    "target": "ai_sessions",
+    "strategy": "ignored",
+    "phase": "ai",
+    "notes": "AI run history optional; enable per customer if needed"
+  },
+  "alembic_version": {
+    "source": "alembic_version",
+    "target": "alembic_version",
+    "strategy": "ignored",
+    "phase": "system",
+    "notes": "Marked non-migratable or replaced by cloud IAM/workspace engine"
+  },
+  "artists": {
+    "source": "artists",
+    "target": "artists",
+    "strategy": "transform",
+    "phase": "catalog",
+    "identityEntity": "artists"
+  },
+  "audit_logs": {
+    "source": "audit_logs",
+    "target": "audit_logs",
+    "strategy": "direct",
+    "phase": "system"
+  },
+  "contract_assets": {
+    "source": "contract_assets",
+    "target": "contract_assets",
+    "strategy": "transform",
+    "phase": "contracts"
+  },
+  "contract_documents": {
+    "source": "contract_documents",
+    "target": "contract_documents",
+    "strategy": "transform",
+    "phase": "contracts"
+  },
+  "contract_entity_links": {
+    "source": "contract_entity_links",
+    "target": "contract_entity_links",
+    "strategy": "transform",
+    "phase": "contracts"
+  },
+  "contract_intake_entity_links": {
+    "source": "contract_intake_entity_links",
+    "target": "contract_intake_entity_links",
+    "strategy": "transform",
+    "phase": "contracts"
+  },
+  "contract_intake_release_links": {
+    "source": "contract_intake_release_links",
+    "target": "contract_intake_release_links",
+    "strategy": "transform",
+    "phase": "contracts"
+  },
+  "contract_parties": {
+    "source": "contract_parties",
+    "target": "contract_parties",
+    "strategy": "transform",
+    "phase": "contracts"
+  },
+  "contract_release_links": {
+    "source": "contract_release_links",
+    "target": "contract_release_links",
+    "strategy": "transform",
+    "phase": "contracts"
+  },
+  "contract_split_groups": {
+    "source": "contract_split_groups",
+    "target": "contract_split_groups",
+    "strategy": "transform",
+    "phase": "contracts"
+  },
+  "contract_splits": {
+    "source": "contract_splits",
+    "target": "contract_splits",
+    "strategy": "transform",
+    "phase": "contracts"
+  },
+  "contracts": {
+    "source": "contracts",
+    "target": "contracts",
+    "strategy": "transform",
+    "phase": "contracts",
+    "identityEntity": "contracts"
+  },
+  "distributors": {
+    "source": "distributors",
+    "target": "distributors",
+    "strategy": "deprecated",
+    "phase": "system",
+    "notes": "Marked non-migratable or replaced by cloud IAM/workspace engine"
+  },
+  "documents": {
+    "source": "documents",
+    "target": "documents",
+    "strategy": "direct",
+    "phase": "administration",
+    "identityEntity": "documents"
+  },
+  "events": {
+    "source": "events",
+    "target": "events",
+    "strategy": "direct",
+    "phase": "system"
+  },
+  "individual_organizations": {
+    "source": "individual_organizations",
+    "target": "individual_organizations",
+    "strategy": "direct",
+    "phase": "crm"
+  },
+  "individuals": {
+    "source": "individuals",
+    "target": "individuals",
+    "strategy": "direct",
+    "phase": "crm",
+    "identityEntity": "individuals"
+  },
+  "labels": {
+    "source": "labels",
+    "target": "labels",
+    "strategy": "transform",
+    "phase": "catalog",
+    "identityEntity": "labels"
+  },
+  "network_relationships": {
+    "source": "network_relationships",
+    "target": "network_relationships",
+    "strategy": "direct",
+    "phase": "system"
+  },
+  "notes": {
+    "source": "notes",
+    "target": "notes",
+    "strategy": "direct",
+    "phase": "system"
+  },
+  "office_document_links": {
+    "source": "office_document_links",
+    "target": "office_document_links",
+    "strategy": "direct",
+    "phase": "administration"
+  },
+  "office_documents": {
+    "source": "office_documents",
+    "target": "office_documents",
+    "strategy": "direct",
+    "phase": "administration"
+  },
+  "office_note_links": {
+    "source": "office_note_links",
+    "target": "office_note_links",
+    "strategy": "direct",
+    "phase": "administration"
+  },
+  "office_notes": {
+    "source": "office_notes",
+    "target": "office_notes",
+    "strategy": "direct",
+    "phase": "administration"
+  },
+  "organizations": {
+    "source": "organizations",
+    "target": "organizations",
+    "strategy": "direct",
+    "phase": "foundation",
+    "identityEntity": "organizations"
+  },
+  "platforms": {
+    "source": "platforms",
+    "target": "platforms",
+    "strategy": "transform",
+    "phase": "catalog",
+    "identityEntity": "platforms"
+  },
+  "playlists": {
+    "source": "playlists",
+    "target": "playlists",
+    "strategy": "direct",
+    "phase": "system"
+  },
+  "pros": {
+    "source": "pros",
+    "target": "pros",
+    "strategy": "transform",
+    "phase": "catalog",
+    "identityEntity": "pros"
+  },
+  "publishers": {
+    "source": "publishers",
+    "target": "publishers",
+    "strategy": "transform",
+    "phase": "catalog",
+    "identityEntity": "publishers"
+  },
+  "releases": {
+    "source": "releases",
+    "target": "releases",
+    "strategy": "transform",
+    "phase": "catalog",
+    "identityEntity": "releases"
+  },
+  "report_artifacts": {
+    "source": "report_artifacts",
+    "target": "report_artifacts",
+    "strategy": "direct",
+    "phase": "administration"
+  },
+  "report_definitions": {
+    "source": "report_definitions",
+    "target": "report_definitions",
+    "strategy": "direct",
+    "phase": "administration"
+  },
+  "report_runs": {
+    "source": "report_runs",
+    "target": "report_runs",
+    "strategy": "direct",
+    "phase": "administration"
+  },
+  "royalties": {
+    "source": "royalties",
+    "target": "royalties",
+    "strategy": "direct",
+    "phase": "financial"
+  },
+  "status_quo_items": {
+    "source": "status_quo_items",
+    "target": "status_quo_items",
+    "strategy": "direct",
+    "phase": "system"
+  },
+  "tasks": {
+    "source": "tasks",
+    "target": "tasks",
+    "strategy": "direct",
+    "phase": "system"
+  },
+  "track_releases": {
+    "source": "track_releases",
+    "target": "track_releases",
+    "strategy": "transform",
+    "phase": "catalog"
+  },
+  "tracks": {
+    "source": "tracks",
+    "target": "tracks",
+    "strategy": "transform",
+    "phase": "catalog",
+    "identityEntity": "tracks"
+  },
+  "users": {
+    "source": "users",
+    "target": "users",
+    "prismaDelegate": "user",
+    "strategy": "transform",
+    "phase": "foundation",
+    "identityEntity": "users"
+  },
+  "works": {
+    "source": "works",
+    "target": "works",
+    "strategy": "transform",
+    "phase": "catalog",
+    "identityEntity": "works"
+  },
+  "works_admin": {
+    "source": "works_admin",
+    "target": "works_admin",
+    "strategy": "direct",
+    "phase": "administration"
+  },
+  "works_admin_documents": {
+    "source": "works_admin_documents",
+    "target": "works_admin_documents",
+    "strategy": "direct",
+    "phase": "administration"
+  },
+  "roles": {
+    "source": "roles",
+    "target": "roles",
+    "strategy": "direct",
+    "phase": "system",
+    "notes": "Present in import order but absent from source SQLite"
+  },
+  "permissions": {
+    "source": "permissions",
+    "target": "permissions",
+    "strategy": "direct",
+    "phase": "system",
+    "notes": "Present in import order but absent from source SQLite"
+  },
+  "role_permissions": {
+    "source": "role_permissions",
+    "target": "role_permissions",
+    "strategy": "direct",
+    "phase": "system",
+    "notes": "Present in import order but absent from source SQLite"
+  },
+  "user_roles": {
+    "source": "user_roles",
+    "target": "user_roles",
+    "strategy": "direct",
+    "phase": "system",
+    "notes": "Present in import order but absent from source SQLite"
+  },
+  "teams": {
+    "source": "teams",
+    "target": "teams",
+    "strategy": "direct",
+    "phase": "system",
+    "notes": "Present in import order but absent from source SQLite"
+  },
+  "team_members": {
+    "source": "team_members",
+    "target": "team_members",
+    "strategy": "direct",
+    "phase": "system",
+    "notes": "Present in import order but absent from source SQLite"
+  },
+  "artist_memberships": {
+    "source": "artist_memberships",
+    "target": "artist_memberships",
+    "strategy": "direct",
+    "phase": "system",
+    "notes": "Present in import order but absent from source SQLite"
+  },
+  "contract_track_links": {
+    "source": "contract_track_links",
+    "target": "contract_track_links",
+    "strategy": "direct",
+    "phase": "system",
+    "notes": "Present in import order but absent from source SQLite"
+  },
+  "contract_songwriter_release_links": {
+    "source": "contract_songwriter_release_links",
+    "target": "contract_songwriter_release_links",
+    "strategy": "direct",
+    "phase": "system",
+    "notes": "Present in import order but absent from source SQLite"
+  },
+  "attachments": {
+    "source": "(cloud-only + asset migration)",
+    "target": "attachments",
+    "strategy": "transform",
+    "phase": "attachments",
+    "notes": "Do not re-upload files. Link entityType/entityId via id-map."
+  }
+}

@@ -1,0 +1,958 @@
+{
+  "generatedAt": "2026-07-18T12:49:01.389Z",
+  "sourceDbPath": "/Users/m2krproduction/.otto/data/db/otto.sqlite.corrupt_backup_1771348830",
+  "tables": [
+    {
+      "name": "activities",
+      "type": "table",
+      "rows": 4
+    },
+    {
+      "name": "admin_backup_artifacts",
+      "type": "table",
+      "rows": 3
+    },
+    {
+      "name": "admin_backup_restore_events",
+      "type": "table",
+      "rows": 10
+    },
+    {
+      "name": "admin_restore_audit",
+      "type": "table",
+      "rows": 42
+    },
+    {
+      "name": "ai_audit_log",
+      "type": "table",
+      "rows": 405
+    },
+    {
+      "name": "ai_contract_documents",
+      "type": "table",
+      "rows": 0
+    },
+    {
+      "name": "ai_contract_resolution_links",
+      "type": "table",
+      "rows": 5
+    },
+    {
+      "name": "ai_contract_resolution_runs",
+      "type": "table",
+      "rows": 90
+    },
+    {
+      "name": "ai_contract_work_links",
+      "type": "table",
+      "rows": 0
+    },
+    {
+      "name": "ai_core_write_apply_events",
+      "type": "table",
+      "rows": 18
+    },
+    {
+      "name": "ai_core_write_proposal_items",
+      "type": "table",
+      "rows": 36
+    },
+    {
+      "name": "ai_core_write_proposal_runs",
+      "type": "table",
+      "rows": 16
+    },
+    {
+      "name": "ai_link_commits",
+      "type": "table",
+      "rows": 0
+    },
+    {
+      "name": "ai_link_suggestions",
+      "type": "table",
+      "rows": 0
+    },
+    {
+      "name": "ai_messages",
+      "type": "table",
+      "rows": 2
+    },
+    {
+      "name": "ai_release_integration_links",
+      "type": "table",
+      "rows": 0
+    },
+    {
+      "name": "ai_release_integration_runs",
+      "type": "table",
+      "rows": 0
+    },
+    {
+      "name": "ai_royalty_runs",
+      "type": "table",
+      "rows": 0
+    },
+    {
+      "name": "ai_royalty_simulation_runs",
+      "type": "table",
+      "rows": 0
+    },
+    {
+      "name": "ai_sessions",
+      "type": "table",
+      "rows": 1
+    },
+    {
+      "name": "alembic_version",
+      "type": "table",
+      "rows": 1
+    },
+    {
+      "name": "artists",
+      "type": "table",
+      "rows": 163
+    },
+    {
+      "name": "audit_logs",
+      "type": "table",
+      "rows": 565
+    },
+    {
+      "name": "contract_assets",
+      "type": "table",
+      "rows": 0
+    },
+    {
+      "name": "contract_documents",
+      "type": "table",
+      "rows": 0
+    },
+    {
+      "name": "contract_entity_links",
+      "type": "table",
+      "rows": 0
+    },
+    {
+      "name": "contract_intake_entity_links",
+      "type": "table",
+      "rows": 0
+    },
+    {
+      "name": "contract_intake_release_links",
+      "type": "table",
+      "rows": 0
+    },
+    {
+      "name": "contract_parties",
+      "type": "table",
+      "rows": 9
+    },
+    {
+      "name": "contract_release_links",
+      "type": "table",
+      "rows": 0
+    },
+    {
+      "name": "contract_split_groups",
+      "type": "table",
+      "rows": 0
+    },
+    {
+      "name": "contract_splits",
+      "type": "table",
+      "rows": 0
+    },
+    {
+      "name": "contracts",
+      "type": "table",
+      "rows": 24
+    },
+    {
+      "name": "distributors",
+      "type": "table",
+      "rows": 0
+    },
+    {
+      "name": "documents",
+      "type": "table",
+      "rows": 0
+    },
+    {
+      "name": "events",
+      "type": "table",
+      "rows": 0
+    },
+    {
+      "name": "individual_organizations",
+      "type": "table",
+      "rows": 0
+    },
+    {
+      "name": "individuals",
+      "type": "table",
+      "rows": 18
+    },
+    {
+      "name": "labels",
+      "type": "table",
+      "rows": 14
+    },
+    {
+      "name": "network_relationships",
+      "type": "table",
+      "rows": 0
+    },
+    {
+      "name": "notes",
+      "type": "table",
+      "rows": 0
+    },
+    {
+      "name": "office_document_links",
+      "type": "table",
+      "rows": 0
+    },
+    {
+      "name": "office_documents",
+      "type": "table",
+      "rows": 0
+    },
+    {
+      "name": "office_note_links",
+      "type": "table",
+      "rows": 0
+    },
+    {
+      "name": "office_notes",
+      "type": "table",
+      "rows": 0
+    },
+    {
+      "name": "organizations",
+      "type": "table",
+      "rows": 28
+    },
+    {
+      "name": "platforms",
+      "type": "table",
+      "rows": 0
+    },
+    {
+      "name": "playlists",
+      "type": "table",
+      "rows": 0
+    },
+    {
+      "name": "pros",
+      "type": "table",
+      "rows": 13
+    },
+    {
+      "name": "publishers",
+      "type": "table",
+      "rows": 13
+    },
+    {
+      "name": "releases",
+      "type": "table",
+      "rows": 104
+    },
+    {
+      "name": "report_artifacts",
+      "type": "table",
+      "rows": 0
+    },
+    {
+      "name": "report_definitions",
+      "type": "table",
+      "rows": 0
+    },
+    {
+      "name": "report_runs",
+      "type": "table",
+      "rows": 0
+    },
+    {
+      "name": "royalties",
+      "type": "table",
+      "rows": 0
+    },
+    {
+      "name": "status_quo_items",
+      "type": "table",
+      "rows": 0
+    },
+    {
+      "name": "tasks",
+      "type": "table",
+      "rows": 0
+    },
+    {
+      "name": "track_releases",
+      "type": "table",
+      "rows": 3
+    },
+    {
+      "name": "tracks",
+      "type": "table",
+      "rows": 389
+    },
+    {
+      "name": "users",
+      "type": "table",
+      "rows": 6
+    },
+    {
+      "name": "works",
+      "type": "table",
+      "rows": 25
+    },
+    {
+      "name": "works_admin",
+      "type": "table",
+      "rows": 0
+    },
+    {
+      "name": "works_admin_documents",
+      "type": "table",
+      "rows": 0
+    }
+  ],
+  "foreignKeys": [
+    {
+      "table": "activities",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "users",
+      "from": "user_id",
+      "to": "id"
+    },
+    {
+      "table": "admin_backup_artifacts",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "users",
+      "from": "created_by",
+      "to": "id"
+    },
+    {
+      "table": "admin_backup_restore_events",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "users",
+      "from": "initiator_user_id",
+      "to": "id"
+    },
+    {
+      "table": "admin_restore_audit",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "users",
+      "from": "user_id",
+      "to": "id"
+    },
+    {
+      "table": "ai_contract_documents",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "users",
+      "from": "uploaded_by",
+      "to": "id"
+    },
+    {
+      "table": "ai_contract_resolution_links",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "ai_contract_resolution_runs",
+      "from": "run_id",
+      "to": "id"
+    },
+    {
+      "table": "ai_contract_resolution_runs",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "users",
+      "from": "user_id",
+      "to": "id"
+    },
+    {
+      "table": "ai_contract_resolution_runs",
+      "id": 1,
+      "seq": 0,
+      "table_ref": "contracts",
+      "from": "contract_id",
+      "to": "id"
+    },
+    {
+      "table": "ai_contract_work_links",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "ai_contract_documents",
+      "from": "contract_document_id",
+      "to": "id"
+    },
+    {
+      "table": "ai_core_write_apply_events",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "ai_core_write_proposal_runs",
+      "from": "run_id",
+      "to": "id"
+    },
+    {
+      "table": "ai_core_write_apply_events",
+      "id": 1,
+      "seq": 0,
+      "table_ref": "users",
+      "from": "user_id",
+      "to": "id"
+    },
+    {
+      "table": "ai_core_write_proposal_items",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "ai_core_write_proposal_runs",
+      "from": "run_id",
+      "to": "id"
+    },
+    {
+      "table": "ai_core_write_proposal_runs",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "users",
+      "from": "user_id",
+      "to": "id"
+    },
+    {
+      "table": "ai_messages",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "ai_sessions",
+      "from": "session_id",
+      "to": "id"
+    },
+    {
+      "table": "ai_release_integration_links",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "ai_release_integration_runs",
+      "from": "run_id",
+      "to": "id"
+    },
+    {
+      "table": "ai_release_integration_runs",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "users",
+      "from": "user_id",
+      "to": "id"
+    },
+    {
+      "table": "ai_royalty_simulation_runs",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "users",
+      "from": "user_id",
+      "to": "id"
+    },
+    {
+      "table": "ai_sessions",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "users",
+      "from": "user_id",
+      "to": "id"
+    },
+    {
+      "table": "artists",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "pros",
+      "from": "pro_id",
+      "to": "id"
+    },
+    {
+      "table": "artists",
+      "id": 1,
+      "seq": 0,
+      "table_ref": "publishers",
+      "from": "publisher_id",
+      "to": "id"
+    },
+    {
+      "table": "artists",
+      "id": 2,
+      "seq": 0,
+      "table_ref": "labels",
+      "from": "label_id",
+      "to": "id"
+    },
+    {
+      "table": "audit_logs",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "users",
+      "from": "user_id",
+      "to": "id"
+    },
+    {
+      "table": "contract_assets",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "contracts",
+      "from": "contract_id",
+      "to": "id"
+    },
+    {
+      "table": "contract_documents",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "contracts",
+      "from": "contract_id",
+      "to": "id"
+    },
+    {
+      "table": "contract_entity_links",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "users",
+      "from": "created_by",
+      "to": "id"
+    },
+    {
+      "table": "contract_entity_links",
+      "id": 1,
+      "seq": 0,
+      "table_ref": "contracts",
+      "from": "contract_id",
+      "to": "id"
+    },
+    {
+      "table": "contract_intake_entity_links",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "users",
+      "from": "created_by",
+      "to": "id"
+    },
+    {
+      "table": "contract_intake_entity_links",
+      "id": 1,
+      "seq": 0,
+      "table_ref": "ai_contract_resolution_runs",
+      "from": "resolution_run_id",
+      "to": "id"
+    },
+    {
+      "table": "contract_intake_entity_links",
+      "id": 2,
+      "seq": 0,
+      "table_ref": "contracts",
+      "from": "contract_id",
+      "to": "id"
+    },
+    {
+      "table": "contract_intake_entity_links",
+      "id": 3,
+      "seq": 0,
+      "table_ref": "releases",
+      "from": "release_id",
+      "to": "id"
+    },
+    {
+      "table": "contract_intake_release_links",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "users",
+      "from": "created_by",
+      "to": "id"
+    },
+    {
+      "table": "contract_intake_release_links",
+      "id": 1,
+      "seq": 0,
+      "table_ref": "ai_contract_resolution_runs",
+      "from": "resolution_run_id",
+      "to": "id"
+    },
+    {
+      "table": "contract_intake_release_links",
+      "id": 2,
+      "seq": 0,
+      "table_ref": "contracts",
+      "from": "contract_id",
+      "to": "id"
+    },
+    {
+      "table": "contract_intake_release_links",
+      "id": 3,
+      "seq": 0,
+      "table_ref": "releases",
+      "from": "release_id",
+      "to": "id"
+    },
+    {
+      "table": "contract_parties",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "contracts",
+      "from": "contract_id",
+      "to": "id"
+    },
+    {
+      "table": "contract_release_links",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "users",
+      "from": "created_by",
+      "to": "id"
+    },
+    {
+      "table": "contract_release_links",
+      "id": 1,
+      "seq": 0,
+      "table_ref": "releases",
+      "from": "release_id",
+      "to": "id"
+    },
+    {
+      "table": "contract_release_links",
+      "id": 2,
+      "seq": 0,
+      "table_ref": "contracts",
+      "from": "contract_id",
+      "to": "id"
+    },
+    {
+      "table": "contract_split_groups",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "contracts",
+      "from": "contract_id",
+      "to": "id"
+    },
+    {
+      "table": "contract_splits",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "contract_parties",
+      "from": "party_id",
+      "to": "id"
+    },
+    {
+      "table": "contract_splits",
+      "id": 1,
+      "seq": 0,
+      "table_ref": "contract_split_groups",
+      "from": "group_id",
+      "to": "id"
+    },
+    {
+      "table": "documents",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "users",
+      "from": "uploaded_by",
+      "to": "id"
+    },
+    {
+      "table": "documents",
+      "id": 1,
+      "seq": 0,
+      "table_ref": "documents",
+      "from": "parent_document_id",
+      "to": "id"
+    },
+    {
+      "table": "events",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "users",
+      "from": "created_by",
+      "to": "id"
+    },
+    {
+      "table": "individual_organizations",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "organizations",
+      "from": "organization_id",
+      "to": "id"
+    },
+    {
+      "table": "individual_organizations",
+      "id": 1,
+      "seq": 0,
+      "table_ref": "individuals",
+      "from": "individual_id",
+      "to": "id"
+    },
+    {
+      "table": "notes",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "users",
+      "from": "created_by",
+      "to": "id"
+    },
+    {
+      "table": "office_document_links",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "office_documents",
+      "from": "document_id",
+      "to": "id"
+    },
+    {
+      "table": "office_documents",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "users",
+      "from": "uploaded_by_user_id",
+      "to": "id"
+    },
+    {
+      "table": "office_note_links",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "office_notes",
+      "from": "note_id",
+      "to": "id"
+    },
+    {
+      "table": "office_notes",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "users",
+      "from": "created_by_user_id",
+      "to": "id"
+    },
+    {
+      "table": "playlists",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "users",
+      "from": "created_by",
+      "to": "id"
+    },
+    {
+      "table": "releases",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "organizations",
+      "from": "distributor_id",
+      "to": "id"
+    },
+    {
+      "table": "releases",
+      "id": 1,
+      "seq": 0,
+      "table_ref": "artists",
+      "from": "artist_id",
+      "to": "id"
+    },
+    {
+      "table": "releases",
+      "id": 2,
+      "seq": 0,
+      "table_ref": "labels",
+      "from": "label_id",
+      "to": "id"
+    },
+    {
+      "table": "report_artifacts",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "report_runs",
+      "from": "report_run_id",
+      "to": "id"
+    },
+    {
+      "table": "report_definitions",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "users",
+      "from": "created_by_user_id",
+      "to": "id"
+    },
+    {
+      "table": "report_runs",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "users",
+      "from": "requested_by_user_id",
+      "to": "id"
+    },
+    {
+      "table": "report_runs",
+      "id": 1,
+      "seq": 0,
+      "table_ref": "report_definitions",
+      "from": "report_definition_id",
+      "to": "id"
+    },
+    {
+      "table": "royalties",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "tracks",
+      "from": "track_id",
+      "to": "id"
+    },
+    {
+      "table": "royalties",
+      "id": 1,
+      "seq": 0,
+      "table_ref": "works",
+      "from": "work_id",
+      "to": "id"
+    },
+    {
+      "table": "royalties",
+      "id": 2,
+      "seq": 0,
+      "table_ref": "artists",
+      "from": "artist_id",
+      "to": "id"
+    },
+    {
+      "table": "status_quo_items",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "users",
+      "from": "resolved_by_user_id",
+      "to": "id"
+    },
+    {
+      "table": "tasks",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "users",
+      "from": "created_by_user_id",
+      "to": "id"
+    },
+    {
+      "table": "tasks",
+      "id": 1,
+      "seq": 0,
+      "table_ref": "users",
+      "from": "assigned_to_user_id",
+      "to": "id"
+    },
+    {
+      "table": "track_releases",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "releases",
+      "from": "release_id",
+      "to": "id"
+    },
+    {
+      "table": "track_releases",
+      "id": 1,
+      "seq": 0,
+      "table_ref": "tracks",
+      "from": "track_id",
+      "to": "id"
+    },
+    {
+      "table": "tracks",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "works",
+      "from": "work_id",
+      "to": "id"
+    },
+    {
+      "table": "tracks",
+      "id": 1,
+      "seq": 0,
+      "table_ref": "releases",
+      "from": "release_id",
+      "to": "id"
+    },
+    {
+      "table": "works",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "pros",
+      "from": "pro_id",
+      "to": "id"
+    },
+    {
+      "table": "works",
+      "id": 1,
+      "seq": 0,
+      "table_ref": "publishers",
+      "from": "publisher_id",
+      "to": "id"
+    },
+    {
+      "table": "works_admin",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "works",
+      "from": "work_id",
+      "to": "id"
+    },
+    {
+      "table": "works_admin_documents",
+      "id": 0,
+      "seq": 0,
+      "table_ref": "works_admin",
+      "from": "works_admin_id",
+      "to": "id"
+    }
+  ],
+  "indexCount": 255,
+  "triggerCount": 0,
+  "postgresCounts": {
+    "organizations": 1,
+    "users": 6,
+    "roles": 12,
+    "permissions": 71,
+    "role_permissions": 313,
+    "user_roles": 1,
+    "teams": 0,
+    "team_members": 0,
+    "individuals": 0,
+    "individual_organizations": 0,
+    "labels": 14,
+    "pros": 13,
+    "publishers": 5,
+    "platforms": 0,
+    "artists": 0,
+    "artist_memberships": 0,
+    "works": 0,
+    "releases": 0,
+    "tracks": 0,
+    "track_releases": 0,
+    "contracts": 0,
+    "contract_parties": 0,
+    "contract_assets": 0,
+    "contract_documents": 0,
+    "contract_track_links": 0,
+    "contract_split_groups": 0,
+    "contract_splits": 0,
+    "documents": 0,
+    "tasks": 0,
+    "status_quo_items": 0,
+    "activities": 0,
+    "audit_logs": 0,
+    "events": 0,
+    "notes": 0,
+    "office_documents": 0,
+    "office_document_links": 0,
+    "office_notes": 0,
+    "office_note_links": 0,
+    "playlists": 0,
+    "network_relationships": 0,
+    "works_admin": 0,
+    "works_admin_documents": 0,
+    "report_definitions": 0,
+    "report_runs": 0,
+    "report_artifacts": 0,
+    "royalties": 0,
+    "alembic_version": 0
+  }
+}

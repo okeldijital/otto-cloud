@@ -1,0 +1,212 @@
+[
+  {
+    "sourceId": 145,
+    "destId": 143,
+    "destName": "Oddxperienc",
+    "rule": "unique_name_collision"
+  },
+  {
+    "sourceId": 146,
+    "destId": 144,
+    "destName": "GhostArtist",
+    "rule": "unique_name_collision"
+  },
+  {
+    "sourceId": 147,
+    "destId": 143,
+    "destName": "Oddxperienc",
+    "rule": "unique_name_collision"
+  },
+  {
+    "sourceId": 148,
+    "destId": 144,
+    "destName": "GhostArtist",
+    "rule": "unique_name_collision"
+  },
+  {
+    "sourceId": 149,
+    "destId": 143,
+    "destName": "Oddxperienc",
+    "rule": "unique_name_collision"
+  },
+  {
+    "sourceId": 150,
+    "destId": 144,
+    "destName": "GhostArtist",
+    "rule": "unique_name_collision"
+  },
+  {
+    "sourceId": 151,
+    "destId": 143,
+    "destName": "Oddxperienc",
+    "rule": "unique_name_collision"
+  },
+  {
+    "sourceId": 152,
+    "destId": 144,
+    "destName": "GhostArtist",
+    "rule": "unique_name_collision"
+  },
+  {
+    "sourceId": 153,
+    "destId": 143,
+    "destName": "Oddxperienc",
+    "rule": "unique_name_collision"
+  },
+  {
+    "sourceId": 154,
+    "destId": 144,
+    "destName": "GhostArtist",
+    "rule": "unique_name_collision"
+  },
+  {
+    "sourceId": 155,
+    "destId": 143,
+    "destName": "Oddxperienc",
+    "rule": "unique_name_collision"
+  },
+  {
+    "sourceId": 156,
+    "destId": 144,
+    "destName": "GhostArtist",
+    "rule": "unique_name_collision"
+  },
+  {
+    "sourceId": 157,
+    "destId": 143,
+    "destName": "Oddxperienc",
+    "rule": "unique_name_collision"
+  },
+  {
+    "sourceId": 158,
+    "destId": 144,
+    "destName": "GhostArtist",
+    "rule": "unique_name_collision"
+  },
+  {
+    "sourceId": 159,
+    "destId": 143,
+    "destName": "Oddxperienc",
+    "rule": "unique_name_collision"
+  },
+  {
+    "sourceId": 160,
+    "destId": 144,
+    "destName": "GhostArtist",
+    "rule": "unique_name_collision"
+  },
+  {
+    "sourceId": 367,
+    "destId": 366,
+    "destName": "pdf_extract",
+    "rule": "unique_name_collision"
+  },
+  {
+    "sourceId": 369,
+    "destId": 368,
+    "destName": "contract_linker:link_suggest_v1.0.0",
+    "rule": "unique_name_collision"
+  },
+  {
+    "sourceId": 370,
+    "destId": 366,
+    "destName": "pdf_extract",
+    "rule": "unique_name_collision"
+  },
+  {
+    "sourceId": 371,
+    "destId": 366,
+    "destName": "pdf_extract",
+    "rule": "unique_name_collision"
+  },
+  {
+    "sourceId": 372,
+    "destId": 368,
+    "destName": "contract_linker:link_suggest_v1.0.0",
+    "rule": "unique_name_collision"
+  },
+  {
+    "sourceId": 373,
+    "destId": 368,
+    "destName": "contract_linker:link_suggest_v1.0.0",
+    "rule": "unique_name_collision"
+  },
+  {
+    "sourceId": 374,
+    "destId": 366,
+    "destName": "pdf_extract",
+    "rule": "unique_name_collision"
+  },
+  {
+    "sourceId": 375,
+    "destId": 366,
+    "destName": "pdf_extract",
+    "rule": "unique_name_collision"
+  },
+  {
+    "sourceId": 376,
+    "destId": 368,
+    "destName": "contract_linker:link_suggest_v1.0.0",
+    "rule": "unique_name_collision"
+  },
+  {
+    "sourceId": 377,
+    "destId": 368,
+    "destName": "contract_linker:link_suggest_v1.0.0",
+    "rule": "unique_name_collision"
+  },
+  {
+    "sourceId": 378,
+    "destId": 366,
+    "destName": "pdf_extract",
+    "rule": "unique_name_collision"
+  },
+  {
+    "sourceId": 379,
+    "destId": 366,
+    "destName": "pdf_extract",
+    "rule": "unique_name_collision"
+  },
+  {
+    "sourceId": 380,
+    "destId": 368,
+    "destName": "contract_linker:link_suggest_v1.0.0",
+    "rule": "unique_name_collision"
+  },
+  {
+    "sourceId": 381,
+    "destId": 368,
+    "destName": "contract_linker:link_suggest_v1.0.0",
+    "rule": "unique_name_collision"
+  },
+  {
+    "sourceId": 382,
+    "destId": 366,
+    "destName": "pdf_extract",
+    "rule": "unique_name_collision"
+  },
+  {
+    "sourceId": 383,
+    "destId": 366,
+    "destName": "pdf_extract",
+    "rule": "unique_name_collision"
+  },
+  {
+    "sourceId": 384,
+    "destId": 368,
+    "destName": "contract_linker:link_suggest_v1.0.0",
+    "rule": "unique_name_collision"
+  },
+  {
+    "sourceId": 385,
+    "destId": 368,
+    "destName": "contract_linker:link_suggest_v1.0.0",
+    "rule": "unique_name_collision"
+  },
+  {
+    "sourceId": 386,
+    "destId": 366,
+    "destName": "pdf_extract",
+    "rule": "unique_name_collision"
+  }
+]
