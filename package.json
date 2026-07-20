@@ -25,7 +25,9 @@
     "migrate:data:link-attachments": "tsx scripts/migrate-data/index.ts link-attachments",
     "setup:cloud": "tsx prisma/setup.ts && tsx prisma/seed.ts",
     "reset:admin-password": "tsx scripts/reset-admin-password.ts",
-    "test:org-context": "tsx lib/auth/__tests__/organization-context.test.ts"
+    "test:org-context": "tsx lib/auth/__tests__/organization-context.test.ts",
+    "link:attachments": "tsx scripts/migrate-data/link-attachments/engine.ts",
+    "link:attachments:dry-run": "tsx scripts/migrate-data/link-attachments/engine.ts --dry-run"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1089.0",
