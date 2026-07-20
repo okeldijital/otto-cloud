@@ -1,29 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import Button from "@/components/ui/Button";
 import DataTable from "@/components/DataTable";
 import EntityForm from "@/components/EntityForm";
+import EntityArtwork from "@/components/media/EntityArtwork";
+import { useAttachmentMap } from "@/hooks/useAttachment";
 import api from "@/lib/api";
-
-const columns = [
-  { key: "title", label: "Title", sortable: true },
-  { key: "release_type", label: "Type", sortable: true },
-  {
-    key: "release_date",
-    label: "Release Date",
-    sortable: true,
-    render: (row: any) => row.release_date ? new Date(row.release_date).toLocaleDateString() : "—",
-  },
-  {
-    key: "catalog_number",
-    label: "Catalog #",
-    render: (row: any) => row.catalog_number || "—",
-  },
-];
 
 export default function ReleasesPage() {
   const router = useRouter();
@@ -32,6 +18,45 @@ export default function ReleasesPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [newRelease, setNewRelease] = useState<any>({ title: "", release_type: "Single", release_date: "", catalog_number: "" });
+
+  const ids = useMemo(() => data.map((r) => r.id), [data]);
+  const { urls: coverUrls } = useAttachmentMap("release", ids);
+
+  const columns = useMemo(
+    () => [
+      {
+        key: "artwork",
+        label: "",
+        render: (row: any) => (
+          <EntityArtwork
+            entityType="release"
+            entityId={row.id}
+            src={coverUrls[String(row.id)] ?? null}
+            alt={row.title}
+            size={40}
+            placeholder="release"
+            className="rounded-lg"
+            style={{ borderRadius: 8 }}
+          />
+        ),
+      },
+      { key: "title", label: "Title", sortable: true },
+      { key: "release_type", label: "Type", sortable: true },
+      {
+        key: "release_date",
+        label: "Release Date",
+        sortable: true,
+        render: (row: any) =>
+          row.release_date ? new Date(row.release_date).toLocaleDateString() : "—",
+      },
+      {
+        key: "catalog_number",
+        label: "Catalog #",
+        render: (row: any) => row.catalog_number || "—",
+      },
+    ],
+    [coverUrls]
+  );
 
   const fetchData = async () => {
     try {

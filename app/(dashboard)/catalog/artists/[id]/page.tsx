@@ -9,6 +9,7 @@ import Badge from "@/components/ui/Badge";
 import GroupMembersManager from "@/components/catalog/GroupMembersManager";
 
 import api from "@/lib/api";
+import EntityArtwork from "@/components/media/EntityArtwork";
 import { ChevronLeft, Mail, Phone, Globe, MapPin, User, Disc, FileText, Edit, Trash2, Instagram, Twitter, Music } from "lucide-react";
 
 export default function ArtistDetailPage() {
@@ -178,11 +179,16 @@ export default function ArtistDetailPage() {
             </Card>
           </div>
           <div className="space-y-6">
-            {artist.profile_image_url && (
-              <Card title="Photo">
-                <img src={artist.profile_image_url} alt={artist.name} className="w-full rounded-xl" style={{ maxHeight: 300, objectFit: "cover" }} />
-              </Card>
-            )}
+            <Card title="Photo">
+              <EntityArtwork
+                entityType="artist"
+                entityId={artist.id}
+                alt={artist.name}
+                placeholder="artist"
+                className="w-full rounded-xl"
+                style={{ width: "100%", height: 280, borderRadius: 12 }}
+              />
+            </Card>
             <Card title="Quick Stats">
               <div className="space-y-3">
                 <div className="flex items-center justify-between"><span className="flex items-center gap-2"><Disc size={14} /> Releases</span><Badge variant="primary">{releases.length}</Badge></div>

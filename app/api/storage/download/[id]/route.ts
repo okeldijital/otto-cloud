@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getSignedDownloadUrl, logAttachmentActivity } from "@/lib/storage";
+import {
+  orgContextErrorResponse,
+  requireOrganization,
+} from "@/lib/auth/organization-context";
+import { canAccessAttachment } from "@/lib/media/entity-artwork";
 
 /**
  * Universal download endpoint.
@@ -17,14 +20,9 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const user = session.user as any;
-    const organizationId: string = user.organization_id;
-    const userId: number = parseInt(user.id) || 1;
+    const ctx = await requireOrganization();
+    const organizationId = ctx.organizationId;
+    const userId = ctx.userId;
     const ipAddress = req.headers.get("x-forwarded-for") || undefined;
     const userAgent = req.headers.get("user-agent") || undefined;
 
@@ -34,7 +32,7 @@ export async function GET(
     if (!attachment) {
       return NextResponse.json({ error: "Attachment not found" }, { status: 404 });
     }
-    if (attachment.organizationId !== organizationId) {
+    if (!canAccessAttachment(attachment.organizationId, organizationId)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -66,6 +64,10 @@ export async function GET(
       mimeType: attachment.mimeType,
     });
   } catch (err: any) {
+    const mapped = orgContextErrorResponse(err);
+    if (mapped.status === 401 || mapped.status === 403) {
+      return NextResponse.json(mapped.body, { status: mapped.status });
+    }
     console.error("[GET /api/storage/download/[id]]", err);
     return NextResponse.json({ error: err.message || "Internal server error" }, { status: 500 });
   }

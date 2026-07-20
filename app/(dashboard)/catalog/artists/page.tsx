@@ -1,25 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import Button from "@/components/ui/Button";
 import DataTable from "@/components/DataTable";
 import EntityForm from "@/components/EntityForm";
+import EntityArtwork from "@/components/media/EntityArtwork";
+import { useAttachmentMap } from "@/hooks/useAttachment";
 import api from "@/lib/api";
-
-const columns = [
-  { key: "name", label: "Name", sortable: true },
-  { key: "stage_name", label: "Stage Name", sortable: true },
-  { key: "email", label: "Email", sortable: true },
-  {
-    key: "ipi_number",
-    label: "IPI",
-    sortable: true,
-    render: (row: any) => row.ipi_number || "—",
-  },
-];
 
 export default function ArtistsPage() {
   const router = useRouter();
@@ -28,6 +18,40 @@ export default function ArtistsPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [newArtist, setNewArtist] = useState<any>({ name: "", stage_name: "", email: "", ipi_number: "" });
+
+  const ids = useMemo(() => data.map((a) => a.id), [data]);
+  const { urls: photoUrls } = useAttachmentMap("artist", ids);
+
+  const columns = useMemo(
+    () => [
+      {
+        key: "photo",
+        label: "",
+        render: (row: any) => (
+          <EntityArtwork
+            entityType="artist"
+            entityId={row.id}
+            src={photoUrls[String(row.id)] ?? null}
+            alt={row.name}
+            size={40}
+            placeholder="artist"
+            className="rounded-full"
+            style={{ borderRadius: 999 }}
+          />
+        ),
+      },
+      { key: "name", label: "Name", sortable: true },
+      { key: "stage_name", label: "Stage Name", sortable: true },
+      { key: "email", label: "Email", sortable: true },
+      {
+        key: "ipi_number",
+        label: "IPI",
+        sortable: true,
+        render: (row: any) => row.ipi_number || "—",
+      },
+    ],
+    [photoUrls]
+  );
 
   const fetchData = async () => {
     try {

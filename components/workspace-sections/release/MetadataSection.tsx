@@ -3,10 +3,17 @@
 import { AlertCircle, CheckCircle } from "lucide-react";
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
+import EntityArtwork from "@/components/media/EntityArtwork";
+import { useAttachment } from "@/hooks/useAttachment";
 import { type SectionProps } from "@/lib/workspace-engine";
 
 export default function MetadataSection({ workspace }: SectionProps) {
   const release = workspace.release;
+  const { url: coverUrl } = useAttachment(
+    release ? "release" : null,
+    release?.id
+  );
+
   if (!release) {
     return (
       <Card title="Release Metadata">
@@ -26,7 +33,8 @@ export default function MetadataSection({ workspace }: SectionProps) {
 
   const warnings = [];
   if (!release.upc_code) warnings.push({ label: "Missing UPC", severity: "high" });
-  if (!release.cover_art_url) warnings.push({ label: "Missing Cover Art", severity: "high" });
+  // Prefer Storage Service attachment over legacy cover_art_url column
+  if (!coverUrl && !release.cover_art_url) warnings.push({ label: "Missing Cover Art", severity: "high" });
   if (!release.release_date) warnings.push({ label: "No Release Date", severity: "medium" });
 
   return (
@@ -51,14 +59,17 @@ export default function MetadataSection({ workspace }: SectionProps) {
           )}
         </Card>
 
-        {release.cover_art_url && (
-          <Card title="Cover Art">
-            <div className="relative w-48 h-48 rounded-xl overflow-hidden bg-white/5 flex items-center justify-center">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img className="w-full h-full object-cover" src={release.cover_art_url} alt="Cover Art" />
-            </div>
-          </Card>
-        )}
+        <Card title="Cover Art">
+          <EntityArtwork
+            entityType="release"
+            entityId={release.id}
+            alt={release.title || "Cover Art"}
+            size={192}
+            placeholder="release"
+            className="rounded-xl"
+            style={{ borderRadius: 12 }}
+          />
+        </Card>
       </div>
 
       <div>

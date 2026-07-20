@@ -4,9 +4,10 @@ import { Search, Bell, User, Settings as SettingsIcon, LogOut, Music, Users, Fil
 import { useAuth } from '../../contexts/AuthContext';
 import { useSidebar } from '../../contexts/SidebarContext';
 import { useRouter } from 'next/navigation';
-import api, { BASE_URL } from '../../lib/api';
+import api from '../../lib/api';
 import ThemeToggle from '../ui/ThemeToggle';
 import OrganizationSwitcher from '../org/OrganizationSwitcher';
+import EntityArtwork from '../media/EntityArtwork';
 
 const TopBar = () => {
     const { user, logout } = useAuth();
@@ -168,8 +169,6 @@ const TopBar = () => {
         setShowNotifications(false);
     };
 
-    const API_URL = BASE_URL;
-
     const hasResults = searchResults && Object.values(searchResults).some(arr => arr.length > 0);
 
     return (
@@ -218,8 +217,9 @@ const TopBar = () => {
                                     <div className="mb-2">
                                         <h4 className="px-4 py-2 text-2xs font-bold text-text-secondary uppercase tracking-widest bg-surface-elevated flex items-center gap-2"><Users size={12} /> Artists</h4>
                                         {searchResults.artists.map(a => (
-                                            <div key={a.id} className="px-4 py-3 cursor-pointer text-sm text-text-primary hover:bg-surface-elevated hover:text-accent transition-all" onClick={() => handleResultClick(a)}>
-                                                {a.name}
+                                            <div key={a.id} className="px-4 py-3 cursor-pointer text-sm text-text-primary hover:bg-surface-elevated hover:text-accent transition-all flex items-center gap-3" onClick={() => handleResultClick(a)}>
+                                                <EntityArtwork entityType="artist" entityId={a.id} alt={a.name} size={28} placeholder="artist" className="rounded-full flex-shrink-0" style={{ borderRadius: 999 }} />
+                                                <span className="truncate">{a.name}</span>
                                             </div>
                                         ))}
                                     </div>
@@ -228,8 +228,9 @@ const TopBar = () => {
                                     <div className="mb-2">
                                         <h4 className="px-4 py-2 text-2xs font-bold text-text-secondary uppercase tracking-widest bg-surface-elevated flex items-center gap-2"><Layout size={12} /> Releases</h4>
                                         {searchResults.releases.map(r => (
-                                            <div key={r.id} className="px-4 py-3 cursor-pointer text-sm text-text-primary hover:bg-surface-elevated hover:text-accent transition-all" onClick={() => handleResultClick(r)}>
-                                                {r.title}
+                                            <div key={r.id} className="px-4 py-3 cursor-pointer text-sm text-text-primary hover:bg-surface-elevated hover:text-accent transition-all flex items-center gap-3" onClick={() => handleResultClick(r)}>
+                                                <EntityArtwork entityType="release" entityId={r.id} alt={r.title} size={28} placeholder="release" className="rounded flex-shrink-0" style={{ borderRadius: 6 }} />
+                                                <span className="truncate">{r.title}</span>
                                             </div>
                                         ))}
                                     </div>
@@ -334,17 +335,15 @@ const TopBar = () => {
 
                 <div className="relative">
                     <div className="flex items-center gap-sm cursor-pointer p-1 rounded-full hover:bg-surface-elevated transition-all" onClick={() => setShowUserMenu(!showUserMenu)}>
-                        <div className="w-8 h-8 rounded-full bg-surface-elevated border border-border flex items-center justify-center overflow-hidden">
-                            {user?.avatar_url ? (
-                                <img
-                                    src={user.avatar_url.startsWith('http') ? user.avatar_url : `${API_URL}${user.avatar_url}`}
-                                    alt="Profile"
-                                    className="w-full h-full object-cover"
-                                />
-                            ) : (
-                                <User size={18} className="text-text-secondary" />
-                            )}
-                        </div>
+                        <EntityArtwork
+                            entityType="user"
+                            entityId={user?.id}
+                            alt="Profile"
+                            size={32}
+                            placeholder="user"
+                            className="rounded-full border border-border"
+                            style={{ borderRadius: 999 }}
+                        />
                         <div className="flex flex-col items-start leading-tight hidden md:flex">
                             <span className="text-sm font-medium text-text-primary">{user?.full_name || 'User'}</span>
                             <span className="text-2xs font-bold text-accent uppercase tracking-wider">Cloud Edition</span>
@@ -356,17 +355,15 @@ const TopBar = () => {
                             <div className="fixed inset-0 z-[-1]" onClick={() => setShowUserMenu(false)} />
                             <div className="absolute top-full right-0 mt-2 w-64 bg-surface border border-border rounded-lg shadow-lg overflow-hidden">
                                 <div className="p-4 bg-surface-elevated flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-surface border border-border flex items-center justify-center overflow-hidden">
-                                        {user?.avatar_url ? (
-                                            <img
-                                                src={user.avatar_url.startsWith('http') ? user.avatar_url : `${API_URL}${user.avatar_url}`}
-                                                alt="User"
-                                                className="w-full h-full object-cover"
-                                            />
-                                        ) : (
-                                            <User size={20} className="text-text-secondary" />
-                                        )}
-                                    </div>
+                                    <EntityArtwork
+                                        entityType="user"
+                                        entityId={user?.id}
+                                        alt="User"
+                                        size={40}
+                                        placeholder="user"
+                                        className="rounded-full border border-border"
+                                        style={{ borderRadius: 999 }}
+                                    />
                                     <div className="overflow-hidden">
                                         <div className="text-sm font-semibold text-text-primary truncate">{user?.full_name || 'User'}</div>
                                         <div className="text-xs text-text-secondary truncate">{user?.email}</div>

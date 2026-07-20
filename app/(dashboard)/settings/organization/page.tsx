@@ -256,10 +256,11 @@ function BrandingTab({ org, onSave, saving }: { org: any; onSave: (d: any) => vo
           <div>
             <label className="text-xs text-text-secondary font-bold block mb-1">Logo URL</label>
             <input className="input w-full" value={form.logo_url} onChange={e => setForm(f => ({ ...f, logo_url: e.target.value }))} />
-            {form.logo_url && (
+            {form.logo_url && form.logo_url.startsWith("http") && (
               <div className="mt-2 p-3 bg-surface-elevated rounded-lg flex items-center gap-3">
-                <img src={form.logo_url} alt="Logo preview" className="h-10 w-10 object-contain rounded" />
-                <span className="text-xs text-text-secondary">Preview</span>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={form.logo_url} alt="Logo preview" className="h-10 w-10 object-contain rounded" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                <span className="text-xs text-text-secondary">Preview (HTTPS URL only — not /uploads legacy paths)</span>
               </div>
             )}
           </div>

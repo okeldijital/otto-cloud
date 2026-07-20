@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import PageHeader from "@/components/ui/PageHeader";
+import EntityArtwork from "@/components/media/EntityArtwork";
 import api from "@/lib/api";
 
 export default function LabelDetailPage() {
@@ -23,9 +24,20 @@ export default function LabelDetailPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-premium-glass border border-white/5 rounded-2xl p-6 backdrop-blur-xl space-y-4">
           <h3 className="text-lg font-semibold text-white">Details</h3>
-          <div className="space-y-3">
-            <div><span className="text-text-secondary text-sm">Name:</span><p className="text-white">{label.name || "—"}</p></div>
-            <div><span className="text-text-secondary text-sm">Code:</span><p className="text-white">{label.code || "—"}</p></div>
+          <div className="flex gap-4 items-start">
+            <EntityArtwork
+              entityType="label"
+              entityId={label.id}
+              alt={label.name}
+              size={80}
+              placeholder="label"
+              className="rounded-xl flex-shrink-0"
+              style={{ borderRadius: 12 }}
+            />
+            <div className="space-y-3 flex-1">
+              <div><span className="text-text-secondary text-sm">Name:</span><p className="text-white">{label.name || "—"}</p></div>
+              <div><span className="text-text-secondary text-sm">Code:</span><p className="text-white">{label.code || "—"}</p></div>
+            </div>
           </div>
         </div>
       </div>

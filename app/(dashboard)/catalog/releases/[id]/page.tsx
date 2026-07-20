@@ -6,6 +6,7 @@ import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import api from "@/lib/api";
+import EntityArtwork from "@/components/media/EntityArtwork";
 import { ChevronLeft, Disc, Music, User, Calendar, Tag, FileText, Edit, Trash2, ExternalLink, Upload, Loader } from "lucide-react";
 
 function formatDuration(d: string | null): string {
@@ -32,21 +33,24 @@ export default function ReleaseDetailPage() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
 
+  const [artworkKey, setArtworkKey] = useState(0);
+
   const handleArtworkUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
     try {
+      // Universal storage upload — creates Attachment linked to this release
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("release_id", id);
-      const { data } = await api.post("/releases/upload", formData, {
+      formData.append("entityType", "release");
+      formData.append("entityId", String(id));
+      formData.append("folder", "releases");
+      await api.post("/storage/upload", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      if (data?.url) {
-        await api.put(`/releases?id=${id}`, { cover_art_url: data.url });
-        setRelease((prev: any) => ({ ...prev, cover_art_url: data.url }));
-      }
+      // Refresh artwork via Storage Service (do not use legacy /uploads paths)
+      setArtworkKey((k) => k + 1);
     } catch (err) {
       console.error("Upload failed:", err);
       alert("Failed to upload artwork");
@@ -115,12 +119,16 @@ export default function ReleaseDetailPage() {
                 <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#94a3b8" }}>
                   <Loader size={32} className="animate-spin" />
                 </div>
-              ) : release.cover_art_url ? (
-                <img src={release.cover_art_url} alt={release.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               ) : (
-                <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#94a3b8" }}>
-                  <Disc size={64} />
-                </div>
+                <EntityArtwork
+                  key={artworkKey}
+                  entityType="release"
+                  entityId={release.id}
+                  alt={release.title}
+                  size={240}
+                  placeholder="release"
+                  style={{ width: "100%", height: "100%", borderRadius: 0 }}
+                />
               )}
               <label style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)", opacity: 0, cursor: "pointer", transition: "opacity 0.2s" }} className="group-hover:opacity-100">
                 <Upload size={24} className="text-white" />
