@@ -2,26 +2,27 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
 
 export async function GET(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const ctx = await requireOrganization();
+    const orgId = ctx.organizationId;
 
     const { searchParams } = new URL(req.url);
     const idStr = searchParams.get("id");
 
     if (idStr) {
       const id = parseInt(idStr);
-      const work = await prisma.works.findUnique({ where: { id } });
-      if (!work || work.is_deleted) return NextResponse.json({ error: "Work not found" }, { status: 404 });
+      const work = await prisma.works.findFirst({
+        where: { id, organization_id: orgId, is_deleted: false },
+      });
+      if (!work) return NextResponse.json({ error: "Work not found" }, { status: 404 });
       return NextResponse.json(work);
     }
 
     const skip = parseInt(searchParams.get("skip") || "0");
     const limit = parseInt(searchParams.get("limit") || "100");
-    const orgId = (session.user as any).organization_id;
-
     const [works, total] = await Promise.all([
       prisma.works.findMany({
         where: { organization_id: orgId, is_deleted: false },
@@ -34,6 +35,10 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ total, items: works });
   } catch (err: any) {
+    const mapped = orgContextErrorResponse(err);
+    if (mapped.status === 401 || mapped.status === 403) {
+      return NextResponse.json(mapped.body, { status: mapped.status });
+    }
     console.error("[GET /api/works]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
@@ -45,8 +50,8 @@ export async function POST(req: Request) {
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await req.json();
-    const orgId = (session.user as any).organization_id;
-
+    const ctx = await requireOrganization();
+    const orgId = ctx.organizationId;
     const existing = await prisma.works.findFirst({
       where: { title: body.title, organization_id: orgId },
     });

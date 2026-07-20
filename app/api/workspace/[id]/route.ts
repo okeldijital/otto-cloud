@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { notifyWorkspaceStatusChange } from "@/lib/workspace-engine/notifications";
+import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -10,8 +11,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const wpId = parseInt(id);
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const orgId = (session.user as any).organization_id;
-
+    const ctx = await requireOrganization();
+    const orgId = ctx.organizationId;
     const workspace = await prisma.workspaces.findUnique({
       where: { id: wpId },
       include: {
@@ -63,7 +64,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const wpId = parseInt(id);
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const orgId = (session.user as any).organization_id;
+    const ctx = await requireOrganization();
+    const orgId = ctx.organizationId;
     const body = await req.json();
 
     const existing = await prisma.workspaces.findUnique({ where: { id: wpId } });
@@ -101,8 +103,8 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     const wpId = parseInt(id);
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const orgId = (session.user as any).organization_id;
-
+    const ctx = await requireOrganization();
+    const orgId = ctx.organizationId;
     const existing = await prisma.workspaces.findUnique({ where: { id: wpId } });
     if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
     if (existing.organization_id !== orgId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });

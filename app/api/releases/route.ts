@@ -2,14 +2,18 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import {
+  orgContextErrorResponse,
+  orgWhereActive,
+  requireOrganization,
+} from "@/lib/auth/organization-context";
 
 export async function GET(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const ctx = await requireOrganization();
+    const orgId = ctx.organizationId;
 
     const { searchParams } = new URL(req.url);
-    const orgId = (session.user as any).organization_id;
 
     const idStr = searchParams.get("id");
     if (idStr) {
@@ -30,7 +34,9 @@ export async function GET(req: Request) {
         );
       }
 
-      const release = await prisma.releases.findUnique({ where: { id } });
+      const release = await prisma.releases.findFirst({
+        where: { id, organization_id: orgId, is_deleted: false },
+      });
       if (!release) return NextResponse.json({ error: "Release not found" }, { status: 404 });
 
       // Enrich with status_quo data
@@ -62,15 +68,16 @@ export async function GET(req: Request) {
 
     const skip = parseInt(searchParams.get("skip") || "0");
     const limit = parseInt(searchParams.get("limit") || "100");
+    const where = orgWhereActive(ctx);
 
     const [releases, total] = await Promise.all([
       prisma.releases.findMany({
-        where: { organization_id: orgId, is_deleted: false },
+        where,
         skip,
         take: limit,
         orderBy: { created_at: "desc" },
       }),
-      prisma.releases.count({ where: { organization_id: orgId, is_deleted: false } }),
+      prisma.releases.count({ where }),
     ]);
 
     const enriched = await Promise.all(
@@ -104,6 +111,10 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ total, items: enriched });
   } catch (err: any) {
+    const mapped = orgContextErrorResponse(err);
+    if (mapped.status === 401 || mapped.status === 403) {
+      return NextResponse.json(mapped.body, { status: mapped.status });
+    }
     console.error("[GET /api/releases]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
@@ -113,11 +124,15 @@ export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const ctx = await requireOrganization();
 
     const body = await req.json();
     const { track_ids, ...releaseData } = body;
+    releaseData.organization_id = ctx.organizationId;
 
-    const existing = await prisma.releases.findFirst({ where: { title: releaseData.title } });
+    const existing = await prisma.releases.findFirst({
+      where: { title: releaseData.title, organization_id: ctx.organizationId },
+    });
     if (existing) {
       return NextResponse.json(
         { error: `A release with the title '${releaseData.title}' already exists.` },

@@ -2,12 +2,15 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const tenantId = (session.user as any).tenant_id;
+  const ctx = await requireOrganization();
+
+  const tenantId = ctx.tenantId;
   const userId = parseInt((session.user as any).id);
   if (!tenantId || isNaN(userId)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 

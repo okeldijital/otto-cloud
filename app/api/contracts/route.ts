@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { storeFile } from "@/lib/storage";
+import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
 
 function computeCompleteness(contract: any) {
   const reasons: string[] = [];
@@ -65,8 +66,9 @@ export async function GET(req: Request) {
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
-    const orgIdStr = (session.user as any).organization_id;
-    const orgId = typeof orgIdStr === "string" ? parseInt(orgIdStr) || 1 : orgIdStr;
+    const ctx = await requireOrganization();
+    const orgId = ctx.legacyIntOrgId;
+    const orgUuid = ctx.organizationId;
 
     const action = searchParams.get("action");
 
@@ -164,8 +166,9 @@ export async function POST(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const action = searchParams.get("action");
-    const orgIdStr = (session.user as any).organization_id;
-    const orgId = typeof orgIdStr === "string" ? parseInt(orgIdStr) || 1 : orgIdStr;
+    const ctx = await requireOrganization();
+    const orgId = ctx.legacyIntOrgId;
+    const orgUuid = ctx.organizationId;
     const userId = parseInt((session.user as any).id) || 1;
 
     if (action === "link_track") {
@@ -273,7 +276,7 @@ export async function POST(req: Request) {
       const artist = await prisma.artists.create({
         data: {
           name: body.name,
-          organization_id: orgId,
+          organization_id: orgUuid,
         },
       });
       return NextResponse.json(artist, { status: 201 });

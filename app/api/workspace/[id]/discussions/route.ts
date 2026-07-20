@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createDiscussionChannelSchema, createDiscussionMessageSchema } from "@/types/release-workspace";
+import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -30,7 +31,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const wpId = parseInt(id);
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const orgId = (session.user as any).organization_id;
+    const ctx = await requireOrganization();
+    const orgId = ctx.organizationId;
     const userId = (session.user as any).id;
     const workspaceId = wpId;
     const body = await req.json();

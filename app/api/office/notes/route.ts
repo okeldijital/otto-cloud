@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getOrgIds } from "@/lib/org";
+import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
 
 export async function GET(req: Request) {
   try {
@@ -10,8 +10,8 @@ export async function GET(req: Request) {
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
-    const { uuidOrgId } = getOrgIds(session);
-
+    const ctx = await requireOrganization();
+    const uuidOrgId = ctx.organizationId;
     const idStr = searchParams.get("id");
     if (idStr) {
       const id = parseInt(idStr);
@@ -65,7 +65,8 @@ export async function POST(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const action = searchParams.get("action");
-    const { uuidOrgId } = getOrgIds(session);
+    const ctx = await requireOrganization();
+    const uuidOrgId = ctx.organizationId;
     const userId = parseInt((session.user as any).id) || 1;
 
     if (action === "create") {
@@ -120,7 +121,8 @@ export async function PUT(req: Request) {
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
-    const { uuidOrgId } = getOrgIds(session);
+    const ctx = await requireOrganization();
+    const uuidOrgId = ctx.organizationId;
     const idStr = searchParams.get("id");
     if (!idStr) return NextResponse.json({ error: "Missing note ID" }, { status: 400 });
     const id = parseInt(idStr);
@@ -157,7 +159,8 @@ export async function DELETE(req: Request) {
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
-    const { uuidOrgId } = getOrgIds(session);
+    const ctx = await requireOrganization();
+    const uuidOrgId = ctx.organizationId;
     const idStr = searchParams.get("id");
     if (!idStr) return NextResponse.json({ error: "Missing note ID" }, { status: 400 });
     const id = parseInt(idStr);

@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import {
+  orgContextErrorResponse,
+  requireOrganization,
+} from "@/lib/auth/organization-context";
 
 export async function GET(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const ctx = await requireOrganization();
+    const orgId = ctx.organizationId;
 
     const { searchParams } = new URL(req.url);
     const q = searchParams.get("q");
@@ -17,15 +17,6 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Query parameter 'q' is required" }, { status: 400 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email as string }
-    });
-
-    if (!user || !user.organization_id) {
-      return NextResponse.json({ error: "User organization not found" }, { status: 400 });
-    }
-
-    const orgId = user.organization_id;
     const searchFilter = { contains: q, mode: "insensitive" as const };
 
     const [
@@ -196,6 +187,10 @@ export async function GET(req: Request) {
 
     return NextResponse.json(results);
   } catch (error: any) {
+    const mapped = orgContextErrorResponse(error);
+    if (mapped.status === 401 || mapped.status === 403) {
+      return NextResponse.json(mapped.body, { status: mapped.status });
+    }
     console.error("Error global search:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }

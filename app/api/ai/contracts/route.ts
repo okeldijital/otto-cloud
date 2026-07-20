@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
 
 export async function GET(req: Request) {
   try {
@@ -10,8 +11,8 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const action = searchParams.get("action");
-    const orgId = (session.user as any).organization_id;
-
+    const ctx = await requireOrganization();
+    const orgId = ctx.organizationId;
     if (action === "extract") {
       const id = searchParams.get("id");
       if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
@@ -42,7 +43,8 @@ export async function POST(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const action = searchParams.get("action");
-    const orgId = (session.user as any).organization_id;
+    const ctx = await requireOrganization();
+    const orgId = ctx.organizationId;
     const userId = parseInt((session.user as any).id) || 1;
 
     if (action === "extract") {

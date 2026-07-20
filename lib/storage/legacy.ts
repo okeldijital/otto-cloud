@@ -18,8 +18,10 @@ import { uploadFile } from "./upload";
 import { downloadFile } from "./download";
 import { deleteFile as storageDeleteFile } from "./delete";
 import { formatFileSize } from "./utils";
+import { getLegacyCatalogScopeId } from "@/lib/auth/migration-compat";
 
-const DEFAULT_ORG_ID = "00000000-0000-0000-0000-000000000001";
+/** @deprecated Prefer explicit organizationId from getOrganizationContext() */
+const DEFAULT_ORG_ID = getLegacyCatalogScopeId();
 
 export interface StoredFile {
   url: string;

@@ -2,13 +2,16 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
 
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const orgId = (session.user as any).organization_id;
+    const ctx = await requireOrganization();
+
+    const orgId = ctx.organizationId;
     if (!orgId) return NextResponse.json({ error: "No organization" }, { status: 400 });
 
     const subscription = await prisma.subscriptions.findFirst({
@@ -28,7 +31,9 @@ export async function POST(req: Request) {
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const orgId = (session.user as any).organization_id;
+    const ctx = await requireOrganization();
+
+    const orgId = ctx.organizationId;
     if (!orgId) return NextResponse.json({ error: "No organization" }, { status: 400 });
 
     const body = await req.json();
@@ -80,7 +85,9 @@ export async function PUT(req: Request) {
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const orgId = (session.user as any).organization_id;
+    const ctx = await requireOrganization();
+
+    const orgId = ctx.organizationId;
     if (!orgId) return NextResponse.json({ error: "No organization" }, { status: 400 });
 
     const body = await req.json();

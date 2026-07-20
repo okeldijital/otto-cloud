@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import {
+  orgContextErrorResponse,
+  orgWhere,
+  requireOrganization,
+} from "@/lib/auth/organization-context";
 
 const includeMemberships = {
   artist_memberships_artist_memberships_group_idToartists: {
@@ -58,11 +63,10 @@ function serializeArtist(artist: any) {
 
 export async function GET(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const ctx = await requireOrganization();
+    const orgId = ctx.organizationId;
 
     const { searchParams } = new URL(req.url);
-    const orgId = (session.user as any).organization_id;
 
     const idStr = searchParams.get("id");
     if (idStr) {
@@ -72,11 +76,12 @@ export async function GET(req: Request) {
       if (relation === "releases") {
         const releases = await prisma.releases.findMany({
           where: {
+            organization_id: orgId,
+            is_deleted: false,
             OR: [
               { artist_id: id },
               { artist_ids: { array_contains: id } },
             ],
-            is_deleted: false,
           },
         });
         return NextResponse.json(releases);
@@ -85,6 +90,7 @@ export async function GET(req: Request) {
       if (relation === "works") {
         const works = await prisma.works.findMany({
           where: {
+            organization_id: orgId,
             is_deleted: false,
             OR: [
               { composers: { array_contains: id } },
@@ -111,7 +117,7 @@ export async function GET(req: Request) {
       }
 
       const artist = await prisma.artists.findFirst({
-        where: { id, organization_id: orgId },
+        where: { id, organization_id: orgId, is_deleted: false },
         include: includeMemberships,
       });
       if (!artist) return NextResponse.json({ error: "Artist not found" }, { status: 404 });
@@ -136,7 +142,7 @@ export async function GET(req: Request) {
 
       const artists = await prisma.artists.findMany({
         where: {
-          organization_id: orgId,
+          ...orgWhere(ctx, { is_deleted: false }),
           ...kindFilter,
           OR: [
             { name: { contains: q, mode: "insensitive" } },
@@ -154,7 +160,7 @@ export async function GET(req: Request) {
     const limit = parseInt(searchParams.get("limit") || "100");
     const kind = searchParams.get("kind");
 
-    const where: any = { organization_id: orgId };
+    const where: any = orgWhere(ctx, { is_deleted: false });
     if (kind) where.artist_kind = kind.toLowerCase();
 
     const [artists, total] = await Promise.all([
@@ -169,6 +175,10 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ total, items: artists.map(serializeArtist) });
   } catch (err: any) {
+    const mapped = orgContextErrorResponse(err);
+    if (mapped.status !== 500 || err?.code) {
+      return NextResponse.json(mapped.body, { status: mapped.status });
+    }
     console.error("[GET /api/artists]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
@@ -176,12 +186,11 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const ctx = await requireOrganization();
+    const orgId = ctx.organizationId;
 
     const { searchParams } = new URL(req.url);
     const action = searchParams.get("action");
-    const orgId = (session.user as any).organization_id;
 
     if (action === "add_member") {
       const body = await req.json();
@@ -191,7 +200,7 @@ export async function POST(req: Request) {
           group_id: parseInt(group_id),
           member_id: parseInt(member_id),
           role: role || null,
-          organization_id: typeof orgId === "string" ? null : orgId,
+          organization_id: ctx.legacyIntOrgId,
         },
       });
       return NextResponse.json(membership, { status: 201 });
@@ -221,7 +230,7 @@ export async function POST(req: Request) {
           data: {
             group_id: newArtist.id,
             member_id: mid,
-            organization_id: typeof orgId === "string" ? null : orgId,
+            organization_id: ctx.legacyIntOrgId,
           },
         });
       }
@@ -234,6 +243,10 @@ export async function POST(req: Request) {
 
     return NextResponse.json(serializeArtist(full!), { status: 201 });
   } catch (err: any) {
+    const mapped = orgContextErrorResponse(err);
+    if (mapped.status === 401 || mapped.status === 403) {
+      return NextResponse.json(mapped.body, { status: mapped.status });
+    }
     console.error("[POST /api/artists]", err);
     if (err.code === "P2002") {
       return NextResponse.json(

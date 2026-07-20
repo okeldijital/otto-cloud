@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { addMemberSchema, updateMemberSchema } from "@/types/workspaces";
+import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
 
 async function getWorkspace(orgId: string, workspaceId: number) {
   const ws = await prisma.workspaces.findUnique({ where: { id: workspaceId } });
@@ -16,7 +17,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const orgId = (session.user as any).organization_id;
+    const ctx = await requireOrganization();
+
+    const orgId = ctx.organizationId;
     const { id } = await params;
     const workspaceId = parseInt(id);
 
@@ -41,7 +44,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const orgId = (session.user as any).organization_id;
+    const ctx = await requireOrganization();
+
+    const orgId = ctx.organizationId;
     const userId = (session.user as any).id;
     const { id } = await params;
     const workspaceId = parseInt(id);
@@ -82,7 +87,9 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const orgId = (session.user as any).organization_id;
+    const ctx = await requireOrganization();
+
+    const orgId = ctx.organizationId;
     const { id } = await params;
     const workspaceId = parseInt(id);
     const { searchParams } = new URL(req.url);
@@ -116,7 +123,9 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const orgId = (session.user as any).organization_id;
+    const ctx = await requireOrganization();
+
+    const orgId = ctx.organizationId;
     const { id } = await params;
     const workspaceId = parseInt(id);
     const { searchParams } = new URL(req.url);

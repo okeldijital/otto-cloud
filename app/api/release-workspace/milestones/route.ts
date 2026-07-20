@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createMilestoneSchema, updateMilestoneSchema } from "@/types/release-workspace";
+import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
 
 export async function GET(req: Request) {
   try {
@@ -11,7 +12,8 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const workspaceId = searchParams.get("workspace_id");
     if (!workspaceId) return NextResponse.json({ error: "workspace_id required" }, { status: 400 });
-    const orgId = (session.user as any).organization_id;
+    const ctx = await requireOrganization();
+    const orgId = ctx.organizationId;
     const items = await prisma.workspace_milestones.findMany({
       where: { workspace_id: parseInt(workspaceId), organization_id: orgId, is_deleted: false },
       orderBy: { sort_order: "asc" },
@@ -27,7 +29,8 @@ export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const orgId = (session.user as any).organization_id;
+    const ctx = await requireOrganization();
+    const orgId = ctx.organizationId;
     const userId = (session.user as any).id;
     const body = await req.json();
     const parsed = createMilestoneSchema.safeParse(body);

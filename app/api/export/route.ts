@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { exportData, ExportEntity, ExportFormat } from "@/lib/export";
+import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
 
 const VALID_ENTITIES: ExportEntity[] = [
   "artists", "releases", "tracks", "works",
@@ -16,7 +17,9 @@ export async function GET(req: Request) {
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const orgId = (session.user as any).organization_id;
+    const ctx = await requireOrganization();
+
+    const orgId = ctx.organizationId;
     const { searchParams } = new URL(req.url);
     const entity = searchParams.get("entity") as ExportEntity | null;
     const format = (searchParams.get("format") || "csv") as ExportFormat;

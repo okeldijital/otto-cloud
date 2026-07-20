@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { importData, ImportEntity } from "@/lib/import";
+import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
 
 const VALID_ENTITIES: ImportEntity[] = [
   "artists", "releases", "tracks", "works",
@@ -14,7 +15,9 @@ export async function POST(req: Request) {
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const orgId = (session.user as any).organization_id;
+    const ctx = await requireOrganization();
+
+    const orgId = ctx.organizationId;
     if (!orgId) return NextResponse.json({ error: "No organization" }, { status: 400 });
 
     const formData = await req.formData();

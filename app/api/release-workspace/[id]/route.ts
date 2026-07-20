@@ -2,13 +2,16 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const orgId = (session.user as any).organization_id;
+    const ctx = await requireOrganization();
+
+    const orgId = ctx.organizationId;
     const { id: idStr } = await params;
     const id = parseInt(idStr);
 
@@ -62,7 +65,9 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const orgId = (session.user as any).organization_id;
+    const ctx = await requireOrganization();
+
+    const orgId = ctx.organizationId;
     const userId = (session.user as any).id;
     const { id: idStr } = await params;
     const id = parseInt(idStr);

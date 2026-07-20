@@ -3,13 +3,14 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createPlaybookSchema, updatePlaybookSchema, applyPlaybookSchema } from "@/types/release-workspace";
+import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
 
 export async function GET(req: Request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const orgId = (session.user as any).organization_id;
-
+    const ctx = await requireOrganization();
+    const orgId = ctx.organizationId;
     const playbooks = await prisma.release_playbooks.findMany({
       where: { organization_id: orgId },
       orderBy: { name: "asc" },
@@ -25,7 +26,8 @@ export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const orgId = (session.user as any).organization_id;
+    const ctx = await requireOrganization();
+    const orgId = ctx.organizationId;
     const body = await req.json();
 
     if (body.apply) {

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
 
 export async function GET(req: Request) {
   try {
@@ -48,7 +49,9 @@ export async function POST(req: Request) {
     const body = await req.json();
     if (!body.name) return NextResponse.json({ error: "Name is required" }, { status: 400 });
 
-    const orgIdStr = (session.user as any).organization_id;
+    const ctx = await requireOrganization();
+
+    const orgIdStr = ctx.organizationId;
     const orgId = typeof orgIdStr === "string" ? parseInt(orgIdStr) || 1 : orgIdStr;
 
     const org = await prisma.organizations.create({

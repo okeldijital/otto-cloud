@@ -1,36 +1,45 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import {
+  orgContextErrorResponse,
+  requireOrganization,
+} from "@/lib/auth/organization-context";
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const ctx = await requireOrganization();
+    if (!ctx.tenantId) {
+      return NextResponse.json({ error: "No organization context" }, { status: 400 });
+    }
 
-  const tenantId = (session.user as any).tenant_id;
-  if (!tenantId) return NextResponse.json({ error: "No organization context" }, { status: 400 });
+    const org = await prisma.tenants.findUnique({
+      where: { id: ctx.tenantId },
+      include: {
+        _count: { select: { tenant_users: true } },
+        subscriptions: { include: { plans: true } },
+      },
+    });
 
-  const org = await prisma.tenants.findUnique({
-    where: { id: tenantId },
-    include: {
-      _count: { select: { tenant_users: true } },
-      subscriptions: { include: { plans: true } },
-    },
-  });
+    if (!org) return NextResponse.json({ error: "Organization not found" }, { status: 404 });
 
-  if (!org) return NextResponse.json({ error: "Organization not found" }, { status: 404 });
-
-  return NextResponse.json(org);
+    return NextResponse.json({
+      ...org,
+      organizationId: ctx.organizationId,
+      dataScopeSource: ctx.dataScopeSource,
+    });
+  } catch (err) {
+    const { body, status } = orgContextErrorResponse(err);
+    return NextResponse.json(body, { status });
+  }
 }
 
 export async function PUT(req: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const tenantId = (session.user as any).tenant_id;
-  if (!tenantId) return NextResponse.json({ error: "No organization context" }, { status: 400 });
-
   try {
+    const ctx = await requireOrganization();
+    if (!ctx.tenantId) {
+      return NextResponse.json({ error: "No organization context" }, { status: 400 });
+    }
+
     const body = await req.json();
 
     const allowedFields = [
@@ -52,13 +61,13 @@ export async function PUT(req: Request) {
     }
 
     const org = await prisma.tenants.update({
-      where: { id: tenantId },
+      where: { id: ctx.tenantId },
       data: updateData,
     });
 
     return NextResponse.json(org);
-  } catch (error: any) {
-    console.error("Error updating organization:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  } catch (err) {
+    const { body, status } = orgContextErrorResponse(err);
+    return NextResponse.json(body, { status });
   }
 }

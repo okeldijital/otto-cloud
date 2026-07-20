@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
 
 export async function GET(req: Request) {
   try {
@@ -21,8 +22,8 @@ export async function GET(req: Request) {
     }
 
     const action = searchParams.get("action");
-    const orgId = (session.user as any).organization_id;
-
+    const ctx = await requireOrganization();
+    const orgId = ctx.organizationId;
     if (action === "team") {
       const members = await prisma.user.findMany({
         where: { organization_id: orgId },
@@ -70,7 +71,9 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Email already registered" }, { status: 400 });
       }
 
-      const orgId = (session.user as any).organization_id;
+      const ctx = await requireOrganization();
+
+      const orgId = ctx.organizationId;
       const hashedPassword = await bcrypt.hash(password, 10);
 
       const newUser = await prisma.user.create({

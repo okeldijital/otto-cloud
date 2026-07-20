@@ -2,11 +2,19 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import {
+  orgContextErrorResponse,
+  requireOrganization,
+} from "@/lib/auth/organization-context";
 
+/**
+ * Tracks are a GLOBAL entity today (no organization_id column).
+ * Auth still requires an active organization context for access control.
+ * Schema debt: add organization_id + backfill (see multi-tenant-model.md §4.3).
+ */
 export async function GET(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    await requireOrganization();
 
     const { searchParams } = new URL(req.url);
     const idStr = searchParams.get("id");
@@ -93,6 +101,10 @@ export async function GET(req: Request) {
       })),
     });
   } catch (err: any) {
+    const mapped = orgContextErrorResponse(err);
+    if (mapped.status === 401 || mapped.status === 403) {
+      return NextResponse.json(mapped.body, { status: mapped.status });
+    }
     console.error("[GET /api/tracks]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

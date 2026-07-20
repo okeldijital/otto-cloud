@@ -5,14 +5,16 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/iam";
 import { recordAudit } from "@/lib/audit";
 import bcrypt from "bcryptjs";
+import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
-  const orgId = (session.user as any).organization_id;
-  const tenantId = (session.user as any).tenant_id || orgId;
+  const ctx = await requireOrganization();
+  const orgId = ctx.organizationId;
+  const tenantId = ctx.tenantId || orgId;
   const action = searchParams.get("action");
 
   if (action === "detail") {

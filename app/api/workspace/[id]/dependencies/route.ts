@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { buildDag } from "@/lib/workspace-engine/dag";
+import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -10,8 +11,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const wpId = parseInt(id);
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const orgId = (session.user as any).organization_id;
-
+    const ctx = await requireOrganization();
+    const orgId = ctx.organizationId;
     const deps = await prisma.workspace_deliverable_dependencies.findMany({
       where: { workspace_id: wpId, organization_id: orgId },
     });
@@ -42,7 +43,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const wpId = parseInt(id);
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const orgId = (session.user as any).organization_id;
+    const ctx = await requireOrganization();
+    const orgId = ctx.organizationId;
     const userId = parseInt((session.user as any).id) || undefined;
 
     const body = await req.json();
@@ -90,8 +92,8 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     const wpId = parseInt(id);
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const orgId = (session.user as any).organization_id;
-
+    const ctx = await requireOrganization();
+    const orgId = ctx.organizationId;
     const { searchParams } = new URL(req.url);
     const sourceId = searchParams.get("source_id");
     const targetId = searchParams.get("target_id");

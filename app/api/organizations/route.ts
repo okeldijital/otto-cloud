@@ -84,12 +84,25 @@ export async function POST(req: Request) {
       },
     });
 
+    // Active org = new tenant; catalog scope = tenant id (empty catalog until data is created)
     await prisma.user.update({
       where: { id: userId },
-      data: { tenant_id: tenantId },
+      data: {
+        tenant_id: tenantId,
+        organization_id: tenantId,
+      },
     });
 
-    return NextResponse.json(tenant, { status: 201 });
+    return NextResponse.json(
+      {
+        ...tenant,
+        organization_id: tenantId,
+        tenant_id: tenantId,
+        organizationId: tenantId,
+        tenantId,
+      },
+      { status: 201 }
+    );
   } catch (error: any) {
     console.error("Error creating organization:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

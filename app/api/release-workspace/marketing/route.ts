@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createMarketingPhaseSchema, updateMarketingPhaseSchema, createMarketingTaskSchema, updateMarketingTaskSchema } from "@/types/release-workspace";
 import { calculateReadinessScore } from "@/app/api/release-workspace/route";
+import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
 
 export async function GET(req: Request) {
   try {
@@ -12,8 +13,8 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const workspaceId = searchParams.get("workspace_id");
     if (!workspaceId) return NextResponse.json({ error: "workspace_id required" }, { status: 400 });
-    const orgId = (session.user as any).organization_id;
-
+    const ctx = await requireOrganization();
+    const orgId = ctx.organizationId;
     const phases = await prisma.workspace_marketing_phases.findMany({
       where: { workspace_id: parseInt(workspaceId), organization_id: orgId, is_deleted: false },
       orderBy: { sort_order: "asc" },
@@ -30,7 +31,8 @@ export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const orgId = (session.user as any).organization_id;
+    const ctx = await requireOrganization();
+    const orgId = ctx.organizationId;
     const userId = (session.user as any).id;
     const body = await req.json();
 
@@ -71,7 +73,8 @@ export async function PUT(req: Request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const orgId = (session.user as any).organization_id;
+    const ctx = await requireOrganization();
+    const orgId = ctx.organizationId;
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
     const type = searchParams.get("type") || "phase";

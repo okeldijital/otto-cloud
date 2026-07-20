@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getOrgIds } from "@/lib/org";
+import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
 
 export async function GET(req: Request) {
   try {
@@ -10,7 +10,8 @@ export async function GET(req: Request) {
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
-    const { intOrgId } = getOrgIds(session);
+    const ctx = await requireOrganization();
+    const intOrgId = ctx.legacyIntOrgId;
     const idStr = searchParams.get("id");
 
     if (idStr) {
@@ -52,7 +53,9 @@ export async function POST(req: Request) {
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const { intOrgId } = getOrgIds(session);
+    const ctx = await requireOrganization();
+
+    const intOrgId = ctx.legacyIntOrgId;
     const body = await req.json();
     if (!body.first_name && !body.last_name) {
       return NextResponse.json({ error: "First or last name is required" }, { status: 400 });
@@ -92,7 +95,8 @@ export async function PUT(req: Request) {
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
-    const { intOrgId } = getOrgIds(session);
+    const ctx = await requireOrganization();
+    const intOrgId = ctx.legacyIntOrgId;
     const idStr = searchParams.get("id");
     if (!idStr) return NextResponse.json({ error: "Missing id" }, { status: 400 });
     const id = parseInt(idStr);
@@ -136,7 +140,8 @@ export async function DELETE(req: Request) {
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
-    const { intOrgId } = getOrgIds(session);
+    const ctx = await requireOrganization();
+    const intOrgId = ctx.legacyIntOrgId;
     const idStr = searchParams.get("id");
     if (!idStr) return NextResponse.json({ error: "Missing id" }, { status: 400 });
     const id = parseInt(idStr);

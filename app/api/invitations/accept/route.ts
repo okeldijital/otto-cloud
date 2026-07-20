@@ -30,6 +30,7 @@ export async function POST(req: Request) {
           name: name || user.name,
           is_active: true,
           tenant_id: invitation.tenant_id,
+          organization_id: invitation.tenant_id,
         },
       });
     } else {

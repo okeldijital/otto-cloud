@@ -3,12 +3,15 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { v4 as uuidv4 } from "uuid";
+import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const tenantId = (session.user as any).tenant_id;
+  const ctx = await requireOrganization();
+
+  const tenantId = ctx.tenantId;
   if (!tenantId) return NextResponse.json({ error: "No organization context" }, { status: 400 });
 
   const memberships = await prisma.tenant_users.findMany({
@@ -59,7 +62,9 @@ export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const tenantId = (session.user as any).tenant_id;
+  const ctx = await requireOrganization();
+
+  const tenantId = ctx.tenantId;
   const actorId = parseInt((session.user as any).id);
   if (!tenantId || isNaN(actorId)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -117,7 +122,9 @@ export async function DELETE(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const tenantId = (session.user as any).tenant_id;
+  const ctx = await requireOrganization();
+
+  const tenantId = ctx.tenantId;
   if (!tenantId) return NextResponse.json({ error: "No organization context" }, { status: 400 });
 
   const { searchParams } = new URL(req.url);

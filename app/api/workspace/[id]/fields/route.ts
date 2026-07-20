@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -9,8 +10,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const wpId = parseInt(id);
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const orgId = (session.user as any).organization_id;
-
+    const ctx = await requireOrganization();
+    const orgId = ctx.organizationId;
     const workspace = await prisma.workspaces.findUnique({
       where: { id: wpId },
       select: { template_id: true, organization_id: true },
@@ -59,7 +60,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const wpId = parseInt(id);
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const orgId = (session.user as any).organization_id;
+    const ctx = await requireOrganization();
+    const orgId = ctx.organizationId;
     const userId = parseInt((session.user as any).id) || undefined;
 
     const workspace = await prisma.workspaces.findUnique({
