@@ -1,39 +1,66 @@
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+/**
+ * IAM helpers for route handlers — backed by platform identity (not NextAuth).
+ */
 
-export type SessionUser = {
-  id: string;
-  email: string;
-  name?: string | null;
-  organization_id: string;
-  role: string | null;
-  is_superuser: boolean | null;
-};
+import { getServerSession, type AuthSessionUser } from "@/lib/auth/session";
+import { prisma } from "@/lib/prisma";
+import {
+  currentIdentityService,
+  PermissionSet,
+} from "@/lib/platform/identity";
+
+export type SessionUser = AuthSessionUser;
 
 export interface PermissionCheck {
   allowed: boolean;
   reason?: string;
 }
 
-let permissionCache: Map<string, Set<string>> | null = null;
-let cacheTimestamp = 0;
-const CACHE_TTL = 30_000;
-
-function extractPermissionCodes(allPermissions: string): string[] {
-  if (!allPermissions) return [];
-  if (allPermissions.startsWith("[")) {
-    try { return JSON.parse(allPermissions); } catch { return allPermissions.split(",").map(p => p.trim()).filter(Boolean); }
-  }
-  return allPermissions.split(",").map(p => p.trim()).filter(Boolean);
+/** Legacy permission cache clear (no-op when using IAM membership permissions). */
+export function clearPermissionCache(): void {
+  /* IAM permissions are resolved per-request; nothing to clear. */
 }
 
+/** Resolve IAM permissions for identity UUID (preferred). */
+export async function getIdentityPermissions(
+  identityId: string,
+  organizationId?: string | null
+): Promise<Set<string>> {
+  const membership = await prisma.iamOrganizationMembership.findFirst({
+    where: {
+      identityId,
+      status: "active",
+      ...(organizationId ? { organizationId } : {}),
+    },
+    orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
+    include: {
+      role: {
+        include: {
+          permissions: { include: { permission: true } },
+        },
+      },
+    },
+  });
+  const set = new Set<string>();
+  if (membership?.role) {
+    for (const rp of membership.role.permissions) {
+      set.add(rp.permission.key);
+    }
+  }
+  return set;
+}
+
+/**
+ * Legacy numeric user permission lookup (old user_roles tables).
+ * Prefer getIdentityPermissions after cutover.
+ */
 export async function getUserPermissions(userId: number): Promise<Set<string>> {
-  const cacheKey = `user:${userId}`;
-  const now = Date.now();
-  if (permissionCache && cacheTimestamp > now - CACHE_TTL) {
-    const cached = permissionCache.get(cacheKey);
-    if (cached) return cached;
+  // Bridge: if this user is linked to IAM identity, use IAM permissions
+  const identity = await prisma.iamIdentity.findUnique({
+    where: { legacyUserId: userId },
+  });
+  if (identity) {
+    return getIdentityPermissions(identity.id);
   }
 
   const userRoles = await prisma.user_roles.findMany({
@@ -53,16 +80,18 @@ export async function getUserPermissions(userId: number): Promise<Set<string>> {
       permSet.add(rp.permissions.code);
     }
   }
-
-  if (!permissionCache) permissionCache = new Map();
-  permissionCache.set(cacheKey, permSet);
-  cacheTimestamp = now;
   return permSet;
 }
 
-export async function hasPermission(userId: number, permission: string): Promise<boolean> {
+export async function hasPermission(
+  userId: number,
+  permission: string
+): Promise<boolean> {
   if (!permission) return true;
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { is_superuser: true } });
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { is_superuser: true },
+  });
   if (user?.is_superuser) return true;
   const perms = await getUserPermissions(userId);
   if (perms.has(permission)) return true;
@@ -74,83 +103,113 @@ export async function hasPermission(userId: number, permission: string): Promise
   return false;
 }
 
-export async function requirePermission(permission: string): Promise<{ user: SessionUser; error?: Response }> {
-  const session = await getServerSession(authOptions);
+export async function requirePermission(
+  permission: string
+): Promise<{ user: SessionUser; error?: Response }> {
+  const session = await getServerSession();
   if (!session?.user) {
-    return { user: null as any, error: new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 }) };
+    return {
+      user: null as unknown as SessionUser,
+      error: new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+      }),
+    };
   }
-  const su = session.user as SessionUser;
+  const su = session.user;
   if (su.is_superuser) return { user: su };
-  const userId = parseInt(su.id);
-  if (isNaN(userId)) return { user: su, error: new Response(JSON.stringify({ error: "Forbidden" }), { status: 403 }) };
-  const allowed = await hasPermission(userId, permission);
-  if (!allowed) {
-    return { user: su, error: new Response(JSON.stringify({ error: `Forbidden: missing permission ${permission}` }), { status: 403 }) };
+
+  const permSet = PermissionSet.from(su.permissions || []);
+  if (permSet.has(permission) || permSet.has(`${permission.split(".")[0]}.*`)) {
+    return { user: su };
   }
-  return { user: su };
+
+  // Fallback legacy numeric check
+  if (su.legacyUserId != null) {
+    const allowed = await hasPermission(su.legacyUserId, permission);
+    if (allowed) return { user: su };
+  }
+
+  return {
+    user: su,
+    error: new Response(
+      JSON.stringify({ error: `Forbidden: missing permission ${permission}` }),
+      { status: 403 }
+    ),
+  };
 }
 
-export async function requireAdmin(): Promise<{ user: SessionUser; error?: Response }> {
+export async function requireAdmin(): Promise<{
+  user: SessionUser;
+  error?: Response;
+}> {
   const r = await requirePermission("admin.access");
-  if (r.error) return r;
+  if (r.error) {
+    // Also accept org_admin / platform admin via session role
+    const session = await getServerSession();
+    if (
+      session?.user &&
+      (session.user.is_superuser ||
+        session.user.role === "admin" ||
+        session.user.role === "org_admin" ||
+        session.user.role === "platform_admin")
+    ) {
+      return { user: session.user };
+    }
+    return r;
+  }
   const su = r.user;
-  if (!su.is_superuser && su.role !== "admin") {
-    return { user: su, error: new Response(JSON.stringify({ error: "Forbidden: admin access required" }), { status: 403 }) };
+  if (
+    !su.is_superuser &&
+    su.role !== "admin" &&
+    su.role !== "org_admin" &&
+    su.role !== "platform_admin"
+  ) {
+    return {
+      user: su,
+      error: new Response(
+        JSON.stringify({ error: "Forbidden: admin access required" }),
+        { status: 403 }
+      ),
+    };
   }
   return r;
 }
 
 export async function getSessionUser(): Promise<SessionUser | null> {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession();
   if (!session?.user) return null;
-  return session.user as SessionUser;
+  return session.user;
 }
 
-export function canManageOrg(currentUser: SessionUser, targetOrgId: string): boolean {
+export function canManageOrg(
+  currentUser: SessionUser,
+  targetOrgId: string
+): boolean {
   if (currentUser.is_superuser) return true;
   return currentUser.organization_id === targetOrgId;
 }
 
 export function canManageUsers(currentUser: SessionUser): boolean {
-  return !!currentUser.is_superuser || currentUser.role === "admin";
+  return (
+    !!currentUser.is_superuser ||
+    currentUser.role === "admin" ||
+    currentUser.role === "org_admin"
+  );
 }
 
-export async function hasAnyPermission(userId: number, permissions: string[]): Promise<boolean> {
+export async function hasAnyPermission(
+  userId: number,
+  permissions: string[]
+): Promise<boolean> {
   for (const p of permissions) {
     if (await hasPermission(userId, p)) return true;
   }
   return false;
 }
 
-export async function getUserRoleIds(userId: number): Promise<number[]> {
-  const userRoles = await prisma.user_roles.findMany({
-    where: { user_id: userId },
-    select: { role_id: true },
+/** Prefer this for new code — uses IAM request context */
+export async function getCurrentIdentity() {
+  return currentIdentityService.resolveFromRequest({
+    cookieHeader: null,
   });
-  return userRoles.map(ur => ur.role_id);
-}
-
-export function clearPermissionCache() {
-  permissionCache = null;
-  cacheTimestamp = 0;
-}
-
-export async function canManageOrgBilling(userId: number): Promise<boolean> {
-  return hasPermission(userId, "billing.manage");
-}
-
-export async function canManageOrganization(userId: number): Promise<boolean> {
-  return hasPermission(userId, "organization.edit");
-}
-
-export async function canInviteTeamMembers(userId: number): Promise<boolean> {
-  return hasPermission(userId, "team.invite");
-}
-
-export async function isOrgOwner(userId: number, tenantId: string): Promise<boolean> {
-  const org = await prisma.tenants.findUnique({
-    where: { id: tenantId },
-    select: { owner_id: true },
-  });
-  return org?.owner_id === userId;
 }

@@ -1,6 +1,6 @@
 "use client";
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/contexts/AuthContext";
 import api from "@/lib/api";
 
 const OrgContext = createContext({
@@ -13,19 +13,42 @@ const OrgContext = createContext({
 });
 
 export function OrgProvider({ children }) {
-  const { data: session } = useSession();
+  const { user, isAuthenticated, refreshUser } = useAuth();
   const [organizations, setOrganizations] = useState([]);
   const [currentOrg, setCurrentOrg] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const currentOrgId = session?.user?.tenant_id || null;
+  const currentOrgId =
+    user?.organization?.id || user?.organization_id || null;
 
   const refreshOrgs = useCallback(async () => {
     try {
+      // Prefer IAM org list
+      const iamRes = await fetch("/api/auth/organizations", {
+        credentials: "include",
+      });
+      if (iamRes.ok) {
+        const data = await iamRes.json();
+        const orgs = (data.organizations || []).map((o) => ({
+          id: o.id,
+          name: o.name,
+          slug: o.slug,
+          role: o.role,
+          isDefault: o.isDefault,
+        }));
+        setOrganizations(orgs);
+        const activeId = data.activeOrganizationId || currentOrgId;
+        const active =
+          orgs.find((o) => o.id === activeId) || orgs[0] || null;
+        setCurrentOrg(active);
+        return;
+      }
+
+      // Fallback legacy organizations API
       const res = await api.get("/organizations");
       const orgs = Array.isArray(res.data) ? res.data : [];
       setOrganizations(orgs);
-      const active = orgs.find(o => o.id === currentOrgId) || orgs[0] || null;
+      const active = orgs.find((o) => o.id === currentOrgId) || orgs[0] || null;
       setCurrentOrg(active);
     } catch {
       setOrganizations([]);
@@ -36,20 +59,30 @@ export function OrgProvider({ children }) {
   }, [currentOrgId]);
 
   useEffect(() => {
-    if (session?.user) {
+    if (isAuthenticated) {
       refreshOrgs();
     } else {
       setOrganizations([]);
       setCurrentOrg(null);
       setLoading(false);
     }
-  }, [session, currentOrgId, refreshOrgs]);
+  }, [isAuthenticated, currentOrgId, refreshOrgs]);
 
   const switchOrg = async (orgId) => {
     try {
-      await api.post("/organizations/switch", { tenant_id: orgId });
-      const org = organizations.find(o => o.id === orgId) || null;
+      const res = await fetch("/api/auth/organizations/switch", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ organizationId: orgId }),
+      });
+      if (!res.ok) {
+        // Legacy fallback
+        await api.post("/organizations/switch", { tenant_id: orgId });
+      }
+      const org = organizations.find((o) => o.id === orgId) || null;
       setCurrentOrg(org);
+      await refreshUser?.();
       return true;
     } catch {
       return false;
@@ -57,14 +90,16 @@ export function OrgProvider({ children }) {
   };
 
   return (
-    <OrgContext.Provider value={{
-      organizations,
-      currentOrg,
-      loading,
-      switchOrg,
-      refreshOrgs,
-      currentOrgId,
-    }}>
+    <OrgContext.Provider
+      value={{
+        organizations,
+        currentOrg,
+        loading,
+        switchOrg,
+        refreshOrgs,
+        currentOrgId: currentOrg?.id || currentOrgId,
+      }}
+    >
       {children}
     </OrgContext.Provider>
   );

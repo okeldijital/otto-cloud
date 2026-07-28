@@ -14,6 +14,16 @@ export {
   validatePasswordStrength,
   assertPasswordStrength,
 } from "./passwords/password-policy";
+export {
+  passwordService,
+  PasswordService,
+} from "./passwords/password-service";
+export { mfaService, MfaService } from "./mfa/mfa-service";
+export {
+  generateTotpSecret,
+  buildOtpAuthUrl,
+  verifyTotp,
+} from "./mfa/totp";
 
 export { tokenService, TokenService } from "./tokens/token-service";
 export type { AccessTokenClaims } from "./tokens/token-service";

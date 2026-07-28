@@ -16,6 +16,7 @@ import { lockoutService } from "./lockout/lockout-service";
 import { rateLimitService } from "./rate-limit/rate-limit-service";
 import { sessionService, type SessionCreateResult } from "./sessions/session-service";
 import { currentIdentityService } from "./current-identity-service";
+import { mfaService } from "./mfa/mfa-service";
 
 export type LoginResult = {
   identity: {
@@ -33,8 +34,12 @@ export type LoginResult = {
   permissions: string[];
   roles: string[];
   requiresMfa: boolean;
+  /** Present when requiresMfa — complete with POST /api/auth/mfa/challenge */
+  mfaToken?: string;
+  /** Pending rememberMe when MFA still required */
+  rememberMe?: boolean;
   requiresEmailVerification: boolean;
-  session: SessionCreateResult;
+  session: SessionCreateResult | null;
 };
 
 export type PublicSessionView = {
@@ -65,6 +70,8 @@ export class AuthenticationService {
     rememberMe?: boolean;
     ipAddress?: string | null;
     userAgent?: string | null;
+    /** Trusted device cookie to skip MFA */
+    trustedDeviceToken?: string | null;
   }): Promise<LoginResult> {
     const email = params.email?.trim() ?? "";
     const password = params.password ?? "";
@@ -90,22 +97,9 @@ export class AuthenticationService {
       },
     });
 
-    // Dual-run: identity not on IAM → client should use legacy next-auth
+    // NextAuth removed: only IAM identities can authenticate.
+    // Migrate legacy users via scripts/migrate-legacy-auth.ts
     if (!identity) {
-      const features = getPlatformConfig().features;
-      if (features.legacyNextAuth) {
-        // Check if legacy user exists to avoid enumerating via different codes
-        const legacy = await prisma.user.findUnique({
-          where: { email },
-        });
-        if (legacy) {
-          throw new IdentityError(
-            "Use legacy authentication",
-            409,
-            "LEGACY_AUTH_REQUIRED"
-          );
-        }
-      }
       await this.recordUnknownFailure(email, params);
       throw new IdentityError("Invalid credentials", 401, "INVALID_CREDENTIALS");
     }
@@ -190,11 +184,140 @@ export class AuthenticationService {
     });
 
     const requiresEmailVerification = !fresh.emailVerifiedAt;
-    // MFA is A.4 — always false for now
-    const requiresMfa = false;
+    const mfaEnabled = await mfaService.isEnabled(fresh.id);
+    const trusted = mfaEnabled
+      ? await mfaService.isTrustedDevice(
+          fresh.id,
+          params.trustedDeviceToken ?? undefined
+        )
+      : true;
+    const requiresMfa = mfaEnabled && !trusted;
+
+    const profile = await this.buildLoginProfile(fresh.id);
+
+    // MFA required — do not create session yet
+    if (requiresMfa) {
+      const mfaToken = mfaService.issueChallengeToken(fresh.id);
+      return {
+        identity: profile.identity,
+        organization: profile.organization,
+        permissions: profile.permissions,
+        roles: profile.roles,
+        requiresMfa: true,
+        mfaToken,
+        rememberMe: params.rememberMe ?? false,
+        requiresEmailVerification,
+        session: null,
+      };
+    }
+
+    const session = await sessionService.createSession({
+      identityId: fresh.id,
+      organizationId: profile.organization?.id ?? null,
+      rememberMe: params.rememberMe ?? false,
+      ipAddress: params.ipAddress,
+      userAgent: params.userAgent,
+    });
+
+    await emitIdentityEvent({
+      eventType: IDENTITY_EVENTS.LoginSuccess,
+      identityId: fresh.id,
+      organizationId: profile.organization?.id,
+      payload: {
+        sessionId: session.sessionId,
+        rememberMe: params.rememberMe ?? false,
+        requiresEmailVerification,
+        mfaUsed: mfaEnabled,
+      },
+      ipAddress: params.ipAddress,
+      userAgent: params.userAgent,
+    });
+
+    return {
+      ...profile,
+      requiresMfa: false,
+      requiresEmailVerification,
+      session,
+    };
+  }
+
+  /** Complete MFA step after password login */
+  async completeMfaLogin(params: {
+    mfaToken: string;
+    code: string;
+    rememberMe?: boolean;
+    trustDevice?: boolean;
+    ipAddress?: string | null;
+    userAgent?: string | null;
+  }): Promise<LoginResult & { trustedDeviceToken?: string }> {
+    const identityId = mfaService.verifyChallengeToken(params.mfaToken);
+    const ok = await mfaService.verifyCode({
+      identityId,
+      code: params.code,
+      allowRecovery: true,
+      ipAddress: params.ipAddress,
+    });
+    if (!ok) {
+      throw new IdentityError("Invalid MFA code", 401, "INVALID_MFA_CODE");
+    }
+
+    const identity = await prisma.iamIdentity.findUnique({
+      where: { id: identityId },
+    });
+    if (!identity) {
+      throw new IdentityError("Identity not found", 404, "IDENTITY_NOT_FOUND");
+    }
+
+    const profile = await this.buildLoginProfile(identityId);
+    const session = await sessionService.createSession({
+      identityId,
+      organizationId: profile.organization?.id ?? null,
+      rememberMe: params.rememberMe ?? false,
+      ipAddress: params.ipAddress,
+      userAgent: params.userAgent,
+    });
+
+    let trustedDeviceToken: string | undefined;
+    if (params.trustDevice) {
+      const device = await mfaService.createTrustedDevice({
+        identityId,
+        userAgent: params.userAgent,
+      });
+      trustedDeviceToken = device.token;
+    }
+
+    await emitIdentityEvent({
+      eventType: IDENTITY_EVENTS.LoginSuccess,
+      identityId,
+      organizationId: profile.organization?.id,
+      payload: {
+        sessionId: session.sessionId,
+        mfa: true,
+        trustDevice: !!params.trustDevice,
+      },
+      ipAddress: params.ipAddress,
+      userAgent: params.userAgent,
+    });
+
+    return {
+      ...profile,
+      requiresMfa: false,
+      requiresEmailVerification: !identity.emailVerifiedAt,
+      session,
+      trustedDeviceToken,
+    };
+  }
+
+  private async buildLoginProfile(identityId: string) {
+    const identity = await prisma.iamIdentity.findUnique({
+      where: { id: identityId },
+    });
+    if (!identity) {
+      throw new IdentityError("Identity not found", 404, "IDENTITY_NOT_FOUND");
+    }
 
     const membership = await prisma.iamOrganizationMembership.findFirst({
-      where: { identityId: fresh.id, status: "active" },
+      where: { identityId, status: "active" },
       orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
       include: {
         organization: true,
@@ -223,46 +346,21 @@ export class AuthenticationService {
         ]
       : [];
 
-    // Allow login even when email not verified — session created, client may gate
-    const session = await sessionService.createSession({
-      identityId: fresh.id,
-      organizationId: organization?.id ?? null,
-      rememberMe: params.rememberMe ?? false,
-      ipAddress: params.ipAddress,
-      userAgent: params.userAgent,
-    });
-
-    await emitIdentityEvent({
-      eventType: IDENTITY_EVENTS.LoginSuccess,
-      identityId: fresh.id,
-      organizationId: organization?.id,
-      payload: {
-        sessionId: session.sessionId,
-        rememberMe: params.rememberMe ?? false,
-        requiresEmailVerification,
-      },
-      ipAddress: params.ipAddress,
-      userAgent: params.userAgent,
-    });
-
     return {
       identity: {
-        id: fresh.id,
-        email: fresh.email,
-        displayName: fresh.displayName,
-        emailVerified: !!fresh.emailVerifiedAt,
-        status: fresh.emailVerifiedAt
-          ? fresh.status === "pending_verification"
+        id: identity.id,
+        email: identity.email,
+        displayName: identity.displayName,
+        emailVerified: !!identity.emailVerifiedAt,
+        status: identity.emailVerifiedAt
+          ? identity.status === "pending_verification"
             ? "active"
-            : fresh.status
-          : fresh.status,
+            : identity.status
+          : identity.status,
       },
       organization,
       permissions,
       roles,
-      requiresMfa,
-      requiresEmailVerification,
-      session,
     };
   }
 

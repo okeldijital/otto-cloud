@@ -1,7 +1,6 @@
-# organizations/ — Phase A.5
+# organizations/ — A.5 / A.6
 
-Identity domain: multi-org membership, switch org, org-scoped roles.
+- `organization-service.ts` — create org, memberships, roles, switch default  
 
-```
-Identity → OrganizationMembership → Role → Permissions
-```
+RBAC: membership → role → permissions (`PERMISSION_CATALOG`, system templates).  
+Enforcement: `requirePermission` / `requireOrganization` in authentication middleware.

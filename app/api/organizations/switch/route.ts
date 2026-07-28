@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
+import { getServerSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { validateMembership } from "@/lib/auth/organization-context";
 import {
@@ -14,7 +13,7 @@ import {
  * and returns claims for the client to pass to session.update().
  */
 export async function POST(req: Request) {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const userId = parseInt((session.user as any).id);

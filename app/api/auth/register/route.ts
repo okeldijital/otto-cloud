@@ -1,58 +1,68 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import bcrypt from "bcryptjs";
-import { getUnassignedUserOrganizationId } from "@/lib/auth/migration-compat";
-
 /**
- * Registration creates a User identity only.
- * Organization membership is intentional:
- *   - Accept an invitation → join existing org
- *   - POST /api/organizations → create org + membership
- *
- * Never invents organization_id via uuidv4().
+ * POST /api/auth/register — create IAM identity with password (Argon2id).
  */
+
+import { NextResponse } from "next/server";
+import {
+  identityService,
+  emailVerificationService,
+  identityErrorResponse,
+  clientIp,
+  clientUserAgent,
+  IdentityError,
+} from "@/lib/platform/identity";
+
 export async function POST(req: Request) {
   try {
-    const { email, password, full_name } = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const email = typeof body.email === "string" ? body.email : "";
+    const password = typeof body.password === "string" ? body.password : "";
+    const displayName =
+      typeof body.full_name === "string"
+        ? body.full_name
+        : typeof body.displayName === "string"
+          ? body.displayName
+          : undefined;
 
     if (!email || !password) {
-      return NextResponse.json({ error: "Email and password required" }, { status: 400 });
+      throw new IdentityError(
+        "Email and password required",
+        400,
+        "VALIDATION_ERROR"
+      );
     }
 
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
+    const identity = await identityService.createWithPassword({
+      email,
+      password,
+      displayName,
     });
 
-    if (existingUser) {
-      return NextResponse.json({ error: "Email already registered" }, { status: 400 });
+    // Send verification (dev logs URL)
+    try {
+      await emailVerificationService.requestVerification({
+        identityId: identity.id,
+        ipAddress: clientIp(req),
+        userAgent: clientUserAgent(req),
+      });
+    } catch {
+      /* non-blocking */
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const newUser = await prisma.user.create({
-      data: {
-        email,
-        hashed_password: hashedPassword,
-        name: full_name,
-        organization_id: getUnassignedUserOrganizationId(),
-        tenant_id: null,
-        is_active: true,
-        role: "user",
-      },
-    });
-
-    const { hashed_password, ...userWithoutPassword } = newUser;
     return NextResponse.json(
       {
-        ...userWithoutPassword,
+        id: identity.id,
+        email: identity.email,
+        displayName: identity.displayName,
+        status: identity.status,
+        requiresEmailVerification: true,
         requiresOrganization: true,
         message:
-          "Account created. Accept an invitation or create an organization to continue.",
+          "Account created. Verify your email, then create or join an organization.",
       },
       { status: 201 }
     );
-  } catch (error: any) {
-    console.error("Registration error:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  } catch (err) {
+    return identityErrorResponse(err);
   }
 }

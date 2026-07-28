@@ -1,32 +1,35 @@
+/**
+ * GET /api/auth/me — compatibility alias for session identity.
+ * Prefer GET /api/auth/session for full context.
+ */
+
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import {
+  authenticationService,
+  metaFromRequest,
+  identityErrorResponse,
+} from "@/lib/platform/identity";
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
+    const session = await authenticationService.getPublicSession(
+      metaFromRequest(req)
+    );
+    if (!session.authenticated || !session.identity) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const userId = parseInt((session.user as any).id);
-    if (isNaN(userId)) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
+    return NextResponse.json({
+      id: session.identity.id,
+      email: session.identity.email,
+      full_name: session.identity.displayName,
+      name: session.identity.displayName,
+      organization: session.organization,
+      roles: session.roles,
+      permissions: session.permissions,
+      emailVerified: session.identity.emailVerified,
+      status: session.identity.status,
     });
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    const { hashed_password, ...userWithoutPassword } = user;
-    return NextResponse.json(userWithoutPassword);
-  } catch (error: any) {
-    console.error("Error fetching me:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  } catch (err) {
+    return identityErrorResponse(err);
   }
 }

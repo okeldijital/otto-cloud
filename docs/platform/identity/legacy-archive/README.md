@@ -1,33 +1,31 @@
-# Legacy Authentication — Archive Notice
+# Legacy authentication archive
 
-**Status:** Active in production until IAM cutover  
-**Policy:** Do **not** retrofit. Build new IAM under `lib/platform/identity/`.
+**Status:** Removed at NextAuth cutover (after A.1–A.6)
 
-## Legacy surface (frozen design)
+## What was here
 
-| Path | Role |
-|------|------|
-| `lib/auth.ts` | NextAuth credentials + JWT session claims |
-| `lib/auth/*` | Organization context (catalog tenancy) |
-| `lib/iam.ts` | Legacy IAM helpers |
-| `lib/permissions.ts` | Role-string admin checks |
-| `app/api/auth/*` | NextAuth + register/login helpers |
-| `prisma` model `User` / `users` | Legacy user table |
-| `tenant_users`, `invitations`, `roles` | Legacy org membership |
+| Surface | Former role |
+|---------|-------------|
+| `next-auth` package | Credentials + JWT sessions |
+| `app/api/auth/[...nextauth]` | NextAuth route handler |
+| `lib/auth.ts` authOptions | Credentials provider |
+| Dual-run `LEGACY_AUTH_REQUIRED` | A.1 bridge for unmigrated users |
 
-## Why not migrate in place
+## Replacement
 
-Authentication debt compounds: mixed org models, bcrypt hashes, JWT-only sessions, role strings.  
-Retrofitting is more expensive than a parallel identity platform.
+| Concern | Now |
+|---------|-----|
+| Session | IAM HttpOnly cookies + `CurrentIdentityService` |
+| Login | `POST /api/auth/login` |
+| Server session | `getServerSession()` from `@/lib/auth/session` |
+| Permissions | IAM `PermissionSet` + membership roles |
+| Legacy users | `npm run migrate:legacy-auth` |
 
-## Cutover plan
+## Migration notes
 
-1. Deploy `iam_*` schema alongside legacy tables (A.0).  
-2. Implement login against IAM (A.1+) without removing next-auth.  
-3. Admin import tool: Argon2-compatible users or force password reset.  
-4. Verify dual-run.  
-5. Later milestone: remove next-auth and legacy auth tables.
+1. Run `npx prisma migrate deploy` for `iam_*` tables.  
+2. Run `npm run migrate:legacy-auth` (or per-user with `--password=`).  
+3. Randomized passwords require `/auth/forgot-password` unless password was set at migrate.  
+4. `legacyUserId` on `iam_identities` bridges INT-scoped tables until data migration finishes.
 
-## Bridge field
-
-`iam_identities.legacyUserId` optionally maps to `users.id` during dual-run.
+Do not reintroduce NextAuth.

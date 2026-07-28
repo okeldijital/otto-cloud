@@ -1,8 +1,6 @@
 /**
- * POST /api/auth/login — IAM native authentication (A.1).
- *
- * Dual-run: if identity is only on legacy User table, returns LEGACY_AUTH_REQUIRED
- * so the client can fall back to next-auth without mixing session sources.
+ * POST /api/auth/login — IAM native authentication.
+ * NextAuth removed; migrate legacy users via scripts/migrate-legacy-auth.ts.
  */
 
 import { NextResponse } from "next/server";
@@ -21,14 +19,15 @@ export async function POST(req: Request) {
     const password = typeof body.password === "string" ? body.password : "";
     const rememberMe = Boolean(body.rememberMe);
 
-    // Dual-run: IAM identities authenticate here; legacy-only users get
-    // LEGACY_AUTH_REQUIRED from AuthenticationService for next-auth fallback.
+    const cookies = cookieService.readFromRequest(req.headers.get("cookie"));
+
     const result = await authenticationService.login({
       email,
       password,
       rememberMe,
       ipAddress: clientIp(req),
       userAgent: clientUserAgent(req),
+      trustedDeviceToken: cookies.trustedDeviceToken,
     });
 
     const res = NextResponse.json({
@@ -37,18 +36,22 @@ export async function POST(req: Request) {
       permissions: result.permissions,
       roles: result.roles,
       requiresMfa: result.requiresMfa,
+      mfaToken: result.mfaToken,
+      rememberMe: result.rememberMe,
       requiresEmailVerification: result.requiresEmailVerification,
     });
 
-    cookieService.applyAuthCookies(res, {
-      sessionToken: result.session.sessionToken,
-      refreshToken: result.session.refreshToken,
-      accessToken: result.session.accessToken,
-      rememberMe,
-      accessMaxAgeSeconds: result.session.accessMaxAgeSeconds,
-      sessionMaxAgeSeconds: result.session.sessionMaxAgeSeconds,
-      refreshMaxAgeSeconds: result.session.refreshMaxAgeSeconds,
-    });
+    if (result.session) {
+      cookieService.applyAuthCookies(res, {
+        sessionToken: result.session.sessionToken,
+        refreshToken: result.session.refreshToken,
+        accessToken: result.session.accessToken,
+        rememberMe,
+        accessMaxAgeSeconds: result.session.accessMaxAgeSeconds,
+        sessionMaxAgeSeconds: result.session.sessionMaxAgeSeconds,
+        refreshMaxAgeSeconds: result.session.refreshMaxAgeSeconds,
+      });
+    }
 
     return res;
   } catch (err) {

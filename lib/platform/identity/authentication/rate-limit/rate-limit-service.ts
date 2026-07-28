@@ -47,6 +47,18 @@ export class RateLimitService {
     this.hit(`verify:email:${params.email.toLowerCase()}`, 5, windowMs);
     if (params.ip) this.hit(`verify:ip:${params.ip}`, 20, windowMs);
   }
+
+  assertPasswordReset(params: { email: string; ip?: string | null }): void {
+    const windowMs = 60 * 60_000; // 1 hour
+    this.hit(`reset:email:${params.email.toLowerCase()}`, 5, windowMs);
+    if (params.ip) this.hit(`reset:ip:${params.ip}`, 20, windowMs);
+  }
+
+  assertMfa(params: { identityId: string; ip?: string | null }): void {
+    const windowMs = 60_000;
+    this.hit(`mfa:id:${params.identityId}`, 10, windowMs);
+    if (params.ip) this.hit(`mfa:ip:${params.ip}`, 30, windowMs);
+  }
 }
 
 export const rateLimitService = new RateLimitService();

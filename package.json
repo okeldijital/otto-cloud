@@ -41,7 +41,8 @@
     "test:projections": "tsx lib/platform/projections/__tests__/projections.test.ts",
     "test:rights": "tsx lib/rights/__tests__/rights.test.ts",
     "test:royalty-entitlements": "tsx lib/royalties/__tests__/entitlements.test.ts",
-    "test:identity": "tsx lib/platform/identity/__tests__/identity-foundation.test.ts && tsx lib/platform/identity/__tests__/authentication-a1.test.ts",
+    "test:identity": "tsx lib/platform/identity/__tests__/identity-foundation.test.ts && tsx lib/platform/identity/__tests__/authentication-a1.test.ts && tsx lib/platform/identity/__tests__/authentication-a2-a4.test.ts",
+    "migrate:legacy-auth": "tsx scripts/migrate-legacy-auth.ts",
     "link:attachments": "tsx scripts/migrate-data/link-attachments/engine.ts",
     "link:attachments:dry-run": "tsx scripts/migrate-data/link-attachments/engine.ts --dry-run"
   },
@@ -59,7 +60,6 @@
     "lodash": "^4.18.1",
     "lucide-react": "^0.577.0",
     "next": "^16.2.7",
-    "next-auth": "^4.24.14",
     "papaparse": "^5.5.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

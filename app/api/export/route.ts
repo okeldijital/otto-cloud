@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
+import { getServerSession } from "@/lib/auth/session";
 import { exportData, ExportEntity, ExportFormat } from "@/lib/export";
 import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
 
@@ -14,7 +13,7 @@ const VALID_FORMATS: ExportFormat[] = ["csv", "xlsx", "json"];
 
 export async function GET(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession();
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const ctx = await requireOrganization();

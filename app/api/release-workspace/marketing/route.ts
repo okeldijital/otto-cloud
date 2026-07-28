@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
+import { getServerSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { createMarketingPhaseSchema, updateMarketingPhaseSchema, createMarketingTaskSchema, updateMarketingTaskSchema } from "@/types/release-workspace";
 import { calculateReadinessScore } from "@/app/api/release-workspace/route";
@@ -8,7 +7,7 @@ import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organiz
 
 export async function GET(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession();
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const { searchParams } = new URL(req.url);
     const workspaceId = searchParams.get("workspace_id");
@@ -29,7 +28,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession();
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const ctx = await requireOrganization();
     const orgId = ctx.organizationId;
@@ -71,7 +70,7 @@ export async function POST(req: Request) {
 
 export async function PUT(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession();
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const ctx = await requireOrganization();
     const orgId = ctx.organizationId;
@@ -114,7 +113,7 @@ export async function PUT(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession();
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");

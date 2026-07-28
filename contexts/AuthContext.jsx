@@ -6,22 +6,22 @@ import {
   useEffect,
   useState,
 } from "react";
-import { useSession, signIn, signOut } from "next-auth/react";
 
 /**
- * Dual-run AuthContext (A.1):
- * - Prefer IAM session from GET /api/auth/session (HttpOnly cookies).
- * - Fall back to legacy next-auth for unmigrated users.
- * Never mix both sources in one session.
+ * AuthContext — IAM only (NextAuth removed).
+ * Session state from GET /api/auth/session exclusively.
  */
 
 const AuthContext = createContext({
   user: null,
   loading: true,
   statusMessage: "",
-  authSource: /** @type {"iam" | "legacy" | null} */ (null),
+  authSource: /** @type {"iam" | null} */ (null),
   session: null,
   login: /** @type {(email: string, password: string, opts?: { rememberMe?: boolean }) => Promise<any>} */ (
+    () => {}
+  ),
+  completeMfa: /** @type {(mfaToken: string, code: string, opts?: any) => Promise<any>} */ (
     () => {}
   ),
   register: /** @type {(data: any) => Promise<any>} */ (() => {}),
@@ -49,10 +49,8 @@ function mapIamUser(sessionPayload) {
 }
 
 export const AuthProvider = ({ children }) => {
-  const { data: nextSession, status: nextStatus } = useSession();
   const [iamSession, setIamSession] = useState(null);
-  const [iamLoading, setIamLoading] = useState(true);
-  const [authSource, setAuthSource] = useState(/** @type {"iam" | "legacy" | null} */ (null));
+  const [loading, setLoading] = useState(true);
 
   const loadIamSession = useCallback(async () => {
     try {
@@ -66,15 +64,12 @@ export const AuthProvider = ({ children }) => {
       }
       const data = await res.json();
       setIamSession(data);
-      if (data?.authenticated) {
-        setAuthSource("iam");
-      }
       return data;
     } catch {
       setIamSession(null);
       return null;
     } finally {
-      setIamLoading(false);
+      setLoading(false);
     }
   }, []);
 
@@ -82,38 +77,10 @@ export const AuthProvider = ({ children }) => {
     loadIamSession();
   }, [loadIamSession]);
 
-  // Legacy next-auth only when no IAM session
-  useEffect(() => {
-    if (iamLoading) return;
-    if (iamSession?.authenticated) {
-      setAuthSource("iam");
-      return;
-    }
-    if (nextStatus === "authenticated" && nextSession?.user) {
-      setAuthSource("legacy");
-    } else if (nextStatus !== "loading") {
-      setAuthSource(null);
-    }
-  }, [iamLoading, iamSession, nextSession, nextStatus]);
-
-  const iamUser = mapIamUser(iamSession);
-  const legacyUser =
-    !iamUser && nextSession?.user
-      ? {
-          id: parseInt(nextSession.user.id),
-          email: nextSession.user.email,
-          full_name: nextSession.user.name,
-          role: nextSession.user.role || "user",
-          source: "legacy",
-        }
-      : null;
-
-  const user = iamUser || legacyUser;
-  const loading = iamLoading || (nextStatus === "loading" && !iamUser);
+  const user = mapIamUser(iamSession);
   const isAuthenticated = !!user;
 
   const login = async (email, password, opts = {}) => {
-    // 1) Try IAM native login first
     const res = await fetch("/api/auth/login", {
       method: "POST",
       credentials: "include",
@@ -126,30 +93,34 @@ export const AuthProvider = ({ children }) => {
     });
     const data = await res.json().catch(() => ({}));
 
-    if (res.ok) {
-      await loadIamSession();
-      setAuthSource("iam");
+    if (!res.ok) {
+      throw new Error(data.error || "Login failed");
+    }
+
+    if (data.requiresMfa && data.mfaToken) {
       return data;
     }
 
-    // 2) Dual-run: unmigrated users → next-auth only
-    if (data.code === "LEGACY_AUTH_REQUIRED" || res.status === 409) {
-      const result = await signIn("credentials", {
-        email,
-        password,
-        redirect: false,
-      });
-      if (result?.error) {
-        throw new Error("Invalid credentials");
-      }
-      setAuthSource("legacy");
-      setIamSession(null);
-      const me = await fetch("/api/auth/me");
-      if (!me.ok) throw new Error("Failed to get user");
-      return me.json();
-    }
+    await loadIamSession();
+    return data;
+  };
 
-    throw new Error(data.error || "Login failed");
+  const completeMfa = async (mfaToken, code, opts = {}) => {
+    const res = await fetch("/api/auth/mfa/challenge", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        mfaToken,
+        code,
+        rememberMe: Boolean(opts.rememberMe),
+        trustDevice: Boolean(opts.trustDevice),
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "MFA verification failed");
+    await loadIamSession();
+    return data;
   };
 
   const register = async (userData) => {
@@ -166,31 +137,21 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
-    if (authSource === "iam" || iamSession?.authenticated) {
-      await fetch("/api/auth/logout", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      }).catch(() => undefined);
-      setIamSession(null);
-      setAuthSource(null);
-      if (typeof window !== "undefined") {
-        window.location.href = "/auth/login";
-      }
-      return;
+    await fetch("/api/auth/logout", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    }).catch(() => undefined);
+    setIamSession(null);
+    if (typeof window !== "undefined") {
+      window.location.href = "/auth/login";
     }
-    signOut({ callbackUrl: "/login" });
   };
 
   const refreshUser = async () => {
-    if (authSource === "iam" || iamSession?.authenticated) {
-      const data = await loadIamSession();
-      return mapIamUser(data);
-    }
-    const res = await fetch("/api/auth/me");
-    if (!res.ok) throw new Error("Failed to refresh user");
-    return res.json();
+    const data = await loadIamSession();
+    return mapIamUser(data);
   };
 
   return (
@@ -199,9 +160,10 @@ export const AuthProvider = ({ children }) => {
         user,
         loading,
         statusMessage: loading ? "Authenticating..." : "",
-        authSource,
-        session: iamUser ? iamSession : nextSession,
+        authSource: user ? "iam" : null,
+        session: iamSession,
         login,
+        completeMfa,
         register,
         logout,
         refreshUser,

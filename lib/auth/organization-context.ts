@@ -9,10 +9,9 @@
  * @see docs/architecture/multi-tenant-model.md
  */
 
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
+import { getServerSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
-import { getUserPermissions } from "@/lib/iam";
+import { getUserPermissions, getIdentityPermissions } from "@/lib/iam";
 import {
   allowLegacyUserScope,
   getLegacyCatalogScopeId,
@@ -83,20 +82,34 @@ export class OrganizationContextError extends Error {
 type SessionLike = {
   user?: {
     id?: string;
+    identityId?: string;
     email?: string | null;
     name?: string | null;
     organization_id?: string;
     tenant_id?: string | null;
     role?: string | null;
     is_superuser?: boolean | null;
+    legacyUserId?: number | null;
+    permissions?: string[];
   } | null;
 };
 
 function parseUserId(session: SessionLike): number | null {
+  const legacy = session?.user?.legacyUserId;
+  if (typeof legacy === "number" && !Number.isNaN(legacy)) return legacy;
   const raw = session?.user?.id;
   if (raw === undefined || raw === null) return null;
+  // UUID identity ids are not numeric
+  if (typeof raw === "string" && raw.includes("-")) return null;
   const n = typeof raw === "number" ? raw : parseInt(String(raw), 10);
   return Number.isNaN(n) ? null : n;
+}
+
+function parseIdentityId(session: SessionLike): string | null {
+  if (session?.user?.identityId) return session.user.identityId;
+  const raw = session?.user?.id;
+  if (typeof raw === "string" && raw.includes("-")) return raw;
+  return null;
 }
 
 // ── Core resolver ──────────────────────────────────────────────────────────
@@ -109,13 +122,23 @@ export async function getOrganizationContext(
   session?: SessionLike | null
 ): Promise<OrganizationContext> {
   const sess =
-    session === undefined ? ((await getServerSession(authOptions)) as SessionLike | null) : session;
+    session === undefined
+      ? ((await getServerSession()) as SessionLike | null)
+      : session;
 
   if (!sess?.user) {
     throw new OrganizationContextError("Unauthorized", 401, "UNAUTHORIZED");
   }
 
+  const identityId = parseIdentityId(sess);
   const userId = parseUserId(sess);
+
+  // IAM-first path: org from iam_organizations when identity has membership
+  if (identityId) {
+    const iamCtx = await resolveIamOrganizationContext(sess, identityId, userId);
+    if (iamCtx) return iamCtx;
+  }
+
   if (userId === null) {
     throw new OrganizationContextError("Unauthorized", 401, "UNAUTHORIZED");
   }
@@ -129,7 +152,7 @@ export async function getOrganizationContext(
       : null;
   const role = sess.user.role ?? null;
 
-  // Load memberships
+  // Load memberships (legacy tenant_users)
   const memberships = await prisma.tenant_users.findMany({
     where: { user_id: userId },
     include: {
@@ -284,6 +307,124 @@ export async function getOrganizationContext(
     userEmail: sess.user.email ?? null,
     legacyIntOrgId: getLegacyIntOrgId(),
     dataScopeSource,
+  };
+}
+
+/**
+ * IAM organization path: use iam_organization_memberships when present.
+ * Falls back to null so legacy tenant_users path can run.
+ */
+async function resolveIamOrganizationContext(
+  sess: SessionLike,
+  identityId: string,
+  legacyUserId: number | null
+): Promise<OrganizationContext | null> {
+  const sessionOrgId = sess.user?.organization_id || null;
+  const memberships = await prisma.iamOrganizationMembership.findMany({
+    where: { identityId, status: "active" },
+    include: {
+      organization: true,
+      role: {
+        include: {
+          permissions: { include: { permission: true } },
+        },
+      },
+    },
+    orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
+  });
+
+  if (memberships.length === 0) {
+    // Superadmin / IAM identity with permissions but no org membership
+    if (sess.user?.is_superuser) {
+      const organizationId =
+        sessionOrgId && !isUnassignedUserOrganizationId(sessionOrgId)
+          ? resolveCatalogOrganizationId(sessionOrgId)
+          : getLegacyCatalogScopeId();
+      return {
+        organizationId,
+        organization: null,
+        tenantId: sessionOrgId,
+        membership: null,
+        role: sess.user.role ?? null,
+        permissions: sess.user.permissions ?? [],
+        isSuperAdmin: true,
+        userId: legacyUserId ?? 0,
+        userEmail: sess.user.email ?? null,
+        legacyIntOrgId: getLegacyIntOrgId(),
+        dataScopeSource: "superadmin",
+      };
+    }
+    return null;
+  }
+
+  const active =
+    memberships.find((m) => sessionOrgId && m.organizationId === sessionOrgId) ||
+    memberships.find((m) => m.isDefault) ||
+    memberships[0];
+
+  const org = active.organization;
+  // Prefer legacy tenant bridge for catalog scope
+  let organizationId = org.legacyTenantId
+    ? resolveCatalogOrganizationId(org.legacyTenantId)
+    : org.id;
+  if (org.legacyTenantId && orgOwnsLegacyCatalog(org.legacyTenantId)) {
+    organizationId = resolveCatalogOrganizationId(org.legacyTenantId);
+  }
+
+  const permissions = active.role
+    ? [
+        ...new Set(
+          active.role.permissions.map((rp) => rp.permission.key)
+        ),
+      ]
+    : sess.user?.permissions ?? [];
+
+  // Also merge legacy permissions when bridged
+  if (legacyUserId != null) {
+    try {
+      const legacy = await getUserPermissions(legacyUserId);
+      for (const p of legacy) permissions.push(p);
+    } catch {
+      /* ignore */
+    }
+  } else {
+    try {
+      const iamPerms = await getIdentityPermissions(identityId, org.id);
+      for (const p of iamPerms) permissions.push(p);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  return {
+    organizationId,
+    organization: {
+      id: org.legacyTenantId || org.id,
+      name: org.name,
+      display_name: org.name,
+      logo_url: null,
+      brand_color: null,
+      org_type: null,
+      is_active: org.status === "active",
+      owner_id: null,
+    },
+    tenantId: org.legacyTenantId || org.id,
+    membership: legacyUserId
+      ? {
+          id: 0,
+          tenant_id: org.legacyTenantId || org.id,
+          user_id: legacyUserId,
+          role_id: null,
+          is_default: active.isDefault,
+        }
+      : null,
+    role: active.role?.key ?? sess.user?.role ?? null,
+    permissions: [...new Set(permissions)],
+    isSuperAdmin: !!sess.user?.is_superuser,
+    userId: legacyUserId ?? 0,
+    userEmail: sess.user?.email ?? null,
+    legacyIntOrgId: getLegacyIntOrgId(),
+    dataScopeSource: org.legacyTenantId ? "legacy-compat" : "membership",
   };
 }
 

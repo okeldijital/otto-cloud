@@ -73,10 +73,13 @@ export class CookieService {
     return res;
   }
 
+  readonly trustedDeviceCookieName = "otto_td";
+
   readFromRequest(cookieHeader: string | null): {
     sessionToken?: string;
     refreshToken?: string;
     accessToken?: string;
+    trustedDeviceToken?: string;
   } {
     if (!cookieHeader) return {};
     const p = this.policy();
@@ -89,7 +92,33 @@ export class CookieService {
       sessionToken: map.get(p.sessionCookieName),
       refreshToken: map.get(p.refreshCookieName),
       accessToken: map.get(p.accessCookieName),
+      trustedDeviceToken: map.get(this.trustedDeviceCookieName),
     };
+  }
+
+  setTrustedDeviceCookie(
+    res: NextResponse,
+    token: string,
+    maxAgeSeconds: number
+  ): NextResponse {
+    res.cookies.set(
+      this.trustedDeviceCookieName,
+      token,
+      this.baseOptions(maxAgeSeconds)
+    );
+    return res;
+  }
+
+  clearTrustedDeviceCookie(res: NextResponse): NextResponse {
+    const p = this.policy();
+    res.cookies.set(this.trustedDeviceCookieName, "", {
+      httpOnly: true,
+      secure: p.cookieSecure,
+      sameSite: p.cookieSameSite as "lax" | "strict" | "none",
+      path: "/",
+      maxAge: 0,
+    });
+    return res;
   }
 }
 

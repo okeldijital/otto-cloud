@@ -296,4 +296,9 @@ Email, calendar sync, AI reminders, workflow automation, approval routing, e-sig
 - [x] Pre-A.1: `lib/platform/config` security policies
 - [x] ADR-028 Authentication Strategy (no NextAuth for A.1)
 - [x] A.1 Native login/logout/session/refresh/cookies/email verify/lockout
-- [ ] A.2–A.10 (planned)
+- [x] A.2 Password management
+- [x] A.3 Session management
+- [x] A.4 TOTP MFA
+- [x] A.5/A.6 Org membership & RBAC
+- [x] NextAuth cutover (package removed)
+- [ ] A.7–A.10 invitations / security center polish

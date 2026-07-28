@@ -4,11 +4,8 @@
  * Identity = business domain (who the principal is, org membership, permissions).
  * Authentication = proof of identity (passwords, sessions, MFA, future SSO/passkeys).
  *
- * A.1 must implement native auth — NOT NextAuth.
+ * Native auth only — NextAuth removed at cutover.
  * See: ADR-028 Authentication Strategy
- *
- * Legacy next-auth remains until cutover:
- * docs/platform/identity/legacy-archive/README.md
  */
 
 // Domain
@@ -31,6 +28,16 @@ export {
   seedIamPermissions,
   seedOrgSystemRoles,
 } from "./services/permission-seed";
+export {
+  migrateLegacyUser,
+  migrateAllLegacyUsers,
+} from "./services/legacy-migration";
+
+// Organizations / membership (A.5)
+export {
+  organizationService,
+  OrganizationService,
+} from "./organizations/organization-service";
 
 // Authentication subsystem (proof)
 export * from "./authentication";

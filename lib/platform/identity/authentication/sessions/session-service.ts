@@ -316,6 +316,41 @@ export class SessionService {
       data: { lastActivityAt: new Date() },
     });
   }
+
+  /** A.3 — list sessions for an identity */
+  async listSessions(identityId: string) {
+    const sessions = await prisma.iamSession.findMany({
+      where: { identityId },
+      orderBy: { lastActivityAt: "desc" },
+      take: 50,
+    });
+    return sessions.map((s) => ({
+      id: s.id,
+      userAgent: s.userAgent,
+      deviceLabel: s.deviceLabel,
+      ipAddress: s.ipAddress,
+      lastActivityAt: s.lastActivityAt.toISOString(),
+      expiresAt: s.expiresAt.toISOString(),
+      createdAt: s.createdAt.toISOString(),
+      rememberMe: s.rememberMe,
+      revoked: !!s.revokedAt,
+      revokeReason: s.revokeReason,
+      active: !s.revokedAt && s.expiresAt > new Date(),
+    }));
+  }
+
+  async getSessionOwnedBy(
+    sessionId: string,
+    identityId: string
+  ) {
+    const session = await prisma.iamSession.findUnique({
+      where: { id: sessionId },
+    });
+    if (!session || session.identityId !== identityId) {
+      throw new IdentityError("Session not found", 404, "SESSION_NOT_FOUND");
+    }
+    return session;
+  }
 }
 
 export const sessionService = new SessionService();
