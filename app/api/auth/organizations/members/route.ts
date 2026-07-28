@@ -30,13 +30,14 @@ export async function GET(req: Request) {
     const members = await organizationService.listMembers(ctx.organizationId);
     return NextResponse.json({
       members: members.map((m) => ({
-        identityId: m.identity.id,
-        email: m.identity.email,
-        displayName: m.identity.displayName,
-        status: m.identity.status,
+        identityId: m.identityId,
+        email: m.email,
+        displayName: m.displayName,
         membershipStatus: m.status,
-        role: m.role?.key ?? null,
+        role: m.roleKey,
+        roleName: m.roleName,
         isDefault: m.isDefault,
+        isOwner: m.isOwner,
         joinedAt: m.joinedAt,
       })),
     });
