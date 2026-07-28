@@ -15,10 +15,24 @@ export * from "./domain/types";
 export {
   PERMISSION_CATALOG,
   SYSTEM_ROLE_TEMPLATES,
+  PERMISSION_CATALOG_VERSION,
   isKnownPermission,
 } from "./permissions/catalog";
 export type { PermissionKey } from "./permissions/catalog";
 export { PermissionSet } from "./authorization/permissions";
+export {
+  authorizationService,
+  AuthorizationService,
+} from "./authorization/AuthorizationService";
+export {
+  permissionResolver,
+  PermissionResolver,
+} from "./authorization/PermissionResolver";
+export {
+  effectivePermissionCache,
+  EffectivePermissionCache,
+  buildPermissionCacheKey,
+} from "./authorization/EffectivePermissionCache";
 export { IDENTITY_EVENTS } from "./events/catalog";
 export type { IdentityEventType } from "./events/catalog";
 
@@ -37,9 +51,25 @@ export {
 export {
   organizationService,
   OrganizationService,
-} from "./organizations/organization-service";
+} from "./organizations/OrganizationService";
+export {
+  membershipService,
+  MembershipService,
+} from "./organizations/MembershipService";
+export {
+  invitationService,
+  InvitationService,
+} from "./organizations/InvitationService";
+export {
+  organizationSwitchService,
+  OrganizationSwitchService,
+} from "./organizations/OrganizationSwitchService";
+export {
+  organizationPolicyService,
+  OrganizationPolicyService,
+} from "./organizations/OrganizationPolicyService";
 
-// Authentication subsystem (proof)
+// Authentication subsystem (proof) — includes requirePermission / requireMembership
 export * from "./authentication";
 
 // Re-export security config for convenience (source of truth: platform/config)

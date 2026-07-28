@@ -86,7 +86,8 @@ Reusable projection engine extracted so modules do not own bus wiring.
 | **A.5/A.6 Org + RBAC** | ✅ Complete | Memberships, roles, permission middleware |
 | **NextAuth cutover** | ✅ Complete | Package removed; IAM cookies only |
 | **A.4.5 Stabilization** | ✅ Complete | Sole IAM provider; audits; migration tooling |
-| A.5–A.10 | Planned | RBAC depth, invitations, security center polish |
+| **A.5 Org Membership & RBAC** | ✅ Complete | Memberships, invitations, AuthorizationService, org switch |
+| A.6–A.10 | Planned | Invitations polish, security center, SCIM/SSO later |
 
 | Document | Purpose |
 |----------|---------|
@@ -102,6 +103,8 @@ Reusable projection engine extracted so modules do not own bus wiring.
 | [ADR-031 Multi-Factor Authentication](../product/platform/adr-031-multi-factor-authentication.md) | Factor model |
 | [milestone-iam-cutover.md](../product/platform/milestone-iam-cutover.md) | A.4.5 cutover |
 | [ADR-032 IAM Cutover](../product/platform/adr-032-iam-cutover.md) | Single auth platform |
+| [milestone-iam-a5-complete.md](../product/platform/milestone-iam-a5-complete.md) | A.5 RBAC |
+| [ADR-033 Organization Membership & RBAC](../product/platform/adr-033-organization-membership-rbac.md) | Membership model |
 | [legacy-auth-inventory.md](./identity/legacy-auth-inventory.md) | Removed surfaces |
 | [milestone-iam-a2-a6-cutover.md](../product/platform/milestone-iam-a2-a6-cutover.md) | A.3–A.6 + NextAuth removal |
 | [identity-architecture.md](../architecture/identity-architecture.md) | Package layout |

@@ -95,12 +95,90 @@ export async function requirePermission(
   permission: string | string[]
 ): Promise<CurrentIdentityContext> {
   const ctx = await requireActiveSession(req);
-  const needed = Array.isArray(permission) ? permission : [permission];
   if (ctx.isSuperAdmin) return ctx;
+
+  // Resolve effective permissions for active organization (A.5)
+  if (ctx.organizationId) {
+    const { permissionResolver } = await import(
+      "../authorization/PermissionResolver"
+    );
+    const { authorizationService } = await import(
+      "../authorization/AuthorizationService"
+    );
+    const resolved = await permissionResolver.resolve(
+      ctx.identityId,
+      ctx.organizationId
+    );
+    if (resolved.membershipStatus !== "active") {
+      throw new IdentityError(
+        "Active membership required",
+        403,
+        "MEMBERSHIP_REQUIRED"
+      );
+    }
+    authorizationService.authorize(
+      {
+        identityId: ctx.identityId,
+        organizationId: ctx.organizationId,
+        permissions: resolved.permissions,
+        permissionSet: resolved.permissionSet,
+        isOwner: resolved.isOwner,
+      },
+      permission
+    );
+    return {
+      ...ctx,
+      permissions: resolved.permissions,
+      roles: resolved.roles,
+      permissionSet: resolved.permissionSet,
+    };
+  }
+
+  const needed = Array.isArray(permission) ? permission : [permission];
   if (!ctx.permissionSet.hasAny(...needed)) {
     throw new IdentityError("Permission denied", 403, "PERMISSION_DENIED", needed);
   }
   return ctx;
+}
+
+export async function requireMembership(
+  req: Request
+): Promise<CurrentIdentityContext & { organizationId: string; membershipId: string }> {
+  const ctx = await requireOrganization(req);
+  const { membershipRepository } = await import(
+    "../repositories/MembershipRepository"
+  );
+  const membership = await membershipRepository.find(
+    ctx.identityId,
+    ctx.organizationId
+  );
+  if (!membership || membership.status !== "active") {
+    throw new IdentityError(
+      "Active membership required",
+      403,
+      "MEMBERSHIP_REQUIRED"
+    );
+  }
+  return { ...ctx, membershipId: membership.id };
+}
+
+export async function requireOrganizationOwner(
+  req: Request
+): Promise<CurrentIdentityContext & { organizationId: string }> {
+  const ctx = await requireMembership(req);
+  if (ctx.isSuperAdmin) return ctx;
+  const { membershipRepository } = await import(
+    "../repositories/MembershipRepository"
+  );
+  const membership = await membershipRepository.find(
+    ctx.identityId,
+    ctx.organizationId
+  );
+  if (membership?.isOwner) return ctx;
+  // Fall through to organizations.manage
+  return requirePermission(req, "organizations.manage") as Promise<
+    CurrentIdentityContext & { organizationId: string }
+  >;
 }
 
 /** Client IP from common proxy headers */

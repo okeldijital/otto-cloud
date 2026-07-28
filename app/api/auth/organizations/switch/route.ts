@@ -1,16 +1,14 @@
 /**
  * POST /api/auth/organizations/switch { organizationId }
- * Sets default org and re-issues access token with org claim.
  */
 
 import { NextResponse } from "next/server";
 import {
-  organizationService,
+  organizationSwitchService,
   requireAuthentication,
   identityErrorResponse,
   cookieService,
   tokenService,
-  sessionService,
   IdentityError,
 } from "@/lib/platform/identity";
 import { getPlatformConfig } from "@/lib/platform/config";
@@ -29,29 +27,26 @@ export async function POST(req: Request) {
       );
     }
 
-    await organizationService.setDefaultOrganization({
+    const result = await organizationSwitchService.switchOrganization({
       identityId: ctx.identityId,
       organizationId,
     });
-
-    const { roles, permissions } =
-      await organizationService.getPermissionsForMembership(
-        ctx.identityId,
-        organizationId
-      );
 
     const access = tokenService.issueAccessToken({
       identityId: ctx.identityId,
       sessionId: ctx.sessionId,
       organizationId,
+      sessionVersion: ctx.sessionVersion,
     });
 
     const cookies = cookieService.readFromRequest(req.headers.get("cookie"));
     const res = NextResponse.json({
       success: true,
-      organizationId,
-      roles,
-      permissions,
+      organizationId: result.organizationId,
+      organization: result.organization,
+      roles: result.roles,
+      permissions: result.permissions,
+      isOwner: result.isOwner,
     });
 
     if (cookies.sessionToken && cookies.refreshToken) {
@@ -61,14 +56,14 @@ export async function POST(req: Request) {
         refreshToken: cookies.refreshToken,
         accessToken: access.token,
         accessMaxAgeSeconds: p.accessTokenMinutes * 60,
-        sessionMaxAgeSeconds: Math.floor(
-          (ctx.sessionExpiresAt.getTime() - Date.now()) / 1000
+        sessionMaxAgeSeconds: Math.max(
+          60,
+          Math.floor((ctx.sessionExpiresAt.getTime() - Date.now()) / 1000)
         ),
         refreshMaxAgeSeconds: p.refreshTokenDays * 24 * 60 * 60,
       });
     }
 
-    await sessionService.touchActivity(ctx.sessionId);
     return res;
   } catch (err) {
     return identityErrorResponse(err);

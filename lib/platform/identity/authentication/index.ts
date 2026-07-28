@@ -150,6 +150,8 @@ export {
   requireEmailVerification,
   requireOrganization,
   requirePermission,
+  requireMembership,
+  requireOrganizationOwner,
   identityErrorResponse,
   metaFromRequest,
   clientIp,

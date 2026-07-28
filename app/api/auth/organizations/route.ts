@@ -1,11 +1,12 @@
 /**
  * GET  /api/auth/organizations — list memberships for current identity
- * POST /api/auth/organizations — create organization { name, slug? }
+ * POST /api/auth/organizations — create organization
  */
 
 import { NextResponse } from "next/server";
 import {
   organizationService,
+  membershipService,
   requireAuthentication,
   identityErrorResponse,
   IdentityError,
@@ -14,7 +15,7 @@ import {
 export async function GET(req: Request) {
   try {
     const ctx = await requireAuthentication(req);
-    const memberships = await organizationService.listMemberships(ctx.identityId);
+    const memberships = await membershipService.listForIdentity(ctx.identityId);
     return NextResponse.json({
       organizations: memberships.map((m) => ({
         id: m.organization.id,
@@ -23,6 +24,7 @@ export async function GET(req: Request) {
         status: m.organization.status,
         role: m.role?.key ?? null,
         isDefault: m.isDefault,
+        isOwner: m.isOwner,
         membershipStatus: m.status,
       })),
       activeOrganizationId: ctx.organizationId,

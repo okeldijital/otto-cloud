@@ -4122,6 +4122,12 @@ model IamOrganization {
   status      String   @default("active") @db.VarChar(32)
   /// disabled | optional | required_admins | required_owners | required_all
   mfaPolicy   String   @default("optional") @db.VarChar(32)
+  /// Owning identity (transferable)
+  ownerIdentityId String? @db.Uuid
+  /// JSON policy overrides (max members, invitation TTL, etc.)
+  policies    Json     @default("{}")
+  /// Bumped when roles/permissions change for cache invalidation
+  roleVersion Int      @default(0)
   /// Optional bridge to legacy tenants.id
   legacyTenantId String? @unique @db.Uuid
   createdAt   DateTime @default(now()) @db.Timestamptz(6)
@@ -4130,6 +4136,7 @@ model IamOrganization {
   memberships IamOrganizationMembership[]
   roles       IamRole[]
   invitations IamInvitation[]
+  membershipAudits IamMembershipAudit[]
 
   @@map("iam_organizations")
 }
@@ -4142,7 +4149,13 @@ model IamOrganizationMembership {
   /// active | invited | suspended | removed
   status         String    @default("active") @db.VarChar(32)
   isDefault      Boolean   @default(false)
+  /// Owner flag (mirrors organization.ownerIdentityId for convenience)
+  isOwner        Boolean   @default(false)
+  /// Bumped on role/status change for permission cache
+  membershipVersion Int    @default(0)
   joinedAt       DateTime? @db.Timestamptz(6)
+  suspendedAt    DateTime? @db.Timestamptz(6)
+  removedAt      DateTime? @db.Timestamptz(6)
   createdAt      DateTime  @default(now()) @db.Timestamptz(6)
   updatedAt      DateTime  @updatedAt @db.Timestamptz(6)
 
@@ -4152,7 +4165,26 @@ model IamOrganizationMembership {
 
   @@unique([identityId, organizationId], map: "uq_iam_membership")
   @@index([organizationId], map: "ix_iam_memberships_org")
+  @@index([status], map: "ix_iam_memberships_status")
   @@map("iam_organization_memberships")
+}
+
+model IamMembershipAudit {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  membershipId   String?  @db.Uuid
+  identityId     String?  @db.Uuid
+  actorIdentityId String? @db.Uuid
+  /// created | suspended | reactivated | removed | role_assigned | role_removed | ownership_transferred
+  action         String   @db.VarChar(64)
+  payload        Json     @default("{}")
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+
+  organization IamOrganization @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([organizationId, createdAt], map: "ix_iam_membership_audit_org")
+  @@index([identityId], map: "ix_iam_membership_audit_identity")
+  @@map("iam_membership_audit")
 }
 
 model IamRole {
