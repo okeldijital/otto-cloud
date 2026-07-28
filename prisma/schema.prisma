@@ -3828,3 +3828,356 @@ model RoyaltyEntitlementEvent {
   @@index([eventType], map: "ix_royalty_entitlement_events_type")
   @@map("royalty_entitlement_events")
 }
+
+// ---------------------------------------------------------------------------
+// Platform IAM — Identity & Access Management (Milestone A.0)
+// NEW schema in parallel with legacy User / next-auth. Do not couple to old tables.
+// See: docs/product/platform/adr-022-identity-access-management.md
+// ---------------------------------------------------------------------------
+
+/// Platform person/principal (not org-scoped). Replaces concept of legacy User for auth.
+model IamIdentity {
+  id              String    @id @default(uuid()) @db.Uuid
+  email           String    @unique @db.VarChar(320)
+  emailNormalized String    @unique @db.VarChar(320)
+  emailVerifiedAt DateTime? @db.Timestamptz(6)
+  displayName     String?   @db.VarChar(255)
+  avatarUrl       String?   @db.VarChar(500)
+  /// active | disabled | locked | pending_verification
+  status          String    @default("pending_verification") @db.VarChar(32)
+  lockedUntil     DateTime? @db.Timestamptz(6)
+  failedLoginCount Int      @default(0)
+  lastLoginAt     DateTime? @db.Timestamptz(6)
+  /// Optional bridge to legacy users.id during dual-run migration
+  legacyUserId    Int?      @unique
+  createdAt       DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime  @updatedAt @db.Timestamptz(6)
+
+  credentials      IamCredential[]
+  passwordCreds    IamPasswordCredential[]
+  mfaCreds         IamMfaCredential[]
+  recoveryCodes    IamRecoveryCode[]
+  sessions         IamSession[]
+  refreshTokens    IamRefreshToken[]
+  memberships      IamOrganizationMembership[]
+  trustedDevices   IamTrustedDevice[]
+  loginAttempts    IamLoginAttempt[]
+  securityEvents   IamSecurityEvent[]
+  passwordResets   IamPasswordResetToken[]
+  emailVerifications IamEmailVerificationToken[]
+  passwordHistory  IamPasswordHistory[]
+  invitationsSent  IamInvitation[] @relation("IamInvitationInviter")
+
+  @@index([status], map: "ix_iam_identities_status")
+  @@map("iam_identities")
+}
+
+/// Generic credential pointer (password, mfa, passkey future).
+model IamCredential {
+  id           String   @id @default(uuid()) @db.Uuid
+  identityId   String   @db.Uuid
+  /// password | totp | webauthn | recovery
+  type         String   @db.VarChar(32)
+  label        String?  @db.VarChar(128)
+  isPrimary    Boolean  @default(false)
+  disabledAt   DateTime? @db.Timestamptz(6)
+  createdAt    DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @db.Timestamptz(6)
+
+  identity IamIdentity @relation(fields: [identityId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([identityId, type], map: "ix_iam_credentials_identity_type")
+  @@map("iam_credentials")
+}
+
+model IamPasswordCredential {
+  id               String   @id @default(uuid()) @db.Uuid
+  identityId       String   @db.Uuid
+  /// Argon2id encoded hash
+  passwordHash     String
+  algorithm        String   @default("argon2id") @db.VarChar(32)
+  passwordChangedAt DateTime @default(now()) @db.Timestamptz(6)
+  createdAt        DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(6)
+
+  identity IamIdentity @relation(fields: [identityId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([identityId], map: "uq_iam_password_credential_identity")
+  @@map("iam_password_credentials")
+}
+
+model IamPasswordHistory {
+  id           String   @id @default(uuid()) @db.Uuid
+  identityId   String   @db.Uuid
+  passwordHash String
+  createdAt    DateTime @default(now()) @db.Timestamptz(6)
+
+  identity IamIdentity @relation(fields: [identityId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([identityId], map: "ix_iam_password_history_identity")
+  @@map("iam_password_history")
+}
+
+model IamMfaCredential {
+  id              String    @id @default(uuid()) @db.Uuid
+  identityId      String    @db.Uuid
+  /// totp
+  type            String    @default("totp") @db.VarChar(32)
+  /// Encrypted TOTP secret (never store plaintext)
+  secretEncrypted String
+  /// Encryption key version for rotation
+  keyVersion      Int       @default(1)
+  label           String?   @db.VarChar(128)
+  enabledAt       DateTime? @db.Timestamptz(6)
+  disabledAt      DateTime? @db.Timestamptz(6)
+  lastUsedAt      DateTime? @db.Timestamptz(6)
+  createdAt       DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime  @updatedAt @db.Timestamptz(6)
+
+  identity IamIdentity @relation(fields: [identityId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([identityId], map: "ix_iam_mfa_credentials_identity")
+  @@map("iam_mfa_credentials")
+}
+
+model IamRecoveryCode {
+  id         String    @id @default(uuid()) @db.Uuid
+  identityId String    @db.Uuid
+  /// Hashed one-time recovery code
+  codeHash   String
+  usedAt     DateTime? @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @db.Timestamptz(6)
+
+  identity IamIdentity @relation(fields: [identityId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([identityId], map: "ix_iam_recovery_codes_identity")
+  @@map("iam_recovery_codes")
+}
+
+model IamSession {
+  id               String    @id @default(uuid()) @db.Uuid
+  identityId       String    @db.Uuid
+  /// Opaque session id for cookie
+  sessionTokenHash String    @unique
+  userAgent        String?
+  deviceLabel      String?   @db.VarChar(255)
+  ipAddress        String?   @db.VarChar(64)
+  lastActivityAt   DateTime  @default(now()) @db.Timestamptz(6)
+  expiresAt        DateTime  @db.Timestamptz(6)
+  revokedAt        DateTime? @db.Timestamptz(6)
+  revokeReason     String?   @db.VarChar(128)
+  rememberMe       Boolean   @default(false)
+  createdAt        DateTime  @default(now()) @db.Timestamptz(6)
+
+  identity      IamIdentity       @relation(fields: [identityId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  refreshTokens IamRefreshToken[]
+
+  @@index([identityId], map: "ix_iam_sessions_identity")
+  @@index([expiresAt], map: "ix_iam_sessions_expires")
+  @@map("iam_sessions")
+}
+
+model IamRefreshToken {
+  id         String    @id @default(uuid()) @db.Uuid
+  sessionId  String    @db.Uuid
+  identityId String    @db.Uuid
+  tokenHash  String    @unique
+  expiresAt  DateTime  @db.Timestamptz(6)
+  rotatedAt  DateTime? @db.Timestamptz(6)
+  revokedAt  DateTime? @db.Timestamptz(6)
+  replacedBy String?   @db.Uuid
+  createdAt  DateTime  @default(now()) @db.Timestamptz(6)
+
+  session  IamSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  identity IamIdentity @relation(fields: [identityId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([sessionId], map: "ix_iam_refresh_tokens_session")
+  @@index([identityId], map: "ix_iam_refresh_tokens_identity")
+  @@map("iam_refresh_tokens")
+}
+
+/// Platform org for IAM (may bridge to tenants.id later).
+model IamOrganization {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @db.VarChar(255)
+  slug        String   @unique @db.VarChar(128)
+  /// active | suspended | archived
+  status      String   @default("active") @db.VarChar(32)
+  /// Optional bridge to legacy tenants.id
+  legacyTenantId String? @unique @db.Uuid
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(6)
+
+  memberships IamOrganizationMembership[]
+  roles       IamRole[]
+  invitations IamInvitation[]
+
+  @@map("iam_organizations")
+}
+
+model IamOrganizationMembership {
+  id             String    @id @default(uuid()) @db.Uuid
+  identityId     String    @db.Uuid
+  organizationId String    @db.Uuid
+  roleId         String?   @db.Uuid
+  /// active | invited | suspended | removed
+  status         String    @default("active") @db.VarChar(32)
+  isDefault      Boolean   @default(false)
+  joinedAt       DateTime? @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @db.Timestamptz(6)
+
+  identity     IamIdentity     @relation(fields: [identityId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  organization IamOrganization @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  role         IamRole?        @relation(fields: [roleId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@unique([identityId, organizationId], map: "uq_iam_membership")
+  @@index([organizationId], map: "ix_iam_memberships_org")
+  @@map("iam_organization_memberships")
+}
+
+model IamRole {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String?  @db.Uuid
+  /// null org = system/global role template
+  key            String   @db.VarChar(64)
+  name           String   @db.VarChar(128)
+  description    String?
+  isSystem       Boolean  @default(false)
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @db.Timestamptz(6)
+
+  organization IamOrganization? @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  permissions  IamRolePermission[]
+  memberships  IamOrganizationMembership[]
+
+  @@unique([organizationId, key], map: "uq_iam_role_org_key")
+  @@index([key], map: "ix_iam_roles_key")
+  @@map("iam_roles")
+}
+
+model IamPermission {
+  id          String   @id @default(uuid()) @db.Uuid
+  /// e.g. contracts.review
+  key         String   @unique @db.VarChar(128)
+  name        String   @db.VarChar(128)
+  description String?
+  module      String?  @db.VarChar(64)
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+
+  roles IamRolePermission[]
+
+  @@map("iam_permissions")
+}
+
+model IamRolePermission {
+  id           String @id @default(uuid()) @db.Uuid
+  roleId       String @db.Uuid
+  permissionId String @db.Uuid
+
+  role       IamRole       @relation(fields: [roleId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  permission IamPermission @relation(fields: [permissionId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([roleId, permissionId], map: "uq_iam_role_permission")
+  @@map("iam_role_permissions")
+}
+
+model IamInvitation {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @db.Uuid
+  email          String    @db.VarChar(320)
+  emailNormalized String   @db.VarChar(320)
+  roleId         String?   @db.Uuid
+  tokenHash      String    @unique
+  invitedById    String?   @db.Uuid
+  /// pending | accepted | revoked | expired
+  status         String    @default("pending") @db.VarChar(32)
+  expiresAt      DateTime  @db.Timestamptz(6)
+  acceptedAt     DateTime? @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @db.Timestamptz(6)
+
+  organization IamOrganization @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  invitedBy    IamIdentity?    @relation("IamInvitationInviter", fields: [invitedById], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([organizationId, status], map: "ix_iam_invitations_org_status")
+  @@index([emailNormalized], map: "ix_iam_invitations_email")
+  @@map("iam_invitations")
+}
+
+model IamLoginAttempt {
+  id         String   @id @default(uuid()) @db.Uuid
+  identityId String?  @db.Uuid
+  email      String?  @db.VarChar(320)
+  success    Boolean
+  ipAddress  String?  @db.VarChar(64)
+  userAgent  String?
+  reason     String?  @db.VarChar(128)
+  createdAt  DateTime @default(now()) @db.Timestamptz(6)
+
+  identity IamIdentity? @relation(fields: [identityId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([identityId, createdAt], map: "ix_iam_login_attempts_identity")
+  @@index([email, createdAt], map: "ix_iam_login_attempts_email")
+  @@map("iam_login_attempts")
+}
+
+model IamTrustedDevice {
+  id           String    @id @default(uuid()) @db.Uuid
+  identityId   String    @db.Uuid
+  deviceTokenHash String @unique
+  label        String?   @db.VarChar(255)
+  userAgent    String?
+  lastUsedAt   DateTime? @db.Timestamptz(6)
+  expiresAt    DateTime  @db.Timestamptz(6)
+  revokedAt    DateTime? @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @db.Timestamptz(6)
+
+  identity IamIdentity @relation(fields: [identityId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([identityId], map: "ix_iam_trusted_devices_identity")
+  @@map("iam_trusted_devices")
+}
+
+model IamSecurityEvent {
+  id         String   @id @default(uuid()) @db.Uuid
+  identityId String?  @db.Uuid
+  eventType  String   @db.VarChar(64)
+  ipAddress  String?  @db.VarChar(64)
+  userAgent  String?
+  payload    Json     @default("{}")
+  createdAt  DateTime @default(now()) @db.Timestamptz(6)
+
+  identity IamIdentity? @relation(fields: [identityId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([identityId, createdAt], map: "ix_iam_security_events_identity")
+  @@index([eventType], map: "ix_iam_security_events_type")
+  @@map("iam_security_events")
+}
+
+model IamPasswordResetToken {
+  id         String    @id @default(uuid()) @db.Uuid
+  identityId String    @db.Uuid
+  tokenHash  String    @unique
+  expiresAt  DateTime  @db.Timestamptz(6)
+  usedAt     DateTime? @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @db.Timestamptz(6)
+
+  identity IamIdentity @relation(fields: [identityId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([identityId], map: "ix_iam_password_reset_tokens_identity")
+  @@map("iam_password_reset_tokens")
+}
+
+model IamEmailVerificationToken {
+  id         String    @id @default(uuid()) @db.Uuid
+  identityId String    @db.Uuid
+  tokenHash  String    @unique
+  expiresAt  DateTime  @db.Timestamptz(6)
+  usedAt     DateTime? @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @db.Timestamptz(6)
+
+  identity IamIdentity @relation(fields: [identityId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([identityId], map: "ix_iam_email_verification_tokens_identity")
+  @@map("iam_email_verification_tokens")
+}

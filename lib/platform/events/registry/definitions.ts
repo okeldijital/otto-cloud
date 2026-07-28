@@ -736,6 +736,39 @@ export const PLATFORM_EVENT_DEFINITIONS: EventDefinition[] = [
     idempotencyStrategy: "event_subscriber",
     retentionPolicy: "indefinite",
   },
+
+  // ── Identity & Access Management (Platform Milestone A) ────────────────
+  ...[
+    "identity.login.success",
+    "identity.login.failed",
+    "identity.logout",
+    "identity.password.changed",
+    "identity.password.reset.requested",
+    "identity.password.reset.completed",
+    "identity.session.created",
+    "identity.session.revoked",
+    "identity.mfa.enabled",
+    "identity.mfa.disabled",
+    "identity.invitation.sent",
+    "identity.invitation.accepted",
+    "identity.email.verified",
+    "identity.account.locked",
+  ].map((name) => ({
+    name,
+    version: V,
+    producer: "identity",
+    description: `IAM: ${name}`,
+    contract: contract(V, {
+      organizationId: f.uuid(),
+      identityId: f.string(),
+      sessionId: f.string(),
+      email: f.string(),
+      reason: f.string(),
+    }),
+    consumers: ["notifications", "security"],
+    idempotencyStrategy: "event_subscriber" as const,
+    retentionPolicy: "365d" as const,
+  })),
 ];
 
 /** Map legacy PascalCase / module-local event types → platform names */

@@ -274,3 +274,23 @@ Email, calendar sync, AI reminders, workflow automation, approval routing, e-sig
 - [x] APIs + UI
 - [x] Tests (`npm run test:royalty-entitlements`)
 - [x] No calculations / DSP / payments
+
+---
+
+## Platform Milestone A.0 — Identity Platform Foundation
+
+| Field | Value |
+|-------|--------|
+| Status | **Complete (foundation)** |
+| ADR | [ADR-022](../platform/adr-022-identity-access-management.md) |
+| Report | [milestone-iam-a0-complete.md](../platform/milestone-iam-a0-complete.md) |
+
+- [x] New IAM schema (`iam_*`) parallel to legacy
+- [x] `lib/platform/identity` package structure
+- [x] Argon2id + token + secret-box crypto
+- [x] Permission catalog + PermissionSet
+- [x] Identity event names on platform bus
+- [x] ADRs 022–027 + architecture docs
+- [x] Tests (`npm run test:identity`)
+- [ ] A.1 Login/logout (next)
+- [ ] A.2–A.10 (planned)

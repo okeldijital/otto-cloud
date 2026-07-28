@@ -51,6 +51,22 @@ _No additional unreleased entries._
 
 ---
 
+## [Platform IAM A.0] — 2026-07-29 — Identity Platform Foundation
+
+### Added
+
+- New `lib/platform/identity` package (crypto Argon2id, tokens, MFA secret box, PermissionSet, permission catalog).
+- Parallel `iam_*` schema (identities, credentials, sessions, orgs, roles, permissions, invitations, MFA, recovery).
+- Identity events registered on Platform Event Bus.
+- ADRs 022–027, architecture docs, legacy auth archive notice.
+- `npm run test:identity`.
+
+### Policy
+
+Do not retrofit next-auth / legacy User tables. Dual-run until cutover.
+
+---
+
 ## [Royalties 7.0.0] — 2026-07-28 — Royalty Entitlement Foundation
 
 ### Added

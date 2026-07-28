@@ -73,6 +73,25 @@ Reusable projection engine extracted so modules do not own bus wiring.
 **Package:** `lib/royalties`  
 **Tests:** `npm run test:royalty-entitlements`
 
+## Platform Milestone A — Identity & Access Management
+
+| Phase | Status | Notes |
+|-------|--------|--------|
+| **A.0 Foundation** | ✅ Complete | Schema, crypto, catalog, ADRs |
+| A.1 Authentication | Planned | Replace next-auth login |
+| A.2–A.10 | Planned | Password, sessions, MFA, RBAC, invitations, security center |
+
+| Document | Purpose |
+|----------|---------|
+| [ADR-022 IAM](../product/platform/adr-022-identity-access-management.md) | Decision: new platform, no retrofit |
+| [milestone-iam-a0-complete.md](../product/platform/milestone-iam-a0-complete.md) | A.0 completion |
+| [identity-architecture.md](../architecture/identity-architecture.md) | Package layout |
+| [legacy-archive](./identity/legacy-archive/README.md) | Frozen next-auth surface |
+
+**Package:** `lib/platform/identity`  
+**Tests:** `npm run test:identity`  
+**Policy:** Do not migrate `lib/auth.ts` in place.
+
 ## Migration & decommission
 
 | Document | Purpose |
