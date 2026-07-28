@@ -1,10 +1,10 @@
 /**
- * Permission helpers — IAM session (NextAuth removed).
+ * Permission helpers — IAM only (A.4.5).
+ * Prefer requirePermission from @/lib/platform/identity for new routes.
  */
 
 import { getServerSession, type AuthSessionUser } from "@/lib/auth/session";
-
-export type Role = "admin" | "manager" | "viewer" | "user" | "org_admin" | "member";
+import { PermissionSet } from "@/lib/platform/identity/authorization/permissions";
 
 export type SessionUser = AuthSessionUser;
 
@@ -13,6 +13,11 @@ export interface PermissionCheck {
   reason?: string;
 }
 
+function perms(user: SessionUser): PermissionSet {
+  return PermissionSet.from(user.permissions || []);
+}
+
+/** Admin = superuser OR platform/org admin permissions (not string role alone). */
 export async function requireAdmin(): Promise<{
   user: SessionUser;
   error?: Response;
@@ -28,13 +33,20 @@ export async function requireAdmin(): Promise<{
   }
 
   const user = session.user;
+  const p = perms(user);
 
-  if (
-    !user.is_superuser &&
-    user.role !== "admin" &&
-    user.role !== "org_admin" &&
-    user.role !== "platform_admin"
-  ) {
+  const allowed =
+    user.is_superuser ||
+    p.has("security.manage") ||
+    p.has("users.manage") ||
+    p.has("organizations.manage") ||
+    p.has("platform.admin") ||
+    // Temporary bridge until all admins have IAM roles seeded
+    user.role === "org_admin" ||
+    user.role === "platform_admin" ||
+    user.role === "admin";
+
+  if (!allowed) {
     return {
       user,
       error: new Response(
@@ -58,13 +70,28 @@ export function canManageOrg(
   targetOrgId: string
 ): boolean {
   if (currentUser.is_superuser) return true;
+  const p = perms(currentUser);
+  if (p.has("organizations.manage") || p.has("users.manage")) {
+    return currentUser.organization_id === targetOrgId || !targetOrgId;
+  }
   return currentUser.organization_id === targetOrgId;
 }
 
 export function canManageUsers(currentUser: SessionUser): boolean {
+  if (currentUser.is_superuser) return true;
   return (
-    !!currentUser.is_superuser ||
-    currentUser.role === "admin" ||
-    currentUser.role === "org_admin"
+    perms(currentUser).has("users.manage") ||
+    currentUser.role === "org_admin" ||
+    currentUser.role === "admin"
   );
+}
+
+/** Permission-first check for client or server helpers */
+export function hasPermission(
+  user: SessionUser | null | undefined,
+  permission: string
+): boolean {
+  if (!user) return false;
+  if (user.is_superuser) return true;
+  return perms(user).has(permission);
 }

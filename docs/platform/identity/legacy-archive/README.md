@@ -1,6 +1,6 @@
 # Legacy authentication archive
 
-**Status:** Removed at NextAuth cutover (after A.1–A.6)
+**Status:** Removed — see A.4.5 [legacy-removal.md](../legacy-removal.md) and [ADR-032](../../../product/platform/adr-032-iam-cutover.md)
 
 ## What was here
 

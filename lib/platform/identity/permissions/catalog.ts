@@ -17,9 +17,14 @@ export const PERMISSION_CATALOG = [
   { key: "royalties.view", name: "View royalty entitlements", module: "royalties" },
   { key: "royalties.review", name: "Review entitlements", module: "royalties" },
   { key: "royalties.manage", name: "Manage entitlements", module: "royalties" },
-  // Platform events
+  // Platform events / notifications
   { key: "platform.events.view", name: "View platform events", module: "platform" },
   { key: "platform.events.replay", name: "Replay platform events", module: "platform" },
+  { key: "platform.admin", name: "Platform administration", module: "platform" },
+  { key: "notifications.manage", name: "Manage notifications", module: "platform" },
+  // Release workspace
+  { key: "workspace.view", name: "View release workspaces", module: "workspace" },
+  { key: "workspace.manage", name: "Manage release workspaces", module: "workspace" },
   // Users / org / security
   { key: "users.manage", name: "Manage users", module: "identity" },
   { key: "users.invite", name: "Invite users", module: "identity" },
@@ -48,6 +53,8 @@ export const SYSTEM_ROLE_TEMPLATES: Record<
       "royalties.view",
       "royalties.review",
       "platform.events.view",
+      "workspace.view",
+      "workspace.manage",
     ],
   },
   viewer: {
@@ -57,6 +64,7 @@ export const SYSTEM_ROLE_TEMPLATES: Record<
       "rights.view",
       "royalties.view",
       "platform.events.view",
+      "workspace.view",
     ],
   },
 };

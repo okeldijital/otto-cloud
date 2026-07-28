@@ -301,4 +301,5 @@ Email, calendar sync, AI reminders, workflow automation, approval routing, e-sig
 - [x] A.4 TOTP MFA
 - [x] A.5/A.6 Org membership & RBAC
 - [x] NextAuth cutover (package removed)
-- [ ] A.7–A.10 invitations / security center polish
+- [x] A.4.5 IAM stabilization & legacy cutover
+- [ ] A.5+ RBAC depth / invitations / security center polish

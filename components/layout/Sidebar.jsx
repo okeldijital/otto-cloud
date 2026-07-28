@@ -110,7 +110,17 @@ const Sidebar = () => {
     const { user } = useAuth();
     const { sidebarOpen, closeSidebar } = useSidebar();
     const isMobile = useIsMobile();
-    const isAdmin = user?.role === 'admin' || user?.is_superuser;
+    const isAdmin =
+        user?.is_superuser ||
+        user?.isSuperAdmin ||
+        (Array.isArray(user?.permissions) &&
+            (user.permissions.includes('security.manage') ||
+                user.permissions.includes('users.manage') ||
+                user.permissions.includes('organizations.manage') ||
+                user.permissions.includes('platform.admin'))) ||
+        user?.role === 'org_admin' ||
+        user?.role === 'platform_admin' ||
+        user?.role === 'admin';
 
     const handleNav = () => {
         if (isMobile) closeSidebar();

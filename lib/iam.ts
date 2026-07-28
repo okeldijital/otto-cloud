@@ -142,28 +142,30 @@ export async function requireAdmin(): Promise<{
   user: SessionUser;
   error?: Response;
 }> {
-  const r = await requirePermission("admin.access");
-  if (r.error) {
-    // Also accept org_admin / platform admin via session role
-    const session = await getServerSession();
-    if (
-      session?.user &&
-      (session.user.is_superuser ||
-        session.user.role === "admin" ||
-        session.user.role === "org_admin" ||
-        session.user.role === "platform_admin")
-    ) {
-      return { user: session.user };
-    }
-    return r;
+  const session = await getServerSession();
+  if (!session?.user) {
+    return {
+      user: null as unknown as SessionUser,
+      error: new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+      }),
+    };
   }
-  const su = r.user;
-  if (
-    !su.is_superuser &&
-    su.role !== "admin" &&
-    su.role !== "org_admin" &&
-    su.role !== "platform_admin"
-  ) {
+  const su = session.user;
+  const p = PermissionSet.from(su.permissions || []);
+  const allowed =
+    su.is_superuser ||
+    p.has("security.manage") ||
+    p.has("users.manage") ||
+    p.has("organizations.manage") ||
+    p.has("platform.admin") ||
+    p.has("admin.access") ||
+    // Bridge until all admins have IAM permission grants
+    su.role === "org_admin" ||
+    su.role === "platform_admin" ||
+    su.role === "admin";
+
+  if (!allowed) {
     return {
       user: su,
       error: new Response(
@@ -172,7 +174,7 @@ export async function requireAdmin(): Promise<{
       ),
     };
   }
-  return r;
+  return { user: su };
 }
 
 export async function getSessionUser(): Promise<SessionUser | null> {
@@ -190,8 +192,10 @@ export function canManageOrg(
 }
 
 export function canManageUsers(currentUser: SessionUser): boolean {
+  if (currentUser.is_superuser) return true;
+  const p = PermissionSet.from(currentUser.permissions || []);
   return (
-    !!currentUser.is_superuser ||
+    p.has("users.manage") ||
     currentUser.role === "admin" ||
     currentUser.role === "org_admin"
   );
