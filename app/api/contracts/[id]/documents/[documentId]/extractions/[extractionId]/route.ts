@@ -69,7 +69,7 @@ export async function GET(
       return fail(error.message, error.status, error.code);
     }
     const orgErr = orgContextErrorResponse(error);
-    if (orgErr) return orgErr;
+    if (orgErr) return NextResponse.json(orgErr.body, { status: orgErr.status });
     console.error("[GET extraction]", error);
     return fail("Unable to load extraction", 500, "INTERNAL_ERROR");
   }

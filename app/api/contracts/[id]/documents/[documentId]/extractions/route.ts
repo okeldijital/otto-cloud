@@ -100,7 +100,7 @@ export async function POST(
       return fail(error.message, error.status, error.details ?? null, error.code);
     }
     const orgErr = orgContextErrorResponse(error);
-    if (orgErr) return orgErr;
+    if (orgErr) return NextResponse.json(orgErr.body, { status: orgErr.status });
     console.error("[POST extractions]", error);
     return fail("Unable to start extraction", 500, null, "INTERNAL_ERROR");
   }
@@ -146,7 +146,7 @@ export async function GET(
       return fail(error.message, error.status, error.details ?? null, error.code);
     }
     const orgErr = orgContextErrorResponse(error);
-    if (orgErr) return orgErr;
+    if (orgErr) return NextResponse.json(orgErr.body, { status: orgErr.status });
     console.error("[GET extractions]", error);
     return fail("Unable to load extraction status", 500, null, "INTERNAL_ERROR");
   }

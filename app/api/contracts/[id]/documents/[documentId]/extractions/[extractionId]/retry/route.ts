@@ -78,7 +78,7 @@ export async function POST(
       return fail(error.message, error.status, error.code);
     }
     const orgErr = orgContextErrorResponse(error);
-    if (orgErr) return orgErr;
+    if (orgErr) return NextResponse.json(orgErr.body, { status: orgErr.status });
     console.error("[POST extraction retry]", error);
     return fail("Unable to retry extraction", 500, "INTERNAL_ERROR");
   }

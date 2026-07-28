@@ -106,7 +106,7 @@ export async function GET(
       return apiError(error.message, error.status, error.details ?? null, error.code);
     }
     const orgErr = orgContextErrorResponse(error);
-    if (orgErr) return orgErr;
+    if (orgErr) return NextResponse.json(orgErr.body, { status: orgErr.status });
     console.error("[GET .../documents/:documentId/download]", error);
     return apiError("Unable to download", 500, null, "INTERNAL_ERROR");
   }

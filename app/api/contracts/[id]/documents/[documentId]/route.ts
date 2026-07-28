@@ -82,7 +82,7 @@ export async function DELETE(
       return apiError(error.message, error.status, error.details ?? null, error.code);
     }
     const orgErr = orgContextErrorResponse(error);
-    if (orgErr) return orgErr;
+    if (orgErr) return NextResponse.json(orgErr.body, { status: orgErr.status });
     console.error("[DELETE /api/contracts/:id/documents/:documentId]", error);
     return apiError("Internal server error", 500, null, "INTERNAL_ERROR");
   }

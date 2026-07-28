@@ -76,7 +76,7 @@ export async function GET(
       return apiError(error.message, error.status, error.details ?? null, error.code);
     }
     const orgErr = orgContextErrorResponse(error);
-    if (orgErr) return orgErr;
+    if (orgErr) return NextResponse.json(orgErr.body, { status: orgErr.status });
     console.error("[GET /api/contracts/:id/documents]", error);
     return apiError("Internal server error", 500, null, "INTERNAL_ERROR");
   }
@@ -135,7 +135,7 @@ export async function POST(
       return apiError(error.message, error.status, error.details ?? null, error.code);
     }
     const orgErr = orgContextErrorResponse(error);
-    if (orgErr) return orgErr;
+    if (orgErr) return NextResponse.json(orgErr.body, { status: orgErr.status });
     console.error("[POST /api/contracts/:id/documents]", error);
     return apiError("Internal server error", 500, null, "INTERNAL_ERROR");
   }
