@@ -99,11 +99,17 @@ export class SessionService {
       },
     });
 
-    // Re-issue access token with real session id
+    const identity = await prisma.iamIdentity.findUnique({
+      where: { id: params.identityId },
+      select: { sessionVersion: true },
+    });
+
+    // Re-issue access token with real session id + sessionVersion
     const accessFinal = tokenService.issueAccessToken({
       identityId: params.identityId,
       sessionId: session.id,
       organizationId: params.organizationId,
+      sessionVersion: identity?.sessionVersion ?? 0,
     });
 
     await emitIdentityEvent({
@@ -214,10 +220,16 @@ export class SessionService {
       return created;
     });
 
+    const identityRow = await prisma.iamIdentity.findUnique({
+      where: { id: existing.identityId },
+      select: { sessionVersion: true },
+    });
+
     const access = tokenService.issueAccessToken({
       identityId: existing.identityId,
       sessionId: session.id,
       organizationId: params.organizationId,
+      sessionVersion: identityRow?.sessionVersion ?? 0,
     });
 
     await emitIdentityEvent({

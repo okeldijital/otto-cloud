@@ -745,6 +745,8 @@ export const PLATFORM_EVENT_DEFINITIONS: EventDefinition[] = [
     "identity.password.changed",
     "identity.password.reset.requested",
     "identity.password.reset.completed",
+    "identity.password.expired",
+    "identity.password.force_reset",
     "identity.session.created",
     "identity.session.refreshed",
     "identity.session.revoked",

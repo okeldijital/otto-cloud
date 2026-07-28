@@ -17,6 +17,7 @@ import { rateLimitService } from "./rate-limit/rate-limit-service";
 import { sessionService, type SessionCreateResult } from "./sessions/session-service";
 import { currentIdentityService } from "./current-identity-service";
 import { mfaService } from "./mfa/mfa-service";
+import { credentialLifecycleService } from "./lifecycle/CredentialLifecycleService";
 
 export type LoginResult = {
   identity: {
@@ -39,6 +40,9 @@ export type LoginResult = {
   /** Pending rememberMe when MFA still required */
   rememberMe?: boolean;
   requiresEmailVerification: boolean;
+  /** A.2 — forced reset or expired password */
+  requiresPasswordChange: boolean;
+  passwordChangeReason?: string | null;
   session: SessionCreateResult | null;
 };
 
@@ -61,6 +65,8 @@ export type PublicSessionView = {
   permissions: string[];
   sessionExpiresAt: string | null;
   emailVerificationStatus: "verified" | "pending" | "unknown";
+  mustChangePassword: boolean;
+  sessionVersion: number | null;
 };
 
 export class AuthenticationService {
@@ -184,6 +190,9 @@ export class AuthenticationService {
     });
 
     const requiresEmailVerification = !fresh.emailVerifiedAt;
+    const passwordGate = await credentialLifecycleService.checkLoginPasswordGate(
+      fresh.id
+    );
     const mfaEnabled = await mfaService.isEnabled(fresh.id);
     const trusted = mfaEnabled
       ? await mfaService.isTrustedDevice(
@@ -207,10 +216,14 @@ export class AuthenticationService {
         mfaToken,
         rememberMe: params.rememberMe ?? false,
         requiresEmailVerification,
+        requiresPasswordChange: passwordGate.mustChangePassword,
+        passwordChangeReason: passwordGate.reason,
         session: null,
       };
     }
 
+    // Force / expired password: still create session so user can change password,
+    // but client must gate navigation until password is updated.
     const session = await sessionService.createSession({
       identityId: fresh.id,
       organizationId: profile.organization?.id ?? null,
@@ -227,6 +240,7 @@ export class AuthenticationService {
         sessionId: session.sessionId,
         rememberMe: params.rememberMe ?? false,
         requiresEmailVerification,
+        requiresPasswordChange: passwordGate.mustChangePassword,
         mfaUsed: mfaEnabled,
       },
       ipAddress: params.ipAddress,
@@ -237,6 +251,8 @@ export class AuthenticationService {
       ...profile,
       requiresMfa: false,
       requiresEmailVerification,
+      requiresPasswordChange: passwordGate.mustChangePassword,
+      passwordChangeReason: passwordGate.reason,
       session,
     };
   }
@@ -299,10 +315,16 @@ export class AuthenticationService {
       userAgent: params.userAgent,
     });
 
+    const passwordGate = await credentialLifecycleService.checkLoginPasswordGate(
+      identityId
+    );
+
     return {
       ...profile,
       requiresMfa: false,
       requiresEmailVerification: !identity.emailVerifiedAt,
+      requiresPasswordChange: passwordGate.mustChangePassword,
+      passwordChangeReason: passwordGate.reason,
       session,
       trustedDeviceToken,
     };
@@ -413,6 +435,8 @@ export class AuthenticationService {
         permissions: [],
         sessionExpiresAt: null,
         emailVerificationStatus: "unknown",
+        mustChangePassword: false,
+        sessionVersion: null,
       };
     }
     return {
@@ -429,6 +453,8 @@ export class AuthenticationService {
       permissions: ctx.permissions,
       sessionExpiresAt: ctx.sessionExpiresAt.toISOString(),
       emailVerificationStatus: ctx.emailVerified ? "verified" : "pending",
+      mustChangePassword: ctx.mustChangePassword,
+      sessionVersion: ctx.sessionVersion,
     };
   }
 

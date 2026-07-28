@@ -20,6 +20,8 @@ export interface AccessTokenClaims {
   sub: string; // identityId
   sid: string; // sessionId
   org?: string | null;
+  /** Identity.sessionVersion at issue time — reject if identity advanced */
+  sv?: number;
   exp: number;
   iat: number;
 }
@@ -38,6 +40,7 @@ export class TokenService {
     identityId: string;
     sessionId: string;
     organizationId?: string | null;
+    sessionVersion?: number;
   }): { token: string; expiresAt: Date } {
     const minutes = getPlatformConfig().security.session.accessTokenMinutes;
     const iat = Math.floor(Date.now() / 1000);
@@ -46,6 +49,7 @@ export class TokenService {
       sub: params.identityId,
       sid: params.sessionId,
       org: params.organizationId ?? null,
+      sv: params.sessionVersion ?? 0,
       iat,
       exp,
     };

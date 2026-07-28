@@ -32,6 +32,8 @@ export type {
   TokenPolicyConfig,
 };
 
+export { toClientPasswordPolicy } from "./password-policy";
+
 export interface SecurityConfig {
   password: PasswordPolicyConfig;
   session: SessionPolicyConfig;

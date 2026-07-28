@@ -80,7 +80,7 @@ Reusable projection engine extracted so modules do not own bus wiring.
 | **A.0 Foundation** | ✅ Complete | Schema, crypto, catalog, ADRs |
 | **Pre-A.1 structure** | ✅ Complete | Identity ≠ Authentication; Platform Config |
 | **A.1 Authentication** | ✅ Complete | Native login/session/refresh/cookies/verify/lockout |
-| **A.2 Password** | ✅ Complete | Change / forgot / reset + history |
+| **A.2 Password** | ✅ Complete | Credential lifecycle, policy engine, session versioning |
 | **A.3 Sessions** | ✅ Complete | List / revoke sessions UI |
 | **A.4 TOTP MFA** | ✅ Complete | Enroll, challenge, recovery codes, trusted device |
 | **A.5/A.6 Org + RBAC** | ✅ Complete | Memberships, roles, permission middleware |
@@ -93,7 +93,9 @@ Reusable projection engine extracted so modules do not own bus wiring.
 | [ADR-028 Authentication Strategy](../product/platform/adr-028-authentication-strategy.md) | Identity vs auth; no NextAuth for A.1 |
 | [milestone-iam-a0-complete.md](../product/platform/milestone-iam-a0-complete.md) | A.0 completion |
 | [milestone-iam-a1-complete.md](../product/platform/milestone-iam-a1-complete.md) | A.1 completion |
-| [milestone-iam-a2-a6-cutover.md](../product/platform/milestone-iam-a2-a6-cutover.md) | A.2–A.6 + NextAuth removal |
+| [milestone-iam-a2-complete.md](../product/platform/milestone-iam-a2-complete.md) | A.2 password lifecycle |
+| [ADR-029 Credential Lifecycle](../product/platform/adr-029-credential-lifecycle.md) | Password mutation boundary |
+| [milestone-iam-a2-a6-cutover.md](../product/platform/milestone-iam-a2-a6-cutover.md) | A.3–A.6 + NextAuth removal |
 | [identity-architecture.md](../architecture/identity-architecture.md) | Package layout |
 | [authentication.md](../architecture/authentication.md) | Auth stack |
 | [platform-config.md](../architecture/platform-config.md) | Security policy & feature flags |

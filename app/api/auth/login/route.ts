@@ -39,6 +39,8 @@ export async function POST(req: Request) {
       mfaToken: result.mfaToken,
       rememberMe: result.rememberMe,
       requiresEmailVerification: result.requiresEmailVerification,
+      requiresPasswordChange: result.requiresPasswordChange,
+      passwordChangeReason: result.passwordChangeReason,
     });
 
     if (result.session) {

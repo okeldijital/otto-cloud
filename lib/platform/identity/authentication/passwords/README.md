@@ -1,6 +1,13 @@
 # passwords/ — A.2
 
-- `password-policy.ts` — strength rules from platform config  
-- `password-service.ts` — change password, forgot/reset tokens, history  
+| Module | Role |
+|--------|------|
+| `PasswordService.ts` | Hash / store / verify (low-level) |
+| `PasswordResetService.ts` | Forgot/reset tokens |
+| `PasswordHistoryService.ts` | Reuse prevention |
+| `PasswordValidator.ts` | Structured policy validation |
+| `password-policy.ts` | Compat wrappers |
 
-Schema: `iam_password_credentials`, `iam_password_history`, `iam_password_reset_tokens`
+**Mutations:** use `lifecycle/CredentialLifecycleService` only.  
+**Data access:** `repositories/PasswordRepository`  
+**Policy:** `policies/PasswordPolicyService` + platform config

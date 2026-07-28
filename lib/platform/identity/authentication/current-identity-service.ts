@@ -20,6 +20,8 @@ export type CurrentIdentityContext = {
   status: string;
   sessionId: string;
   sessionExpiresAt: Date;
+  sessionVersion: number;
+  mustChangePassword: boolean;
   organizationId: string | null;
   organization: {
     id: string;
@@ -49,6 +51,7 @@ export class CurrentIdentityService {
     let identityId: string | null = null;
     let sessionId: string | null = null;
     let orgFromToken: string | null = null;
+    let tokenSessionVersion: number | null = null;
 
     const accessToken =
       cookies.accessToken ||
@@ -60,6 +63,8 @@ export class CurrentIdentityService {
         identityId = claims.sub;
         sessionId = claims.sid;
         orgFromToken = claims.org ?? null;
+        tokenSessionVersion =
+          typeof claims.sv === "number" ? claims.sv : null;
       } catch {
         // Fall through to session cookie
       }
@@ -90,6 +95,14 @@ export class CurrentIdentityService {
     });
     if (!identity) return null;
     if (identity.status === "disabled") return null;
+
+    // Session version mismatch → credentials rotated; reject
+    if (
+      tokenSessionVersion !== null &&
+      tokenSessionVersion !== identity.sessionVersion
+    ) {
+      return null;
+    }
 
     // Auto-unlock window handled at login; still block hard lock here
     if (
@@ -160,6 +173,8 @@ export class CurrentIdentityService {
       status: identity.status,
       sessionId,
       sessionExpiresAt: session.expiresAt,
+      sessionVersion: identity.sessionVersion,
+      mustChangePassword: identity.mustChangePassword,
       organizationId: activeMembership?.organizationId ?? null,
       organization: activeMembership?.organization
         ? {

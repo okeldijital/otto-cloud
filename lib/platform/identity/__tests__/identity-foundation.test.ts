@@ -102,7 +102,10 @@ async function main() {
   await test("platform config owns security password policy", () => {
     resetPlatformConfig();
     const cfg = getPlatformConfig();
-    assert.ok(cfg.security.password.minLength >= 12);
+    assert.ok(
+      (cfg.security.password.minimumLength ??
+        cfg.security.password.minLength) >= 12
+    );
     assert.equal(cfg.security.password.algorithm, "argon2id");
     assert.ok(cfg.security.session.maxAgeHours > 0);
     assert.equal(typeof cfg.features.legacyNextAuth, "boolean");

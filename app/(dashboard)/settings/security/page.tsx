@@ -26,8 +26,6 @@ export default function SecuritySettingsPage() {
   const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
 
   const load = async () => {
     const [sRes, mRes] = await Promise.all([
@@ -124,29 +122,6 @@ export default function SecuritySettingsPage() {
     setMessage("MFA disabled");
   };
 
-  const changePassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setMessage("");
-    const res = await fetch("/api/auth/password/change", {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ currentPassword, newPassword }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      setError(
-        data.error ||
-          (Array.isArray(data.details) ? data.details.join(" ") : "Failed")
-      );
-      return;
-    }
-    setCurrentPassword("");
-    setNewPassword("");
-    setMessage("Password updated. Other sessions were signed out.");
-  };
-
   if (authLoading) {
     return (
       <div className="p-8 text-white/70">Loading…</div>
@@ -160,31 +135,16 @@ export default function SecuritySettingsPage() {
       {error && <p className="text-danger text-sm">{error}</p>}
 
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold">Change password</h2>
-        <form onSubmit={changePassword} className="space-y-3 max-w-md">
-          <input
-            type="password"
-            placeholder="Current password"
-            value={currentPassword}
-            onChange={(e) => setCurrentPassword(e.target.value)}
-            className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10"
-            required
-          />
-          <input
-            type="password"
-            placeholder="New password"
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10"
-            required
-          />
-          <button
-            type="submit"
-            className="px-4 py-2 rounded-lg bg-accent font-medium"
-          >
-            Update password
-          </button>
-        </form>
+        <h2 className="text-lg font-semibold">Password</h2>
+        <p className="text-sm text-white/60">
+          Change password, view policy and expiration.
+        </p>
+        <a
+          href="/settings/security/password"
+          className="inline-block px-4 py-2 rounded-lg bg-accent font-medium"
+        >
+          Manage password
+        </a>
       </section>
 
       <section className="space-y-3">

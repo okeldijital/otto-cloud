@@ -1,12 +1,7 @@
 /**
  * Authentication subsystem — proves identity.
  *
- * Identity (domain) is independent of how authentication is performed.
- * Future: passkeys, SSO, API keys, service accounts plug in here without
- * changing the Identity model.
- *
- * A.1 MUST NOT use NextAuth. Own stack:
- * POST /api/auth/login → AuthenticationService → SessionService → CookieService
+ * Password mutations MUST go through CredentialLifecycleService (A.2).
  */
 
 export * from "./crypto";
@@ -17,7 +12,38 @@ export {
 export {
   passwordService,
   PasswordService,
-} from "./passwords/password-service";
+} from "./passwords/PasswordService";
+export {
+  passwordResetService,
+  PasswordResetService,
+} from "./passwords/PasswordResetService";
+export {
+  passwordHistoryService,
+  PasswordHistoryService,
+} from "./passwords/PasswordHistoryService";
+export {
+  passwordValidator,
+  PasswordValidator,
+  estimateEntropy,
+} from "./passwords/PasswordValidator";
+export type {
+  PasswordValidationResult,
+  PasswordValidationIssue,
+} from "./passwords/PasswordValidator";
+export {
+  passwordPolicyService,
+  PasswordPolicyService,
+} from "./policies/PasswordPolicyService";
+export {
+  passwordRepository,
+  PasswordRepository,
+} from "./repositories/PasswordRepository";
+export {
+  credentialLifecycleService,
+  CredentialLifecycleService,
+} from "./lifecycle/CredentialLifecycleService";
+export type { PasswordStatusView } from "./lifecycle/CredentialLifecycleService";
+
 export { mfaService, MfaService } from "./mfa/mfa-service";
 export {
   generateTotpSecret,

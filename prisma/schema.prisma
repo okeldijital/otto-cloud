@@ -3848,6 +3848,11 @@ model IamIdentity {
   lockedUntil     DateTime? @db.Timestamptz(6)
   failedLoginCount Int      @default(0)
   lastLoginAt     DateTime? @db.Timestamptz(6)
+  /// Bumped on password change/reset — access tokens embed this for invalidation
+  sessionVersion  Int       @default(0)
+  /// Admin forced password reset — block full login until password changed
+  mustChangePassword Boolean @default(false)
+  mustChangePasswordReason String? @db.VarChar(128)
   /// Optional bridge to legacy users.id during dual-run migration
   legacyUserId    Int?      @unique
   createdAt       DateTime  @default(now()) @db.Timestamptz(6)
@@ -3909,12 +3914,15 @@ model IamPasswordCredential {
 model IamPasswordHistory {
   id           String   @id @default(uuid()) @db.Uuid
   identityId   String   @db.Uuid
+  /// Optional link to password credential row
+  credentialId String?  @db.Uuid
   passwordHash String
   createdAt    DateTime @default(now()) @db.Timestamptz(6)
 
   identity IamIdentity @relation(fields: [identityId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([identityId], map: "ix_iam_password_history_identity")
+  @@index([credentialId], map: "ix_iam_password_history_credential")
   @@map("iam_password_history")
 }
 

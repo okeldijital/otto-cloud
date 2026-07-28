@@ -9,6 +9,8 @@ export const IDENTITY_EVENTS = {
   PasswordChanged: "identity.password.changed",
   PasswordResetRequested: "identity.password.reset.requested",
   PasswordResetCompleted: "identity.password.reset.completed",
+  PasswordExpired: "identity.password.expired",
+  PasswordForceReset: "identity.password.force_reset",
   SessionCreated: "identity.session.created",
   SessionRefreshed: "identity.session.refreshed",
   SessionRevoked: "identity.session.revoked",

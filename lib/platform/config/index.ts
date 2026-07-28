@@ -9,6 +9,7 @@ export {
   loadSecurityConfig,
   DEFAULT_SECURITY_CONFIG,
   SECURITY_CONFIG_KEYS,
+  toClientPasswordPolicy,
   type SecurityConfig,
   type PasswordPolicyConfig,
   type SessionPolicyConfig,

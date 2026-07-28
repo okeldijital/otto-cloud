@@ -32,6 +32,10 @@ export default function AuthLoginPage() {
           rememberMe,
           trustDevice,
         });
+        if (result?.requiresPasswordChange) {
+          router.push("/settings/security/password");
+          return;
+        }
         if (result?.requiresEmailVerification) {
           router.push(`/auth/check-email?email=${encodeURIComponent(email)}`);
           return;
@@ -43,6 +47,10 @@ export default function AuthLoginPage() {
       const result = await login(email, password, { rememberMe });
       if (result?.requiresMfa && result.mfaToken) {
         setMfaToken(result.mfaToken);
+        return;
+      }
+      if (result?.requiresPasswordChange) {
+        router.push("/settings/security/password");
         return;
       }
       if (result?.requiresEmailVerification) {
