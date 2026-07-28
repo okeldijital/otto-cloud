@@ -1,6 +1,6 @@
 /**
  * POST /api/auth/login — IAM native authentication.
- * NextAuth removed; migrate legacy users via scripts/migrate-legacy-auth.ts.
+ * Session is only created when nextStep is authenticated (or post-MFA).
  */
 
 import { NextResponse } from "next/server";
@@ -31,12 +31,15 @@ export async function POST(req: Request) {
     });
 
     const res = NextResponse.json({
+      nextStep: result.nextStep,
       identity: result.identity,
       organization: result.organization,
       permissions: result.permissions,
       roles: result.roles,
       requiresMfa: result.requiresMfa,
+      challengeId: result.challengeId,
       mfaToken: result.mfaToken,
+      mfaExpiresAt: result.mfaExpiresAt,
       rememberMe: result.rememberMe,
       requiresEmailVerification: result.requiresEmailVerification,
       requiresPasswordChange: result.requiresPasswordChange,

@@ -1,5 +1,5 @@
 /**
- * GET /api/auth/mfa/status
+ * GET /api/auth/mfa/trusted-devices
  */
 
 import { NextResponse } from "next/server";
@@ -12,12 +12,8 @@ import {
 export async function GET(req: Request) {
   try {
     const ctx = await requireAuthentication(req);
-    const status = await mfaService.getStatus(
-      ctx.identityId,
-      ctx.organizationId,
-      ctx.roles
-    );
-    return NextResponse.json(status);
+    const devices = await mfaService.listTrustedDevices(ctx.identityId);
+    return NextResponse.json({ devices });
   } catch (err) {
     return identityErrorResponse(err);
   }

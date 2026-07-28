@@ -1,5 +1,6 @@
 /**
  * POST /api/auth/mfa/enroll/confirm { code }
+ * Compatibility alias → POST /api/auth/mfa/verify without mfaToken
  */
 
 import { NextResponse } from "next/server";
@@ -26,10 +27,7 @@ export async function POST(req: Request) {
       ipAddress: clientIp(req),
       userAgent: clientUserAgent(req),
     });
-    return NextResponse.json({
-      success: true,
-      recoveryCodes: result.recoveryCodes,
-    });
+    return NextResponse.json(result);
   } catch (err) {
     return identityErrorResponse(err);
   }

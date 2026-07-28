@@ -1,17 +1,13 @@
-# Trusted Devices (Foundation)
+# Trusted Devices
 
-Table: `iam_trusted_devices`
+Foundation from A.3; **activated for MFA skip in A.4**.
 
-| Field | Purpose |
-|-------|---------|
-| trusted | Boolean flag |
-| trustedAt | When marked trusted |
-| trustedUntil | Trust expiry |
-| revokedAt | Revocation |
-| deviceId | Optional link to `iam_devices` |
-| deviceTokenHash | Cookie token hash |
+After successful MFA challenge with `trustDevice: true`:
 
-**A.3:** model + service only.  
-**A.4:** MFA challenge skip when trusted cookie present.
+1. Create trusted device token cookie (`otto_td`)  
+2. Link optional `deviceId`  
+3. Skip MFA until `trustedUntil` / `expiresAt`  
 
-Events: `identity.session.trusted` / `untrusted`
+Revoke via `DELETE /api/auth/mfa/trusted-devices/:id`.
+
+Events: `identity.session.trusted` · `untrusted`

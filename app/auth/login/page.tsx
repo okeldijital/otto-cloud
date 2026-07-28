@@ -45,15 +45,24 @@ export default function AuthLoginPage() {
       }
 
       const result = await login(email, password, { rememberMe });
-      if (result?.requiresMfa && result.mfaToken) {
+      if (
+        (result?.nextStep === "mfa_required" || result?.requiresMfa) &&
+        result.mfaToken
+      ) {
         setMfaToken(result.mfaToken);
         return;
       }
-      if (result?.requiresPasswordChange) {
+      if (
+        result?.nextStep === "password_reset_required" ||
+        result?.requiresPasswordChange
+      ) {
         router.push("/settings/security/password");
         return;
       }
-      if (result?.requiresEmailVerification) {
+      if (
+        result?.nextStep === "email_verification_required" ||
+        result?.requiresEmailVerification
+      ) {
         router.push(`/auth/check-email?email=${encodeURIComponent(email)}`);
         return;
       }

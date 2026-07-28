@@ -1,9 +1,30 @@
-# MFA Architecture
+# MFA Architecture (A.4)
 
-Phase **A.4**. Schema ready:
+| Field | Value |
+|-------|--------|
+| ADR | [ADR-031](../product/platform/adr-031-multi-factor-authentication.md) |
 
-- `iam_mfa_credentials` (encrypted TOTP secret)  
-- `iam_recovery_codes` (hashed)  
-- `iam_trusted_devices`  
+## Services
 
-Crypto helpers: `encryptSecret` / `decryptSecret`.
+| Service | Role |
+|---------|------|
+| `MfaService` | Enroll / disable / status / admin reset |
+| `TotpService` | RFC 6238 + encrypt |
+| `RecoveryCodeService` | Generate / consume |
+| `MfaChallengeService` | Login challenge lifecycle |
+| `MfaPolicyService` | Org + platform requirements |
+| `TrustedDeviceService` | Skip MFA (A.3 foundation) |
+| `MfaRepository` | Data access |
+
+## State machine
+
+```
+Password Verified → MFA Required? → Challenge → TOTP/Recovery → Session
+```
+
+## Tables
+
+- `iam_mfa_credentials`
+- `iam_recovery_codes`
+- `iam_mfa_challenges`
+- `iam_trusted_devices`

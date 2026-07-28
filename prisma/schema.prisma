@@ -3862,6 +3862,7 @@ model IamIdentity {
   passwordCreds    IamPasswordCredential[]
   mfaCreds         IamMfaCredential[]
   recoveryCodes    IamRecoveryCode[]
+  mfaChallenges    IamMfaChallenge[]
   sessions         IamSession[]
   refreshTokens    IamRefreshToken[]
   memberships      IamOrganizationMembership[]
@@ -3948,6 +3949,31 @@ model IamMfaCredential {
 
   @@index([identityId], map: "ix_iam_mfa_credentials_identity")
   @@map("iam_mfa_credentials")
+}
+
+/// Pending MFA challenge after password success (A.4) — no session until completed
+model IamMfaChallenge {
+  id              String    @id @default(uuid()) @db.Uuid
+  identityId      String    @db.Uuid
+  /// Opaque challenge token hash
+  challengeTokenHash String @unique
+  /// pending | completed | failed | expired
+  status          String    @default("pending") @db.VarChar(32)
+  attemptCount    Int       @default(0)
+  maxAttempts     Int       @default(5)
+  rememberMe      Boolean   @default(false)
+  organizationId  String?   @db.Uuid
+  ipAddress       String?   @db.VarChar(64)
+  userAgent       String?
+  expiresAt       DateTime  @db.Timestamptz(6)
+  completedAt     DateTime? @db.Timestamptz(6)
+  createdAt       DateTime  @default(now()) @db.Timestamptz(6)
+
+  identity IamIdentity @relation(fields: [identityId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([identityId, status], map: "ix_iam_mfa_challenges_identity_status")
+  @@index([expiresAt], map: "ix_iam_mfa_challenges_expires")
+  @@map("iam_mfa_challenges")
 }
 
 model IamRecoveryCode {
@@ -4094,6 +4120,8 @@ model IamOrganization {
   slug        String   @unique @db.VarChar(128)
   /// active | suspended | archived
   status      String   @default("active") @db.VarChar(32)
+  /// disabled | optional | required_admins | required_owners | required_all
+  mfaPolicy   String   @default("optional") @db.VarChar(32)
   /// Optional bridge to legacy tenants.id
   legacyTenantId String? @unique @db.Uuid
   createdAt   DateTime @default(now()) @db.Timestamptz(6)

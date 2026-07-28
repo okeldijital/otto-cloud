@@ -44,12 +44,32 @@ export {
 } from "./lifecycle/CredentialLifecycleService";
 export type { PasswordStatusView } from "./lifecycle/CredentialLifecycleService";
 
-export { mfaService, MfaService } from "./mfa/mfa-service";
+export { mfaService, MfaService } from "./mfa/MfaService";
+export {
+  mfaChallengeService,
+  MfaChallengeService,
+} from "./mfa/MfaChallengeService";
+export { totpService, TotpService } from "./mfa/TotpService";
+export {
+  recoveryCodeService,
+  RecoveryCodeService,
+} from "./mfa/RecoveryCodeService";
+export {
+  mfaPolicyService,
+  MfaPolicyService,
+} from "./policies/MfaPolicyService";
+export { mfaRepository, MfaRepository } from "./repositories/MfaRepository";
 export {
   generateTotpSecret,
   buildOtpAuthUrl,
   verifyTotp,
 } from "./mfa/totp";
+export type {
+  MfaStatusDto,
+  MfaEnrollStartDto,
+  LoginNextStep,
+  TrustedDeviceDto,
+} from "./dto/MfaDto";
 
 export { tokenService, TokenService } from "./tokens/token-service";
 export type { AccessTokenClaims } from "./tokens/token-service";

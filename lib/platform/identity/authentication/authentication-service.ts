@@ -16,8 +16,11 @@ import { lockoutService } from "./lockout/lockout-service";
 import { rateLimitService } from "./rate-limit/rate-limit-service";
 import { sessionService, type SessionCreateResult } from "./sessions/session-service";
 import { currentIdentityService } from "./current-identity-service";
-import { mfaService } from "./mfa/mfa-service";
+import { mfaService } from "./mfa/MfaService";
+import { mfaChallengeService } from "./mfa/MfaChallengeService";
+import { mfaPolicyService } from "./policies/MfaPolicyService";
 import { credentialLifecycleService } from "./lifecycle/CredentialLifecycleService";
+import type { LoginNextStep } from "./dto/MfaDto";
 
 export type LoginResult = {
   identity: {
@@ -34,13 +37,14 @@ export type LoginResult = {
   } | null;
   permissions: string[];
   roles: string[];
+  /** Canonical login state for clients */
+  nextStep: LoginNextStep;
   requiresMfa: boolean;
-  /** Present when requiresMfa — complete with POST /api/auth/mfa/challenge */
+  challengeId?: string;
   mfaToken?: string;
-  /** Pending rememberMe when MFA still required */
+  mfaExpiresAt?: string;
   rememberMe?: boolean;
   requiresEmailVerification: boolean;
-  /** A.2 — forced reset or expired password */
   requiresPasswordChange: boolean;
   passwordChangeReason?: string | null;
   session: SessionCreateResult | null;
@@ -193,27 +197,47 @@ export class AuthenticationService {
     const passwordGate = await credentialLifecycleService.checkLoginPasswordGate(
       fresh.id
     );
+    const profile = await this.buildLoginProfile(fresh.id);
+
+    // Password change required takes priority after credentials verified
+    if (passwordGate.mustChangePassword) {
+      // Still allow MFA first if enrolled — password change needs a session
+    }
+
     const mfaEnabled = await mfaService.isEnabled(fresh.id);
+    const policyReq = await mfaPolicyService.isMfaRequiredForLogin({
+      identityId: fresh.id,
+      organizationId: profile.organization?.id,
+      roles: profile.roles,
+      mfaEnrolled: mfaEnabled,
+    });
     const trusted = mfaEnabled
       ? await mfaService.isTrustedDevice(
           fresh.id,
           params.trustedDeviceToken ?? undefined
         )
-      : true;
-    const requiresMfa = mfaEnabled && !trusted;
+      : false;
+    const requiresMfa = policyReq.required && mfaEnabled && !trusted;
 
-    const profile = await this.buildLoginProfile(fresh.id);
-
-    // MFA required — do not create session yet
+    // MFA required — do NOT create session until challenge succeeds
     if (requiresMfa) {
-      const mfaToken = mfaService.issueChallengeToken(fresh.id);
+      const challenge = await mfaChallengeService.create({
+        identityId: fresh.id,
+        rememberMe: params.rememberMe ?? false,
+        organizationId: profile.organization?.id,
+        ipAddress: params.ipAddress,
+        userAgent: params.userAgent,
+      });
       return {
         identity: profile.identity,
         organization: profile.organization,
         permissions: profile.permissions,
         roles: profile.roles,
+        nextStep: "mfa_required",
         requiresMfa: true,
-        mfaToken,
+        challengeId: challenge.challengeId,
+        mfaToken: challenge.mfaToken,
+        mfaExpiresAt: challenge.expiresAt,
         rememberMe: params.rememberMe ?? false,
         requiresEmailVerification,
         requiresPasswordChange: passwordGate.mustChangePassword,
@@ -222,8 +246,6 @@ export class AuthenticationService {
       };
     }
 
-    // Force / expired password: still create session so user can change password,
-    // but client must gate navigation until password is updated.
     const session = await sessionService.createSession({
       identityId: fresh.id,
       organizationId: profile.organization?.id ?? null,
@@ -241,14 +263,24 @@ export class AuthenticationService {
         rememberMe: params.rememberMe ?? false,
         requiresEmailVerification,
         requiresPasswordChange: passwordGate.mustChangePassword,
-        mfaUsed: mfaEnabled,
+        mfaUsed: mfaEnabled && trusted,
+        nextStep: passwordGate.mustChangePassword
+          ? "password_reset_required"
+          : requiresEmailVerification
+            ? "email_verification_required"
+            : "authenticated",
       },
       ipAddress: params.ipAddress,
       userAgent: params.userAgent,
     });
 
+    let nextStep: LoginNextStep = "authenticated";
+    if (passwordGate.mustChangePassword) nextStep = "password_reset_required";
+    else if (requiresEmailVerification) nextStep = "email_verification_required";
+
     return {
       ...profile,
+      nextStep,
       requiresMfa: false,
       requiresEmailVerification,
       requiresPasswordChange: passwordGate.mustChangePassword,
@@ -257,7 +289,7 @@ export class AuthenticationService {
     };
   }
 
-  /** Complete MFA step after password login */
+  /** Complete MFA challenge after password login — only then create session */
   async completeMfaLogin(params: {
     mfaToken: string;
     code: string;
@@ -266,29 +298,29 @@ export class AuthenticationService {
     ipAddress?: string | null;
     userAgent?: string | null;
   }): Promise<LoginResult & { trustedDeviceToken?: string }> {
-    const identityId = mfaService.verifyChallengeToken(params.mfaToken);
-    const ok = await mfaService.verifyCode({
-      identityId,
+    const verified = await mfaChallengeService.verify({
+      mfaToken: params.mfaToken,
       code: params.code,
-      allowRecovery: true,
       ipAddress: params.ipAddress,
+      userAgent: params.userAgent,
     });
-    if (!ok) {
-      throw new IdentityError("Invalid MFA code", 401, "INVALID_MFA_CODE");
-    }
 
     const identity = await prisma.iamIdentity.findUnique({
-      where: { id: identityId },
+      where: { id: verified.identityId },
     });
     if (!identity) {
       throw new IdentityError("Identity not found", 404, "IDENTITY_NOT_FOUND");
     }
 
-    const profile = await this.buildLoginProfile(identityId);
+    const profile = await this.buildLoginProfile(verified.identityId);
+    const rememberMe = params.rememberMe ?? verified.rememberMe;
+    const orgId =
+      verified.organizationId ?? profile.organization?.id ?? null;
+
     const session = await sessionService.createSession({
-      identityId,
-      organizationId: profile.organization?.id ?? null,
-      rememberMe: params.rememberMe ?? false,
+      identityId: verified.identityId,
+      organizationId: orgId,
+      rememberMe,
       ipAddress: params.ipAddress,
       userAgent: params.userAgent,
     });
@@ -296,7 +328,8 @@ export class AuthenticationService {
     let trustedDeviceToken: string | undefined;
     if (params.trustDevice) {
       const device = await mfaService.createTrustedDevice({
-        identityId,
+        identityId: verified.identityId,
+        deviceId: session.deviceId,
         userAgent: params.userAgent,
       });
       trustedDeviceToken = device.token;
@@ -304,11 +337,12 @@ export class AuthenticationService {
 
     await emitIdentityEvent({
       eventType: IDENTITY_EVENTS.LoginSuccess,
-      identityId,
-      organizationId: profile.organization?.id,
+      identityId: verified.identityId,
+      organizationId: orgId,
       payload: {
         sessionId: session.sessionId,
         mfa: true,
+        mfaMethod: verified.method,
         trustDevice: !!params.trustDevice,
       },
       ipAddress: params.ipAddress,
@@ -316,11 +350,16 @@ export class AuthenticationService {
     });
 
     const passwordGate = await credentialLifecycleService.checkLoginPasswordGate(
-      identityId
+      verified.identityId
     );
+
+    let nextStep: LoginNextStep = "authenticated";
+    if (passwordGate.mustChangePassword) nextStep = "password_reset_required";
+    else if (!identity.emailVerifiedAt) nextStep = "email_verification_required";
 
     return {
       ...profile,
+      nextStep,
       requiresMfa: false,
       requiresEmailVerification: !identity.emailVerifiedAt,
       requiresPasswordChange: passwordGate.mustChangePassword,

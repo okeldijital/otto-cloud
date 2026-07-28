@@ -92,7 +92,7 @@ async function main() {
     assert.ok(url.includes("OTTO"));
   });
 
-  await test("MFA challenge token roundtrip", () => {
+  await test("MFA legacy challenge token compat", () => {
     const token = mfaService.issueChallengeToken(
       "00000000-0000-0000-0000-000000000001"
     );

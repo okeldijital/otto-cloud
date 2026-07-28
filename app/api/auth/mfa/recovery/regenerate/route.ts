@@ -1,6 +1,6 @@
 /**
- * POST /api/auth/mfa/enroll
- * { currentPassword } — re-auth then return secret + otpauth URL
+ * POST /api/auth/mfa/recovery/regenerate
+ * { currentPassword, code }
  */
 
 import { NextResponse } from "next/server";
@@ -19,21 +19,26 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => ({}));
     const currentPassword =
       typeof body.currentPassword === "string" ? body.currentPassword : "";
-    if (!currentPassword) {
+    const code = typeof body.code === "string" ? body.code : "";
+    if (!currentPassword || !code) {
       throw new IdentityError(
-        "currentPassword required",
+        "currentPassword and code required",
         400,
         "VALIDATION_ERROR"
       );
     }
-    const result = await mfaService.beginEnrollment({
+    const codes = await mfaService.regenerateRecoveryCodes({
       identityId: ctx.identityId,
-      email: ctx.email,
       currentPassword,
+      code,
       ipAddress: clientIp(req),
       userAgent: clientUserAgent(req),
     });
-    return NextResponse.json(result);
+    return NextResponse.json({
+      recoveryCodes: codes,
+      warning:
+        "Store these recovery codes securely. Previous codes are invalidated.",
+    });
   } catch (err) {
     return identityErrorResponse(err);
   }

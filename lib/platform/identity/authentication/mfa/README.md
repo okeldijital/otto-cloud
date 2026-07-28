@@ -1,7 +1,11 @@
-# mfa/ — A.4 TOTP
+# mfa/ — A.4 TOTP Multi-Factor Authentication
 
-- `totp.ts` — RFC 6238 generate/verify  
-- `mfa-service.ts` — enroll, challenge, recovery codes, trusted devices  
+| Module | Role |
+|--------|------|
+| `MfaService.ts` | Enroll / disable / status / admin reset |
+| `TotpService.ts` | RFC 6238 + AES-GCM secrets |
+| `RecoveryCodeService.ts` | Hashed single-use codes |
+| `MfaChallengeService.ts` | Login challenge (no session until pass) |
+| `MfaPolicyService` (policies/) | Org + platform requirements |
 
-Schema: `iam_mfa_credentials`, `iam_recovery_codes`, `iam_trusted_devices`  
-Secrets encrypted with AES-GCM (`encryptSecret`).
+**Rule:** Session is not created until MFA challenge succeeds.

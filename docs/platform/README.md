@@ -82,7 +82,7 @@ Reusable projection engine extracted so modules do not own bus wiring.
 | **A.1 Authentication** | ✅ Complete | Native login/session/refresh/cookies/verify/lockout |
 | **A.2 Password** | ✅ Complete | Credential lifecycle, policy engine, session versioning |
 | **A.3 Sessions** | ✅ Complete | Registry, devices, logout-all, audit, admin console |
-| **A.4 TOTP MFA** | ✅ Complete | Enroll, challenge, recovery codes, trusted device |
+| **A.4 TOTP MFA** | ✅ Complete | Challenge-before-session, recovery, org policies, trusted skip |
 | **A.5/A.6 Org + RBAC** | ✅ Complete | Memberships, roles, permission middleware |
 | **NextAuth cutover** | ✅ Complete | Package removed; IAM cookies only |
 | A.7–A.10 | Planned | Invitations, security center polish |
@@ -97,6 +97,8 @@ Reusable projection engine extracted so modules do not own bus wiring.
 | [ADR-029 Credential Lifecycle](../product/platform/adr-029-credential-lifecycle.md) | Password mutation boundary |
 | [milestone-iam-a3-complete.md](../product/platform/milestone-iam-a3-complete.md) | A.3 session management |
 | [ADR-030 Session Lifecycle](../product/platform/adr-030-session-lifecycle.md) | Session owns tokens |
+| [milestone-iam-a4-complete.md](../product/platform/milestone-iam-a4-complete.md) | A.4 TOTP MFA |
+| [ADR-031 Multi-Factor Authentication](../product/platform/adr-031-multi-factor-authentication.md) | Factor model |
 | [milestone-iam-a2-a6-cutover.md](../product/platform/milestone-iam-a2-a6-cutover.md) | A.3–A.6 + NextAuth removal |
 | [identity-architecture.md](../architecture/identity-architecture.md) | Package layout |
 | [authentication.md](../architecture/authentication.md) | Auth stack |
