@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { recordAudit } from "@/lib/audit";
 import { logger } from "@/lib/logger";
+import { publishPlatformEvent } from "@/lib/platform/publish";
 
 export type VerificationAuditAction =
   | "field.accepted"
@@ -43,6 +44,27 @@ export async function emitVerificationAudit(params: {
     user_id: params.userId,
     organization_id: params.organizationId,
   });
+
+  if (
+    params.action === "verification.completed" ||
+    params.action === "verification.reopened"
+  ) {
+    await publishPlatformEvent({
+      eventName: params.action,
+      organizationId: params.organizationId,
+      producer: "contract-center",
+      actorUserId: params.userId,
+      entityType: params.contractId != null ? "contract" : "document",
+      entityId: params.contractId ?? params.documentId,
+      payload: {
+        contractId: params.contractId,
+        documentId: params.documentId,
+        sessionId: params.sessionId,
+        extractionId: params.extractionId,
+        ...params.changes,
+      },
+    });
+  }
 }
 
 export async function emitVerificationActivity(params: {

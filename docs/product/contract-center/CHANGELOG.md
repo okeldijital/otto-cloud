@@ -51,6 +51,24 @@ _No additional unreleased entries._
 
 ---
 
+## [Platform 4.2.0] — 2026-07-28 — Platform Event & Notification Framework
+
+Cross-module platform milestone (not Contract Center–owned). Contract Center is the **first producer**.
+
+### Added
+
+- Platform event bus: registry, store, dispatcher, subscribers, retry, DLQ, replay, metrics.
+- Notification framework: in-app notifications, preferences, reminders (schedule only).
+- APIs under `/api/platform/events`, `/api/notifications`, `/api/notification-preferences`, `/api/reminders`.
+- Contract Center dual-writes lifecycle / relationship / verified / verification / document events to the bus.
+- ADR-016, ADR-017, architecture docs, `npm run test:platform-events`, `npm run test:notifications`.
+
+### Principle
+
+Modules publish and subscribe; notifications are subscribers, not event owners. No email/SMS/push.
+
+---
+
 ## [4.1.0] — 2026-07-28 — Contract Lifecycle Management
 
 ### Added

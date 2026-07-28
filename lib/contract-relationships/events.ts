@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { recordAudit } from "@/lib/audit";
 import { logger } from "@/lib/logger";
+import { publishPlatformEvent } from "@/lib/platform/publish";
 
 export const RELATIONSHIP_EVENTS = {
   Suggested: "RelationshipSuggested",
@@ -44,6 +45,20 @@ export async function publishRelationshipEvent(params: {
 
     logger.info("contract-relationship.event", params.eventType, {
       contractId: params.contractId,
+    });
+
+    await publishPlatformEvent({
+      eventName: params.eventType,
+      organizationId: params.organizationId,
+      producer: "contract-center",
+      actorUserId: params.userId,
+      entityType: "contract",
+      entityId: params.contractId,
+      payload: {
+        contractId: params.contractId,
+        legacyEventType: params.eventType,
+        ...params.payload,
+      },
     });
   } catch (error) {
     logger.error("contract-relationship.event", "Failed to publish", {

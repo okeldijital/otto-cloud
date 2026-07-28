@@ -14,7 +14,7 @@ This roadmap is the product sequencing for Contract Center. Platform concerns (a
 | **M1** | Contract core (create, metadata, org scope, parties foundation) | In progress / parallel |
 | **M2** | Document Repository (management only) | **Complete (2.1–2.3)** |
 | **M3** | Document Intelligence → Verified Domain | **3.0–3.2 complete** |
-| **M4** | Relationships & Lifecycle | **4.0–4.1 complete** |
+| **M4** | Relationships, Lifecycle & Platform Events | **4.0–4.1 complete; 4.2 platform complete** |
 
 ---
 
@@ -184,6 +184,13 @@ Suggestions from verified contracts; human confirmation; polymorphic links to Ar
 **Status:** Implemented (2026-07-28) — see [milestone-4.1-complete.md](./milestone-4.1-complete.md)
 
 Status engine, key dates, renewals (manual), amendments, supersession, operational timeline, platform events, dashboard widgets. **No AI.** Future Notification / Calendar / Royalty / Release services consume lifecycle events.
+
+### Phase 4.2 — Platform Event & Notification Framework ✅
+
+**Status:** Implemented (2026-07-28) — **platform milestone** (not Contract Center–owned).  
+See [milestone-4.2-complete.md](../platform/milestone-4.2-complete.md).
+
+Platform event bus, registry, store, dispatcher, retry, DLQ, replay; notification framework (in-app only); reminder scheduling. Contract Center is the first producer. Future modules subscribe rather than poll.
 
 ---
 

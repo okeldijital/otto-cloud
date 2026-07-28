@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { recordAudit } from "@/lib/audit";
 import { logger } from "@/lib/logger";
+import { publishPlatformEvent } from "@/lib/platform/publish";
+
 export async function publishLifecycleEvent(params: {
   organizationId: string;
   contractId: number;
@@ -29,6 +31,21 @@ export async function publishLifecycleEvent(params: {
     }
     logger.info("contract-lifecycle.event", params.eventType, {
       contractId: params.contractId,
+    });
+
+    // Platform Event Bus (M4.2) — Contract Center is first producer
+    await publishPlatformEvent({
+      eventName: params.eventType,
+      organizationId: params.organizationId,
+      producer: "contract-center",
+      actorUserId: params.userId,
+      entityType: "contract",
+      entityId: params.contractId,
+      payload: {
+        contractId: params.contractId,
+        legacyEventType: params.eventType,
+        ...params.payload,
+      },
     });
   } catch (error) {
     logger.error("contract-lifecycle.event", "Failed to publish", {

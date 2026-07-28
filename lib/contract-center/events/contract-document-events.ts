@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { recordAudit } from "@/lib/audit";
 import { logger } from "@/lib/logger";
+import { publishPlatformEvent } from "@/lib/platform/publish";
 
 /**
  * Contract-domain events for document relationships.
@@ -69,4 +70,25 @@ export async function emitContractDocumentEvent(params: {
       error: error instanceof Error ? error.message : String(error),
     });
   }
+
+  const platformName =
+    params.event === "ContractDocumentLinked"
+      ? "contracts.document.uploaded"
+      : "contracts.document.deleted";
+
+  await publishPlatformEvent({
+    eventName: platformName,
+    organizationId: params.organizationId,
+    producer: "contract-center",
+    actorUserId: params.userId,
+    entityType: "contract",
+    entityId: params.contractId,
+    payload: {
+      contractId: params.contractId,
+      documentId: params.documentId,
+      relationshipId: params.relationshipId,
+      fileName: params.entityName,
+      ...params.changes,
+    },
+  });
 }

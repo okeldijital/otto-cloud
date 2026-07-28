@@ -2955,3 +2955,225 @@ model ContractLifecycleEvent {
   @@index([eventType], map: "ix_contract_lifecycle_events_type")
   @@map("contract_lifecycle_events")
 }
+
+// ---------------------------------------------------------------------------
+// Platform Event Bus & Notification Framework (Milestone 4.2)
+// Cross-cutting — modules publish; subscribers (e.g. notifications) consume.
+// See: docs/architecture/platform-events.md
+// ---------------------------------------------------------------------------
+
+/// Immutable platform event store. Payload never mutated after insert.
+model PlatformEvent {
+  id               String   @id @default(uuid()) @db.Uuid
+  eventName        String   @db.VarChar(128)
+  version          String   @default("1.0") @db.VarChar(16)
+  producer         String   @db.VarChar(64)
+  organizationId   String   @db.Uuid
+  payload          Json
+  metadata         Json?
+  occurredAt       DateTime @db.Timestamptz(6)
+  publishedAt      DateTime @default(now()) @db.Timestamptz(6)
+  /// pending | published | processing | delivered | partially_failed | failed | dead_letter
+  status           String   @default("pending") @db.VarChar(32)
+  retryCount       Int      @default(0)
+  correlationId    String?  @db.Uuid
+  causationId      String?  @db.Uuid
+  parentEventId    String?  @db.Uuid
+  /// Append-only processing steps (status transitions, deliveries)
+  processingHistory Json    @default("[]")
+  actorUserId      Int?
+  entityType       String?  @db.VarChar(64)
+  entityId         String?  @db.VarChar(64)
+  createdAt        DateTime @default(now()) @db.Timestamptz(6)
+
+  deliveries PlatformEventDelivery[]
+  deadLetters PlatformDeadLetter[]
+
+  @@index([organizationId, publishedAt], map: "ix_platform_events_org_published")
+  @@index([eventName], map: "ix_platform_events_name")
+  @@index([status], map: "ix_platform_events_status")
+  @@index([correlationId], map: "ix_platform_events_correlation")
+  @@index([producer], map: "ix_platform_events_producer")
+  @@map("platform_events")
+}
+
+/// Per-subscriber delivery attempts for a platform event.
+model PlatformEventDelivery {
+  id             String    @id @default(uuid()) @db.Uuid
+  eventId        String    @db.Uuid
+  subscriberId   String    @db.VarChar(128)
+  /// pending | processing | delivered | failed | skipped | dead_letter
+  status         String    @default("pending") @db.VarChar(32)
+  attempts       Int       @default(0)
+  lastError      String?
+  nextRetryAt    DateTime? @db.Timestamptz(6)
+  deliveredAt    DateTime? @db.Timestamptz(6)
+  /// Idempotency key: eventId + subscriberId (unique)
+  idempotencyKey String    @unique @db.VarChar(255)
+  createdAt      DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @db.Timestamptz(6)
+
+  event PlatformEvent @relation(fields: [eventId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([eventId], map: "ix_platform_event_deliveries_event")
+  @@index([subscriberId, status], map: "ix_platform_event_deliveries_sub_status")
+  @@index([nextRetryAt], map: "ix_platform_event_deliveries_retry")
+  @@map("platform_event_deliveries")
+}
+
+/// Dead letter queue for permanent subscriber failures.
+model PlatformDeadLetter {
+  id             String    @id @default(uuid()) @db.Uuid
+  eventId        String    @db.Uuid
+  deliveryId     String?   @db.Uuid
+  subscriberId   String    @db.VarChar(128)
+  failureReason  String
+  retryCount     Int       @default(0)
+  /// open | replayed | resolved | discarded
+  status         String    @default("open") @db.VarChar(32)
+  failedAt       DateTime  @default(now()) @db.Timestamptz(6)
+  replayedAt     DateTime? @db.Timestamptz(6)
+  resolvedAt     DateTime? @db.Timestamptz(6)
+  organizationId String    @db.Uuid
+  metadata       Json?
+
+  event PlatformEvent @relation(fields: [eventId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([organizationId, status], map: "ix_platform_dlq_org_status")
+  @@index([eventId], map: "ix_platform_dlq_event")
+  @@index([subscriberId], map: "ix_platform_dlq_subscriber")
+  @@map("platform_dead_letters")
+}
+
+/// In-app platform notification (first event bus consumer channel).
+model PlatformNotification {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @db.Uuid
+  userId         Int
+  /// Data-driven type key e.g. contracts.lifecycle.expiring
+  type           String    @db.VarChar(128)
+  title          String    @db.VarChar(255)
+  body           String?
+  link           String?   @db.VarChar(500)
+  /// unread | read | archived | dismissed
+  status         String    @default("unread") @db.VarChar(32)
+  sourceEventId  String?   @db.Uuid
+  payload        Json?
+  readAt         DateTime? @db.Timestamptz(6)
+  archivedAt     DateTime? @db.Timestamptz(6)
+  dismissedAt    DateTime? @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @db.Timestamptz(6)
+
+  deliveries PlatformNotificationDelivery[]
+  history    PlatformNotificationHistory[]
+
+  @@index([organizationId, userId, status], map: "ix_platform_notifications_user_status")
+  @@index([userId, createdAt], map: "ix_platform_notifications_user_created")
+  @@index([sourceEventId], map: "ix_platform_notifications_source_event")
+  @@index([type], map: "ix_platform_notifications_type")
+  @@map("platform_notifications")
+}
+
+model PlatformNotificationPreference {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @db.Uuid
+  userId           Int
+  notificationType String   @db.VarChar(128)
+  enabled          Boolean  @default(true)
+  /// immediate | digest | disabled
+  frequency        String   @default("immediate") @db.VarChar(32)
+  /// Future channels: { in_app: true, email: false, ... } — storage only
+  channels         Json     @default("{\"in_app\":true}")
+  createdAt        DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(6)
+
+  @@unique([organizationId, userId, notificationType], map: "uq_platform_notif_pref")
+  @@index([userId], map: "ix_platform_notif_pref_user")
+  @@map("platform_notification_preferences")
+}
+
+/// Channel delivery attempt (in_app only for 4.2; email/push later).
+model PlatformNotificationDelivery {
+  id             String    @id @default(uuid()) @db.Uuid
+  notificationId String    @db.Uuid
+  channel        String    @default("in_app") @db.VarChar(32)
+  /// pending | delivered | failed | skipped
+  status         String    @default("pending") @db.VarChar(32)
+  attemptedAt    DateTime? @db.Timestamptz(6)
+  deliveredAt    DateTime? @db.Timestamptz(6)
+  error          String?
+  createdAt      DateTime  @default(now()) @db.Timestamptz(6)
+
+  notification PlatformNotification @relation(fields: [notificationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([notificationId], map: "ix_platform_notif_delivery_notif")
+  @@map("platform_notification_deliveries")
+}
+
+model PlatformNotificationHistory {
+  id             String   @id @default(uuid()) @db.Uuid
+  notificationId String   @db.Uuid
+  action         String   @db.VarChar(64)
+  userId         Int?
+  payload        Json?
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+
+  notification PlatformNotification @relation(fields: [notificationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([notificationId], map: "ix_platform_notif_history_notif")
+  @@map("platform_notification_history")
+}
+
+/// Scheduled reminders (no external delivery in 4.2).
+model PlatformReminder {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @db.Uuid
+  userId         Int?
+  /// contract | release | work | custom
+  entityType     String?   @db.VarChar(64)
+  entityId       String?   @db.VarChar(64)
+  /// contracts.lifecycle.expiration | renewal | notice | review | custom
+  type           String    @db.VarChar(128)
+  title          String    @db.VarChar(255)
+  body           String?
+  dueAt          DateTime  @db.Timestamptz(6)
+  /// scheduled | fired | cancelled | snoozed | completed
+  status         String    @default("scheduled") @db.VarChar(32)
+  sourceEventId  String?   @db.Uuid
+  scheduleId     String?   @db.Uuid
+  payload        Json?
+  firedAt        DateTime? @db.Timestamptz(6)
+  cancelledAt    DateTime? @db.Timestamptz(6)
+  createdBy      Int?
+  createdAt      DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @db.Timestamptz(6)
+
+  @@index([organizationId, status, dueAt], map: "ix_platform_reminders_org_due")
+  @@index([entityType, entityId], map: "ix_platform_reminders_entity")
+  @@index([type], map: "ix_platform_reminders_type")
+  @@map("platform_reminders")
+}
+
+/// Recurring / offset-based reminder schedule rules.
+model PlatformReminderSchedule {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @db.Uuid
+  entityType     String    @db.VarChar(64)
+  entityId       String    @db.VarChar(64)
+  /// Key date type or event trigger
+  dateType       String    @db.VarChar(64)
+  /// Days before date (negative = after)
+  offsetDays     Int       @default(-30)
+  reminderType   String    @db.VarChar(128)
+  titleTemplate  String?   @db.VarChar(255)
+  enabled        Boolean   @default(true)
+  lastScheduledAt DateTime? @db.Timestamptz(6)
+  createdBy      Int?
+  createdAt      DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @db.Timestamptz(6)
+
+  @@index([organizationId, enabled], map: "ix_platform_reminder_schedules_org")
+  @@index([entityType, entityId], map: "ix_platform_reminder_schedules_entity")
+  @@map("platform_reminder_schedules")
+}

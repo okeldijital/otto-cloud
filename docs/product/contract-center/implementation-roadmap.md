@@ -169,3 +169,21 @@ OCR, AI, PDF viewer, parsing, search-in-document, previews, virus scan, hard del
 ### Explicitly not in 4.1
 
 Email, calendar sync, AI reminders, workflow automation, approval routing, e-sign, royalty/release automation.
+
+---
+
+## Milestone 4.2 — Platform Event & Notification Framework
+
+| Field | Value |
+|-------|--------|
+| Status | **Complete** (platform milestone) |
+| Report | [../platform/milestone-4.2-complete.md](../platform/milestone-4.2-complete.md) |
+| ADRs | [ADR-016](../platform/adr-016-platform-event-framework.md), [ADR-017](../platform/adr-017-notification-architecture.md) |
+
+- [x] Platform event bus + registry + store + dispatcher
+- [x] Subscribers, retry, DLQ, replay
+- [x] Notification + preferences + reminders (in-app)
+- [x] Contract Center publishes through platform bus
+- [x] Monitoring dashboard widgets
+- [x] Tests (`test:platform-events`, `test:notifications`)
+- [x] No email/SMS/push

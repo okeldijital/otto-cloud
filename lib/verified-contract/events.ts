@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import { recordAudit } from "@/lib/audit";
+import { publishPlatformEvent } from "@/lib/platform/publish";
 
 export const VERIFIED_CONTRACT_EVENTS = {
   Created: "VerifiedContractCreated",
@@ -14,7 +15,7 @@ export type VerifiedContractEventType =
   (typeof VERIFIED_CONTRACT_EVENTS)[keyof typeof VERIFIED_CONTRACT_EVENTS];
 
 /**
- * Publish a platform domain event (persisted log; future bus can fan-out).
+ * Publish domain event + platform event bus (M4.2).
  */
 export async function publishVerifiedContractEvent(params: {
   organizationId: string;
@@ -50,6 +51,21 @@ export async function publishVerifiedContractEvent(params: {
     logger.info("verified-contract.event", params.eventType, {
       contractId: params.contractId,
       verifiedContractId: params.verifiedContractId,
+    });
+
+    await publishPlatformEvent({
+      eventName: params.eventType,
+      organizationId: params.organizationId,
+      producer: "contract-center",
+      actorUserId: params.userId,
+      entityType: "contract",
+      entityId: params.contractId,
+      payload: {
+        contractId: params.contractId,
+        verifiedContractId: params.verifiedContractId,
+        legacyEventType: params.eventType,
+        ...params.payload,
+      },
     });
   } catch (error) {
     logger.error("verified-contract.event", "Failed to publish event", {
