@@ -4,6 +4,7 @@ import {
   orgContextErrorResponse,
   requireOrganization,
 } from "@/lib/auth/organization-context";
+import { releaseContractReadModelService } from "@/lib/release-workspace/contracts";
 
 export async function GET(req: Request) {
   try {
@@ -32,7 +33,8 @@ export async function GET(req: Request) {
       notes,
       playlists,
       networkOrgs,
-      individuals
+      individuals,
+      releaseContracts,
     ] = await Promise.all([
       prisma.artists.findMany({
         where: {
@@ -164,7 +166,12 @@ export async function GET(req: Request) {
           ]
         },
         take: 5
-      }).catch(() => [])
+      }).catch(() => []),
+
+      // Release Workspace contract projections (title, party, lifecycle, etc.)
+      releaseContractReadModelService
+        .search({ organizationId: orgId, q, limit: 8 })
+        .catch(() => []),
     ]);
 
     const results = {
@@ -182,7 +189,19 @@ export async function GET(req: Request) {
       network: [
         ...networkOrgs.map(o => ({ id: o.id, name: o.name, type: "organization", entity_type: "Network" })),
         ...individuals.map(i => ({ id: i.id, name: `${i.first_name} ${i.last_name}`, type: "individual", entity_type: "Network" }))
-      ]
+      ],
+      /** Release↔contract projections (party, lifecycle, verification, relationship type) */
+      releaseContracts: (releaseContracts as any[]).map((rc) => ({
+        id: rc.contractId,
+        releaseId: rc.releaseId,
+        title: rc.contractTitle || `Contract #${rc.contractId}`,
+        type: "release_contract",
+        lifecycleStatus: rc.lifecycleStatus,
+        healthStatus: rc.healthStatus,
+        parties: (rc.parties || []).map((p: any) => p.name).filter(Boolean),
+        href: `/catalog/releases/${rc.releaseId}/workspace`,
+        contractHref: `/contracts/${rc.contractId}`,
+      })),
     };
 
     return NextResponse.json(results);

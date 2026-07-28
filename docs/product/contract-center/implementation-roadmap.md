@@ -203,3 +203,22 @@ Email, calendar sync, AI reminders, workflow automation, approval routing, e-sig
 - [x] organizationId inject + optional timestamp defaults
 - [x] Registry JSON Schema export
 - [x] Tests (`npm run test:event-contracts`)
+
+---
+
+## Milestone 5.0 — Release Workspace Contract Integration
+
+| Field | Value |
+|-------|--------|
+| Status | **Complete** |
+| Report | [../release-workspace/milestone-5.0-complete.md](../release-workspace/milestone-5.0-complete.md) |
+| ADR | [ADR-018](../release-workspace/adr-018-release-contract-integration.md) |
+
+- [x] Read model projections (no SoT duplication)
+- [x] Relationship + lifecycle + verified consumption
+- [x] Platform event subscriber + replay rebuild
+- [x] Health derivation, unified timeline
+- [x] Read-only APIs + Contracts workspace section
+- [x] Dashboard widgets + search
+- [x] Tests (`npm run test:release-contracts`)
+- [x] No write / royalty / AI

@@ -3177,3 +3177,75 @@ model PlatformReminderSchedule {
   @@index([entityType, entityId], map: "ix_platform_reminder_schedules_entity")
   @@map("platform_reminder_schedules")
 }
+
+// ---------------------------------------------------------------------------
+// Release Workspace — Contract Integration Read Model (Milestone 5.0)
+// Projection only. Contract Center remains source of truth.
+// See: docs/product/release-workspace/adr-018-release-contract-integration.md
+// ---------------------------------------------------------------------------
+
+/// One projected row per release↔contract relationship (read model).
+model ReleaseContractSummary {
+  id                 String    @id @default(uuid()) @db.Uuid
+  organizationId     String    @db.Uuid
+  releaseId          Int
+  contractId         Int
+  relationshipId     String?   @db.Uuid
+  relationshipType   String?   @db.VarChar(64)
+  /// Snapshot fields from verified / lifecycle (not source of ownership)
+  contractTitle      String?
+  verifiedContractId String?   @db.Uuid
+  verifiedVersion    Int?
+  verificationStatus String?   @db.VarChar(32)
+  lifecycleStatus    String?   @db.VarChar(32)
+  contractStatus     String?   @db.VarChar(32)
+  effectiveDate      DateTime? @db.Date
+  expirationDate     DateTime? @db.Date
+  renewalDate        DateTime? @db.Date
+  noticeDeadline     DateTime? @db.Date
+  lastVerifiedAt     DateTime? @db.Timestamptz(6)
+  partiesJson        Json      @default("[]")
+  territoriesJson    Json      @default("[]")
+  rightsSummary      String?
+  relationshipCount  Int       @default(0)
+  amendmentCount     Int       @default(0)
+  /// healthy | warning | critical — derived at sync time (recomputable)
+  healthStatus       String    @default("warning") @db.VarChar(16)
+  healthReasons      Json      @default("[]")
+  sourceEventId      String?   @db.Uuid
+  projectedAt        DateTime  @default(now()) @db.Timestamptz(6)
+  createdAt          DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt          DateTime  @updatedAt @db.Timestamptz(6)
+
+  @@unique([releaseId, contractId], map: "uq_release_contract_summary")
+  @@index([organizationId], map: "ix_release_contract_summary_org")
+  @@index([releaseId], map: "ix_release_contract_summary_release")
+  @@index([contractId], map: "ix_release_contract_summary_contract")
+  @@index([lifecycleStatus], map: "ix_release_contract_summary_lifecycle")
+  @@index([healthStatus], map: "ix_release_contract_summary_health")
+  @@index([expirationDate], map: "ix_release_contract_summary_expiration")
+  @@map("release_contract_summaries")
+}
+
+/// Release-scoped unified timeline of contract-related operational events.
+model ReleaseContractTimelineEntry {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  releaseId      Int
+  contractId     Int?
+  /// release | lifecycle | relationship | verification | document | amendment | system
+  entryType      String   @db.VarChar(64)
+  title          String   @db.VarChar(255)
+  description    String?
+  sourceEventId  String?  @db.Uuid
+  sourceEventName String? @db.VarChar(128)
+  payload        Json?
+  occurredAt     DateTime @db.Timestamptz(6)
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([releaseId, occurredAt], map: "ix_release_contract_timeline_release")
+  @@index([organizationId], map: "ix_release_contract_timeline_org")
+  @@index([contractId], map: "ix_release_contract_timeline_contract")
+  @@index([sourceEventId], map: "ix_release_contract_timeline_source")
+  @@map("release_contract_timeline_entries")
+}

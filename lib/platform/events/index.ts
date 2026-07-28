@@ -83,4 +83,8 @@ export async function bootstrapPlatformEvents(): Promise<void> {
   );
   registerNotificationSubscriber();
   registerReminderSubscriber();
+  const { registerReleaseContractSubscriber } = await import(
+    "@/lib/release-workspace/contracts/event-subscriber"
+  );
+  registerReleaseContractSubscriber();
 }

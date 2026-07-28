@@ -6,6 +6,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import api from "@/lib/api";
 import LifecycleDashboardWidgets from "@/components/contracts/lifecycle/LifecycleDashboardWidgets";
 import PlatformEventsDashboard from "@/components/platform/PlatformEventsDashboard";
+import ReleaseContractDashboardWidgets from "@/components/release-workspace/ReleaseContractDashboardWidgets";
 
 const PIE_COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4"];
 
@@ -90,6 +91,8 @@ export default function DashboardPage() {
       <LifecycleDashboardWidgets />
 
       <PlatformEventsDashboard />
+
+      <ReleaseContractDashboardWidgets />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ChartCard title="Catalog Overview">

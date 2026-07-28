@@ -25,6 +25,20 @@ Cross-cutting infrastructure concerns that must **not** be solved inside a singl
 **Package:** `lib/platform/events`, `lib/platform/notifications`  
 **Tests:** `npm run test:platform-events` · `npm run test:event-contracts` · `npm run test:notifications`
 
+## Milestone 5.0 — Release Workspace Contract Integration ✅
+
+First business module consuming Verified Contract, Relationships, Lifecycle, Events.
+
+| Document | Purpose |
+|----------|---------|
+| [ADR-018](../product/release-workspace/adr-018-release-contract-integration.md) | Ownership boundaries |
+| [milestone-5.0-complete.md](../product/release-workspace/milestone-5.0-complete.md) | Completion |
+| [release-contract-integration.md](../architecture/release-contract-integration.md) | Integration architecture |
+| [release-read-model.md](../architecture/release-read-model.md) | Projection model |
+
+**Package:** `lib/release-workspace/contracts`  
+**Tests:** `npm run test:release-contracts`
+
 ## Migration & decommission
 
 | Document | Purpose |

@@ -414,6 +414,39 @@ export const PLATFORM_EVENT_DEFINITIONS: EventDefinition[] = [
     idempotencyStrategy: "event_subscriber",
     retentionPolicy: "90d",
   },
+
+  // ── Release Workspace (consumer-owned events) ──────────────────────────
+  {
+    name: "release.contract.summary.updated",
+    version: V,
+    producer: "release-workspace",
+    description: "Release contract projection summary was updated",
+    contract: contract(V, {
+      organizationId: required(f.uuid()),
+      releaseId: required(f.number()),
+      contractCount: f.integer(),
+      healthStatus: f.string(),
+    }),
+    consumers: ["notifications"],
+    idempotencyStrategy: "event_subscriber",
+    retentionPolicy: "90d",
+  },
+  {
+    name: "release.health.changed",
+    version: V,
+    producer: "release-workspace",
+    description: "Aggregate release contract health changed",
+    contract: contract(V, {
+      organizationId: required(f.uuid()),
+      releaseId: required(f.number()),
+      from: f.string(),
+      to: required(f.string()),
+      reasons: f.array(),
+    }),
+    consumers: ["notifications"],
+    idempotencyStrategy: "event_subscriber",
+    retentionPolicy: "90d",
+  },
 ];
 
 /** Map legacy PascalCase / module-local event types → platform names */

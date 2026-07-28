@@ -51,6 +51,24 @@ _No additional unreleased entries._
 
 ---
 
+## [Release Workspace 5.0.0] — 2026-07-28 — Contract Integration Foundation
+
+First platform consumer. Contract Center ownership unchanged.
+
+### Added
+
+- Release contract read model (`ReleaseContractSummary`, timeline projections).
+- Read APIs under `/api/releases/:id/contracts/*` + dashboard.
+- Event subscriber for `contracts.*` → projection rebuild.
+- Workspace Contracts section + search integration.
+- ADR-018, release-contract-integration docs, `npm run test:release-contracts`.
+
+### Principle
+
+Release Workspace owns projections and UX only — never contract source of truth.
+
+---
+
 ## [Platform 4.2.1] — 2026-07-28 — Event Contracts & Schema Validation (4.2A)
 
 ### Added
