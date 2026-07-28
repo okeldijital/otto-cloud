@@ -1,11 +1,12 @@
-# sessions/ — SessionService (A.1)
+# sessions/ — A.3 Session Management
 
-Server-side session + refresh token rotation.
+| Module | Role |
+|--------|------|
+| `SessionService.ts` | Lifecycle: create / refresh / revoke / logout-all |
+| `SessionPolicyService` (policies/) | Central timeouts & limits |
+| `SessionAuditService.ts` | Audit + activity |
+| `SessionCleanupService.ts` | Expire / archive / purge |
+| `DeviceService.ts` | UA parse + device registry |
+| `TrustedDeviceService.ts` | Trust foundation (A.4) |
 
-```
-Identity → Session → Refresh Token → Access Token (short-lived)
-```
-
-- Schema: `iam_sessions`, `iam_refresh_tokens`
-- Policy: `getPlatformConfig().security.session`
-- Reuse of a rotated refresh token revokes the entire session
+Model: **Session owns tokens** — never create orphan refresh tokens.

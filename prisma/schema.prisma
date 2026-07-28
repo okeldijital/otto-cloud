@@ -3866,11 +3866,13 @@ model IamIdentity {
   refreshTokens    IamRefreshToken[]
   memberships      IamOrganizationMembership[]
   trustedDevices   IamTrustedDevice[]
+  devices          IamDevice[]
   loginAttempts    IamLoginAttempt[]
   securityEvents   IamSecurityEvent[]
   passwordResets   IamPasswordResetToken[]
   emailVerifications IamEmailVerificationToken[]
   passwordHistory  IamPasswordHistory[]
+  sessionAudits    IamSessionAudit[]
   invitationsSent  IamInvitation[] @relation("IamInvitationInviter")
 
   @@index([status], map: "ix_iam_identities_status")
@@ -3962,27 +3964,108 @@ model IamRecoveryCode {
   @@map("iam_recovery_codes")
 }
 
+/// Normalized device fingerprint for a session (A.3)
+model IamDevice {
+  id             String    @id @default(uuid()) @db.Uuid
+  identityId     String    @db.Uuid
+  /// Display name e.g. "Chrome on macOS"
+  name           String?   @db.VarChar(255)
+  browser        String?   @db.VarChar(128)
+  os             String?   @db.VarChar(128)
+  platform       String?   @db.VarChar(64)
+  /// desktop | mobile | tablet | unknown
+  deviceType     String    @default("unknown") @db.VarChar(32)
+  userAgent      String?
+  firstSeenAt    DateTime  @default(now()) @db.Timestamptz(6)
+  lastSeenAt     DateTime  @default(now()) @db.Timestamptz(6)
+  /// Fingerprint key from UA + coarse signals (not invasive)
+  fingerprintKey String?   @db.VarChar(128)
+  createdAt      DateTime  @default(now()) @db.Timestamptz(6)
+
+  identity       IamIdentity        @relation(fields: [identityId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  sessions       IamSession[]
+  trustedDevices IamTrustedDevice[]
+
+  @@index([identityId], map: "ix_iam_devices_identity")
+  @@index([fingerprintKey], map: "ix_iam_devices_fingerprint")
+  @@map("iam_devices")
+}
+
 model IamSession {
   id               String    @id @default(uuid()) @db.Uuid
   identityId       String    @db.Uuid
+  deviceId         String?   @db.Uuid
   /// Opaque session id for cookie
   sessionTokenHash String    @unique
   userAgent        String?
   deviceLabel      String?   @db.VarChar(255)
   ipAddress        String?   @db.VarChar(64)
+  /// browser / os denormalized for list queries
+  browser          String?   @db.VarChar(128)
+  os               String?   @db.VarChar(128)
+  platform         String?   @db.VarChar(64)
+  deviceType       String?   @db.VarChar(32)
   lastActivityAt   DateTime  @default(now()) @db.Timestamptz(6)
+  /// Idle-bound or absolute bound (whichever sooner)
   expiresAt        DateTime  @db.Timestamptz(6)
+  /// Absolute max lifetime from creation
+  absoluteExpiresAt DateTime? @db.Timestamptz(6)
   revokedAt        DateTime? @db.Timestamptz(6)
   revokeReason     String?   @db.VarChar(128)
+  archivedAt       DateTime? @db.Timestamptz(6)
   rememberMe       Boolean   @default(false)
+  /// login | refresh | admin | system
+  creationSource   String    @default("login") @db.VarChar(32)
+  /// LOW | MEDIUM | HIGH | UNKNOWN — extension point for A.4+ risk (not scored yet)
+  riskLevel        String    @default("UNKNOWN") @db.VarChar(16)
   createdAt        DateTime  @default(now()) @db.Timestamptz(6)
 
   identity      IamIdentity       @relation(fields: [identityId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  device        IamDevice?        @relation(fields: [deviceId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   refreshTokens IamRefreshToken[]
+  audits        IamSessionAudit[]
+  activities    IamSessionActivity[]
 
   @@index([identityId], map: "ix_iam_sessions_identity")
   @@index([expiresAt], map: "ix_iam_sessions_expires")
+  @@index([deviceId], map: "ix_iam_sessions_device")
+  @@index([riskLevel], map: "ix_iam_sessions_risk")
   @@map("iam_sessions")
+}
+
+model IamSessionAudit {
+  id         String   @id @default(uuid()) @db.Uuid
+  sessionId  String?  @db.Uuid
+  identityId String   @db.Uuid
+  /// created | refreshed | revoked | expired | logout_all | idle_timeout | activity | device_registered
+  action     String   @db.VarChar(64)
+  ipAddress  String?  @db.VarChar(64)
+  userAgent  String?
+  payload    Json     @default("{}")
+  createdAt  DateTime @default(now()) @db.Timestamptz(6)
+
+  session  IamSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  identity IamIdentity @relation(fields: [identityId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([sessionId, createdAt], map: "ix_iam_session_audit_session")
+  @@index([identityId, createdAt], map: "ix_iam_session_audit_identity")
+  @@index([action], map: "ix_iam_session_audit_action")
+  @@map("iam_session_audit")
+}
+
+model IamSessionActivity {
+  id        String   @id @default(uuid()) @db.Uuid
+  sessionId String   @db.Uuid
+  /// heartbeat | refresh | api | login
+  kind      String   @default("heartbeat") @db.VarChar(32)
+  ipAddress String?  @db.VarChar(64)
+  path      String?  @db.VarChar(512)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+
+  session IamSession @relation(fields: [sessionId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([sessionId, createdAt], map: "ix_iam_session_activity_session")
+  @@map("iam_session_activity")
 }
 
 model IamRefreshToken {
@@ -4130,19 +4213,26 @@ model IamLoginAttempt {
 }
 
 model IamTrustedDevice {
-  id           String    @id @default(uuid()) @db.Uuid
-  identityId   String    @db.Uuid
-  deviceTokenHash String @unique
-  label        String?   @db.VarChar(255)
-  userAgent    String?
-  lastUsedAt   DateTime? @db.Timestamptz(6)
-  expiresAt    DateTime  @db.Timestamptz(6)
-  revokedAt    DateTime? @db.Timestamptz(6)
-  createdAt    DateTime  @default(now()) @db.Timestamptz(6)
+  id              String    @id @default(uuid()) @db.Uuid
+  identityId      String    @db.Uuid
+  deviceId        String?   @db.Uuid
+  deviceTokenHash String    @unique
+  label           String?   @db.VarChar(255)
+  userAgent       String?
+  /// Foundation for A.4 MFA trust — not activated for auth yet
+  trusted         Boolean   @default(true)
+  trustedAt       DateTime? @db.Timestamptz(6)
+  trustedUntil    DateTime? @db.Timestamptz(6)
+  lastUsedAt      DateTime? @db.Timestamptz(6)
+  expiresAt       DateTime  @db.Timestamptz(6)
+  revokedAt       DateTime? @db.Timestamptz(6)
+  createdAt       DateTime  @default(now()) @db.Timestamptz(6)
 
   identity IamIdentity @relation(fields: [identityId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  device   IamDevice?  @relation(fields: [deviceId], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
   @@index([identityId], map: "ix_iam_trusted_devices_identity")
+  @@index([deviceId], map: "ix_iam_trusted_devices_device")
   @@map("iam_trusted_devices")
 }
 

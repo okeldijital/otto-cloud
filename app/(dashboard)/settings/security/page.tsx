@@ -4,21 +4,9 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 
-type SessionRow = {
-  id: string;
-  userAgent: string | null;
-  ipAddress: string | null;
-  lastActivityAt: string;
-  expiresAt: string;
-  current: boolean;
-  active: boolean;
-  rememberMe: boolean;
-};
-
 export default function SecuritySettingsPage() {
   const { isAuthenticated, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [mfaEnabled, setMfaEnabled] = useState(false);
   const [otpauthUrl, setOtpauthUrl] = useState<string | null>(null);
   const [secret, setSecret] = useState<string | null>(null);
@@ -28,14 +16,9 @@ export default function SecuritySettingsPage() {
   const [error, setError] = useState("");
 
   const load = async () => {
-    const [sRes, mRes] = await Promise.all([
-      fetch("/api/auth/sessions", { credentials: "include" }),
-      fetch("/api/auth/mfa/status", { credentials: "include" }),
-    ]);
-    if (sRes.ok) {
-      const data = await sRes.json();
-      setSessions(data.sessions || []);
-    }
+    const mRes = await fetch("/api/auth/mfa/status", {
+      credentials: "include",
+    });
     if (mRes.ok) {
       const data = await mRes.json();
       setMfaEnabled(!!data.enabled);
@@ -49,24 +32,6 @@ export default function SecuritySettingsPage() {
     }
     if (isAuthenticated) load();
   }, [isAuthenticated, authLoading, router]);
-
-  const revoke = async (id: string) => {
-    await fetch(`/api/auth/sessions/${id}`, {
-      method: "DELETE",
-      credentials: "include",
-    });
-    await load();
-  };
-
-  const revokeOthers = async () => {
-    await fetch("/api/auth/sessions", {
-      method: "DELETE",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ all: false }),
-    });
-    await load();
-  };
 
   const beginMfa = async () => {
     setError("");
@@ -202,42 +167,16 @@ export default function SecuritySettingsPage() {
       </section>
 
       <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Active sessions</h2>
-          <button
-            onClick={revokeOthers}
-            className="text-sm text-white/60 underline"
-          >
-            Sign out other sessions
-          </button>
-        </div>
-        <ul className="space-y-2">
-          {sessions.map((s) => (
-            <li
-              key={s.id}
-              className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10 text-sm"
-            >
-              <div>
-                <div>
-                  {s.current ? "This device" : s.userAgent || "Unknown device"}
-                  {s.rememberMe ? " · remembered" : ""}
-                </div>
-                <div className="text-white/40 text-xs">
-                  {s.ipAddress || "—"} · last active{" "}
-                  {new Date(s.lastActivityAt).toLocaleString()}
-                </div>
-              </div>
-              {!s.current && s.active && (
-                <button
-                  onClick={() => revoke(s.id)}
-                  className="text-danger text-xs underline"
-                >
-                  Revoke
-                </button>
-              )}
-            </li>
-          ))}
-        </ul>
+        <h2 className="text-lg font-semibold">Sessions & devices</h2>
+        <p className="text-sm text-white/60">
+          View active sessions, devices, and sign out remotely.
+        </p>
+        <a
+          href="/settings/security/sessions"
+          className="inline-block px-4 py-2 rounded-lg bg-accent font-medium"
+        >
+          Manage sessions
+        </a>
       </section>
     </div>
   );

@@ -297,7 +297,7 @@ Email, calendar sync, AI reminders, workflow automation, approval routing, e-sig
 - [x] ADR-028 Authentication Strategy (no NextAuth for A.1)
 - [x] A.1 Native login/logout/session/refresh/cookies/email verify/lockout
 - [x] A.2 Password management
-- [x] A.3 Session management
+- [x] A.3 Session management (registry, devices, logout-all, audit, admin)
 - [x] A.4 TOTP MFA
 - [x] A.5/A.6 Org membership & RBAC
 - [x] NextAuth cutover (package removed)

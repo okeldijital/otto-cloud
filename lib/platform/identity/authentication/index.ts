@@ -56,11 +56,46 @@ export type { AccessTokenClaims } from "./tokens/token-service";
 
 export { cookieService, CookieService } from "./cookies/cookie-service";
 
-export { sessionService, SessionService } from "./sessions/session-service";
+export { sessionService, SessionService } from "./sessions/SessionService";
 export type {
   SessionCreateResult,
   RefreshResult,
-} from "./sessions/session-service";
+} from "./sessions/SessionService";
+export {
+  sessionPolicyService,
+  SessionPolicyService,
+} from "./policies/SessionPolicyService";
+export {
+  sessionRepository,
+  SessionRepository,
+} from "./repositories/SessionRepository";
+export {
+  sessionAuditService,
+  SessionAuditService,
+} from "./sessions/SessionAuditService";
+export {
+  sessionCleanupService,
+  SessionCleanupService,
+} from "./sessions/SessionCleanupService";
+export {
+  deviceService,
+  DeviceService,
+  parseUserAgent,
+} from "./sessions/DeviceService";
+export {
+  trustedDeviceService,
+  TrustedDeviceService,
+} from "./sessions/TrustedDeviceService";
+export type {
+  SessionListItemDto,
+  SessionDetailDto,
+  AuthenticationContextDto,
+} from "./dto/SessionDto";
+export {
+  buildAuthenticationContext,
+  requireAuthenticationContext,
+} from "./context/AuthenticationContext";
+export type { AuthenticationContext } from "./context/AuthenticationContext";
 
 export {
   lockoutService,
