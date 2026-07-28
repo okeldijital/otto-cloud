@@ -63,6 +63,16 @@ Reusable projection engine extracted so modules do not own bus wiring.
 **Package:** `lib/rights`  
 **Tests:** `npm run test:rights`
 
+## Milestone 7.0 — Royalty Entitlement Foundation ✅
+
+| Document | Purpose |
+|----------|---------|
+| [ADR-021](../product/royalties/adr-021-royalty-entitlement-domain.md) | Decision |
+| [milestone-7.0-complete.md](../product/royalties/milestone-7.0-complete.md) | Completion |
+
+**Package:** `lib/royalties`  
+**Tests:** `npm run test:royalty-entitlements`
+
 ## Migration & decommission
 
 | Document | Purpose |

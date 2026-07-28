@@ -17,6 +17,7 @@ This roadmap is the product sequencing for Contract Center. Platform concerns (a
 | **M4** | Relationships, Lifecycle & Platform Events | **4.0–4.1 complete; 4.2 / 4.2A platform complete** |
 | **M5** | Release Workspace Contract Integration | **5.0 complete** |
 | **M6** | Rights Management Foundation | **6.0 complete** |
+| **M7** | Royalty Entitlement Foundation | **7.0 complete** |
 
 ---
 
@@ -213,6 +214,16 @@ Release Workspace consumes Verified Contract, Relationships, Lifecycle, and Plat
 **Status:** Implemented (2026-07-28) — see [milestone-6.0-complete.md](../rights/milestone-6.0-complete.md).
 
 Operational rights derived from verified contracts with human review. Royalties and finance must consume Rights, not parse contracts.
+
+---
+
+## Milestone 7 — Royalty Engine
+
+### Phase 7.0 — Entitlement Foundation ✅
+
+**Status:** Implemented (2026-07-28) — see [milestone-7.0-complete.md](../royalties/milestone-7.0-complete.md).
+
+Financial participation layer from approved Rights. No calculations, usage, or payments in this milestone.
 
 ---
 

@@ -51,6 +51,22 @@ _No additional unreleased entries._
 
 ---
 
+## [Royalties 7.0.0] — 2026-07-28 — Royalty Entitlement Foundation
+
+### Added
+
+- Royalty Entitlement domain: registry, promotion from approved Rights, human review, allocation/split/ownership models.
+- Platform events `royalties.entitlement.*`.
+- APIs under `/api/royalties/entitlements/*`, review/promote/replay/dashboard.
+- UI: `/royalties/entitlements`, `/royalties/review`.
+- ADR-021, architecture docs, `npm run test:royalty-entitlements`.
+
+### Principle
+
+Entitlements define financial participation. Calculations must never interpret contracts or rights directly.
+
+---
+
 ## [Rights 6.0.0] — 2026-07-28 — Rights Management Foundation
 
 ### Added

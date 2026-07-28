@@ -3574,3 +3574,257 @@ model RightDomainEvent {
   @@index([eventType], map: "ix_right_domain_events_type")
   @@map("right_domain_events")
 }
+
+// ---------------------------------------------------------------------------
+// Royalty Entitlement Domain (Milestone 7.0)
+// Financial participation derived from approved Rights — not calculations.
+// See: docs/product/royalties/adr-021-royalty-entitlement-domain.md
+// ---------------------------------------------------------------------------
+
+model RoyaltyEntitlement {
+  id                 String    @id @default(uuid()) @db.Uuid
+  organizationId     String    @db.Uuid
+  title              String    @db.VarChar(255)
+  /// master | publishing | mechanical | performance | neighboring | sync | distribution | administration | streaming | custom
+  revenueCategory    String    @db.VarChar(64)
+  description        String?
+  /// candidate | pending_review | approved | active | suspended | expired | superseded | terminated | archived
+  status             String    @default("candidate") @db.VarChar(32)
+  previousStatus     String?   @db.VarChar(32)
+  statusChangedAt    DateTime? @db.Timestamptz(6)
+  statusChangedBy    Int?
+  version            Int       @default(1)
+  isCurrent          Boolean   @default(true)
+  /// Provenance (mandatory for approved)
+  rightId            String    @db.Uuid
+  rightVersion       Int?
+  contractId         Int?
+  verifiedContractId String?   @db.Uuid
+  verifiedVersion    Int?
+  promotionManifestId String?  @db.Uuid
+  candidateId        String?   @db.Uuid
+  effectiveDate      DateTime? @db.Date
+  expirationDate     DateTime? @db.Date
+  suspensionDate     DateTime? @db.Date
+  terminationDate    DateTime? @db.Date
+  renewalDate        DateTime? @db.Date
+  reviewedBy         Int?
+  reviewedAt         DateTime? @db.Timestamptz(6)
+  approvedBy         Int?
+  approvedAt         DateTime? @db.Timestamptz(6)
+  provenance         Json      @default("{}")
+  createdBy          Int?
+  createdAt          DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt          DateTime  @updatedAt @db.Timestamptz(6)
+
+  allocations   RoyaltyAllocation[]
+  beneficiaries RoyaltyBeneficiary[]
+  restrictions  EntitlementRestriction[]
+  ownership     RoyaltyOwnership[]
+  history       EntitlementHistory[]
+  timeline      EntitlementTimelineEntry[]
+
+  @@index([organizationId, status], map: "ix_royalty_entitlements_org_status")
+  @@index([rightId], map: "ix_royalty_entitlements_right")
+  @@index([revenueCategory], map: "ix_royalty_entitlements_category")
+  @@index([expirationDate], map: "ix_royalty_entitlements_expiration")
+  @@map("royalty_entitlements")
+}
+
+model RoyaltyAllocation {
+  id             String   @id @default(uuid()) @db.Uuid
+  entitlementId  String   @db.Uuid
+  organizationId String   @db.Uuid
+  /// percentage | fixed | priority | residual | pass_through | holdback | reserved | custom
+  allocationType String   @db.VarChar(32)
+  /// equal | fractional | weighted | priority | residual | nested | custom
+  splitType      String   @default("fractional") @db.VarChar(32)
+  percentage     Float?
+  fixedAmount    Float?
+  priority       Int?
+  currency       String?  @db.VarChar(8)
+  notes          String?
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @db.Timestamptz(6)
+
+  entitlement RoyaltyEntitlement @relation(fields: [entitlementId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  shares      RevenueShare[]
+
+  @@index([entitlementId], map: "ix_royalty_allocations_entitlement")
+  @@map("royalty_allocations")
+}
+
+model RevenueShare {
+  id             String   @id @default(uuid()) @db.Uuid
+  allocationId   String   @db.Uuid
+  organizationId String   @db.Uuid
+  beneficiaryId  String?  @db.Uuid
+  beneficiaryName String
+  /// percentage of allocation or absolute share
+  sharePercent   Float?
+  shareWeight    Float?
+  fixedAmount    Float?
+  sortOrder      Int      @default(0)
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+
+  allocation RoyaltyAllocation @relation(fields: [allocationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([allocationId], map: "ix_revenue_shares_allocation")
+  @@map("revenue_shares")
+}
+
+model RoyaltyBeneficiary {
+  id             String   @id @default(uuid()) @db.Uuid
+  entitlementId  String   @db.Uuid
+  organizationId String   @db.Uuid
+  /// organization | label | publisher | artist | individual | collection_society | estate | custom
+  beneficiaryType String  @db.VarChar(32)
+  beneficiaryEntityId String? @db.VarChar(64)
+  name           String
+  role           String   @default("beneficiary") @db.VarChar(64)
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+
+  entitlement RoyaltyEntitlement @relation(fields: [entitlementId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([entitlementId], map: "ix_royalty_beneficiaries_entitlement")
+  @@map("royalty_beneficiaries")
+}
+
+model RoyaltyOwnership {
+  id             String    @id @default(uuid()) @db.Uuid
+  entitlementId  String    @db.Uuid
+  organizationId String    @db.Uuid
+  /// owner | beneficiary | controller | administrator
+  role           String    @db.VarChar(32)
+  partyType      String?   @db.VarChar(32)
+  partyEntityId  String?   @db.VarChar(64)
+  name           String
+  effectiveDate  DateTime? @db.Date
+  endDate        DateTime? @db.Date
+  reason         String?
+  version        Int       @default(1)
+  createdAt      DateTime  @default(now()) @db.Timestamptz(6)
+
+  entitlement RoyaltyEntitlement @relation(fields: [entitlementId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([entitlementId], map: "ix_royalty_ownership_entitlement")
+  @@map("royalty_ownership")
+}
+
+model EntitlementRestriction {
+  id             String    @id @default(uuid()) @db.Uuid
+  entitlementId  String    @db.Uuid
+  organizationId String    @db.Uuid
+  /// territory | platform | dsp | media | language | usage | device | commercial | promotional | windowing | custom
+  restrictionType String   @db.VarChar(64)
+  value          String
+  description    String?
+  effectiveDate  DateTime? @db.Date
+  expirationDate DateTime? @db.Date
+  createdAt      DateTime  @default(now()) @db.Timestamptz(6)
+
+  entitlement RoyaltyEntitlement @relation(fields: [entitlementId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([entitlementId], map: "ix_entitlement_restrictions_entitlement")
+  @@map("entitlement_restrictions")
+}
+
+model EntitlementCandidate {
+  id                 String    @id @default(uuid()) @db.Uuid
+  organizationId     String    @db.Uuid
+  promotionManifestId String   @db.Uuid
+  rightId            String    @db.Uuid
+  rightVersion       Int?
+  contractId         Int?
+  verifiedContractId String?
+  verifiedVersion    Int?
+  revenueCategory    String    @db.VarChar(64)
+  title              String    @db.VarChar(255)
+  description        String?
+  proposedPayload    Json
+  /// pending | approved | rejected | merged | split
+  status             String    @default("pending") @db.VarChar(32)
+  decisionNotes      String?
+  decidedBy          Int?
+  decidedAt          DateTime? @db.Timestamptz(6)
+  resultingEntitlementId String? @db.Uuid
+  createdAt          DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt          DateTime  @updatedAt @db.Timestamptz(6)
+
+  manifest EntitlementPromotionManifest @relation(fields: [promotionManifestId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([organizationId, status], map: "ix_entitlement_candidates_org_status")
+  @@index([rightId], map: "ix_entitlement_candidates_right")
+  @@index([promotionManifestId], map: "ix_entitlement_candidates_manifest")
+  @@map("entitlement_candidates")
+}
+
+model EntitlementPromotionManifest {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @db.Uuid
+  rightId        String    @db.Uuid
+  rightVersion   Int?
+  contractId     Int?
+  verifiedContractId String?
+  verifiedVersion Int?
+  /// running | completed | failed
+  status         String    @default("running") @db.VarChar(32)
+  candidateCount Int       @default(0)
+  error          String?
+  createdBy      Int?
+  completedAt    DateTime? @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @db.Timestamptz(6)
+
+  candidates EntitlementCandidate[]
+
+  @@index([organizationId], map: "ix_entitlement_manifests_org")
+  @@index([rightId], map: "ix_entitlement_manifests_right")
+  @@map("entitlement_promotion_manifests")
+}
+
+model EntitlementHistory {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  entitlementId  String   @db.Uuid
+  action         String   @db.VarChar(64)
+  actorUserId    Int?
+  payload        Json?
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+
+  entitlement RoyaltyEntitlement @relation(fields: [entitlementId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([entitlementId], map: "ix_entitlement_history_entitlement")
+  @@map("entitlement_history")
+}
+
+model EntitlementTimelineEntry {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  entitlementId  String   @db.Uuid
+  entryType      String   @db.VarChar(64)
+  title          String   @db.VarChar(255)
+  description    String?
+  actorUserId    Int?
+  payload        Json?
+  occurredAt     DateTime @default(now()) @db.Timestamptz(6)
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+
+  entitlement RoyaltyEntitlement @relation(fields: [entitlementId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([entitlementId, occurredAt], map: "ix_entitlement_timeline_entitlement")
+  @@map("entitlement_timeline_entries")
+}
+
+model RoyaltyEntitlementEvent {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  entitlementId  String?
+  eventType      String   @db.VarChar(64)
+  payload        Json
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([organizationId], map: "ix_royalty_entitlement_events_org")
+  @@index([entitlementId], map: "ix_royalty_entitlement_events_entitlement")
+  @@index([eventType], map: "ix_royalty_entitlement_events_type")
+  @@map("royalty_entitlement_events")
+}

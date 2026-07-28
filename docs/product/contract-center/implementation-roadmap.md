@@ -256,3 +256,21 @@ Email, calendar sync, AI reminders, workflow automation, approval routing, e-sig
 - [x] Search + dashboard + APIs + UI
 - [x] Tests (`npm run test:rights`)
 - [x] No royalties / payments / AI
+
+---
+
+## Milestone 7.0 — Royalty Entitlement Foundation
+
+| Field | Value |
+|-------|--------|
+| Status | **Complete** |
+| ADR | [ADR-021](../royalties/adr-021-royalty-entitlement-domain.md) |
+| Report | [milestone-7.0-complete.md](../royalties/milestone-7.0-complete.md) |
+
+- [x] Entitlement registry + promotion from approved Rights only
+- [x] Human review, allocation/split validation, ownership, restrictions
+- [x] Lifecycle + timeline + provenance
+- [x] Platform events `royalties.entitlement.*`
+- [x] APIs + UI
+- [x] Tests (`npm run test:royalty-entitlements`)
+- [x] No calculations / DSP / payments

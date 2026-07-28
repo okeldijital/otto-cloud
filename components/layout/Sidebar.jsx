@@ -33,6 +33,7 @@ import {
     Layout,
     FileCheck,
     Scale,
+    DollarSign,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSidebar } from '../../contexts/SidebarContext';
@@ -153,6 +154,14 @@ const Sidebar = () => {
                 { icon: FileCheck, label: 'Rights Review', path: '/rights/review' },
                 { icon: ShieldCheck, label: 'Works Administration', path: '/admin-of-works/works' },
                 { icon: BarChart3, label: 'Status Quo', path: '/admin-of-works/status-quo' },
+            ]
+        },
+        {
+            label: 'Royalties',
+            items: [
+                { icon: Calculator, label: 'Entitlements', path: '/royalties/entitlements' },
+                { icon: FileCheck, label: 'Entitlement Review', path: '/royalties/review' },
+                { icon: DollarSign, label: 'Legacy Statements', path: '/royalties' },
             ]
         },
         {

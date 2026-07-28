@@ -40,6 +40,7 @@
     "test:release-contracts": "tsx lib/release-workspace/contracts/__tests__/health.test.ts",
     "test:projections": "tsx lib/platform/projections/__tests__/projections.test.ts",
     "test:rights": "tsx lib/rights/__tests__/rights.test.ts",
+    "test:royalty-entitlements": "tsx lib/royalties/__tests__/entitlements.test.ts",
     "link:attachments": "tsx scripts/migrate-data/link-attachments/engine.ts",
     "link:attachments:dry-run": "tsx scripts/migrate-data/link-attachments/engine.ts --dry-run"
   },
