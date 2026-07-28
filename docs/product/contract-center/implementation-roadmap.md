@@ -187,3 +187,19 @@ Email, calendar sync, AI reminders, workflow automation, approval routing, e-sig
 - [x] Monitoring dashboard widgets
 - [x] Tests (`test:platform-events`, `test:notifications`)
 - [x] No email/SMS/push
+
+---
+
+## Milestone 4.2A — Event Contracts & Schema Validation
+
+| Field | Value |
+|-------|--------|
+| Status | **Complete** (platform refinement) |
+| Report | [../platform/milestone-4.2a-complete.md](../platform/milestone-4.2a-complete.md) |
+| Architecture | [event-contracts.md](../../architecture/event-contracts.md) |
+
+- [x] Formal payload contracts (semver) on all registered events
+- [x] Dispatcher pre-persist validation
+- [x] organizationId inject + optional timestamp defaults
+- [x] Registry JSON Schema export
+- [x] Tests (`npm run test:event-contracts`)

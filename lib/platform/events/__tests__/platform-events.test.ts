@@ -60,7 +60,7 @@ test("event registry is non-empty and uses dotted names", () => {
     assert.ok(d.name.includes("."), d.name);
     assert.ok(d.version);
     assert.ok(d.producer);
-    assert.ok(d.payloadSchema);
+    assert.ok(d.contract?.fields, d.name);
   }
 });
 
@@ -112,6 +112,14 @@ test("definitions declare consumers and idempotency", () => {
   const activated = requireEventDefinition("contracts.lifecycle.activated");
   assert.ok(activated.consumers.includes("notifications"));
   assert.equal(activated.idempotencyStrategy, "event_subscriber");
+});
+
+test("definitions include formal contracts (semver 1.0.0)", () => {
+  const activated = requireEventDefinition("contracts.lifecycle.activated");
+  assert.equal(activated.version, "1.0.0");
+  assert.ok(activated.contract);
+  assert.ok(activated.contract.fields.contractId);
+  assert.equal(activated.contract.fields.contractId.required, true);
 });
 
 // ── Subscribers ─────────────────────────────────────────────────────────────

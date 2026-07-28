@@ -35,6 +35,7 @@
     "test:relationships": "tsx lib/contract-relationships/__tests__/matching.test.ts",
     "test:lifecycle": "tsx lib/contract-lifecycle/__tests__/lifecycle.test.ts",
     "test:platform-events": "tsx lib/platform/events/__tests__/platform-events.test.ts",
+    "test:event-contracts": "tsx lib/platform/events/__tests__/schema-validation.test.ts",
     "test:notifications": "tsx lib/platform/notifications/__tests__/notifications.test.ts",
     "link:attachments": "tsx scripts/migrate-data/link-attachments/engine.ts",
     "link:attachments:dry-run": "tsx scripts/migrate-data/link-attachments/engine.ts --dry-run"

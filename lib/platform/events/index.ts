@@ -8,6 +8,7 @@
 export * from "./types";
 export {
   listEventDefinitions,
+  listEventDefinitionsWithSchemas,
   getEventDefinition,
   requireEventDefinition,
   isEventRegistered,
@@ -16,6 +17,20 @@ export {
   PLATFORM_EVENT_DEFINITIONS,
   LEGACY_EVENT_MAP,
 } from "./registry";
+export {
+  validatePayload,
+  assertValidPayload,
+  enrichPayload,
+  contractToJsonSchema,
+  buildEventEnvelope,
+  EventSchemaError,
+} from "./contracts/schema";
+export type {
+  PayloadContract,
+  FieldSchema,
+  FieldType,
+  ValidationResult,
+} from "./contracts/schema";
 export { eventDispatcher, EventDispatcher } from "./dispatcher";
 export {
   listEvents,

@@ -6,7 +6,7 @@ import {
 import {
   bootstrapPlatformEvents,
   listEvents,
-  listEventDefinitions,
+  listEventDefinitionsWithSchemas,
   listDeadLetters,
   getInMemoryMetrics,
   PlatformEventError,
@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
     const view = sp.get("view");
 
     if (view === "registry") {
-      return ok({ registry: listEventDefinitions() });
+      return ok({ registry: listEventDefinitionsWithSchemas() });
     }
 
     if (view === "dead_letter") {

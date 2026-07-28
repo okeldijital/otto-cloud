@@ -15,13 +15,15 @@ Cross-cutting infrastructure concerns that must **not** be solved inside a singl
 | [ADR-016 Platform Event Framework](../product/platform/adr-016-platform-event-framework.md) | Decision |
 | [ADR-017 Notification Architecture](../product/platform/adr-017-notification-architecture.md) | Decision |
 | [milestone-4.2-complete.md](../product/platform/milestone-4.2-complete.md) | Completion report |
+| [milestone-4.2a-complete.md](../product/platform/milestone-4.2a-complete.md) | Event contracts & schema validation |
 | [platform-events.md](../architecture/platform-events.md) | Bus architecture |
 | [event-registry.md](../architecture/event-registry.md) | Registered events |
+| [event-contracts.md](../architecture/event-contracts.md) | Payload contracts / validation |
 | [notification-architecture.md](../architecture/notification-architecture.md) | Notification consumer |
 | [event-replay.md](../architecture/event-replay.md) | Replay / DLQ |
 
 **Package:** `lib/platform/events`, `lib/platform/notifications`  
-**Tests:** `npm run test:platform-events` · `npm run test:notifications`
+**Tests:** `npm run test:platform-events` · `npm run test:event-contracts` · `npm run test:notifications`
 
 ## Migration & decommission
 

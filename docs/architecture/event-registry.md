@@ -23,15 +23,26 @@
 ```ts
 {
   name: "contracts.lifecycle.activated",
-  version: "1.0",
+  version: "1.0.0",
   producer: "contract-center",
   description: "...",
-  payloadSchema: { contractId: "number" },
+  contract: {
+    version: "1.0.0",
+    fields: {
+      organizationId: { type: "uuid", required: true },
+      contractId: { type: "number", required: true },
+      activatedAt: { type: "datetime" },
+      verifiedVersion: { type: "integer" },
+    },
+    additionalProperties: true,
+  },
   consumers: ["notifications", "reminders"],
   idempotencyStrategy: "event_subscriber",
   retentionPolicy: "indefinite",
 }
 ```
+
+Payload contracts are validated on publish — see [event-contracts.md](./event-contracts.md).
 
 ---
 

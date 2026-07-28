@@ -18,16 +18,16 @@ Domain Events (optional module-local log)
       ↓
 Platform Event Bus (publish)
       ↓
+Schema validation (payload contract)
+      ↓
 Event Store (immutable)
       ↓
-Dispatcher
-      ↓
-Subscribers (notifications, reminders, …)
+Dispatcher → Subscribers
       ↓
 Future channels
 ```
 
-Producers never know which subscribers exist.
+Producers never know which subscribers exist. Invalid payloads never enter the store.
 
 ---
 
@@ -35,13 +35,16 @@ Producers never know which subscribers exist.
 
 | Path | Role |
 |------|------|
-| `registry/` | Event definitions |
+| `registry/` | Event definitions + contracts |
+| `contracts/` | Payload schema validation (M4.2A) |
 | `store/` | Persist / list / history append |
-| `dispatcher/` | Publish, dispatch, retry, replay |
+| `dispatcher/` | Validate, publish, dispatch, retry, replay |
 | `subscribers/` | In-process registration + pattern match |
 | `retry/` | Exponential backoff policy |
 | `dead-letter/` | Permanent failures |
 | `metrics/` | In-process + org aggregates |
+
+See [event-contracts.md](./event-contracts.md) for formal payload contracts.
 
 ---
 

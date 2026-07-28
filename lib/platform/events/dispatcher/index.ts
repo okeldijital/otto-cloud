@@ -17,6 +17,7 @@ import {
 } from "../retry/policy";
 import { incMetric, recordProcessingTime } from "../metrics";
 import { resolvePlatformEventName, requireEventDefinition } from "../registry";
+import { assertValidPayload, EventSchemaError } from "../contracts/schema";
 import type {
   PlatformEventRecord,
   PublishEventInput,
@@ -25,16 +26,48 @@ import type {
 import { PlatformEventError } from "../types";
 
 /**
- * Platform Event Dispatcher — publish, persist, dispatch, retry.
+ * Platform Event Dispatcher — publish, validate, persist, dispatch, retry.
  * No business logic.
  */
 export class EventDispatcher {
   async publish(input: PublishEventInput): Promise<PlatformEventRecord> {
     const eventName = resolvePlatformEventName(input.eventName);
-    requireEventDefinition(eventName);
+    const def = requireEventDefinition(eventName);
 
     const started = Date.now();
-    const event = await persistEvent({ ...input, eventName });
+    const occurredAt = input.occurredAt || new Date();
+
+    // M4.2A — formal payload contract validation before persist
+    let payload = input.payload || {};
+    if (!input.skipValidation) {
+      try {
+        const defaults = eventPayloadDefaults(eventName, occurredAt, payload);
+        payload = assertValidPayload(payload, def.contract, {
+          organizationId: input.organizationId,
+          eventName,
+          occurredAt,
+          defaults,
+        });
+      } catch (error) {
+        if (error instanceof EventSchemaError) {
+          throw new PlatformEventError(
+            error.message,
+            error.status,
+            error.code,
+            error.details
+          );
+        }
+        throw error;
+      }
+    }
+
+    const event = await persistEvent({
+      ...input,
+      eventName,
+      version: input.version || def.version || def.contract.version,
+      payload,
+      occurredAt,
+    });
     incMetric("published");
 
     if (input.actorUserId != null) {
@@ -76,9 +109,13 @@ export class EventDispatcher {
     try {
       return await this.publish(input);
     } catch (error) {
+      const details =
+        error instanceof PlatformEventError ? error.details : undefined;
       logger.error("platform.events", "publish failed", {
         eventName: input.eventName,
+        code: error instanceof PlatformEventError ? error.code : undefined,
         error: error instanceof Error ? error.message : String(error),
+        details,
       });
       return null;
     }
@@ -405,6 +442,27 @@ export class EventDispatcher {
     }
 
     return { replayed: eventIds.length, eventIds };
+  }
+}
+
+/** Event-specific default fields when producers omit optional timestamps. */
+function eventPayloadDefaults(
+  eventName: string,
+  occurredAt: Date,
+  payload: Record<string, unknown>
+): Record<string, unknown> {
+  const iso = occurredAt.toISOString();
+  switch (eventName) {
+    case "contracts.lifecycle.activated":
+      return { activatedAt: payload.activatedAt ?? iso };
+    case "contracts.lifecycle.expired":
+      return { expiredAt: payload.expiredAt ?? iso };
+    case "contracts.lifecycle.renewal_due":
+      return { dueAt: payload.dueAt ?? iso };
+    case "contracts.lifecycle.renewed":
+      return { renewedAt: payload.renewedAt ?? iso };
+    default:
+      return {};
   }
 }
 

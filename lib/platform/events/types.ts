@@ -1,6 +1,10 @@
 /**
- * Platform Event Bus — shared types (Milestone 4.2).
+ * Platform Event Bus — shared types (Milestone 4.2 / 4.2A).
  */
+
+import type { PayloadContract } from "./contracts/schema";
+
+export type { PayloadContract, FieldSchema, FieldType } from "./contracts/schema";
 
 export type EventStatus =
   | "pending"
@@ -29,11 +33,12 @@ export type RetentionPolicy = "indefinite" | "90d" | "365d" | "7d";
 
 export interface EventDefinition {
   name: string;
+  /** Semver aligned with payload contract (e.g. 1.0.0) */
   version: string;
   producer: string;
   description: string;
-  /** JSON-schema-like freeform description of expected payload keys */
-  payloadSchema: Record<string, string>;
+  /** Formal payload contract — validated before publish (M4.2A) */
+  contract: PayloadContract;
   consumers: string[];
   idempotencyStrategy: IdempotencyStrategy;
   retentionPolicy: RetentionPolicy;
@@ -55,6 +60,11 @@ export interface PublishEventInput {
   entityId?: string | number | null;
   /** When true, persist only (no dispatch) — used by replay of store */
   skipDispatch?: boolean;
+  /**
+   * Skip payload schema validation (tests / emergency only).
+   * Prefer fixing producers instead.
+   */
+  skipValidation?: boolean;
 }
 
 export interface PlatformEventRecord {

@@ -4,6 +4,7 @@ import {
 } from "./definitions";
 import type { EventDefinition } from "../types";
 import { PlatformEventError } from "../types";
+import { contractToJsonSchema } from "../contracts/schema";
 
 const byName = new Map<string, EventDefinition>();
 for (const def of PLATFORM_EVENT_DEFINITIONS) {
@@ -12,6 +13,21 @@ for (const def of PLATFORM_EVENT_DEFINITIONS) {
 
 export function listEventDefinitions(): EventDefinition[] {
   return [...PLATFORM_EVENT_DEFINITIONS];
+}
+
+/** Registry entries with JSON Schema view of payload contracts (API/docs). */
+export function listEventDefinitionsWithSchemas() {
+  return PLATFORM_EVENT_DEFINITIONS.map((def) => ({
+    name: def.name,
+    version: def.version,
+    producer: def.producer,
+    description: def.description,
+    consumers: def.consumers,
+    idempotencyStrategy: def.idempotencyStrategy,
+    retentionPolicy: def.retentionPolicy,
+    contract: def.contract,
+    payloadJsonSchema: contractToJsonSchema(def.contract),
+  }));
 }
 
 export function getEventDefinition(name: string): EventDefinition | undefined {

@@ -1,32 +1,45 @@
 /**
- * Platform Event Registry — registered event definitions.
- * Every published event must appear here.
+ * Platform Event Registry — registered event definitions + payload contracts.
+ * Every published event must appear here (M4.2 + M4.2A).
  */
 
 import type { EventDefinition } from "../types";
+import { contract, f, nullable, required, withOrgContract } from "../contracts/helpers";
+
+const V = "1.0.0";
 
 export const PLATFORM_EVENT_DEFINITIONS: EventDefinition[] = [
   // ── Documents ──────────────────────────────────────────────────────────
   {
     name: "contracts.document.uploaded",
-    version: "1.0",
+    version: V,
     producer: "contract-center",
     description: "A document was uploaded and linked to a contract",
-    payloadSchema: {
-      contractId: "number",
-      documentId: "string",
-      fileName: "string?",
-    },
+    contract: contract(
+      V,
+      withOrgContract({
+        documentId: required(f.string({ description: "Document asset UUID" })),
+        fileName: f.string({ description: "Original file name" }),
+        relationshipId: f.string(),
+      }),
+      { description: "Document linked to contract" }
+    ),
     consumers: ["notifications"],
     idempotencyStrategy: "event_subscriber",
     retentionPolicy: "indefinite",
   },
   {
     name: "contracts.document.deleted",
-    version: "1.0",
+    version: V,
     producer: "contract-center",
     description: "A contract document was soft-deleted",
-    payloadSchema: { contractId: "number", documentId: "string" },
+    contract: contract(
+      V,
+      withOrgContract({
+        documentId: required(f.string()),
+        relationshipId: f.string(),
+      })
+    ),
     consumers: ["notifications"],
     idempotencyStrategy: "event_subscriber",
     retentionPolicy: "365d",
@@ -35,38 +48,48 @@ export const PLATFORM_EVENT_DEFINITIONS: EventDefinition[] = [
   // ── Intelligence / verification ────────────────────────────────────────
   {
     name: "contracts.verification.completed",
-    version: "1.0",
+    version: V,
     producer: "contract-center",
     description: "Human verification session completed",
-    payloadSchema: {
-      contractId: "number",
-      documentId: "string",
-      sessionId: "string?",
-    },
+    contract: contract(V, {
+      organizationId: required(f.uuid()),
+      contractId: nullable(f.number({ description: "May be null pre-link" })),
+      documentId: required(f.string()),
+      sessionId: f.string(),
+      extractionId: f.string(),
+    }),
     consumers: ["notifications"],
     idempotencyStrategy: "event_subscriber",
     retentionPolicy: "indefinite",
   },
   {
     name: "contracts.verification.reopened",
-    version: "1.0",
+    version: V,
     producer: "contract-center",
     description: "Verification session reopened",
-    payloadSchema: { contractId: "number", documentId: "string" },
+    contract: contract(V, {
+      organizationId: required(f.uuid()),
+      contractId: nullable(f.number()),
+      documentId: required(f.string()),
+      sessionId: f.string(),
+      extractionId: f.string(),
+    }),
     consumers: ["notifications"],
     idempotencyStrategy: "event_subscriber",
     retentionPolicy: "365d",
   },
   {
     name: "contracts.extraction.completed",
-    version: "1.0",
+    version: V,
     producer: "contract-center",
     description: "Document extraction job completed",
-    payloadSchema: {
-      contractId: "number?",
-      documentId: "string",
-      extractionId: "string?",
-    },
+    contract: contract(V, {
+      organizationId: required(f.uuid()),
+      contractId: nullable(f.number()),
+      documentId: required(f.string()),
+      extractionId: f.string(),
+      jobId: f.string(),
+    }),
     consumers: ["notifications"],
     idempotencyStrategy: "event_subscriber",
     retentionPolicy: "90d",
@@ -75,39 +98,60 @@ export const PLATFORM_EVENT_DEFINITIONS: EventDefinition[] = [
   // ── Verified domain ────────────────────────────────────────────────────
   {
     name: "contracts.verified.created",
-    version: "1.0",
+    version: V,
     producer: "contract-center",
     description: "Verified contract domain record created",
-    payloadSchema: {
-      contractId: "number",
-      verifiedContractId: "string",
-    },
+    contract: contract(
+      V,
+      withOrgContract({
+        verifiedContractId: required(f.uuid()),
+        version: f.integer({ description: "Verified domain version number" }),
+        title: f.string(),
+        partyCount: f.integer(),
+        verificationSessionId: f.string(),
+        documentId: f.string(),
+      })
+    ),
     consumers: ["notifications"],
     idempotencyStrategy: "event_subscriber",
     retentionPolicy: "indefinite",
   },
   {
     name: "contracts.verified.updated",
-    version: "1.0",
+    version: V,
     producer: "contract-center",
     description: "Verified contract domain updated",
-    payloadSchema: {
-      contractId: "number",
-      verifiedContractId: "string",
-    },
+    contract: contract(
+      V,
+      withOrgContract({
+        verifiedContractId: required(f.uuid()),
+        version: f.integer(),
+        title: f.string(),
+        partyCount: f.integer(),
+        verificationSessionId: f.string(),
+        documentId: f.string(),
+      })
+    ),
     consumers: ["notifications"],
     idempotencyStrategy: "event_subscriber",
     retentionPolicy: "indefinite",
   },
   {
     name: "contracts.verified.reverified",
-    version: "1.0",
+    version: V,
     producer: "contract-center",
     description: "Contract re-verified from new session",
-    payloadSchema: {
-      contractId: "number",
-      verifiedContractId: "string",
-    },
+    contract: contract(
+      V,
+      withOrgContract({
+        verifiedContractId: required(f.uuid()),
+        version: f.integer(),
+        title: f.string(),
+        partyCount: f.integer(),
+        verificationSessionId: f.string(),
+        documentId: f.string(),
+      })
+    ),
     consumers: ["notifications"],
     idempotencyStrategy: "event_subscriber",
     retentionPolicy: "indefinite",
@@ -116,44 +160,72 @@ export const PLATFORM_EVENT_DEFINITIONS: EventDefinition[] = [
   // ── Relationships ──────────────────────────────────────────────────────
   {
     name: "contracts.relationship.created",
-    version: "1.0",
+    version: V,
     producer: "contract-center",
     description: "Contract relationship confirmed",
-    payloadSchema: {
-      contractId: "number",
-      relationshipId: "string",
-      targetEntityType: "string?",
-    },
+    contract: contract(
+      V,
+      withOrgContract({
+        relationshipId: required(f.string()),
+        relationshipType: f.string(),
+        targetEntityType: f.string(),
+        targetEntityId: f.string(),
+        source: f.string(),
+      })
+    ),
     consumers: ["notifications"],
     idempotencyStrategy: "event_subscriber",
     retentionPolicy: "indefinite",
   },
   {
     name: "contracts.relationship.removed",
-    version: "1.0",
+    version: V,
     producer: "contract-center",
     description: "Contract relationship removed",
-    payloadSchema: { contractId: "number", relationshipId: "string" },
+    contract: contract(
+      V,
+      withOrgContract({
+        relationshipId: required(f.string()),
+        targetEntityType: f.string(),
+        targetEntityId: f.string(),
+      })
+    ),
     consumers: ["notifications"],
     idempotencyStrategy: "event_subscriber",
     retentionPolicy: "365d",
   },
   {
     name: "contracts.relationship.suggested",
-    version: "1.0",
+    version: V,
     producer: "contract-center",
     description: "Relationship suggestion created",
-    payloadSchema: { contractId: "number", suggestionId: "string" },
+    contract: contract(
+      V,
+      withOrgContract({
+        suggestionId: required(f.string()),
+        targetEntityType: f.string(),
+        targetEntityId: f.string(),
+        confidence: f.number(),
+        matchStrategy: f.string(),
+      })
+    ),
     consumers: ["notifications"],
     idempotencyStrategy: "event_subscriber",
     retentionPolicy: "90d",
   },
   {
     name: "contracts.relationship.rejected",
-    version: "1.0",
+    version: V,
     producer: "contract-center",
     description: "Relationship suggestion rejected",
-    payloadSchema: { contractId: "number", suggestionId: "string" },
+    contract: contract(
+      V,
+      withOrgContract({
+        suggestionId: required(f.string()),
+        targetEntityType: f.string(),
+        targetEntityId: f.string(),
+      })
+    ),
     consumers: ["notifications"],
     idempotencyStrategy: "event_subscriber",
     retentionPolicy: "90d",
@@ -162,78 +234,123 @@ export const PLATFORM_EVENT_DEFINITIONS: EventDefinition[] = [
   // ── Lifecycle ──────────────────────────────────────────────────────────
   {
     name: "contracts.lifecycle.status_changed",
-    version: "1.0",
+    version: V,
     producer: "contract-center",
     description: "Contract lifecycle status changed",
-    payloadSchema: { contractId: "number", from: "string", to: "string" },
+    contract: contract(
+      V,
+      withOrgContract({
+        from: required(f.string({ description: "Previous status" })),
+        to: required(f.string({ description: "New status" })),
+        legacyEventType: f.string(),
+      })
+    ),
     consumers: ["notifications", "reminders"],
     idempotencyStrategy: "event_subscriber",
     retentionPolicy: "indefinite",
   },
   {
     name: "contracts.lifecycle.activated",
-    version: "1.0",
+    version: V,
     producer: "contract-center",
     description: "Contract became active",
-    payloadSchema: { contractId: "number" },
+    contract: contract(
+      V,
+      withOrgContract({
+        activatedAt: f.datetime({
+          description: "When the contract became active (ISO-8601)",
+        }),
+        verifiedVersion: f.integer({
+          description: "Verified domain version if known",
+        }),
+        legacyEventType: f.string(),
+      }),
+      { description: "Operational activation of a verified contract" }
+    ),
     consumers: ["notifications", "reminders"],
     idempotencyStrategy: "event_subscriber",
     retentionPolicy: "indefinite",
   },
   {
     name: "contracts.lifecycle.expired",
-    version: "1.0",
+    version: V,
     producer: "contract-center",
     description: "Contract expired",
-    payloadSchema: { contractId: "number" },
+    contract: contract(
+      V,
+      withOrgContract({
+        expiredAt: f.datetime(),
+        legacyEventType: f.string(),
+      })
+    ),
     consumers: ["notifications"],
     idempotencyStrategy: "event_subscriber",
     retentionPolicy: "indefinite",
   },
   {
     name: "contracts.lifecycle.renewal_due",
-    version: "1.0",
+    version: V,
     producer: "contract-center",
     description: "Contract renewal is due",
-    payloadSchema: { contractId: "number" },
+    contract: contract(
+      V,
+      withOrgContract({
+        dueAt: f.datetime(),
+        legacyEventType: f.string(),
+      })
+    ),
     consumers: ["notifications", "reminders"],
     idempotencyStrategy: "event_subscriber",
     retentionPolicy: "indefinite",
   },
   {
     name: "contracts.lifecycle.renewed",
-    version: "1.0",
+    version: V,
     producer: "contract-center",
     description: "Contract manually marked renewed",
-    payloadSchema: { contractId: "number" },
+    contract: contract(
+      V,
+      withOrgContract({
+        renewedAt: f.datetime(),
+        legacyEventType: f.string(),
+      })
+    ),
     consumers: ["notifications"],
     idempotencyStrategy: "event_subscriber",
     retentionPolicy: "indefinite",
   },
   {
     name: "contracts.lifecycle.superseded",
-    version: "1.0",
+    version: V,
     producer: "contract-center",
     description: "Contract superseded by another",
-    payloadSchema: {
-      contractId: "number",
-      supersedesContractId: "number?",
-      supersededByContractId: "number?",
-    },
+    contract: contract(
+      V,
+      withOrgContract({
+        supersedesContractId: f.number(),
+        supersededByContractId: f.number(),
+        reason: f.string(),
+        direction: f.string(),
+        legacyEventType: f.string(),
+      })
+    ),
     consumers: ["notifications"],
     idempotencyStrategy: "event_subscriber",
     retentionPolicy: "indefinite",
   },
   {
     name: "contracts.lifecycle.amended",
-    version: "1.0",
+    version: V,
     producer: "contract-center",
     description: "Amendment registered on contract",
-    payloadSchema: {
-      contractId: "number",
-      amendmentId: "string",
-      amendmentNumber: "string?",
-    },
+    contract: contract(
+      V,
+      withOrgContract({
+        amendmentId: required(f.string()),
+        amendmentNumber: f.string(),
+        legacyEventType: f.string(),
+      })
+    ),
     consumers: ["notifications"],
     idempotencyStrategy: "event_subscriber",
     retentionPolicy: "indefinite",
@@ -242,44 +359,57 @@ export const PLATFORM_EVENT_DEFINITIONS: EventDefinition[] = [
   // ── Platform self-events ───────────────────────────────────────────────
   {
     name: "platform.events.replayed",
-    version: "1.0",
+    version: V,
     producer: "platform",
     description: "An event or DLQ entry was replayed",
-    payloadSchema: { originalEventId: "string", replayEventId: "string?" },
+    contract: contract(V, {
+      organizationId: required(f.uuid()),
+      originalEventId: required(f.string()),
+      replayEventId: f.string(),
+    }),
     consumers: [],
     idempotencyStrategy: "none",
     retentionPolicy: "90d",
   },
   {
     name: "notifications.created",
-    version: "1.0",
+    version: V,
     producer: "notifications",
     description: "In-app notification created",
-    payloadSchema: {
-      notificationId: "string",
-      userId: "number",
-      type: "string",
-    },
+    contract: contract(V, {
+      organizationId: required(f.uuid()),
+      notificationId: required(f.string()),
+      userId: required(f.integer()),
+      type: required(f.string()),
+    }),
     consumers: [],
     idempotencyStrategy: "event_subscriber",
     retentionPolicy: "90d",
   },
   {
     name: "reminders.created",
-    version: "1.0",
+    version: V,
     producer: "notifications",
     description: "Reminder scheduled",
-    payloadSchema: { reminderId: "string", type: "string", dueAt: "string" },
+    contract: contract(V, {
+      organizationId: required(f.uuid()),
+      reminderId: required(f.string()),
+      type: required(f.string()),
+      dueAt: required(f.datetime()),
+    }),
     consumers: [],
     idempotencyStrategy: "event_subscriber",
     retentionPolicy: "90d",
   },
   {
     name: "reminders.fired",
-    version: "1.0",
+    version: V,
     producer: "notifications",
     description: "Reminder fired (in-app only)",
-    payloadSchema: { reminderId: "string" },
+    contract: contract(V, {
+      organizationId: required(f.uuid()),
+      reminderId: required(f.string()),
+    }),
     consumers: ["notifications"],
     idempotencyStrategy: "event_subscriber",
     retentionPolicy: "90d",

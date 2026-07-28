@@ -51,6 +51,21 @@ _No additional unreleased entries._
 
 ---
 
+## [Platform 4.2.1] — 2026-07-28 — Event Contracts & Schema Validation (4.2A)
+
+### Added
+
+- Formal payload contracts (semver `1.0.0`) on every registered platform event.
+- Dispatcher validates payloads before persist (`EVENT_SCHEMA_INVALID`).
+- JSON Schema export on `GET /api/platform/events?view=registry`.
+- `npm run test:event-contracts`, [event-contracts.md](../../architecture/event-contracts.md).
+
+### Principle
+
+Invalid events never enter the store. Extra fields allowed for forward-compatible evolution.
+
+---
+
 ## [Platform 4.2.0] — 2026-07-28 — Platform Event & Notification Framework
 
 Cross-module platform milestone (not Contract Center–owned). Contract Center is the **first producer**.
