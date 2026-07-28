@@ -9,7 +9,7 @@ import { headers, cookies } from "next/headers";
 import {
   currentIdentityService,
   type CurrentIdentityContext,
-} from "@/lib/platform/identity";
+} from "@/lib/platform/sdk";
 
 export type AuthSessionUser = {
   /** Prefer identity UUID; may be legacy numeric string when bridged */

@@ -4,7 +4,7 @@
  */
 
 import { getServerSession, type AuthSessionUser } from "@/lib/auth/session";
-import { PermissionSet } from "@/lib/platform/identity/authorization/permissions";
+import { PermissionSet } from "@/lib/platform/sdk";
 
 export type SessionUser = AuthSessionUser;
 

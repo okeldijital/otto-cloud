@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 import {
   currentIdentityService,
   PermissionSet,
-} from "@/lib/platform/identity";
+} from "@/lib/platform/sdk";
 
 export type SessionUser = AuthSessionUser;
 

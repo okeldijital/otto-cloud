@@ -9,6 +9,7 @@ import {
   effectivePermissionCache,
 } from "./EffectivePermissionCache";
 import { PermissionSet } from "./permissions";
+import { iamMetrics } from "../metrics/iam-metrics";
 
 export type ResolvedPermissions = {
   permissions: string[];
@@ -54,8 +55,10 @@ export class PermissionResolver {
       roleVersion,
     });
 
+    const t0 = Date.now();
     const cached = effectivePermissionCache.get(cacheKey);
     if (cached) {
+      iamMetrics.permissionResolve(Date.now() - t0, true);
       return {
         permissions: cached.permissions,
         roles: cached.roles,
@@ -92,6 +95,7 @@ export class PermissionResolver {
 
     const permissions = [...new Set(permKeys)];
     effectivePermissionCache.set(cacheKey, { permissions, roles });
+    iamMetrics.permissionResolve(Date.now() - t0, false);
 
     return {
       permissions,
