@@ -14,6 +14,18 @@ Product documentation for OTTO’s legal agreement surface: contracts, documents
 | [milestone-2.1-review.md](./milestone-2.1-review.md) | 2.1A architecture validation & baseline decision |
 | [document-platform.md](../../architecture/document-platform.md) | Platform integration reference (post-2.1B) |
 | [milestone-2.2-complete.md](./milestone-2.2-complete.md) | Repository UI completion report |
+| [milestone-2.3-complete.md](./milestone-2.3-complete.md) | PDF viewing completion report |
+| [adr-011-document-intelligence.md](./adr-011-document-intelligence.md) | Intelligence layer decision |
+| [milestone-3.0-complete.md](./milestone-3.0-complete.md) | Intelligence foundation completion |
+| [adr-012-human-verification.md](./adr-012-human-verification.md) | Human verification trust boundary |
+| [milestone-3.1-complete.md](./milestone-3.1-complete.md) | Verification workspace completion |
+| [adr-013-verified-contract-domain.md](./adr-013-verified-contract-domain.md) | Verified contract platform domain |
+| [milestone-3.2-complete.md](./milestone-3.2-complete.md) | Verified domain completion |
+| [adr-014-contract-relationships.md](./adr-014-contract-relationships.md) | Relationship layer decision |
+| [milestone-4.0-complete.md](./milestone-4.0-complete.md) | Relationship discovery completion |
+| [adr-015-contract-lifecycle.md](./adr-015-contract-lifecycle.md) | Lifecycle domain decision |
+| [milestone-4.1-complete.md](./milestone-4.1-complete.md) | Lifecycle management completion |
+| [contract-lifecycle-architecture.md](../../architecture/contract-lifecycle-architecture.md) | Lifecycle technical architecture |
 
 ## Platform dependencies (do not implement here)
 

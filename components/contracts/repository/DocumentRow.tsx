@@ -1,7 +1,9 @@
 "use client";
 
 import {
+  Brain,
   Download,
+  Eye,
   FileText,
   Loader2,
   MoreHorizontal,
@@ -10,6 +12,7 @@ import {
 } from "lucide-react";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
+import ExtractionStatusBadge from "@/components/contracts/intelligence/ExtractionStatusBadge";
 import { formatFileSize } from "@/lib/storage/utils";
 import { mimeLabel } from "./repositoryUtils";
 import type { RepositoryDocument } from "./types";
@@ -17,17 +20,27 @@ import type { RepositoryDocument } from "./types";
 interface Props {
   item: RepositoryDocument;
   actionBusyId?: string | null;
+  extractionStatus?: string | null;
+  extractionBusy?: boolean;
+  onView: (item: RepositoryDocument) => void;
   onDownload: (item: RepositoryDocument) => void;
   onReplace: (item: RepositoryDocument) => void;
   onDelete: (item: RepositoryDocument) => void;
+  onExtract?: (item: RepositoryDocument) => void;
+  onOpenIntelligence?: (item: RepositoryDocument) => void;
 }
 
 export default function DocumentRow({
   item,
   actionBusyId,
+  extractionStatus,
+  extractionBusy,
+  onView,
   onDownload,
   onReplace,
   onDelete,
+  onExtract,
+  onOpenIntelligence,
 }: Props) {
   const d = item.document;
   const busy = actionBusyId === d.id;
@@ -46,9 +59,15 @@ export default function DocumentRow({
           <FileText size={18} className="text-text-secondary" />
         </div>
         <div className="min-w-0 space-y-1">
-          <div className="font-medium text-sm truncate" title={d.originalFilename}>
+          <button
+            type="button"
+            className="font-medium text-sm truncate text-left hover:text-primary transition-colors disabled:opacity-50 disabled:hover:text-inherit"
+            title={d.originalFilename}
+            onClick={() => !isDeleted && onView(item)}
+            disabled={isDeleted}
+          >
             {d.originalFilename}
-          </div>
+          </button>
           <dl className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1 text-xs text-text-secondary">
             <div>
               <dt className="sr-only">Type</dt>
@@ -91,11 +110,23 @@ export default function DocumentRow({
             aria-hidden
           />
         </Badge>
+        <ExtractionStatusBadge status={extractionStatus} />
 
-        {busy ? (
+        {busy || extractionBusy ? (
           <Loader2 size={16} className="animate-spin text-primary" aria-label="Working" />
         ) : (
           <>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onView(item)}
+              disabled={isDeleted}
+              title={isDeleted ? "Cannot view deleted document" : "View PDF"}
+              aria-label={`View ${d.originalFilename}`}
+            >
+              <Eye size={14} aria-hidden />
+              <span className="hidden sm:inline">View</span>
+            </Button>
             <Button
               variant="ghost"
               size="sm"
@@ -127,6 +158,29 @@ export default function DocumentRow({
               <Trash2 size={14} aria-hidden />
               <span className="hidden sm:inline">Delete</span>
             </Button>
+            {onExtract && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onExtract(item)}
+                disabled={isDeleted}
+                aria-label={`Extract intelligence from ${d.originalFilename}`}
+              >
+                <Brain size={14} aria-hidden />
+                <span className="hidden sm:inline">Extract</span>
+              </Button>
+            )}
+            {onOpenIntelligence && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onOpenIntelligence(item)}
+                disabled={isDeleted}
+                aria-label={`Open intelligence workspace for ${d.originalFilename}`}
+              >
+                <span className="text-xs">AI draft</span>
+              </Button>
+            )}
           </>
         )}
         <span className="sr-only">

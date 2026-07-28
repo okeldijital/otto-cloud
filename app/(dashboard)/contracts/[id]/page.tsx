@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   ChevronLeft, FileText, Upload, Edit3, Plus, Trash2,
-  Music, Users, DollarSign, PieChart, Link2,
+  Music, Users, DollarSign, PieChart, Link2, ShieldCheck, GitBranch,
+  CalendarRange, History, FilePlus2,
 } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import Button from "@/components/ui/Button";
@@ -12,6 +13,11 @@ import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import EntityForm from "@/components/EntityForm";
 import ContractDocumentsSection from "@/components/contracts/ContractDocumentsSection";
+import VerifiedContractSection from "@/components/contracts/VerifiedContractSection";
+import ContractRelationshipsSection from "@/components/contracts/ContractRelationshipsSection";
+import ContractLifecyclePanel from "@/components/contracts/lifecycle/ContractLifecyclePanel";
+import ContractTimelinePanel from "@/components/contracts/lifecycle/ContractTimelinePanel";
+import ContractAmendmentsPanel from "@/components/contracts/lifecycle/ContractAmendmentsPanel";
 import api from "@/lib/api";
 
 const STATUS_VARIANTS: Record<string, string> = {
@@ -32,6 +38,11 @@ const ASSET_TYPES = ["Track", "Work", "Release"];
 const SCOPE_TYPES = ["INCLUSION", "EXCLUSION"];
 const TABS = [
   { key: "documents", label: "Documents", icon: FileText },
+  { key: "verified", label: "Verified", icon: ShieldCheck },
+  { key: "relationships", label: "Relationships", icon: GitBranch },
+  { key: "lifecycle", label: "Lifecycle", icon: CalendarRange },
+  { key: "timeline", label: "Timeline", icon: History },
+  { key: "amendments", label: "Amendments", icon: FilePlus2 },
   { key: "overview", label: "Overview", icon: Edit3 },
   { key: "parties", label: "Parties", icon: Users },
   { key: "assets", label: "Assets", icon: Music },
@@ -403,6 +414,26 @@ export default function ContractDetailPage() {
 
       {activeTab === "documents" && (
         <ContractDocumentsSection contractId={id} />
+      )}
+
+      {activeTab === "verified" && (
+        <VerifiedContractSection contractId={id} />
+      )}
+
+      {activeTab === "relationships" && (
+        <ContractRelationshipsSection contractId={id} />
+      )}
+
+      {activeTab === "lifecycle" && (
+        <ContractLifecyclePanel contractId={id} />
+      )}
+
+      {activeTab === "timeline" && (
+        <ContractTimelinePanel contractId={id} />
+      )}
+
+      {activeTab === "amendments" && (
+        <ContractAmendmentsPanel contractId={id} />
       )}
 
       {activeTab === "overview" && (

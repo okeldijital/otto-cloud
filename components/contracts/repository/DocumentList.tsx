@@ -6,9 +6,14 @@ import type { RepositoryDocument } from "./types";
 interface Props {
   items: RepositoryDocument[];
   actionBusyId?: string | null;
+  extractionStatusByDocId?: Record<string, string | null>;
+  extractionBusyId?: string | null;
+  onView: (item: RepositoryDocument) => void;
   onDownload: (item: RepositoryDocument) => void;
   onReplace: (item: RepositoryDocument) => void;
   onDelete: (item: RepositoryDocument) => void;
+  onExtract?: (item: RepositoryDocument) => void;
+  onOpenIntelligence?: (item: RepositoryDocument) => void;
 }
 
 function SkeletonRow() {
@@ -42,9 +47,14 @@ export function DocumentListSkeleton({ count = 4 }: { count?: number }) {
 export default function DocumentList({
   items,
   actionBusyId,
+  extractionStatusByDocId,
+  extractionBusyId,
+  onView,
   onDownload,
   onReplace,
   onDelete,
+  onExtract,
+  onOpenIntelligence,
 }: Props) {
   return (
     <div className="space-y-2" role="list" aria-label="Document repository">
@@ -53,9 +63,14 @@ export default function DocumentList({
           <DocumentRow
             item={item}
             actionBusyId={actionBusyId}
+            extractionStatus={extractionStatusByDocId?.[item.document.id]}
+            extractionBusy={extractionBusyId === item.document.id}
+            onView={onView}
             onDownload={onDownload}
             onReplace={onReplace}
             onDelete={onDelete}
+            onExtract={onExtract}
+            onOpenIntelligence={onOpenIntelligence}
           />
         </div>
       ))}

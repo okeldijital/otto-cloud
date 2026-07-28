@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // react-pdf / pdfjs are ESM packages used client-side for Milestone 2.3
+  transpilePackages: ["react-pdf", "pdfjs-dist"],
   async headers() {
     return [
       {

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Music, Users, FileText, DollarSign } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import api from "@/lib/api";
+import LifecycleDashboardWidgets from "@/components/contracts/lifecycle/LifecycleDashboardWidgets";
 
 const PIE_COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4"];
 
@@ -84,6 +85,8 @@ export default function DashboardPage() {
         <StatsCard title="Contracts" value={stats ? String(stats.contracts) : "—"} icon={<FileText size={24} />} />
         <StatsCard title="Revenue" value={revenue} icon={<DollarSign size={24} />} subtitle={revenueSubtitle} />
       </div>
+
+      <LifecycleDashboardWidgets />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ChartCard title="Catalog Overview">

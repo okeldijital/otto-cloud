@@ -12,8 +12,9 @@ This roadmap is the product sequencing for Contract Center. Platform concerns (a
 | Milestone | Theme | Status |
 |-----------|--------|--------|
 | **M1** | Contract core (create, metadata, org scope, parties foundation) | In progress / parallel |
-| **M2** | Document Repository (management only) | **2.1–2.2 done**; next 2.3 PDF Viewing |
-| **M3** | Document Intelligence (OCR, parsing, AI) | Not started (after M2) |
+| **M2** | Document Repository (management only) | **Complete (2.1–2.3)** |
+| **M3** | Document Intelligence → Verified Domain | **3.0–3.2 complete** |
+| **M4** | Relationships & Lifecycle | **4.0–4.1 complete** |
 
 ---
 
@@ -81,7 +82,9 @@ This roadmap is the product sequencing for Contract Center. Platform concerns (a
 
 ---
 
-### Phase 2.3 — PDF Viewing
+### Phase 2.3 — PDF Viewing ✅
+
+**Status:** Implemented (2026-07-28) — see [milestone-2.3-complete.md](./milestone-2.3-complete.md)
 
 **Implement:**
 
@@ -125,8 +128,6 @@ Download PDF
 
 ## Milestone 3 — Document Intelligence
 
-Only after Milestone 2 is complete.
-
 ```
 Upload
   ↓
@@ -145,6 +146,44 @@ Verification
 |----------------|-----------|
 | Document **management** | Milestone 2 |
 | Document **intelligence** | Milestone 3 |
+
+### Phase 3.0 — Foundation ✅
+
+**Status:** Implemented (2026-07-28) — see [milestone-3.0-complete.md](./milestone-3.0-complete.md)
+
+Jobs, OCR abstraction, text extract, classification, AI draft fields, confidence, raw storage, verification workspace shell. **No auto-verification.**
+
+### Phase 3.1 — Human Verification ✅
+
+**Status:** Implemented (2026-07-28) — see [milestone-3.1-complete.md](./milestone-3.1-complete.md)
+
+Field-level accept/edit/reject, verified layer, session versioning, completion rules, full workspace UI.
+
+### Phase 3.2 — Verified Contract Domain ✅
+
+**Status:** Implemented (2026-07-28) — see [milestone-3.2-complete.md](./milestone-3.2-complete.md)
+
+First-class VerifiedContract for platform consumers; promotion from verification complete; read APIs.
+
+### Later 3.x (not started)
+
+Clause library, risk scoring, summaries — consume Verified Contract APIs.
+
+---
+
+## Milestone 4 — Ecosystem linking & operations
+
+### Phase 4.0 — Relationship Discovery ✅
+
+**Status:** Implemented (2026-07-28) — see [milestone-4.0-complete.md](./milestone-4.0-complete.md)
+
+Suggestions from verified contracts; human confirmation; polymorphic links to Artists, Releases, Works, Labels, etc.
+
+### Phase 4.1 — Contract Lifecycle Management ✅
+
+**Status:** Implemented (2026-07-28) — see [milestone-4.1-complete.md](./milestone-4.1-complete.md)
+
+Status engine, key dates, renewals (manual), amendments, supersession, operational timeline, platform events, dashboard widgets. **No AI.** Future Notification / Calendar / Royalty / Release services consume lifecycle events.
 
 ---
 

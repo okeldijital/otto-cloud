@@ -51,6 +51,111 @@ _No additional unreleased entries._
 
 ---
 
+## [4.1.0] — 2026-07-28 — Contract Lifecycle Management
+
+### Added
+
+- Lifecycle domain: status engine, key dates, renewals, amendments, supersession, timeline, events.
+- APIs: `GET/PATCH /contracts/:id/lifecycle`, `GET/POST /contracts/:id/amendments`, `GET /contracts/:id/timeline`, `GET /contracts/lifecycle-summary`.
+- Contract Detail tabs: **Lifecycle**, **Timeline**, **Amendments**.
+- Dashboard lifecycle summary widgets.
+- Platform events: Activated, Expired, RenewalDue, Renewed, Superseded, Amended, LifecycleStatusChanged.
+- ADR-015, contract-lifecycle-architecture, milestone-4.1-complete.
+- `npm run test:lifecycle`.
+
+### Principle
+
+Deterministic, auditable, event-driven lifecycle — no AI, no automatic renewals. Future services consume lifecycle events.
+
+---
+
+## [4.0.0] — 2026-07-28 — Relationship Discovery & Linking
+
+### Added
+
+- Polymorphic contract relationships + suggestions + decisions + history.
+- Matching (exact / normalized / alias) and discovery from verified contracts.
+- APIs for relationships and suggestions (accept/reject/manual/search).
+- Contract Detail **Relationships** tab.
+- Platform events: Suggested, Created, Updated, Removed, Rejected.
+- ADR-014, relationship-architecture, milestone-4.0-complete.
+- `npm run test:relationships`.
+
+### Principle
+
+Intelligence suggests; only users create links.
+
+---
+
+## [3.2.0] — 2026-07-28 — Verified Contract Domain
+
+### Added
+
+- Normalized verified domain: contracts, parties, terms, rights, obligations, territories, dates.
+- Idempotent promotion pipeline on verification complete.
+- Platform events (`VerifiedContractCreated` / `Updated` / `Reverified`, party events).
+- Read APIs: `/contracts/:id/verified`, `/parties`, `/history`.
+- Contract Detail **Verified** tab (read-only).
+- ADR-013, verified-contract-architecture, milestone-3.2-complete.
+- `npm run test:verified-contract`.
+
+### Integration rule
+
+Downstream modules must use Verified Contract APIs — not extraction or draft layers.
+
+---
+
+## [3.1.0] — 2026-07-28 — Human Verification Workspace
+
+### Added
+
+- Verification sessions, verified field layer, history, decisions.
+- APIs: get verification, field update, bulk update, complete, reopen.
+- Full 3-column workspace (PDF · draft fields · verified values).
+- Confidence bands, field filters, progress, viewer-only permissions.
+- ADR-012, verification-architecture, milestone-3.1-complete.
+- `npm run test:verification`.
+
+### Guarantees
+
+- AI drafts immutable; verified data separate; human confirmation required.
+
+---
+
+## [3.0.0] — 2026-07-28 — Document Intelligence Foundation
+
+### Added
+
+- Intelligence layer package `lib/document-intelligence` (OCR + extraction providers, jobs, audit).
+- Schema: extraction jobs, extractions, fields, verification drafts.
+- APIs: start / status / result / retry extraction.
+- UI: extraction status badge, Extract action, intelligence workspace shell with draft fields + PDF.
+- Docs: ADR-011, ai-provider-architecture, ocr-architecture, milestone-3.0-complete.
+- `npm run test:intelligence`.
+
+### Guarantees
+
+- Nothing auto-verified; human review mandatory.
+- Document Platform and PDF Viewer unchanged.
+
+---
+
+## [2.3.0] — 2026-07-28 — PDF Viewing
+
+### Added
+
+- Reusable PDF viewer suite under `components/documents/pdf/` (react-pdf / PDF.js).
+- Features: zoom, fit width/page, page navigation, search, rotate, print, download, fullscreen.
+- Integration: Contract Repository **View** opens viewer; repository filters/list state preserved on close.
+- Download stream mode: `GET .../download?format=stream` for authenticated viewer load without R2 CORS exposure.
+- [milestone-2.3-complete.md](./milestone-2.3-complete.md), `npm run test:pdf`.
+
+### Not included (by design)
+
+- OCR, AI, annotations, redlining, semantic search, content indexing.
+
+---
+
 ## [2.2.0] — 2026-07-28 — Repository UI
 
 ### Added

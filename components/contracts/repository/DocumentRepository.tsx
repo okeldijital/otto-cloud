@@ -8,6 +8,7 @@ import {
   type Dispatch,
   type SetStateAction,
 } from "react";
+import { useRouter } from "next/navigation";
 import { AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import Button from "@/components/ui/Button";
 import api from "@/lib/api";
@@ -20,6 +21,7 @@ import RepositoryToolbar from "./RepositoryToolbar";
 import UploadDialog from "./UploadDialog";
 import UploadDropzone from "./UploadDropzone";
 import UploadProgress from "./UploadProgress";
+import PDFViewerPanel from "@/components/documents/pdf/PDFViewerPanel";
 import {
   filterDocuments,
   friendlyUploadError,
@@ -49,11 +51,16 @@ function newUploadId() {
  * Consumes ContractDocumentService HTTP APIs only — never StorageProvider.
  */
 export default function DocumentRepository({ contractId }: Props) {
+  const router = useRouter();
   const [items, setItems] = useState<RepositoryDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  const [extractionStatusByDocId, setExtractionStatusByDocId] = useState<
+    Record<string, string | null>
+  >({});
+  const [extractionBusyId, setExtractionBusyId] = useState<string | null>(null);
 
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [sort, setSort] = useState<SortOption>("newest");
@@ -65,6 +72,8 @@ export default function DocumentRepository({ contractId }: Props) {
   const [replaceQueue, setReplaceQueue] = useState<UploadQueueItem[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<RepositoryDocument | null>(null);
   const [actionBusyId, setActionBusyId] = useState<string | null>(null);
+  /** Open PDF viewer — repository filters/list state preserved underneath. */
+  const [viewing, setViewing] = useState<RepositoryDocument | null>(null);
 
   const load = useCallback(
     async (opts?: { soft?: boolean }) => {
@@ -94,6 +103,49 @@ export default function DocumentRepository({ contractId }: Props) {
   useEffect(() => {
     load();
   }, [load]);
+
+  const loadExtractionStatuses = useCallback(
+    async (docs: RepositoryDocument[]) => {
+      const entries = await Promise.all(
+        docs
+          .filter((d) => d.document.status === "active")
+          .slice(0, 50)
+          .map(async (d) => {
+            try {
+              const res = await api.get(
+                `/contracts/${contractId}/documents/${d.document.id}/extractions`
+              );
+              const job = res.data?.data?.job;
+              const extStatus = res.data?.data?.extractionStatus;
+              const status = extStatus || job?.status || null;
+              return [d.document.id, status] as const;
+            } catch {
+              return [d.document.id, null] as const;
+            }
+          })
+      );
+      setExtractionStatusByDocId((prev) => {
+        const next = { ...prev };
+        for (const [id, status] of entries) next[id] = status;
+        return next;
+      });
+    },
+    [contractId]
+  );
+
+  useEffect(() => {
+    if (items.length) void loadExtractionStatuses(items);
+  }, [items, loadExtractionStatuses]);
+
+  // Poll active extractions
+  useEffect(() => {
+    const active = Object.values(extractionStatusByDocId).some((s) =>
+      s ? ["queued", "running", "retrying"].includes(s) : false
+    );
+    if (!active) return;
+    const t = setInterval(() => void loadExtractionStatuses(items), 3000);
+    return () => clearInterval(t);
+  }, [extractionStatusByDocId, items, loadExtractionStatuses]);
 
   useEffect(() => {
     setPage(1);
@@ -238,6 +290,30 @@ export default function DocumentRepository({ contractId }: Props) {
     }
   };
 
+  const onExtract = async (item: RepositoryDocument) => {
+    setExtractionBusyId(item.document.id);
+    setError("");
+    try {
+      await api.post(
+        `/contracts/${contractId}/documents/${item.document.id}/extractions`
+      );
+      setSuccessMsg("Extraction queued. Draft fields will appear when complete.");
+      setExtractionStatusByDocId((prev) => ({
+        ...prev,
+        [item.document.id]: "queued",
+      }));
+      await loadExtractionStatuses([item]);
+    } catch (err: any) {
+      setError(
+        err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          "Unable to start extraction."
+      );
+    } finally {
+      setExtractionBusyId(null);
+    }
+  };
+
   const onDeleteConfirm = async () => {
     if (!deleteTarget) return;
     const target = deleteTarget;
@@ -268,6 +344,28 @@ export default function DocumentRepository({ contractId }: Props) {
     filters.uploadedFrom ||
     filters.uploadedTo ||
     filters.uploadedBy;
+
+  if (viewing) {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs text-text-secondary">
+            Viewing document · repository filters and list remain when you close
+          </p>
+          <Button variant="secondary" size="sm" onClick={() => setViewing(null)}>
+            Back to repository
+          </Button>
+        </div>
+        <PDFViewerPanel
+          contractId={contractId}
+          documentId={viewing.document.id}
+          title={viewing.document.originalFilename}
+          filename={viewing.document.originalFilename}
+          onClose={() => setViewing(null)}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">
@@ -366,12 +464,21 @@ export default function DocumentRepository({ contractId }: Props) {
           <DocumentList
             items={pageItems}
             actionBusyId={actionBusyId}
+            extractionStatusByDocId={extractionStatusByDocId}
+            extractionBusyId={extractionBusyId}
+            onView={(item) => setViewing(item)}
             onDownload={onDownload}
             onReplace={(item) => {
               setReplaceTarget(item);
               setReplaceQueue([]);
             }}
             onDelete={setDeleteTarget}
+            onExtract={onExtract}
+            onOpenIntelligence={(item) =>
+              router.push(
+                `/contracts/${contractId}/intelligence/${item.document.id}`
+              )
+            }
           />
 
           {pageCount > 1 && (

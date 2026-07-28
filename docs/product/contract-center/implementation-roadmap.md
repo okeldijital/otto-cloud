@@ -71,10 +71,101 @@ OCR, AI, PDF viewer, parsing, search-in-document, previews, virus scan, hard del
 - Empty, loading, error, a11y, responsive
 - Thin download API only; Document Platform unchanged
 
+---
+
 ## Milestone 2.3 — PDF Viewing
 
-Embedded viewer only after 2.2.
+| Field | Value |
+|-------|--------|
+| Status | **Complete** |
+| Report | [milestone-2.3-complete.md](./milestone-2.3-complete.md) |
 
-## Milestone 3 — Document Intelligence
+- Reusable `components/documents/pdf/*` viewer
+- Zoom, navigate, search, rotate, print, download, fullscreen
+- Stream download for viewer; no R2 from browser
+- Contract Repository → View integration
 
-OCR → parsing → extraction → AI draft → verification.
+---
+
+## Milestone 3.0 — Document Intelligence Foundation
+
+| Field | Value |
+|-------|--------|
+| Status | **Complete** |
+| Report | [milestone-3.0-complete.md](./milestone-3.0-complete.md) |
+| ADR | [adr-011-document-intelligence.md](./adr-011-document-intelligence.md) |
+
+- Async extraction jobs (OCR → text → classify → AI draft)
+- Confidence + raw persistence + verification draft shell
+- Repository Extract / AI draft UX
+
+---
+
+## Milestone 3.1 — Human Verification Workspace
+
+| Field | Value |
+|-------|--------|
+| Status | **Complete** |
+| Report | [milestone-3.1-complete.md](./milestone-3.1-complete.md) |
+| ADR | [adr-012-human-verification.md](./adr-012-human-verification.md) |
+
+- Field accept/edit/reject/reset + bulk
+- Verified layer promotion on complete
+- Session versioning + reopen
+- Full workspace UI
+
+---
+
+## Milestone 3.2 — Verified Contract Domain
+
+| Field | Value |
+|-------|--------|
+| Status | **Complete** |
+| Report | [milestone-3.2-complete.md](./milestone-3.2-complete.md) |
+| ADR | [adr-013-verified-contract-domain.md](./adr-013-verified-contract-domain.md) |
+
+- Normalized VerifiedContract domain + provenance
+- Idempotent promotion + domain events
+- Read APIs for platform consumers
+- Contract Detail Verified tab
+
+---
+
+## Milestone 4.0 — Relationship Discovery & Linking
+
+| Field | Value |
+|-------|--------|
+| Status | **Complete** |
+| Report | [milestone-4.0-complete.md](./milestone-4.0-complete.md) |
+| ADR | [adr-014-contract-relationships.md](./adr-014-contract-relationships.md) |
+
+- Polymorphic relationships + discovery from verified domain
+- Accept/reject/manual link UI
+- Platform relationship events
+
+---
+
+## Milestone 4.1 — Contract Lifecycle Management
+
+| Field | Value |
+|-------|--------|
+| Status | **Complete** |
+| Report | [milestone-4.1-complete.md](./milestone-4.1-complete.md) |
+| ADR | [adr-015-contract-lifecycle.md](./adr-015-contract-lifecycle.md) |
+| Architecture | [contract-lifecycle-architecture.md](../../architecture/contract-lifecycle-architecture.md) |
+
+- [x] Lifecycle model + validated state transitions
+- [x] Key dates (source, verification state, timezone)
+- [x] Renewal model (manual; no auto-execution)
+- [x] Amendment registration
+- [x] Supersession (history preserved)
+- [x] Append-only operational timeline
+- [x] Platform lifecycle events
+- [x] APIs: lifecycle, amendments, timeline, lifecycle-summary
+- [x] Contract Detail tabs + dashboard widgets
+- [x] Unit tests (`npm run test:lifecycle`)
+- [x] No AI
+
+### Explicitly not in 4.1
+
+Email, calendar sync, AI reminders, workflow automation, approval routing, e-sign, royalty/release automation.

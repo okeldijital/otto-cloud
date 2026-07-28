@@ -2288,3 +2288,670 @@ model ContractDocumentRelation {
   @@index([documentId], map: "ix_contract_document_relations_document")
   @@map("contract_document_relations")
 }
+
+// ---------------------------------------------------------------------------
+// Document Intelligence (Milestone 3.0)
+//
+// Consumes Document Platform assets; never modifies storage.
+// All AI output is draft until human verification (not implemented as approval).
+// See: docs/product/contract-center/adr-011-document-intelligence.md
+// ---------------------------------------------------------------------------
+
+/// Async extraction job lifecycle for a document asset.
+model DocumentExtractionJob {
+  id               String    @id @default(uuid()) @db.Uuid
+  organizationId   String    @db.Uuid
+  documentId       String    @db.Uuid
+  contractId       Int?
+  status           String    @db.VarChar(32) // queued|running|completed|failed|retrying|cancelled
+  attempt          Int       @default(1)
+  maxAttempts      Int       @default(3)
+  errorMessage     String?
+  errorCode        String?   @db.VarChar(64)
+  startedAt        DateTime? @db.Timestamptz(6)
+  completedAt      DateTime? @db.Timestamptz(6)
+  createdBy        Int?
+  createdAt        DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime  @updatedAt @db.Timestamptz(6)
+
+  extractions DocumentExtraction[]
+
+  @@index([organizationId], map: "ix_doc_extraction_jobs_org")
+  @@index([documentId], map: "ix_doc_extraction_jobs_document")
+  @@index([status], map: "ix_doc_extraction_jobs_status")
+  @@index([contractId], map: "ix_doc_extraction_jobs_contract")
+  @@map("document_extraction_jobs")
+}
+
+/// One extraction run result (versioned raw + normalized AI output).
+model DocumentExtraction {
+  id                   String   @id @default(uuid()) @db.Uuid
+  organizationId       String   @db.Uuid
+  documentId           String   @db.Uuid
+  contractId           Int?
+  jobId                String   @db.Uuid
+  version              Int      @default(1)
+  status               String   @db.VarChar(32) // draft|failed|awaiting_verification
+  documentType         String?  @db.VarChar(64)
+  documentTypeConfidence Float?
+  ocrRequired          Boolean  @default(false)
+  ocrProvider          String?  @db.VarChar(64)
+  textCharCount        Int      @default(0)
+  pageCount            Int      @default(0)
+  rawText              String?  // normalized extract (may be large)
+  pageBoundaries       Json?    // [{ page, start, end }]
+  promptVersion        String   @db.VarChar(64)
+  model                String?  @db.VarChar(128)
+  aiProvider           String?  @db.VarChar(64)
+  rawResponse          Json?
+  normalizedResponse   Json?
+  overallConfidence    Float?
+  durationMs           Int?
+  createdBy            Int?
+  createdAt            DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt            DateTime @updatedAt @db.Timestamptz(6)
+
+  job      DocumentExtractionJob  @relation(fields: [jobId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  fields   ExtractionField[]
+  draft    VerificationDraft?
+  sessions VerificationSession[]
+
+  @@unique([documentId, version], map: "uq_document_extraction_version")
+  @@index([organizationId], map: "ix_document_extractions_org")
+  @@index([documentId], map: "ix_document_extractions_document")
+  @@index([jobId], map: "ix_document_extractions_job")
+  @@index([status], map: "ix_document_extractions_status")
+  @@map("document_extractions")
+}
+
+/// Draft field from AI extraction — never auto-verified.
+model ExtractionField {
+  id               String   @id @default(uuid()) @db.Uuid
+  extractionId     String   @db.Uuid
+  fieldKey         String   @db.VarChar(64)
+  fieldLabel       String   @db.VarChar(128)
+  value            String?
+  confidence       Float    @default(0)
+  /// draft | accepted | rejected | edited — never auto-accepted by system
+  verificationState String  @default("draft") @db.VarChar(32)
+  sourceLocation   Json?    // future: page/bbox
+  sortOrder        Int      @default(0)
+  createdAt        DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(6)
+
+  extraction DocumentExtraction @relation(fields: [extractionId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([extractionId], map: "ix_extraction_fields_extraction")
+  @@index([fieldKey], map: "ix_extraction_fields_key")
+  @@map("extraction_fields")
+}
+
+/// Verification workspace foundation (shell data only in 3.0; still used as pointer).
+model VerificationDraft {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  extractionId   String   @unique @db.Uuid
+  documentId     String   @db.Uuid
+  contractId     Int?
+  status         String   @default("pending") @db.VarChar(32) // pending|in_progress|abandoned|completed
+  begunAt        DateTime? @db.Timestamptz(6)
+  begunBy        Int?
+  notes          String?
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @db.Timestamptz(6)
+
+  extraction DocumentExtraction @relation(fields: [extractionId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([organizationId], map: "ix_verification_drafts_org")
+  @@index([documentId], map: "ix_verification_drafts_document")
+  @@map("verification_drafts")
+}
+
+// ---------------------------------------------------------------------------
+// Human Verification (Milestone 3.1)
+// AI drafts remain immutable. Verified layer is separate and audited.
+// See: docs/product/contract-center/adr-012-human-verification.md
+// ---------------------------------------------------------------------------
+
+/// Versioned verification session for an extraction.
+model VerificationSession {
+  id               String    @id @default(uuid()) @db.Uuid
+  organizationId   String    @db.Uuid
+  extractionId     String    @db.Uuid
+  documentId       String    @db.Uuid
+  contractId       Int?
+  version          Int       @default(1)
+  /// pending | in_progress | completed | reopened
+  status           String    @default("pending") @db.VarChar(32)
+  startedAt        DateTime? @db.Timestamptz(6)
+  startedBy        Int?
+  completedAt      DateTime? @db.Timestamptz(6)
+  completedBy      Int?
+  reopenedAt       DateTime? @db.Timestamptz(6)
+  reopenedBy       Int?
+  notes            String?
+  createdAt        DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime  @updatedAt @db.Timestamptz(6)
+
+  extraction DocumentExtraction     @relation(fields: [extractionId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  verified   VerifiedField[]
+  history    VerificationHistory[]
+  decisions  VerificationDecision[]
+
+  @@unique([extractionId, version], map: "uq_verification_session_version")
+  @@index([organizationId], map: "ix_verification_sessions_org")
+  @@index([documentId], map: "ix_verification_sessions_document")
+  @@index([status], map: "ix_verification_sessions_status")
+  @@map("verification_sessions")
+}
+
+/// Trusted business values promoted from verification — never overwrites AI draft.
+model VerifiedField {
+  id              String   @id @default(uuid()) @db.Uuid
+  sessionId       String   @db.Uuid
+  organizationId  String   @db.Uuid
+  extractionId    String   @db.Uuid
+  documentId      String   @db.Uuid
+  fieldKey        String   @db.VarChar(64)
+  fieldLabel      String   @db.VarChar(128)
+  /// Final verified value (null if rejected without value)
+  verifiedValue   String?
+  /// accepted | edited | rejected
+  decision        String   @db.VarChar(32)
+  /// Snapshot of AI draft at verification time
+  aiValue         String?
+  aiConfidence    Float?
+  sourceFieldId   String?  @db.Uuid
+  verifiedBy      Int?
+  verifiedAt      DateTime @default(now()) @db.Timestamptz(6)
+  createdAt       DateTime @default(now()) @db.Timestamptz(6)
+
+  session VerificationSession @relation(fields: [sessionId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([sessionId, fieldKey], map: "uq_verified_field_session_key")
+  @@index([organizationId], map: "ix_verified_fields_org")
+  @@index([documentId], map: "ix_verified_fields_document")
+  @@index([extractionId], map: "ix_verified_fields_extraction")
+  @@map("verified_fields")
+}
+
+/// Append-only audit trail of field-level verification actions.
+model VerificationHistory {
+  id             String   @id @default(uuid()) @db.Uuid
+  sessionId      String   @db.Uuid
+  organizationId String   @db.Uuid
+  extractionId   String   @db.Uuid
+  fieldKey       String?  @db.VarChar(64)
+  /// field.accepted | field.edited | field.rejected | field.reset | bulk.* | session.*
+  action         String   @db.VarChar(64)
+  previousValue  String?
+  newValue       String?
+  previousState  String?  @db.VarChar(32)
+  newState       String?  @db.VarChar(32)
+  actorUserId    Int?
+  metadata       Json?
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+
+  session VerificationSession @relation(fields: [sessionId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([sessionId], map: "ix_verification_history_session")
+  @@index([organizationId], map: "ix_verification_history_org")
+  @@index([createdAt], map: "ix_verification_history_created")
+  @@map("verification_history")
+}
+
+/// Session-level verification decisions (complete / reopen).
+model VerificationDecision {
+  id             String   @id @default(uuid()) @db.Uuid
+  sessionId      String   @db.Uuid
+  organizationId String   @db.Uuid
+  extractionId   String   @db.Uuid
+  /// completed | reopened
+  decision       String   @db.VarChar(32)
+  actorUserId    Int?
+  notes          String?
+  snapshot       Json?    // summary of field states at decision time
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+
+  session VerificationSession @relation(fields: [sessionId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([sessionId], map: "ix_verification_decisions_session")
+  @@index([organizationId], map: "ix_verification_decisions_org")
+  @@map("verification_decisions")
+}
+
+// ---------------------------------------------------------------------------
+// Verified Contract Domain (Milestone 3.2)
+// Authoritative business model for platform consumers.
+// Promoted only from verified sessions — not from AI drafts.
+// See: docs/product/contract-center/adr-013-verified-contract-domain.md
+// ---------------------------------------------------------------------------
+
+model VerifiedContract {
+  id                   String    @id @default(uuid()) @db.Uuid
+  organizationId       String    @db.Uuid
+  /// Legacy contracts table PK (int) — operational contract this promotes for
+  contractId           Int
+  documentId           String    @db.Uuid
+  extractionId         String    @db.Uuid
+  verificationSessionId String   @db.Uuid
+  version              Int       @default(1)
+  isCurrent            Boolean   @default(true)
+  status               String    @default("active") @db.VarChar(32)
+  title                String?
+  documentType         String?   @db.VarChar(64)
+  referenceNumber      String?   @db.VarChar(128)
+  currency             String?   @db.VarChar(16)
+  territorySummary     String?
+  termSummary          String?
+  rightsSummary        String?
+  obligationsSummary   String?
+  effectiveDateText    String?
+  expirationDateText   String?
+  governingLaw         String?
+  /// Full provenance blob for the promotion
+  provenance           Json
+  promotedBy           Int?
+  promotedAt           DateTime  @default(now()) @db.Timestamptz(6)
+  createdAt            DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt            DateTime  @updatedAt @db.Timestamptz(6)
+
+  parties     VerifiedParty[]
+  terms       VerifiedContractTerm[]
+  rights      VerifiedRight[]
+  obligations VerifiedObligation[]
+  territories VerifiedTerritory[]
+  dates       VerifiedDate[]
+
+  @@unique([contractId, version], map: "uq_verified_contract_version")
+  @@index([organizationId], map: "ix_verified_contracts_org")
+  @@index([contractId, isCurrent], map: "ix_verified_contracts_current")
+  @@index([documentId], map: "ix_verified_contracts_document")
+  @@index([verificationSessionId], map: "ix_verified_contracts_session")
+  @@map("verified_contracts")
+}
+
+model VerifiedParty {
+  id                 String   @id @default(uuid()) @db.Uuid
+  verifiedContractId String   @db.Uuid
+  organizationId     String   @db.Uuid
+  name               String
+  role               String?  @db.VarChar(128)
+  sortOrder          Int      @default(0)
+  provenance         Json
+  createdAt          DateTime @default(now()) @db.Timestamptz(6)
+
+  verifiedContract VerifiedContract @relation(fields: [verifiedContractId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([verifiedContractId], map: "ix_verified_parties_contract")
+  @@index([organizationId], map: "ix_verified_parties_org")
+  @@map("verified_parties")
+}
+
+model VerifiedContractTerm {
+  id                 String   @id @default(uuid()) @db.Uuid
+  verifiedContractId String   @db.Uuid
+  organizationId     String   @db.Uuid
+  termType           String   @db.VarChar(64)
+  value              String
+  provenance         Json
+  createdAt          DateTime @default(now()) @db.Timestamptz(6)
+
+  verifiedContract VerifiedContract @relation(fields: [verifiedContractId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([verifiedContractId], map: "ix_verified_terms_contract")
+  @@map("verified_contract_terms")
+}
+
+model VerifiedRight {
+  id                 String   @id @default(uuid()) @db.Uuid
+  verifiedContractId String   @db.Uuid
+  organizationId     String   @db.Uuid
+  description        String
+  provenance         Json
+  createdAt          DateTime @default(now()) @db.Timestamptz(6)
+
+  verifiedContract VerifiedContract @relation(fields: [verifiedContractId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([verifiedContractId], map: "ix_verified_rights_contract")
+  @@map("verified_rights")
+}
+
+model VerifiedObligation {
+  id                 String   @id @default(uuid()) @db.Uuid
+  verifiedContractId String   @db.Uuid
+  organizationId     String   @db.Uuid
+  description        String
+  provenance         Json
+  createdAt          DateTime @default(now()) @db.Timestamptz(6)
+
+  verifiedContract VerifiedContract @relation(fields: [verifiedContractId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([verifiedContractId], map: "ix_verified_obligations_contract")
+  @@map("verified_obligations")
+}
+
+model VerifiedTerritory {
+  id                 String   @id @default(uuid()) @db.Uuid
+  verifiedContractId String   @db.Uuid
+  organizationId     String   @db.Uuid
+  name               String
+  provenance         Json
+  createdAt          DateTime @default(now()) @db.Timestamptz(6)
+
+  verifiedContract VerifiedContract @relation(fields: [verifiedContractId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([verifiedContractId], map: "ix_verified_territories_contract")
+  @@map("verified_territories")
+}
+
+model VerifiedDate {
+  id                 String   @id @default(uuid()) @db.Uuid
+  verifiedContractId String   @db.Uuid
+  organizationId     String   @db.Uuid
+  /// effective | expiration | other
+  dateType           String   @db.VarChar(32)
+  valueText          String
+  provenance         Json
+  createdAt          DateTime @default(now()) @db.Timestamptz(6)
+
+  verifiedContract VerifiedContract @relation(fields: [verifiedContractId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([verifiedContractId], map: "ix_verified_dates_contract")
+  @@map("verified_dates")
+}
+
+/// In-process domain event log (platform consumers poll/subscribe later).
+model VerifiedContractEvent {
+  id                 String   @id @default(uuid()) @db.Uuid
+  organizationId     String   @db.Uuid
+  contractId         Int
+  verifiedContractId String   @db.Uuid
+  /// VerifiedContractCreated | Updated | Reverified | VerifiedPartyAdded | ...
+  eventType          String   @db.VarChar(64)
+  payload            Json
+  createdAt          DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([organizationId], map: "ix_verified_contract_events_org")
+  @@index([contractId], map: "ix_verified_contract_events_contract")
+  @@index([eventType], map: "ix_verified_contract_events_type")
+  @@index([createdAt], map: "ix_verified_contract_events_created")
+  @@map("verified_contract_events")
+}
+
+// ---------------------------------------------------------------------------
+// Contract Relationships (Milestone 4.0)
+// Polymorphic links from contracts to platform entities.
+// Suggestions are AI/matching only — links require explicit user confirmation.
+// See: docs/product/contract-center/adr-014-contract-relationships.md
+// ---------------------------------------------------------------------------
+
+/// Confirmed relationship (system of record for contract ↔ entity links).
+model ContractRelationship {
+  id                   String    @id @default(uuid()) @db.Uuid
+  organizationId       String    @db.Uuid
+  contractId           Int
+  verifiedContractId   String?   @db.Uuid
+  /// Data-driven type: represents | applies_to | governs | licenses | ...
+  relationshipType     String    @db.VarChar(64)
+  /// artist | release | track | work | label | publisher | organization | person | contract
+  targetEntityType     String    @db.VarChar(32)
+  /// Polymorphic target id (string form of int or UUID)
+  targetEntityId       String    @db.VarChar(64)
+  targetEntityName     String?
+  /// active | removed
+  status               String    @default("active") @db.VarChar(32)
+  /// suggestion | manual
+  source               String    @db.VarChar(32)
+  suggestionId         String?   @db.Uuid
+  confidence           Float?
+  matchStrategy        String?   @db.VarChar(64)
+  reason               String?
+  provenance           Json
+  createdBy            Int?
+  createdAt            DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt            DateTime  @updatedAt @db.Timestamptz(6)
+  removedBy            Int?
+  removedAt            DateTime? @db.Timestamptz(6)
+
+  @@unique([contractId, relationshipType, targetEntityType, targetEntityId], map: "uq_contract_relationship_target")
+  @@index([organizationId], map: "ix_contract_relationships_org")
+  @@index([contractId], map: "ix_contract_relationships_contract")
+  @@index([targetEntityType, targetEntityId], map: "ix_contract_relationships_target")
+  @@index([status], map: "ix_contract_relationships_status")
+  @@map("contract_relationships")
+}
+
+/// Matching suggestion awaiting human decision.
+model RelationshipSuggestion {
+  id                 String    @id @default(uuid()) @db.Uuid
+  organizationId     String    @db.Uuid
+  contractId         Int
+  verifiedContractId String?   @db.Uuid
+  relationshipType   String    @db.VarChar(64)
+  targetEntityType   String    @db.VarChar(32)
+  targetEntityId     String    @db.VarChar(64)
+  targetEntityName   String?
+  sourceText         String?
+  confidence         Float     @default(0)
+  matchStrategy      String    @db.VarChar(64)
+  reason             String?
+  /// pending | accepted | rejected
+  status             String    @default("pending") @db.VarChar(32)
+  createdAt          DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt          DateTime  @updatedAt @db.Timestamptz(6)
+  decidedAt          DateTime? @db.Timestamptz(6)
+  decidedBy          Int?
+
+  decisions RelationshipDecision[]
+
+  @@index([organizationId], map: "ix_relationship_suggestions_org")
+  @@index([contractId, status], map: "ix_relationship_suggestions_contract_status")
+  @@index([targetEntityType, targetEntityId], map: "ix_relationship_suggestions_target")
+  @@map("relationship_suggestions")
+}
+
+/// Accept / reject decision on a suggestion.
+model RelationshipDecision {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  contractId     Int
+  suggestionId   String   @db.Uuid
+  /// accepted | rejected
+  decision       String   @db.VarChar(32)
+  actorUserId    Int?
+  notes          String?
+  relationshipId String?  @db.Uuid
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+
+  suggestion RelationshipSuggestion @relation(fields: [suggestionId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([suggestionId], map: "ix_relationship_decisions_suggestion")
+  @@index([contractId], map: "ix_relationship_decisions_contract")
+  @@map("relationship_decisions")
+}
+
+/// Append-only relationship audit trail.
+model RelationshipHistory {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  contractId     Int
+  relationshipId String?  @db.Uuid
+  suggestionId   String?  @db.Uuid
+  /// suggested | created | updated | removed | rejected | accepted
+  action         String   @db.VarChar(64)
+  actorUserId    Int?
+  payload        Json?
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([contractId], map: "ix_relationship_history_contract")
+  @@index([organizationId], map: "ix_relationship_history_org")
+  @@index([createdAt], map: "ix_relationship_history_created")
+  @@map("relationship_history")
+}
+
+/// Platform relationship domain events.
+model ContractRelationshipEvent {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  contractId     Int
+  eventType      String   @db.VarChar(64)
+  payload        Json
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([organizationId], map: "ix_contract_rel_events_org")
+  @@index([contractId], map: "ix_contract_rel_events_contract")
+  @@index([eventType], map: "ix_contract_rel_events_type")
+  @@map("contract_relationship_events")
+}
+
+// ---------------------------------------------------------------------------
+// Contract Lifecycle (Milestone 4.1)
+// Deterministic operational state machine — no AI.
+// See: docs/product/contract-center/adr-015-contract-lifecycle.md
+// ---------------------------------------------------------------------------
+
+model ContractLifecycle {
+  id                    String    @id @default(uuid()) @db.Uuid
+  organizationId        String    @db.Uuid
+  contractId            Int       @unique
+  verifiedContractId    String?   @db.Uuid
+  /// draft | pending_verification | verified | active | pending_renewal | expired | terminated | superseded | archived
+  status                String    @default("draft") @db.VarChar(32)
+  previousStatus        String?   @db.VarChar(32)
+  statusChangedAt       DateTime? @db.Timestamptz(6)
+  statusChangedBy       Int?
+  /// Renewal
+  autoRenew             Boolean   @default(false)
+  renewalIntervalMonths Int?
+  noticePeriodDays      Int?
+  /// pending | due | completed | waived | none
+  renewalStatus         String    @default("none") @db.VarChar(32)
+  /// Supersession
+  supersedesContractId  Int?
+  supersededByContractId Int?
+  supersessionReason    String?
+  supersessionDate      DateTime? @db.Date
+  notes                 String?
+  createdAt             DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt             DateTime  @updatedAt @db.Timestamptz(6)
+
+  keyDates   ContractKeyDate[]
+  renewals   ContractRenewal[]
+  amendments ContractAmendment[]
+
+  @@index([organizationId], map: "ix_contract_lifecycles_org")
+  @@index([status], map: "ix_contract_lifecycles_status")
+  @@index([renewalStatus], map: "ix_contract_lifecycles_renewal")
+  @@map("contract_lifecycles")
+}
+
+model ContractKeyDate {
+  id             String   @id @default(uuid()) @db.Uuid
+  lifecycleId    String   @db.Uuid
+  organizationId String   @db.Uuid
+  contractId     Int
+  /// effective | execution | expiration | renewal | notice_deadline | termination | review
+  dateType       String   @db.VarChar(32)
+  /// ISO date stored as Date; time optional via timezone field
+  dateValue      DateTime @db.Date
+  timezone       String   @default("UTC") @db.VarChar(64)
+  /// verified | draft | system | manual
+  verificationState String @default("manual") @db.VarChar(32)
+  /// verified_contract | lifecycle | manual | legacy
+  source         String   @default("manual") @db.VarChar(32)
+  sourceRef      String?
+  notes          String?
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @db.Timestamptz(6)
+
+  lifecycle ContractLifecycle @relation(fields: [lifecycleId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([lifecycleId, dateType], map: "uq_contract_key_date_type")
+  @@index([contractId], map: "ix_contract_key_dates_contract")
+  @@index([dateType, dateValue], map: "ix_contract_key_dates_type_value")
+  @@map("contract_key_dates")
+}
+
+model ContractRenewal {
+  id             String    @id @default(uuid()) @db.Uuid
+  lifecycleId    String    @db.Uuid
+  organizationId String    @db.Uuid
+  contractId     Int
+  /// scheduled | completed | skipped | cancelled
+  status         String    @default("scheduled") @db.VarChar(32)
+  scheduledDate  DateTime? @db.Date
+  completedDate  DateTime? @db.Date
+  intervalMonths Int?
+  noticeDays     Int?
+  notes          String?
+  createdBy      Int?
+  createdAt      DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @db.Timestamptz(6)
+
+  lifecycle ContractLifecycle @relation(fields: [lifecycleId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([lifecycleId], map: "ix_contract_renewals_lifecycle")
+  @@index([contractId], map: "ix_contract_renewals_contract")
+  @@map("contract_renewals")
+}
+
+model ContractAmendment {
+  id                   String    @id @default(uuid()) @db.Uuid
+  organizationId       String    @db.Uuid
+  contractId           Int
+  lifecycleId          String    @db.Uuid
+  amendmentNumber      String    @db.VarChar(64)
+  effectiveDate        DateTime? @db.Date
+  reason               String?
+  /// draft | registered | effective | void
+  status               String    @default("registered") @db.VarChar(32)
+  /// Optional link to verified contract version id
+  linkedVerifiedVersionId String? @db.Uuid
+  linkedVerifiedVersion   Int?
+  createdBy            Int?
+  createdAt            DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt            DateTime  @updatedAt @db.Timestamptz(6)
+
+  lifecycle ContractLifecycle @relation(fields: [lifecycleId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([contractId, amendmentNumber], map: "uq_contract_amendment_number")
+  @@index([organizationId], map: "ix_contract_amendments_org")
+  @@index([contractId], map: "ix_contract_amendments_contract")
+  @@map("contract_amendments")
+}
+
+/// Append-only operational timeline (unified).
+model ContractTimelineEntry {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  contractId     Int
+  /// verification_completed | promoted | relationship_created | amendment | renewal | status_change | lifecycle | supersession | system
+  entryType      String   @db.VarChar(64)
+  title          String   @db.VarChar(255)
+  description    String?
+  actorUserId    Int?
+  payload        Json?
+  occurredAt     DateTime @default(now()) @db.Timestamptz(6)
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([contractId, occurredAt], map: "ix_contract_timeline_contract_time")
+  @@index([organizationId], map: "ix_contract_timeline_org")
+  @@index([entryType], map: "ix_contract_timeline_type")
+  @@map("contract_timeline_entries")
+}
+
+/// Platform lifecycle domain events for future consumers.
+model ContractLifecycleEvent {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  contractId     Int
+  eventType      String   @db.VarChar(64)
+  payload        Json
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([organizationId], map: "ix_contract_lifecycle_events_org")
+  @@index([contractId], map: "ix_contract_lifecycle_events_contract")
+  @@index([eventType], map: "ix_contract_lifecycle_events_type")
+  @@map("contract_lifecycle_events")
+}

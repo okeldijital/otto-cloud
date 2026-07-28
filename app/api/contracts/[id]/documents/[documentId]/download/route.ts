@@ -29,13 +29,18 @@ function parseContractId(raw: string): number | null {
   return Number.isFinite(id) && id > 0 ? id : null;
 }
 
+function safeFilename(name: string): string {
+  return (name || "document.pdf").replace(/[^\w.\- ()[\]]+/g, "_").slice(0, 180);
+}
+
 /**
  * GET /api/contracts/:id/documents/:documentId/download
  *
- * Returns a short-lived signed URL. Never exposes storage keys or buckets.
+ * - default / format=json → short-lived signed URL (never exposes keys/buckets)
+ * - format=stream → server-side proxy of bytes (for PDF viewer; avoids browser CORS on R2)
  */
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   context: {
     params: Promise<{ id: string; documentId: string }> | { id: string; documentId: string };
   }
@@ -51,12 +56,40 @@ export async function GET(
       return apiError("Invalid document id", 400, null, "INVALID_DOCUMENT_ID");
     }
 
+    const format =
+      new URL(req.url).searchParams.get("format") ||
+      (req.headers.get("accept")?.includes("application/pdf") ? "stream" : "json");
+
     const result = await contractDocumentService.getDownloadUrl({
       contractId,
       documentId: params.documentId,
       organizationId: ctx.organizationId,
       legacyIntOrgId: ctx.legacyIntOrgId,
     });
+
+    if (format === "stream" || format === "inline") {
+      const remote = await fetch(result.url);
+      if (!remote.ok) {
+        return apiError(
+          "Document unavailable",
+          remote.status === 403 || remote.status === 401 ? 403 : 502,
+          null,
+          "DOCUMENT_UNAVAILABLE"
+        );
+      }
+      const filename = safeFilename(result.filename);
+      const headers = new Headers();
+      headers.set("Content-Type", result.mimeType || "application/pdf");
+      headers.set(
+        "Content-Disposition",
+        format === "inline"
+          ? `inline; filename="${filename}"`
+          : `inline; filename="${filename}"`
+      );
+      headers.set("Cache-Control", "private, no-store");
+      headers.set("X-Content-Type-Options", "nosniff");
+      return new NextResponse(remote.body, { status: 200, headers });
+    }
 
     return NextResponse.json({
       success: true,
