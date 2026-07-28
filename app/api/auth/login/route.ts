@@ -1,41 +1,57 @@
+/**
+ * POST /api/auth/login — IAM native authentication (A.1).
+ *
+ * Dual-run: if identity is only on legacy User table, returns LEGACY_AUTH_REQUIRED
+ * so the client can fall back to next-auth without mixing session sources.
+ */
+
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import bcrypt from "bcryptjs";
+import {
+  authenticationService,
+  cookieService,
+  identityErrorResponse,
+  clientIp,
+  clientUserAgent,
+} from "@/lib/platform/identity";
 
 export async function POST(req: Request) {
   try {
-    const { email, password } = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const email = typeof body.email === "string" ? body.email : "";
+    const password = typeof body.password === "string" ? body.password : "";
+    const rememberMe = Boolean(body.rememberMe);
 
-    if (!email || !password) {
-      return NextResponse.json({ error: "Email and password required" }, { status: 400 });
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { email },
+    // Dual-run: IAM identities authenticate here; legacy-only users get
+    // LEGACY_AUTH_REQUIRED from AuthenticationService for next-auth fallback.
+    const result = await authenticationService.login({
+      email,
+      password,
+      rememberMe,
+      ipAddress: clientIp(req),
+      userAgent: clientUserAgent(req),
     });
 
-    if (!user) {
-      return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
-    }
-
-    if (!user.is_active) {
-      return NextResponse.json({ error: "Account is deactivated" }, { status: 403 });
-    }
-
-    const isValid = await bcrypt.compare(password, user.hashed_password);
-    if (!isValid) {
-      return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
-    }
-
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { last_login: new Date() },
+    const res = NextResponse.json({
+      identity: result.identity,
+      organization: result.organization,
+      permissions: result.permissions,
+      roles: result.roles,
+      requiresMfa: result.requiresMfa,
+      requiresEmailVerification: result.requiresEmailVerification,
     });
 
-    const { hashed_password, ...userWithoutPassword } = user;
-    return NextResponse.json(userWithoutPassword);
-  } catch (error: any) {
-    console.error("Login error:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    cookieService.applyAuthCookies(res, {
+      sessionToken: result.session.sessionToken,
+      refreshToken: result.session.refreshToken,
+      accessToken: result.session.accessToken,
+      rememberMe,
+      accessMaxAgeSeconds: result.session.accessMaxAgeSeconds,
+      sessionMaxAgeSeconds: result.session.sessionMaxAgeSeconds,
+      refreshMaxAgeSeconds: result.session.refreshMaxAgeSeconds,
+    });
+
+    return res;
+  } catch (err) {
+    return identityErrorResponse(err);
   }
 }

@@ -4,7 +4,7 @@
  */
 
 import { hash, verify } from "@node-rs/argon2";
-import { IdentityError } from "../domain/types";
+import { IdentityError } from "../../domain/types";
 
 /** OWASP-aligned Argon2id parameters (tune for production hardware). */
 const ARGON2_OPTIONS = {

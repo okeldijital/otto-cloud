@@ -1,12 +1,12 @@
 /**
- * IdentityService — create / lookup identities (A.0 foundation).
- * Does not implement login; that is A.1.
+ * IdentityService — identity domain (who), not authentication (proof).
+ * Does not implement login; that is AuthenticationService in A.1.
  */
 
 import { prisma } from "@/lib/prisma";
-import { hashPassword } from "../crypto/password";
-import { normalizeEmail } from "../crypto/tokens";
-import { assertPasswordStrength } from "../credentials/password-policy";
+import { hashPassword } from "../authentication/crypto/password";
+import { normalizeEmail } from "../authentication/crypto/tokens";
+import { assertPasswordStrength } from "../authentication/passwords/password-policy";
 import { IdentityError } from "../domain/types";
 
 export class IdentityService {

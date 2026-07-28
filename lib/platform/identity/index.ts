@@ -1,20 +1,20 @@
 /**
- * OTTO Platform Identity & Access Management
+ * OTTO Platform Identity
  *
- * Phase A.0 — Foundation: schema, crypto, domain, permission catalog.
- * Phases A.1+ implement login, sessions, MFA, RBAC enforcement, invitations UI.
+ * Identity = business domain (who the principal is, org membership, permissions).
+ * Authentication = proof of identity (passwords, sessions, MFA, future SSO/passkeys).
  *
- * Legacy next-auth / lib/auth.ts remains active until cutover.
- * See: docs/platform/identity/legacy-archive/README.md
+ * A.1 must implement native auth — NOT NextAuth.
+ * See: ADR-028 Authentication Strategy
+ *
+ * Legacy next-auth remains until cutover:
+ * docs/platform/identity/legacy-archive/README.md
  */
 
+// Domain
 export * from "./domain/types";
-export * from "./crypto";
-export * from "./config";
-export {
-  validatePasswordStrength,
-  assertPasswordStrength,
-} from "./credentials/password-policy";
+
+// Authorization / RBAC (identity domain)
 export {
   PERMISSION_CATALOG,
   SYSTEM_ROLE_TEMPLATES,
@@ -24,8 +24,20 @@ export type { PermissionKey } from "./permissions/catalog";
 export { PermissionSet } from "./authorization/permissions";
 export { IDENTITY_EVENTS } from "./events/catalog";
 export type { IdentityEventType } from "./events/catalog";
+
+// Identity services
 export { identityService, IdentityService } from "./services/identity-service";
 export {
   seedIamPermissions,
   seedOrgSystemRoles,
 } from "./services/permission-seed";
+
+// Authentication subsystem (proof)
+export * from "./authentication";
+
+// Re-export security config for convenience (source of truth: platform/config)
+export {
+  getPlatformConfig,
+  getIamSecurityConfig,
+  resetPlatformConfig,
+} from "@/lib/platform/config";

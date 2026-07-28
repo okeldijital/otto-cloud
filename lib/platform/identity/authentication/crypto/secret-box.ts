@@ -4,7 +4,7 @@
  */
 
 import { createCipheriv, createDecipheriv, randomBytes, createHash } from "crypto";
-import { IdentityError } from "../domain/types";
+import { IdentityError } from "../../domain/types";
 
 const ALGO = "aes-256-gcm";
 const IV_LEN = 12;

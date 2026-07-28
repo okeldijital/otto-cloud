@@ -4,7 +4,7 @@
 |-------|--------|
 | Status | Implemented (foundation) |
 | Date | 2026-07-29 |
-| Next | A.1 Authentication |
+| Next | [A.1 Authentication](./milestone-iam-a1-complete.md) ✅ |
 
 ---
 
@@ -17,6 +17,12 @@
 - Legacy auth documented as frozen dual-run surface  
 - ADRs 022–027 + architecture docs  
 - Tests: `npm run test:identity`  
+
+## Pre-A.1 structural follow-up (same track)
+
+- Identity domain vs `authentication/` subsystem  
+- `lib/platform/config` for security policy  
+- ADR-028: A.1 is native auth, **not** NextAuth  
 
 ## Explicitly not yet
 

@@ -78,19 +78,24 @@ Reusable projection engine extracted so modules do not own bus wiring.
 | Phase | Status | Notes |
 |-------|--------|--------|
 | **A.0 Foundation** | ✅ Complete | Schema, crypto, catalog, ADRs |
-| A.1 Authentication | Planned | Replace next-auth login |
-| A.2–A.10 | Planned | Password, sessions, MFA, RBAC, invitations, security center |
+| **Pre-A.1 structure** | ✅ Complete | Identity ≠ Authentication; Platform Config |
+| **A.1 Authentication** | ✅ Complete | Native login/session/refresh/cookies/verify/lockout; dual-run |
+| A.2–A.10 | Planned | Password reset, sessions UI, MFA, RBAC, invitations, security center |
 
 | Document | Purpose |
 |----------|---------|
-| [ADR-022 IAM](../product/platform/adr-022-identity-access-management.md) | Decision: new platform, no retrofit |
+| [ADR-022 IAM](../product/platform/adr-022-identity-access-management.md) | New platform, no retrofit |
+| [ADR-028 Authentication Strategy](../product/platform/adr-028-authentication-strategy.md) | Identity vs auth; no NextAuth for A.1 |
 | [milestone-iam-a0-complete.md](../product/platform/milestone-iam-a0-complete.md) | A.0 completion |
+| [milestone-iam-a1-complete.md](../product/platform/milestone-iam-a1-complete.md) | A.1 completion |
 | [identity-architecture.md](../architecture/identity-architecture.md) | Package layout |
+| [authentication.md](../architecture/authentication.md) | Auth stack |
+| [platform-config.md](../architecture/platform-config.md) | Security policy & feature flags |
 | [legacy-archive](./identity/legacy-archive/README.md) | Frozen next-auth surface |
 
-**Package:** `lib/platform/identity`  
+**Packages:** `lib/platform/identity` · `lib/platform/config`  
 **Tests:** `npm run test:identity`  
-**Policy:** Do not migrate `lib/auth.ts` in place.
+**Policy:** Do not migrate `lib/auth.ts` in place. A.1 = native auth, not NextAuth.
 
 ## Migration & decommission
 

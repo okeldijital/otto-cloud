@@ -18,6 +18,8 @@ import {
   PERMISSION_CATALOG,
   IDENTITY_EVENTS,
   isKnownPermission,
+  getPlatformConfig,
+  resetPlatformConfig,
 } from "../index";
 
 let passed = 0;
@@ -95,6 +97,15 @@ async function main() {
       IDENTITY_EVENTS.PasswordResetCompleted,
       "identity.password.reset.completed"
     );
+  });
+
+  await test("platform config owns security password policy", () => {
+    resetPlatformConfig();
+    const cfg = getPlatformConfig();
+    assert.ok(cfg.security.password.minLength >= 12);
+    assert.equal(cfg.security.password.algorithm, "argon2id");
+    assert.ok(cfg.security.session.maxAgeHours > 0);
+    assert.equal(typeof cfg.features.legacyNextAuth, "boolean");
   });
 
   console.log(`\n${passed} passed, ${failed} failed\n`);

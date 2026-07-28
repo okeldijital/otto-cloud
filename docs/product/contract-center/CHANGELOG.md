@@ -51,6 +51,16 @@ _No additional unreleased entries._
 
 ---
 
+## [Platform IAM pre-A.1] — 2026-07-29 — Identity / Auth split + Platform Config
+
+### Changed
+
+- Split `lib/platform/identity`: **Identity** (domain/orgs/permissions) vs **authentication/** (passwords, sessions, MFA, crypto).
+- Added `lib/platform/config` for centralized security policy, feature flags, env validation.
+- ADR-028: Authentication Strategy — **A.1 must not use NextAuth**; native login stack.
+
+---
+
 ## [Platform IAM A.0] — 2026-07-29 — Identity Platform Foundation
 
 ### Added

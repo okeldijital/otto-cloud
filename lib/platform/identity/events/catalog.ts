@@ -10,13 +10,16 @@ export const IDENTITY_EVENTS = {
   PasswordResetRequested: "identity.password.reset.requested",
   PasswordResetCompleted: "identity.password.reset.completed",
   SessionCreated: "identity.session.created",
+  SessionRefreshed: "identity.session.refreshed",
   SessionRevoked: "identity.session.revoked",
   MfaEnabled: "identity.mfa.enabled",
   MfaDisabled: "identity.mfa.disabled",
   InvitationSent: "identity.invitation.sent",
   InvitationAccepted: "identity.invitation.accepted",
+  EmailVerificationSent: "identity.email.verification.sent",
   EmailVerified: "identity.email.verified",
   AccountLocked: "identity.account.locked",
+  AccountUnlocked: "identity.account.unlocked",
 } as const;
 
 export type IdentityEventType =

@@ -292,5 +292,8 @@ Email, calendar sync, AI reminders, workflow automation, approval routing, e-sig
 - [x] Identity event names on platform bus
 - [x] ADRs 022–027 + architecture docs
 - [x] Tests (`npm run test:identity`)
-- [ ] A.1 Login/logout (next)
+- [x] Pre-A.1: Identity ≠ Authentication package split
+- [x] Pre-A.1: `lib/platform/config` security policies
+- [x] ADR-028 Authentication Strategy (no NextAuth for A.1)
+- [x] A.1 Native login/logout/session/refresh/cookies/email verify/lockout
 - [ ] A.2–A.10 (planned)
