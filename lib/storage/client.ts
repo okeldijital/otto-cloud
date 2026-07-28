@@ -11,15 +11,38 @@ import { storageConfig } from "@/lib/config/storage";
  *
  * Swapping providers (e.g. AWS S3) only requires changing `storageConfig`;
  * nothing else in the storage package reads credentials directly.
+ *
+ * The client is created lazily so importing this module does not require
+ * storage env vars (unit tests / DocumentService with a mock provider).
  */
-export const storageClient = new S3Client({
-  region: storageConfig.region,
-  endpoint: storageConfig.endpoint,
-  credentials: {
-    accessKeyId: storageConfig.credentials.accessKeyId,
-    secretAccessKey: storageConfig.credentials.secretAccessKey,
+
+let _client: S3Client | null = null;
+
+function createClient(): S3Client {
+  return new S3Client({
+    region: storageConfig.region,
+    endpoint: storageConfig.endpoint,
+    credentials: {
+      accessKeyId: storageConfig.credentials.accessKeyId,
+      secretAccessKey: storageConfig.credentials.secretAccessKey,
+    },
+    forcePathStyle: true,
+  });
+}
+
+export const storageClient = new Proxy({} as S3Client, {
+  get(_target, prop, receiver) {
+    if (!_client) {
+      _client = createClient();
+    }
+    const value = Reflect.get(_client as object, prop, receiver);
+    return typeof value === "function" ? value.bind(_client) : value;
   },
-  forcePathStyle: true,
 });
 
-export type StorageClient = typeof storageClient;
+export type StorageClient = S3Client;
+
+/** Test helper — reset singleton between suites. */
+export function resetStorageClient(): void {
+  _client = null;
+}

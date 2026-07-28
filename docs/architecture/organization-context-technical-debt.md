@@ -11,7 +11,8 @@
 |------|--------------|---------------------|
 | **Tracks lack `organization_id`** | Schema change + backfill; out of scope for resolver milestone | Add UUID column, backfill from release/work, filter in API |
 | **Labels / publishers / PROs lack org column** | Same | Schema + backfill |
-| **INT-scoped tables** (contracts, individuals, some AI) | Large migration; compat maps via `legacyIntOrgId` | Migrate columns to UUID org id |
+| **INT-scoped tables** (contracts, individuals, some AI) | Large migration; compat maps via `legacyIntOrgId` | Migrate columns to UUID org id — see [legacy-contract-migration.md](../platform/legacy-contract-migration.md) for contracts exit path |
+| **`audit_logs.organization_id` Int + `parseInt` on UUID** | Desktop-era audit schema; not a Contract Center fix | **Platform work item (High):** [audit-system-uuid-migration.md](../platform/work-items/audit-system-uuid-migration.md) — Scheduled, Before Production; does not block Contract Center M2 |
 | **`users.organization_id` NOT NULL** | Requires Prisma migration; unassigned sentinel used instead | Make nullable; drop unassigned UUID |
 | **Legacy catalog UUID** | Imported data still keyed to import scope | Re-key rows to real `tenants.id`; delete `migration-compat` mapping |
 | **Dual JWT claims** (`tenant_id` + `organization_id`) | Transition; same active org | Collapse to one claim after re-key |
@@ -45,3 +46,10 @@ When ready to delete `lib/auth/migration-compat.ts` builtins:
 - Removing organization filters from catalog
 - Introducing a second context system
 - Auto-creating organizations on registration
+
+---
+
+## Related platform debt
+
+Storage / Document Platform items (Milestone 2.1 closed items and 2.1A residuals) live in [`technical-debt.md`](./technical-debt.md).  
+Architecture validation: [`storage-validation.md`](./storage-validation.md).

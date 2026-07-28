@@ -1,16 +1,17 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
-  ChevronLeft, FileText, Upload, Edit3, Plus, Trash2, Download,
-  AlertCircle, Music, Users, DollarSign, PieChart, Link2,
+  ChevronLeft, FileText, Upload, Edit3, Plus, Trash2,
+  Music, Users, DollarSign, PieChart, Link2,
 } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import EntityForm from "@/components/EntityForm";
+import ContractDocumentsSection from "@/components/contracts/ContractDocumentsSection";
 import api from "@/lib/api";
 
 const STATUS_VARIANTS: Record<string, string> = {
@@ -73,12 +74,6 @@ export default function ContractDetailPage() {
     selected: [],
     notes: "",
   });
-  const [docModalOpen, setDocModalOpen] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [selectedDoc, setSelectedDoc] = useState<any>(null);
-  const [dragActive, setDragActive] = useState(false);
-
   // Track modal
   const [trackModalOpen, setTrackModalOpen] = useState(false);
   const [trackSearch, setTrackSearch] = useState("");
@@ -125,11 +120,6 @@ export default function ContractDetailPage() {
         advances_currency: data.advances_currency || "USD",
         recoupment_notes: data.recoupment_notes || "",
       });
-      const docs = data.contract_documents || [];
-      if (docs.length > 0) {
-        const sorted = [...docs].sort((a: any, b: any) => (b.version || 0) - (a.version || 0));
-        setSelectedDoc(sorted[0]);
-      }
       setError("");
     } catch (err: any) {
       console.error(err);
@@ -140,13 +130,6 @@ export default function ContractDetailPage() {
   }, [id]);
 
   useEffect(() => { fetchContract(); }, [fetchContract]);
-
-  const documentsWithVersions = useMemo(() => {
-    if (!contract?.contract_documents) return [];
-    return [...contract.contract_documents].sort((a: any, b: any) => (b.version || 0) - (a.version || 0));
-  }, [contract]);
-
-  const latestDoc = useMemo(() => documentsWithVersions[0] || null, [documentsWithVersions]);
 
   const saveMetadata = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -258,28 +241,6 @@ export default function ContractDetailPage() {
     }
   };
 
-  const uploadDocument = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedFile) {
-      alert("Choose a PDF first.");
-      return;
-    }
-    setUploading(true);
-    try {
-      const fd = new FormData();
-      fd.append("file", selectedFile);
-      await api.post(`/contracts?action=upload_document&id=${id}`, fd);
-      await fetchContract();
-      setSelectedFile(null);
-      setDocModalOpen(false);
-    } catch (err: any) {
-      alert(err?.response?.data?.error || "Upload failed");
-    } finally {
-      setUploading(false);
-      setDragActive(false);
-    }
-  };
-
   const searchTracks = async (q: string) => {
     if (!q || q.length < 2) { setTrackResults([]); return; }
     try {
@@ -370,11 +331,6 @@ export default function ContractDetailPage() {
     } catch { setAssetForm((prev: any) => ({ ...prev, results: [] })); }
   };
 
-  const downloadDoc = (doc: any) => {
-    if (!doc) return;
-    window.open(doc.file_path, "_blank");
-  };
-
   const deleteContract = async () => {
     if (!window.confirm("Are you sure you want to delete this contract? This action cannot be undone.")) return;
     try {
@@ -382,15 +338,6 @@ export default function ContractDetailPage() {
       router.push("/contracts");
     } catch (err: any) {
       alert(err?.response?.data?.error || "Failed to delete contract");
-    }
-  };
-
-  const onDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragActive(false);
-    if (e.dataTransfer.files?.length) {
-      setSelectedFile(e.dataTransfer.files[0]);
-      setDocModalOpen(true);
     }
   };
 
@@ -419,11 +366,12 @@ export default function ContractDetailPage() {
               <Badge variant={STATUS_VARIANTS[contract.status] || "neutral"} size="sm">
                 {contract.status}
               </Badge>
-              <Button variant="secondary" size="sm" onClick={() => setDocModalOpen(true)}>
-                <Upload size={14} /> Upload
-              </Button>
-              <Button variant="secondary" size="sm" onClick={() => downloadDoc(selectedDoc || latestDoc)}>
-                <Download size={14} /> PDF
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setActiveTab("documents")}
+              >
+                <Upload size={14} /> Documents
               </Button>
               <Button variant="danger" size="sm" onClick={deleteContract}>
                 <Trash2 size={14} />
@@ -454,73 +402,7 @@ export default function ContractDetailPage() {
       </div>
 
       {activeTab === "documents" && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="space-y-4">
-            <div
-              className={`border-2 border-dashed rounded-2xl p-8 text-center transition-colors cursor-pointer ${
-                dragActive ? "border-primary bg-primary/5" : "border-white/10 hover:border-white/20"
-              }`}
-              onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
-              onDragLeave={() => setDragActive(false)}
-              onDrop={onDrop}
-              onClick={() => setDocModalOpen(true)}
-            >
-              <Upload size={24} className="mx-auto mb-3 text-text-secondary" />
-              <p className="font-medium">Drag & drop signed PDF</p>
-              <p className="text-sm text-text-secondary mt-1">Or click to browse files</p>
-            </div>
-            <div className="space-y-2">
-              {documentsWithVersions.length === 0 && (
-                <p className="text-center text-text-secondary py-4">No documents uploaded yet.</p>
-              )}
-              {documentsWithVersions.map((doc: any) => (
-                <div
-                  key={doc.id}
-                  className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-colors ${
-                    selectedDoc?.id === doc.id ? "bg-primary/10 border border-primary/30" : "bg-white/5 hover:bg-white/10"
-                  }`}
-                  onClick={() => setSelectedDoc(doc)}
-                >
-                  <div className="flex items-center gap-3">
-                    <FileText size={18} className="text-text-secondary" />
-                    <div>
-                      <div className="font-medium text-sm">v{doc.version || "?"} • {doc.file_name}</div>
-                      <div className="text-xs text-text-secondary">
-                        {doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleString() : "—"}
-                      </div>
-                    </div>
-                  </div>
-                  <button
-                    className="ghost-btn p-2 hover:bg-white/10 rounded-lg"
-                    onClick={(e) => { e.stopPropagation(); downloadDoc(doc); }}
-                  >
-                    <Download size={14} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="bg-white/5 rounded-2xl overflow-hidden" style={{ minHeight: 400 }}>
-            {!selectedDoc ? (
-              <div className="flex items-center justify-center h-full text-text-secondary p-8">
-                Select a document to preview.
-              </div>
-            ) : (
-              <object
-                data={selectedDoc.file_path}
-                type="application/pdf"
-                width="100%"
-                height="100%"
-                style={{ minHeight: 400 }}
-              >
-                <div className="flex items-center justify-center h-full text-text-secondary p-8">
-                  PDF preview unavailable.{" "}
-                  <button className="link-btn ml-1" onClick={() => downloadDoc(selectedDoc)}>Download instead</button>
-                </div>
-              </object>
-            )}
-          </div>
-        </div>
+        <ContractDocumentsSection contractId={id} />
       )}
 
       {activeTab === "overview" && (
@@ -980,17 +862,6 @@ export default function ContractDetailPage() {
             <label className="text-xs text-text-secondary">Notes</label>
             <input className="input w-full" value={assetForm.notes} onChange={(e) => setAssetForm({ ...assetForm, notes: e.target.value })} />
           </div>
-        </div>
-      </EntityForm>
-
-      {/* Document Upload Modal */}
-      <EntityForm title="Upload Contract PDF" isOpen={docModalOpen} onClose={() => { setDocModalOpen(false); setSelectedFile(null); }} onSubmit={uploadDocument} isSubmitting={uploading} error={undefined}>
-        <div className="space-y-4">
-          <div>
-            <label className="text-xs text-text-secondary">Choose File (PDF)</label>
-            <input type="file" accept="application/pdf" className="w-full mt-1" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} required />
-          </div>
-          <p className="text-xs text-text-secondary">PDF is the source of truth. Each upload becomes a new version.</p>
         </div>
       </EntityForm>
 

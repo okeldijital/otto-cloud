@@ -2234,3 +2234,57 @@ model Attachment {
   @@index([createdAt], map: "ix_attachments_created")
   @@map("attachments")
 }
+
+// ---------------------------------------------------------------------------
+// Platform Document (immutable stored object)
+//
+// Documents are platform assets. They never reference business entities.
+// Business modules (Contracts, Releases, Rights, ...) link via relationship
+// tables such as ContractDocumentRelation. Soft delete only; blob retention
+// is a separate policy concern.
+//
+// See: docs/product/contract-center/adr-008-document-storage.md
+// ---------------------------------------------------------------------------
+model DocumentAsset {
+  id               String    @id @default(uuid()) @db.Uuid
+  organizationId   String    @db.Uuid
+  storageKey       String
+  storageProvider  String
+  storageBucket    String
+  storageRegion    String?
+  originalFilename String
+  extension        String?
+  mimeType         String
+  fileSize         BigInt
+  checksum         String
+  uploadedBy       Int?
+  uploadedAt       DateTime  @default(now()) @db.Timestamptz(6)
+  deletedAt        DateTime? @db.Timestamptz(6)
+  createdAt        DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime  @updatedAt @db.Timestamptz(6)
+
+  contractLinks ContractDocumentRelation[]
+
+  @@index([organizationId], map: "ix_document_assets_organization")
+  @@index([storageKey], map: "ix_document_assets_storage_key")
+  @@index([checksum], map: "ix_document_assets_checksum")
+  @@index([uploadedAt], map: "ix_document_assets_uploaded_at")
+  @@map("document_assets")
+}
+
+/// Relationship: Contract → Document (documents never reference contracts).
+model ContractDocumentRelation {
+  id               String   @id @default(uuid()) @db.Uuid
+  contractId       Int
+  documentId       String   @db.Uuid
+  relationshipType String   @default("signed_agreement") @db.VarChar(50)
+  createdAt        DateTime @default(now()) @db.Timestamptz(6)
+  createdBy        Int?
+
+  document DocumentAsset @relation(fields: [documentId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([contractId, documentId], map: "uq_contract_document_relation")
+  @@index([contractId], map: "ix_contract_document_relations_contract")
+  @@index([documentId], map: "ix_contract_document_relations_document")
+  @@map("contract_document_relations")
+}
