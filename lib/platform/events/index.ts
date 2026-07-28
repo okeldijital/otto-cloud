@@ -83,8 +83,10 @@ export async function bootstrapPlatformEvents(): Promise<void> {
   );
   registerNotificationSubscriber();
   registerReminderSubscriber();
-  const { registerReleaseContractSubscriber } = await import(
-    "@/lib/release-workspace/contracts/event-subscriber"
+
+  // Platform Projection Framework — modules register definitions; platform wires bus
+  const { bootstrapProjections } = await import(
+    "@/lib/platform/projections"
   );
-  registerReleaseContractSubscriber();
+  await bootstrapProjections();
 }

@@ -38,6 +38,8 @@
     "test:event-contracts": "tsx lib/platform/events/__tests__/schema-validation.test.ts",
     "test:notifications": "tsx lib/platform/notifications/__tests__/notifications.test.ts",
     "test:release-contracts": "tsx lib/release-workspace/contracts/__tests__/health.test.ts",
+    "test:projections": "tsx lib/platform/projections/__tests__/projections.test.ts",
+    "test:rights": "tsx lib/rights/__tests__/rights.test.ts",
     "link:attachments": "tsx scripts/migrate-data/link-attachments/engine.ts",
     "link:attachments:dry-run": "tsx scripts/migrate-data/link-attachments/engine.ts --dry-run"
   },

@@ -51,6 +51,36 @@ _No additional unreleased entries._
 
 ---
 
+## [Rights 6.0.0] — 2026-07-28 — Rights Management Foundation
+
+### Added
+
+- Rights domain, registry, promotion from verified contracts, human review.
+- Lifecycle, timeline, search, dashboard, `rights.*` platform events.
+- APIs under `/api/rights/*`, UI at `/rights` and `/rights/review`.
+- ADR-020, architecture docs, `npm run test:rights`.
+
+### Principle
+
+Contracts remain legal evidence. Rights are operational SoT for Royalties and downstream consumers.
+
+---
+
+## [Platform 5.0.1] — 2026-07-28 — Platform Projection Framework
+
+### Added
+
+- `lib/platform/projections` — engine, registry, store (checkpoints), replayer, subscriber wiring, metrics.
+- Release Workspace contract projection registered as the reference definition.
+- `GET/POST /api/platform/projections` (list / rebuild / replay).
+- ADR-019, platform-projections architecture, `npm run test:projections`.
+
+### Changed
+
+- Release Workspace no longer owns raw event-bus projection subscribers; platform wires definitions.
+
+---
+
 ## [Release Workspace 5.0.0] — 2026-07-28 — Contract Integration Foundation
 
 First platform consumer. Contract Center ownership unchanged.

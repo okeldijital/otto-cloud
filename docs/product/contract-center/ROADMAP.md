@@ -16,6 +16,7 @@ This roadmap is the product sequencing for Contract Center. Platform concerns (a
 | **M3** | Document Intelligence → Verified Domain | **3.0–3.2 complete** |
 | **M4** | Relationships, Lifecycle & Platform Events | **4.0–4.1 complete; 4.2 / 4.2A platform complete** |
 | **M5** | Release Workspace Contract Integration | **5.0 complete** |
+| **M6** | Rights Management Foundation | **6.0 complete** |
 
 ---
 
@@ -202,6 +203,16 @@ Platform event bus, registry, store, dispatcher, retry, DLQ, replay; notificatio
 **Status:** Implemented (2026-07-28) — see [milestone-5.0-complete.md](../release-workspace/milestone-5.0-complete.md).
 
 Release Workspace consumes Verified Contract, Relationships, Lifecycle, and Platform Events via **read models only**. No contract editing; no SoT duplication.
+
+---
+
+## Milestone 6 — Rights Management
+
+### Phase 6.0 — Rights Foundation ✅
+
+**Status:** Implemented (2026-07-28) — see [milestone-6.0-complete.md](../rights/milestone-6.0-complete.md).
+
+Operational rights derived from verified contracts with human review. Royalties and finance must consume Rights, not parse contracts.
 
 ---
 

@@ -30,3 +30,10 @@ export {
   ReleaseTimelineService,
 } from "./timeline-service";
 export { registerReleaseContractSubscriber } from "./event-subscriber";
+export {
+  registerReleaseContractProjection,
+  releaseContractProjectionDefinition,
+  RELEASE_CONTRACT_PROJECTION_NAME,
+  releaseKey,
+  parseReleaseKey,
+} from "./projection";

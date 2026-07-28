@@ -222,3 +222,37 @@ Email, calendar sync, AI reminders, workflow automation, approval routing, e-sig
 - [x] Dashboard widgets + search
 - [x] Tests (`npm run test:release-contracts`)
 - [x] No write / royalty / AI
+
+---
+
+## Platform Projection Framework (post-5.0)
+
+| Field | Value |
+|-------|--------|
+| Status | **Complete** |
+| ADR | [ADR-019](../platform/adr-019-platform-projections.md) |
+| Architecture | [platform-projections.md](../../architecture/platform-projections.md) |
+
+- [x] ProjectionEngine / Registry / Store / Replayer / Subscriber / Metrics
+- [x] Release Workspace as reference projection definition
+- [x] Rebuild + replay API
+- [x] Tests (`npm run test:projections`)
+
+---
+
+## Milestone 6.0 — Rights Management Foundation
+
+| Field | Value |
+|-------|--------|
+| Status | **Complete** |
+| ADR | [ADR-020](../rights/adr-020-rights-domain.md) |
+| Report | [milestone-6.0-complete.md](../rights/milestone-6.0-complete.md) |
+
+- [x] Rights domain + registry
+- [x] Promotion from verified contracts only
+- [x] Human review (approve/reject)
+- [x] Lifecycle + timeline + provenance
+- [x] Platform events `rights.*`
+- [x] Search + dashboard + APIs + UI
+- [x] Tests (`npm run test:rights`)
+- [x] No royalties / payments / AI

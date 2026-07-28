@@ -361,9 +361,27 @@ export class ReleaseContractSyncService {
   }
 
   /**
-   * Replay / full rebuild: re-project all releases that have contract links.
+   * Full rebuild via platform ProjectionEngine (preferred path).
+   * Falls back to local rebuild if projections are not bootstrapped.
    */
   async rebuildAll(params: { organizationId: string; limit?: number }) {
+    try {
+      const { projectionEngine } = await import("@/lib/platform/projections");
+      const { RELEASE_CONTRACT_PROJECTION_NAME } = await import("./projection");
+      const result = await projectionEngine.rebuild({
+        projectionName: RELEASE_CONTRACT_PROJECTION_NAME,
+        organizationId: params.organizationId,
+      });
+      return {
+        rebuilt: result.keysProcessed,
+        releaseIds: [] as number[],
+        errors: result.errors,
+        via: "platform.projections" as const,
+      };
+    } catch {
+      /* fall through */
+    }
+
     const links = await prisma.contractRelationship.findMany({
       where: {
         organizationId: params.organizationId,
@@ -387,7 +405,12 @@ export class ReleaseContractSyncService {
       });
       rebuilt += 1;
     }
-    return { rebuilt, releaseIds };
+    return {
+      rebuilt,
+      releaseIds,
+      errors: [] as string[],
+      via: "legacy" as const,
+    };
   }
 }
 

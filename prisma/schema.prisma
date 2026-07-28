@@ -3179,6 +3179,33 @@ model PlatformReminderSchedule {
 }
 
 // ---------------------------------------------------------------------------
+// Platform Projection Framework — checkpoints (shared infrastructure)
+// See: docs/architecture/platform-projections.md
+// ---------------------------------------------------------------------------
+
+model PlatformProjectionCheckpoint {
+  id                   String    @id @default(uuid()) @db.Uuid
+  projectionName       String    @db.VarChar(128)
+  organizationId       String    @db.Uuid
+  lastEventId          String?   @db.Uuid
+  lastEventName        String?   @db.VarChar(128)
+  lastEventPublishedAt DateTime? @db.Timestamptz(6)
+  /// idle | running | failed | rebuilding
+  status               String    @default("idle") @db.VarChar(32)
+  lastError            String?
+  lastRebuildAt        DateTime? @db.Timestamptz(6)
+  processedCount       Int       @default(0)
+  failureCount         Int       @default(0)
+  createdAt            DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt            DateTime  @updatedAt @db.Timestamptz(6)
+
+  @@unique([projectionName, organizationId], map: "uq_platform_projection_checkpoint")
+  @@index([organizationId], map: "ix_platform_projection_checkpoints_org")
+  @@index([status], map: "ix_platform_projection_checkpoints_status")
+  @@map("platform_projection_checkpoints")
+}
+
+// ---------------------------------------------------------------------------
 // Release Workspace — Contract Integration Read Model (Milestone 5.0)
 // Projection only. Contract Center remains source of truth.
 // See: docs/product/release-workspace/adr-018-release-contract-integration.md
@@ -3248,4 +3275,302 @@ model ReleaseContractTimelineEntry {
   @@index([contractId], map: "ix_release_contract_timeline_contract")
   @@index([sourceEventId], map: "ix_release_contract_timeline_source")
   @@map("release_contract_timeline_entries")
+}
+
+// ---------------------------------------------------------------------------
+// Rights Management Domain (Milestone 6.0)
+// Operational rights derived from Verified Contracts — not legal evidence.
+// See: docs/product/rights/adr-020-rights-domain.md
+// ---------------------------------------------------------------------------
+
+/// Canonical registry entry for an operational right.
+model Right {
+  id                 String    @id @default(uuid()) @db.Uuid
+  organizationId     String    @db.Uuid
+  /// Human-readable title
+  title              String    @db.VarChar(255)
+  /// Data-driven category key
+  category           String    @db.VarChar(64)
+  description        String?
+  /// candidate | pending_review | approved | active | suspended | expired | superseded | terminated | archived
+  status             String    @default("candidate") @db.VarChar(32)
+  previousStatus     String?   @db.VarChar(32)
+  statusChangedAt    DateTime? @db.Timestamptz(6)
+  statusChangedBy    Int?
+  version            Int       @default(1)
+  isCurrent          Boolean   @default(true)
+  exclusive          Boolean   @default(false)
+  perpetual          Boolean   @default(false)
+  effectiveDate      DateTime? @db.Date
+  expirationDate     DateTime? @db.Date
+  renewalDate        DateTime? @db.Date
+  terminationDate    DateTime? @db.Date
+  /// Owner type: organization | label | publisher | artist | individual | estate | custom
+  ownerType          String?   @db.VarChar(32)
+  ownerEntityId      String?   @db.VarChar(64)
+  ownerName          String?
+  /// Provenance (required for approved/active)
+  verifiedContractId String?   @db.Uuid
+  contractId         Int?
+  verificationSessionId String? @db.Uuid
+  verifiedVersion    Int?
+  documentId         String?   @db.Uuid
+  clauseReference    String?
+  promotionRunId     String?   @db.Uuid
+  candidateId        String?   @db.Uuid
+  reviewedBy         Int?
+  reviewedAt         DateTime? @db.Timestamptz(6)
+  approvedBy         Int?
+  approvedAt         DateTime? @db.Timestamptz(6)
+  provenance         Json      @default("{}")
+  createdBy          Int?
+  createdAt          DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt          DateTime  @updatedAt @db.Timestamptz(6)
+
+  grants           RightGrant[]
+  restrictions     RightRestriction[]
+  parties          RightParty[]
+  territories      RightTerritory[]
+  works            RightWork[]
+  releases         RightRelease[]
+  contractRefs     RightContractReference[]
+  history          RightHistory[]
+  timeline         RightTimelineEntry[]
+
+  @@index([organizationId, status], map: "ix_rights_org_status")
+  @@index([category], map: "ix_rights_category")
+  @@index([contractId], map: "ix_rights_contract")
+  @@index([verifiedContractId], map: "ix_rights_verified_contract")
+  @@index([ownerType, ownerEntityId], map: "ix_rights_owner")
+  @@index([expirationDate], map: "ix_rights_expiration")
+  @@map("rights")
+}
+
+model RightGrant {
+  id             String   @id @default(uuid()) @db.Uuid
+  rightId        String   @db.Uuid
+  organizationId String   @db.Uuid
+  /// license | assignment | administration | exclusive_license | etc.
+  grantType      String   @db.VarChar(64)
+  grantScope     String?
+  exclusive      Boolean  @default(false)
+  transferable   Boolean  @default(false)
+  assignable     Boolean  @default(false)
+  sublicensable  Boolean  @default(false)
+  revocable      Boolean  @default(true)
+  perpetual      Boolean  @default(false)
+  notes          String?
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @db.Timestamptz(6)
+
+  right Right @relation(fields: [rightId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([rightId], map: "ix_right_grants_right")
+  @@map("right_grants")
+}
+
+model RightRestriction {
+  id             String    @id @default(uuid()) @db.Uuid
+  rightId        String    @db.Uuid
+  organizationId String    @db.Uuid
+  /// territory | platform | media | language | time | usage | distribution | exclusivity | carve_out | suspension | custom
+  restrictionType String   @db.VarChar(64)
+  value          String
+  description    String?
+  effectiveDate  DateTime? @db.Date
+  expirationDate DateTime? @db.Date
+  createdAt      DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @db.Timestamptz(6)
+
+  right Right @relation(fields: [rightId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([rightId], map: "ix_right_restrictions_right")
+  @@index([restrictionType], map: "ix_right_restrictions_type")
+  @@map("right_restrictions")
+}
+
+model RightParty {
+  id             String   @id @default(uuid()) @db.Uuid
+  rightId        String   @db.Uuid
+  organizationId String   @db.Uuid
+  /// owner | grantee | administrator | licensor | licensee | beneficiary
+  role           String   @db.VarChar(64)
+  partyType      String?  @db.VarChar(32)
+  partyEntityId  String?  @db.VarChar(64)
+  name           String
+  sharePercent   Float?
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+
+  right Right @relation(fields: [rightId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([rightId], map: "ix_right_parties_right")
+  @@map("right_parties")
+}
+
+model RightTerritory {
+  id             String   @id @default(uuid()) @db.Uuid
+  rightId        String   @db.Uuid
+  organizationId String   @db.Uuid
+  /// worldwide | country | region | group | custom
+  territoryType  String   @db.VarChar(32)
+  code           String?  @db.VarChar(16)
+  name           String
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+
+  right Right @relation(fields: [rightId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([rightId], map: "ix_right_territories_right")
+  @@map("right_territories")
+}
+
+model RightWork {
+  id             String   @id @default(uuid()) @db.Uuid
+  rightId        String   @db.Uuid
+  organizationId String   @db.Uuid
+  workId         String   @db.VarChar(64)
+  workTitle      String?
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+
+  right Right @relation(fields: [rightId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([rightId], map: "ix_right_works_right")
+  @@index([workId], map: "ix_right_works_work")
+  @@map("right_works")
+}
+
+model RightRelease {
+  id             String   @id @default(uuid()) @db.Uuid
+  rightId        String   @db.Uuid
+  organizationId String   @db.Uuid
+  releaseId      String   @db.VarChar(64)
+  releaseTitle   String?
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+
+  right Right @relation(fields: [rightId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([rightId], map: "ix_right_releases_right")
+  @@index([releaseId], map: "ix_right_releases_release")
+  @@map("right_releases")
+}
+
+model RightContractReference {
+  id                 String   @id @default(uuid()) @db.Uuid
+  rightId            String   @db.Uuid
+  organizationId     String   @db.Uuid
+  contractId         Int
+  verifiedContractId String?  @db.Uuid
+  verifiedVersion    Int?
+  role               String   @default("source") @db.VarChar(32)
+  createdAt          DateTime @default(now()) @db.Timestamptz(6)
+
+  right Right @relation(fields: [rightId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([rightId], map: "ix_right_contract_refs_right")
+  @@index([contractId], map: "ix_right_contract_refs_contract")
+  @@map("right_contract_references")
+}
+
+/// Pre-approval candidate built from verified contract.
+model RightCandidate {
+  id                 String    @id @default(uuid()) @db.Uuid
+  organizationId     String    @db.Uuid
+  promotionRunId     String    @db.Uuid
+  contractId         Int
+  verifiedContractId String    @db.Uuid
+  verifiedVersion    Int
+  verificationSessionId String?
+  documentId         String?
+  category           String    @db.VarChar(64)
+  title              String    @db.VarChar(255)
+  description        String?
+  clauseReference    String?
+  exclusive          Boolean   @default(false)
+  proposedPayload    Json
+  confidence         Float?
+  /// pending | approved | rejected | merged | split
+  status             String    @default("pending") @db.VarChar(32)
+  decisionNotes      String?
+  decidedBy          Int?
+  decidedAt          DateTime? @db.Timestamptz(6)
+  resultingRightId   String?   @db.Uuid
+  createdAt          DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt          DateTime  @updatedAt @db.Timestamptz(6)
+
+  promotionRun RightPromotionRun @relation(fields: [promotionRunId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([organizationId, status], map: "ix_right_candidates_org_status")
+  @@index([promotionRunId], map: "ix_right_candidates_run")
+  @@index([contractId], map: "ix_right_candidates_contract")
+  @@map("right_candidates")
+}
+
+model RightPromotionRun {
+  id                 String    @id @default(uuid()) @db.Uuid
+  organizationId     String    @db.Uuid
+  contractId         Int
+  verifiedContractId String    @db.Uuid
+  verifiedVersion    Int
+  verificationSessionId String?
+  documentId         String?
+  /// running | completed | failed
+  status             String    @default("running") @db.VarChar(32)
+  candidateCount     Int       @default(0)
+  error              String?
+  createdBy          Int?
+  completedAt        DateTime? @db.Timestamptz(6)
+  createdAt          DateTime  @default(now()) @db.Timestamptz(6)
+
+  candidates RightCandidate[]
+
+  @@index([organizationId], map: "ix_right_promotion_runs_org")
+  @@index([contractId], map: "ix_right_promotion_runs_contract")
+  @@map("right_promotion_runs")
+}
+
+model RightHistory {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  rightId        String   @db.Uuid
+  action         String   @db.VarChar(64)
+  actorUserId    Int?
+  payload        Json?
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+
+  right Right @relation(fields: [rightId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([rightId], map: "ix_right_history_right")
+  @@map("right_history")
+}
+
+model RightTimelineEntry {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  rightId        String   @db.Uuid
+  entryType      String   @db.VarChar(64)
+  title          String   @db.VarChar(255)
+  description    String?
+  actorUserId    Int?
+  payload        Json?
+  occurredAt     DateTime @default(now()) @db.Timestamptz(6)
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+
+  right Right @relation(fields: [rightId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([rightId, occurredAt], map: "ix_right_timeline_right")
+  @@map("right_timeline_entries")
+}
+
+/// Domain event log (also dual-writes to platform bus).
+model RightDomainEvent {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  rightId        String?
+  eventType      String   @db.VarChar(64)
+  payload        Json
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([organizationId], map: "ix_right_domain_events_org")
+  @@index([rightId], map: "ix_right_domain_events_right")
+  @@index([eventType], map: "ix_right_domain_events_type")
+  @@map("right_domain_events")
 }

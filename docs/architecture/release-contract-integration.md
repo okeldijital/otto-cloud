@@ -23,9 +23,13 @@ ReleaseContractSummary (read model)
 Workspace UI (Contracts section)
       ↑
 Platform Events (contracts.*)
+      ↓
+Platform Projection Engine
 ```
 
 No direct Contract Center business logic imports for mutation.
+
+Projection infrastructure lives in `lib/platform/projections` (ADR-019). Release Workspace only implements the definition + builder.
 
 ---
 
@@ -37,7 +41,8 @@ No direct Contract Center business logic imports for mutation.
 | `ReleaseContractReadModelService` | List / summary / health / dashboard / search |
 | `ReleaseTimelineService` | Merge release projection + contract timeline |
 | `ReleaseContractHealthService` | Pure derived health (`computeContractHealth`) |
-| Event subscriber | `release-workspace.contract_projection` |
+| Projection definition | `release.contract.summary` (via platform projections) |
+| Platform subscriber | `projection.release.contract.summary` (auto-wired) |
 
 ---
 

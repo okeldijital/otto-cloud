@@ -31,6 +31,8 @@ import {
     Calculator,
     X,
     Layout,
+    FileCheck,
+    Scale,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSidebar } from '../../contexts/SidebarContext';
@@ -147,6 +149,8 @@ const Sidebar = () => {
             items: [
                 { icon: FileText, label: 'Contracts', path: '/admin-of-works/contracts' },
                 { icon: Inbox, label: 'Bulk Processing', path: '/contracts/bulk' },
+                { icon: Scale, label: 'Rights', path: '/rights' },
+                { icon: FileCheck, label: 'Rights Review', path: '/rights/review' },
                 { icon: ShieldCheck, label: 'Works Administration', path: '/admin-of-works/works' },
                 { icon: BarChart3, label: 'Status Quo', path: '/admin-of-works/status-quo' },
             ]

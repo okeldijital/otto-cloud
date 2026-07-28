@@ -39,6 +39,30 @@ First business module consuming Verified Contract, Relationships, Lifecycle, Eve
 **Package:** `lib/release-workspace/contracts`  
 **Tests:** `npm run test:release-contracts`
 
+## Platform Projection Framework ✅
+
+Reusable projection engine extracted so modules do not own bus wiring.
+
+| Document | Purpose |
+|----------|---------|
+| [ADR-019](../product/platform/adr-019-platform-projections.md) | Decision |
+| [platform-projections.md](../architecture/platform-projections.md) | Architecture |
+
+**Package:** `lib/platform/projections`  
+**API:** `GET/POST /api/platform/projections`  
+**Tests:** `npm run test:projections`
+
+## Milestone 6.0 — Rights Management Foundation ✅
+
+| Document | Purpose |
+|----------|---------|
+| [ADR-020 Rights Domain](../product/rights/adr-020-rights-domain.md) | Decision |
+| [milestone-6.0-complete.md](../product/rights/milestone-6.0-complete.md) | Completion |
+| [rights-domain-architecture.md](../architecture/rights-domain-architecture.md) | Architecture |
+
+**Package:** `lib/rights`  
+**Tests:** `npm run test:rights`
+
 ## Migration & decommission
 
 | Document | Purpose |
