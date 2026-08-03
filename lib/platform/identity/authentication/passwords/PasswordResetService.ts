@@ -1,6 +1,10 @@
 /**
  * PasswordResetService — forgot / reset token lifecycle (A.2).
  * Tokens are CSPRNG, hashed at rest, single-use, expiring.
+ *
+ * Delivery: Resend when RESEND_API_KEY is set; otherwise the link is written
+ * to application logs (Vercel Function logs) so ops can recover. Response
+ * never includes the raw token in production unless IAM_EXPOSE_AUTH_LINKS=true.
  */
 
 import { getPlatformConfig } from "@/lib/platform/config";
@@ -13,20 +17,52 @@ import {
 import { passwordRepository } from "../repositories/PasswordRepository";
 import { rateLimitService } from "../rate-limit/rate-limit-service";
 import { emitIdentityEvent, IDENTITY_EVENTS } from "../events";
+import {
+  isOutboundEmailConfigured,
+  passwordResetEmailContent,
+  sendTransactionalEmail,
+  shouldExposeAuthLinksInResponse,
+  type EmailDeliveryChannel,
+} from "../email/mailer";
+
+export type PasswordResetRequestResult = {
+  /** Always true when request accepted (anti-enumeration). */
+  sent: boolean;
+  /**
+   * How the link was delivered for *this* request when an account matched.
+   * When no account matched, channel is still reported as configured capability
+   * so the UI can explain missing email without leaking existence.
+   */
+  delivery: EmailDeliveryChannel;
+  /** True when Resend (or other outbound) is configured on this deployment. */
+  emailConfigured: boolean;
+  /** One-time URL — only in non-production or when IAM_EXPOSE_AUTH_LINKS=true. */
+  resetUrl?: string;
+};
 
 export class PasswordResetService {
   private ttlMinutes(): number {
     return getPlatformConfig().security.tokens.passwordResetTtlMinutes;
   }
 
+  private publicAppBase(): string {
+    const raw =
+      process.env.NEXTAUTH_URL ||
+      process.env.NEXT_PUBLIC_URL ||
+      process.env.APP_URL ||
+      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "") ||
+      "http://localhost:3000";
+    return raw.replace(/\/$/, "");
+  }
+
   /**
-   * Always returns success shape — no user enumeration.
+   * Always returns success shape — no user enumeration of account existence.
    */
   async requestReset(params: {
     email: string;
     ipAddress?: string | null;
     userAgent?: string | null;
-  }): Promise<{ sent: boolean; resetUrl?: string }> {
+  }): Promise<PasswordResetRequestResult> {
     const email = params.email?.trim() ?? "";
     if (!email) {
       throw new IdentityError("Email required", 400, "VALIDATION_ERROR");
@@ -37,12 +73,13 @@ export class PasswordResetService {
       ip: params.ipAddress,
     });
 
+    const emailConfigured = isOutboundEmailConfigured();
     const emailNormalized = normalizeEmail(email);
     const identity = await passwordRepository.findIdentityByEmailNormalized(
       emailNormalized
     );
 
-    // Identical response whether or not account exists
+    // Identical outer shape whether or not account exists
     if (!identity || identity.status === "disabled") {
       await emitIdentityEvent({
         eventType: IDENTITY_EVENTS.PasswordResetRequested,
@@ -50,7 +87,11 @@ export class PasswordResetService {
         ipAddress: params.ipAddress,
         userAgent: params.userAgent,
       });
-      return { sent: true };
+      return {
+        sent: true,
+        delivery: emailConfigured ? "resend" : "log",
+        emailConfigured,
+      };
     }
 
     await passwordRepository.invalidateUnusedResetTokens(identity.id);
@@ -64,12 +105,20 @@ export class PasswordResetService {
       expiresAt,
     });
 
-    const base =
-      process.env.NEXTAUTH_URL ||
-      process.env.NEXT_PUBLIC_URL ||
-      process.env.APP_URL ||
-      "http://localhost:3000";
-    const resetUrl = `${base}/auth/reset-password?token=${encodeURIComponent(raw)}`;
+    const resetUrl = `${this.publicAppBase()}/auth/reset-password?token=${encodeURIComponent(raw)}`;
+    const content = passwordResetEmailContent({
+      email: identity.email,
+      resetUrl,
+      ttlMinutes: this.ttlMinutes(),
+    });
+
+    const delivery = await sendTransactionalEmail({
+      to: identity.email,
+      subject: content.subject,
+      text: content.text,
+      html: content.html,
+      tags: ["password-reset"],
+    });
 
     await emitIdentityEvent({
       eventType: IDENTITY_EVENTS.PasswordResetRequested,
@@ -78,18 +127,20 @@ export class PasswordResetService {
         email: identity.email,
         expiresAt: expiresAt.toISOString(),
         found: true,
+        delivery: delivery.channel,
+        deliveryOk: delivery.ok,
       },
       ipAddress: params.ipAddress,
       userAgent: params.userAgent,
     });
 
-    if (process.env.NODE_ENV !== "production") {
-      console.info(`[iam] password reset link for ${identity.email}: ${resetUrl}`);
-    }
+    const expose = shouldExposeAuthLinksInResponse();
 
     return {
       sent: true,
-      ...(process.env.NODE_ENV !== "production" ? { resetUrl } : {}),
+      delivery: delivery.channel,
+      emailConfigured,
+      ...(expose ? { resetUrl } : {}),
     };
   }
 

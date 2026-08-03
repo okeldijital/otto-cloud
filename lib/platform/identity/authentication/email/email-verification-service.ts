@@ -66,10 +66,13 @@ export class EmailVerificationService {
       },
     });
 
-    const base =
+    const base = (
       process.env.NEXTAUTH_URL ||
       process.env.NEXT_PUBLIC_URL ||
-      "http://localhost:3000";
+      process.env.APP_URL ||
+      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
+      "http://localhost:3000"
+    ).replace(/\/$/, "");
     const verifyUrl = `${base}/auth/verify-email?token=${encodeURIComponent(raw)}`;
 
     await emitIdentityEvent({
@@ -83,12 +86,21 @@ export class EmailVerificationService {
       userAgent: params.userAgent,
     });
 
-    // Delivery: no outbound mailer yet — log in non-production for ops/dev
-    if (process.env.NODE_ENV !== "production") {
-      console.info(
-        `[iam] email verification link for ${identity.email}: ${verifyUrl}`
-      );
-    }
+    // Deliver via Resend when configured; otherwise log (Vercel Function logs)
+    const { emailVerificationContent, sendTransactionalEmail } = await import(
+      "./mailer"
+    );
+    const content = emailVerificationContent({
+      email: identity.email,
+      verifyUrl,
+    });
+    await sendTransactionalEmail({
+      to: identity.email,
+      subject: content.subject,
+      text: content.text,
+      html: content.html,
+      tags: ["email-verification"],
+    });
 
     return { token: raw, expiresAt, verifyUrl };
   }
