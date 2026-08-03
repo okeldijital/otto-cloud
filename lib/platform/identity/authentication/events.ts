@@ -1,6 +1,7 @@
 import { publishPlatformEvent } from "@/lib/platform/publish";
 import { prisma } from "@/lib/prisma";
 import { IDENTITY_EVENTS } from "../events/catalog";
+import { PLATFORM_SYSTEM_ORGANIZATION_ID } from "../bootstrap/constants";
 
 export async function emitIdentityEvent(params: {
   eventType: string;
@@ -24,10 +25,22 @@ export async function emitIdentityEvent(params: {
     /* non-blocking */
   }
 
-  // Platform bus requires registered org id for many consumers — use placeholder UUID when none
+  // Platform bus requires a valid UUID organizationId on the envelope.
+  // Use PLATFORM_SYSTEM_ORGANIZATION_ID (RFC-valid v4) — NOT the nil UUID,
+  // which fails event schema validation (version nibble must be 1–5).
   const orgId =
-    params.organizationId ||
-    "00000000-0000-0000-0000-000000000000";
+    params.organizationId || PLATFORM_SYSTEM_ORGANIZATION_ID;
+
+  const payload: Record<string, unknown> = {
+    ...params.payload,
+  };
+  // Only include identityId when present — avoid undefined-key noise in validation
+  if (params.identityId) {
+    payload.identityId = params.identityId;
+  }
+  if (params.organizationId) {
+    payload.organizationId = params.organizationId;
+  }
 
   await publishPlatformEvent({
     eventName: params.eventType,
@@ -35,11 +48,9 @@ export async function emitIdentityEvent(params: {
     producer: "identity",
     entityType: "identity",
     entityId: params.identityId ?? undefined,
-    payload: {
-      identityId: params.identityId,
-      ...params.payload,
-    },
+    payload,
   });
 }
 
 export { IDENTITY_EVENTS };
+export { PLATFORM_SYSTEM_ORGANIZATION_ID };

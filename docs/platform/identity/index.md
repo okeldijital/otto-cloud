@@ -13,6 +13,15 @@
 | [permission-reference.md](./permission-reference.md) | Permissions & roles |
 | [event-reference.md](./event-reference.md) | Platform events |
 | [deployment.md](./deployment.md) | Deploy & migrate |
+| [bootstrap.md](./bootstrap.md) | Idempotent IAM bootstrap architecture |
+| [deployment-workflow.md](./deployment-workflow.md) | Full deployment sequence |
+| [cicd-workflow.md](./cicd-workflow.md) | CI/CD preparation |
+| [rca-organization-create-hang.md](./rca-organization-create-hang.md) | Org create hang RCA |
+| [event-validation-report.md](./event-validation-report.md) | identity.login.failed schema fix |
+| [production-readiness.md](./production-readiness.md) | Production readiness assessment |
+| [production-rehearsal-report.md](./production-rehearsal-report.md) | Production rehearsal plan & go/no-go |
+| [access-recovery-report.md](./access-recovery-report.md) | Admin access recovery investigation |
+| [rehearsal-baseline-snapshot.json](./rehearsal-baseline-snapshot.json) | Read-only DB baseline artifact |
 | [operations.md](./operations.md) | Runbooks |
 | [migration-guide.md](./migration-guide.md) | Legacy user migration |
 | [security-review.md](./security-review.md) | Security audit |

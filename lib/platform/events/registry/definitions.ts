@@ -787,12 +787,20 @@ export const PLATFORM_EVENT_DEFINITIONS: EventDefinition[] = [
     version: V,
     producer: "identity",
     description: `IAM: ${name}`,
+    // Identity events often fire before org context exists (e.g. login.failed for
+    // unknown users). organizationId is optional + nullable; envelope inject still
+    // supplies PLATFORM_SYSTEM_ORGANIZATION_ID or a real tenant UUID.
     contract: contract(V, {
-      organizationId: f.uuid(),
+      organizationId: nullable(f.uuid()),
       identityId: f.string(),
       sessionId: f.string(),
       email: f.string(),
       reason: f.string(),
+      locked: f.boolean(),
+      membershipId: f.string(),
+      roleKey: f.string(),
+      name: f.string(),
+      slug: f.string(),
     }),
     consumers: ["notifications", "security"],
     idempotencyStrategy: "event_subscriber" as const,

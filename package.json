@@ -24,7 +24,9 @@
     "migrate:data:report": "tsx scripts/migrate-data/index.ts report",
     "migrate:data:link-attachments": "tsx scripts/migrate-data/index.ts link-attachments",
     "setup:cloud": "tsx prisma/setup.ts && tsx prisma/seed.ts",
+    "bootstrap:iam": "tsx scripts/bootstrap-iam.ts",
     "reset:admin-password": "tsx scripts/reset-admin-password.ts",
+    "reset:iam-password": "tsx scripts/reset-iam-password.ts",
     "test:org-context": "tsx lib/auth/__tests__/organization-context.test.ts",
     "test:documents": "tsx lib/documents/__tests__/checksum.test.ts && tsx lib/documents/__tests__/document-service.test.ts",
     "test:repository": "tsx components/contracts/repository/__tests__/repositoryUtils.test.ts",
@@ -85,7 +87,8 @@
     "prisma": "^5.22.0",
     "tailwindcss": "^3.4.19",
     "tsx": "^4.22.4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vercel": "^58.1.0"
   },
   "optionalDependencies": {
     "@anthropic-ai/sdk": "^0.104.1",

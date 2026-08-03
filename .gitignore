@@ -60,3 +60,5 @@ frontend/src-tauri/target/
 backend/otto_data/
 .env
 *.env
+.vercel
+.env*

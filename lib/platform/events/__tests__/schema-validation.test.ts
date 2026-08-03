@@ -232,6 +232,31 @@ async function main() {
     assert.equal(ok.valid, true, ok.errors.join("; "));
   });
 
+  await test("identity.login.failed accepts platform system org UUID", () => {
+    const def = requireEventDefinition("identity.login.failed");
+    // PLATFORM_SYSTEM_ORGANIZATION_ID — valid v4; nil UUID must fail
+    const systemOrg = "00000000-0000-4000-8000-000000000000";
+    const ok = validatePayload(
+      { reason: "unknown_identity", email: "x@example.com" },
+      def.contract,
+      { organizationId: systemOrg, eventName: def.name }
+    );
+    assert.equal(ok.valid, true, ok.errors.join("; "));
+    assert.equal(ok.payload.organizationId, systemOrg);
+  });
+
+  await test("identity.login.failed rejects nil UUID organizationId", () => {
+    const def = requireEventDefinition("identity.login.failed");
+    const nil = "00000000-0000-0000-0000-000000000000";
+    const bad = validatePayload(
+      { organizationId: nil, reason: "invalid_credentials" },
+      def.contract,
+      { organizationId: nil, eventName: def.name }
+    );
+    assert.equal(bad.valid, false);
+    assert.ok(bad.errors.some((e) => e.includes("organizationId")));
+  });
+
   console.log(`\n${passed} passed, ${failed} failed\n`);
   if (failed > 0) process.exit(1);
 }

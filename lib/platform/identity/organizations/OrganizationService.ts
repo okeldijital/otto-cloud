@@ -68,6 +68,8 @@ export class OrganizationService {
       legacyTenantId: params.legacyTenantId,
     });
 
+    // Seed system roles (batched). Previously sequential upserts over Neon
+    // pooler could take minutes and appear as a hang during lab init.
     await seedOrgSystemRoles(org.id);
 
     await membershipService.createMembership({
