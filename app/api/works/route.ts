@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
+import {
+  requireOrgAuth,
+  requireWorkInOrg,
+  resourceAuthErrorResponse,
+} from "@/lib/auth/resource-authorization";
 
 export async function GET(req: Request) {
   try {
@@ -79,21 +84,23 @@ export async function POST(req: Request) {
 
 export async function PUT(req: Request) {
   try {
-    const session = await getServerSession();
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
+    const ctx = await requireOrgAuth();
     const { searchParams } = new URL(req.url);
     const idStr = searchParams.get("id");
     if (!idStr) return NextResponse.json({ error: "Missing work ID" }, { status: 400 });
     const id = parseInt(idStr);
+    if (!Number.isFinite(id)) return NextResponse.json({ error: "Invalid work ID" }, { status: 400 });
 
     const body = await req.json();
+    delete body.organization_id;
+    delete body.organizationId;
 
-    const existing = await prisma.works.findUnique({ where: { id } });
-    if (!existing || existing.is_deleted) return NextResponse.json({ error: "Work not found" }, { status: 404 });
+    const existing = await requireWorkInOrg(id, ctx);
 
     if (body.title && body.title !== existing.title) {
-      const dup = await prisma.works.findFirst({ where: { title: body.title } });
+      const dup = await prisma.works.findFirst({
+        where: { title: body.title, organization_id: ctx.organizationId, is_deleted: false },
+      });
       if (dup) {
         return NextResponse.json(
           { error: `A musical work with the title '${body.title}' already exists.` },
@@ -105,6 +112,10 @@ export async function PUT(req: Request) {
     const updated = await prisma.works.update({ where: { id }, data: body });
     return NextResponse.json(updated);
   } catch (err: any) {
+    const mapped = resourceAuthErrorResponse(err);
+    if (mapped.status === 401 || mapped.status === 403 || mapped.status === 404) {
+      return NextResponse.json(mapped.body, { status: mapped.status });
+    }
     console.error("[PUT /api/works]", err);
     if (err.code === "P2002") {
       return NextResponse.json(
@@ -118,36 +129,33 @@ export async function PUT(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
-    const session = await getServerSession();
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
+    const ctx = await requireOrgAuth();
     const { searchParams } = new URL(req.url);
     const idStr = searchParams.get("id");
     if (!idStr) return NextResponse.json({ error: "Missing work ID" }, { status: 400 });
     const id = parseInt(idStr);
+    if (!Number.isFinite(id)) return NextResponse.json({ error: "Invalid work ID" }, { status: 400 });
 
-    const existing = await prisma.works.findUnique({ where: { id } });
-    if (!existing || existing.is_deleted) return NextResponse.json({ error: "Work not found" }, { status: 404 });
+    await requireWorkInOrg(id, ctx);
 
-    // Nullify track links
+    // Nullify track links only for tracks already tied to this work (owned path)
     await prisma.tracks.updateMany({ where: { work_id: id }, data: { work_id: null } });
 
-    // Delete works_admin record
     await prisma.works_admin.deleteMany({ where: { work_id: id } });
-
-    // Delete royalties linked to work
     await prisma.royalties.deleteMany({ where: { work_id: id } });
-
-    // Delete contract assets for this work
     await prisma.contract_assets.deleteMany({ where: { asset_id: id, asset_type: "Work" } });
-
-    // Delete status_quo items
-    await prisma.status_quo_items.deleteMany({ where: { entity_id: id, entity_type: "Work" } });
+    await prisma.status_quo_items.deleteMany({
+      where: { entity_id: id, entity_type: "Work", organization_id: ctx.organizationId },
+    });
 
     await prisma.works.delete({ where: { id } });
 
     return new NextResponse(null, { status: 204 });
   } catch (err: any) {
+    const mapped = resourceAuthErrorResponse(err);
+    if (mapped.status === 401 || mapped.status === 403 || mapped.status === 404) {
+      return NextResponse.json(mapped.body, { status: mapped.status });
+    }
     console.error("[DELETE /api/works]", err);
     return NextResponse.json({ error: `Cannot delete work due to server error: ${err.message}` }, { status: 409 });
   }

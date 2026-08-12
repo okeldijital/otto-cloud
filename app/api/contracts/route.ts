@@ -3,6 +3,11 @@ import { getServerSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { storeFile } from "@/lib/storage";
 import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
+import {
+  requireContractInOrg,
+  requireOrgAuth,
+  resourceAuthErrorResponse,
+} from "@/lib/auth/resource-authorization";
 
 function computeCompleteness(contract: any) {
   const reasons: string[] = [];
@@ -351,18 +356,15 @@ export async function POST(req: Request) {
 
 export async function PUT(req: Request) {
   try {
-    const session = await getServerSession();
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
+    const ctx = await requireOrgAuth();
     const { searchParams } = new URL(req.url);
     const idStr = searchParams.get("id");
     if (!idStr) return NextResponse.json({ error: "Missing contract ID" }, { status: 400 });
     const id = parseInt(idStr);
+    if (!Number.isFinite(id)) return NextResponse.json({ error: "Invalid contract ID" }, { status: 400 });
 
     const body = await req.json();
-
-    const existing = await prisma.contracts.findUnique({ where: { id } });
-    if (!existing) return NextResponse.json({ error: "Contract not found" }, { status: 404 });
+    await requireContractInOrg(id, ctx);
 
     const updated = await prisma.contracts.update({
       where: { id },
@@ -387,6 +389,10 @@ export async function PUT(req: Request) {
 
     return NextResponse.json(updated);
   } catch (err: any) {
+    const mapped = resourceAuthErrorResponse(err);
+    if (mapped.status === 401 || mapped.status === 403 || mapped.status === 404) {
+      return NextResponse.json(mapped.body, { status: mapped.status });
+    }
     console.error("[PUT /api/contracts]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
@@ -394,13 +400,15 @@ export async function PUT(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
-    const session = await getServerSession();
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
+    const ctx = await requireOrgAuth();
     const { searchParams } = new URL(req.url);
     const idStr = searchParams.get("id");
     if (!idStr) return NextResponse.json({ error: "Missing contract ID" }, { status: 400 });
     const id = parseInt(idStr);
+    if (!Number.isFinite(id)) return NextResponse.json({ error: "Invalid contract ID" }, { status: 400 });
+
+    // Ownership first — all nested deletes require the contract to belong to the org
+    await requireContractInOrg(id, ctx);
 
     const trackIdStr = searchParams.get("trackId");
     if (trackIdStr) {
@@ -455,9 +463,6 @@ export async function DELETE(req: Request) {
       return new NextResponse(null, { status: 204 });
     }
 
-    const existing = await prisma.contracts.findUnique({ where: { id } });
-    if (!existing) return NextResponse.json({ error: "Contract not found" }, { status: 404 });
-
     await prisma.contract_track_links.deleteMany({ where: { contract_id: id } });
     await prisma.contract_parties.deleteMany({ where: { contract_id: id } });
     await prisma.contract_assets.deleteMany({ where: { contract_id: id } });
@@ -471,6 +476,10 @@ export async function DELETE(req: Request) {
 
     return new NextResponse(null, { status: 204 });
   } catch (err: any) {
+    const mapped = resourceAuthErrorResponse(err);
+    if (mapped.status === 401 || mapped.status === 403 || mapped.status === 404) {
+      return NextResponse.json(mapped.body, { status: mapped.status });
+    }
     console.error("[DELETE /api/contracts]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

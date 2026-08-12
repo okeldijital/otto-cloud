@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
+import {
+  requireOrgAuth,
+  requireRoyaltyInOrg,
+  resourceAuthErrorResponse,
+  royaltyOrgScopeWhere,
+} from "@/lib/auth/resource-authorization";
+import type { OrganizationContext } from "@/lib/auth/organization-context";
 
 const royaltyIncludes = {
   artists: true,
@@ -8,45 +15,45 @@ const royaltyIncludes = {
   works: true,
 };
 
-function buildWhere(searchParams: URLSearchParams) {
-  const where: Record<string, any> = {};
+function buildWhere(searchParams: URLSearchParams, ctx: OrganizationContext) {
+  const and: Record<string, any>[] = [royaltyOrgScopeWhere(ctx)];
 
   const artist_id = searchParams.get("artist_id");
-  if (artist_id) where.artist_id = parseInt(artist_id);
+  if (artist_id) and.push({ artist_id: parseInt(artist_id) });
 
   const work_id = searchParams.get("work_id");
-  if (work_id) where.work_id = parseInt(work_id);
+  if (work_id) and.push({ work_id: parseInt(work_id) });
 
   const track_id = searchParams.get("track_id");
-  if (track_id) where.track_id = parseInt(track_id);
+  if (track_id) and.push({ track_id: parseInt(track_id) });
 
   const source = searchParams.get("source");
-  if (source) where.source = source;
+  if (source) and.push({ source });
 
   const date_from = searchParams.get("date_from");
   const date_to = searchParams.get("date_to");
   if (date_from || date_to) {
-    where.statement_date = {};
-    if (date_from) where.statement_date.gte = new Date(date_from);
-    if (date_to) where.statement_date.lte = new Date(date_to);
+    const statement_date: Record<string, Date> = {};
+    if (date_from) statement_date.gte = new Date(date_from);
+    if (date_to) statement_date.lte = new Date(date_to);
+    and.push({ statement_date });
   }
 
   const q = searchParams.get("q");
-  if (q) where.source = { contains: q, mode: "insensitive" };
+  if (q) and.push({ source: { contains: q, mode: "insensitive" } });
 
-  return where;
+  return { AND: and };
 }
 
 export async function GET(req: Request) {
   try {
-    const session = await getServerSession();
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const ctx = await requireOrgAuth();
 
     const { searchParams } = new URL(req.url);
     const action = searchParams.get("action");
 
     if (action === "summary") {
-      const where = buildWhere(searchParams);
+      const where = buildWhere(searchParams, ctx);
 
       const aggregation = await prisma.royalties.aggregate({
         _sum: { amount: true, fees: true, advances: true },
@@ -196,7 +203,7 @@ export async function GET(req: Request) {
 
     const limit = parseInt(searchParams.get("limit") || "100");
     const skip = parseInt(searchParams.get("skip") || "0");
-    const where = buildWhere(searchParams);
+    const where = buildWhere(searchParams, ctx);
 
     const royalties = await prisma.royalties.findMany({
       where,
@@ -208,6 +215,10 @@ export async function GET(req: Request) {
 
     return NextResponse.json(royalties);
   } catch (err: any) {
+    const mapped = resourceAuthErrorResponse(err);
+    if (mapped.status === 401 || mapped.status === 403 || mapped.status === 404) {
+      return NextResponse.json(mapped.body, { status: mapped.status });
+    }
     console.error("[GET /api/royalties]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
@@ -215,8 +226,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession();
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const ctx = await requireOrgAuth();
 
     const body = await req.json();
 
@@ -232,12 +242,17 @@ export async function POST(req: Request) {
         statement_date: body.statement_date ? new Date(body.statement_date) : null,
         fees: body.fees ?? 0,
         advances: body.advances ?? 0,
+        tenant_id: ctx.organizationId,
       },
       include: royaltyIncludes,
     });
 
     return NextResponse.json(royalty, { status: 201 });
   } catch (err: any) {
+    const mapped = resourceAuthErrorResponse(err);
+    if (mapped.status === 401 || mapped.status === 403 || mapped.status === 404) {
+      return NextResponse.json(mapped.body, { status: mapped.status });
+    }
     console.error("[POST /api/royalties]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
@@ -245,16 +260,15 @@ export async function POST(req: Request) {
 
 export async function PUT(req: Request) {
   try {
-    const session = await getServerSession();
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const ctx = await requireOrgAuth();
 
     const { searchParams } = new URL(req.url);
     const idStr = searchParams.get("id");
     if (!idStr) return NextResponse.json({ error: "Missing royalty ID" }, { status: 400 });
     const id = parseInt(idStr);
+    if (!Number.isFinite(id)) return NextResponse.json({ error: "Invalid royalty ID" }, { status: 400 });
 
-    const existing = await prisma.royalties.findUnique({ where: { id } });
-    if (!existing) return NextResponse.json({ error: "Royalty not found" }, { status: 404 });
+    await requireRoyaltyInOrg(id, ctx);
 
     const body = await req.json();
 
@@ -277,6 +291,10 @@ export async function PUT(req: Request) {
 
     return NextResponse.json(updated);
   } catch (err: any) {
+    const mapped = resourceAuthErrorResponse(err);
+    if (mapped.status === 401 || mapped.status === 403 || mapped.status === 404) {
+      return NextResponse.json(mapped.body, { status: mapped.status });
+    }
     console.error("[PUT /api/royalties]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
@@ -284,21 +302,24 @@ export async function PUT(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
-    const session = await getServerSession();
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const ctx = await requireOrgAuth();
 
     const { searchParams } = new URL(req.url);
     const idStr = searchParams.get("id");
     if (!idStr) return NextResponse.json({ error: "Missing royalty ID" }, { status: 400 });
     const id = parseInt(idStr);
+    if (!Number.isFinite(id)) return NextResponse.json({ error: "Invalid royalty ID" }, { status: 400 });
 
-    const existing = await prisma.royalties.findUnique({ where: { id } });
-    if (!existing) return NextResponse.json({ error: "Royalty not found" }, { status: 404 });
+    await requireRoyaltyInOrg(id, ctx);
 
     await prisma.royalties.delete({ where: { id } });
 
     return new NextResponse(null, { status: 204 });
   } catch (err: any) {
+    const mapped = resourceAuthErrorResponse(err);
+    if (mapped.status === 401 || mapped.status === 403 || mapped.status === 404) {
+      return NextResponse.json(mapped.body, { status: mapped.status });
+    }
     console.error("[DELETE /api/royalties]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

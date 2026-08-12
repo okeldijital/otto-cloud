@@ -6,6 +6,11 @@ import {
   orgWhereActive,
   requireOrganization,
 } from "@/lib/auth/organization-context";
+import {
+  requireOrgAuth,
+  requireReleaseInOrg,
+  resourceAuthErrorResponse,
+} from "@/lib/auth/resource-authorization";
 
 export async function GET(req: Request) {
   try {
@@ -210,22 +215,28 @@ export async function POST(req: Request) {
 
 export async function PUT(req: Request) {
   try {
-    const session = await getServerSession();
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
+    const ctx = await requireOrgAuth();
     const { searchParams } = new URL(req.url);
     const idStr = searchParams.get("id");
     if (!idStr) return NextResponse.json({ error: "Missing release ID" }, { status: 400 });
     const id = parseInt(idStr);
+    if (!Number.isFinite(id)) return NextResponse.json({ error: "Invalid release ID" }, { status: 400 });
 
     const body = await req.json();
     const { track_ids, ...updateData } = body;
+    delete updateData.organization_id;
+    delete updateData.organizationId;
 
-    const existing = await prisma.releases.findUnique({ where: { id } });
-    if (!existing) return NextResponse.json({ error: "Release not found" }, { status: 404 });
+    const existing = await requireReleaseInOrg(id, ctx);
 
     if (updateData.title && updateData.title !== existing.title) {
-      const dup = await prisma.releases.findFirst({ where: { title: updateData.title } });
+      const dup = await prisma.releases.findFirst({
+        where: {
+          title: updateData.title,
+          organization_id: ctx.organizationId,
+          is_deleted: false,
+        },
+      });
       if (dup) {
         return NextResponse.json(
           { error: `A release with the title '${updateData.title}' already exists.` },
@@ -248,13 +259,31 @@ export async function PUT(req: Request) {
 
       const toAssign = Array.from(newIds).filter((tid) => !currentIds.has(tid));
       if (toAssign.length) {
-        const tracksToAssign = await prisma.tracks.findMany({ where: { id: { in: toAssign } } });
+        // Only assign tracks already accessible to this org (or unscoped with no foreign release)
+        const tracksToAssign = await prisma.tracks.findMany({
+          where: {
+            id: { in: toAssign },
+            OR: [
+              { tenant_id: ctx.organizationId },
+              { release_id: null, tenant_id: null },
+              { releases: { is: { organization_id: ctx.organizationId } } },
+              { works: { is: { organization_id: ctx.organizationId } } },
+            ],
+          },
+        });
+        if (tracksToAssign.length !== toAssign.length) {
+          return NextResponse.json(
+            { error: "One or more tracks are not accessible to this organization" },
+            { status: 404 }
+          );
+        }
         await Promise.all(
           tracksToAssign.map((t) =>
             prisma.tracks.update({
               where: { id: t.id },
               data: {
                 release_id: id,
+                tenant_id: ctx.organizationId,
                 credits: !t.credits && updated.credits ? (updated.credits as any) : ((t.credits as any) ?? undefined),
               },
             })
@@ -265,6 +294,10 @@ export async function PUT(req: Request) {
 
     return NextResponse.json(updated);
   } catch (err: any) {
+    const mapped = resourceAuthErrorResponse(err);
+    if (mapped.status === 401 || mapped.status === 403 || mapped.status === 404) {
+      return NextResponse.json(mapped.body, { status: mapped.status });
+    }
     console.error("[PUT /api/releases]", err);
     if (err.code === "P2002") {
       return NextResponse.json(
@@ -278,22 +311,24 @@ export async function PUT(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
-    const session = await getServerSession();
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
+    const ctx = await requireOrgAuth();
     const { searchParams } = new URL(req.url);
     const idStr = searchParams.get("id");
     if (!idStr) return NextResponse.json({ error: "Missing release ID" }, { status: 400 });
     const id = parseInt(idStr);
+    if (!Number.isFinite(id)) return NextResponse.json({ error: "Invalid release ID" }, { status: 400 });
 
-    const existing = await prisma.releases.findUnique({ where: { id } });
-    if (!existing) return NextResponse.json({ error: "Release not found" }, { status: 404 });
+    await requireReleaseInOrg(id, ctx);
 
     await prisma.tracks.updateMany({ where: { release_id: id }, data: { release_id: null } });
     await prisma.releases.delete({ where: { id } });
 
     return new NextResponse(null, { status: 204 });
   } catch (err: any) {
+    const mapped = resourceAuthErrorResponse(err);
+    if (mapped.status === 401 || mapped.status === 403 || mapped.status === 404) {
+      return NextResponse.json(mapped.body, { status: mapped.status });
+    }
     console.error("[DELETE /api/releases]", err);
     if (err.code === "P2003" || err.code === "P2014") {
       return NextResponse.json(

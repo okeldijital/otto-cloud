@@ -1,6 +1,6 @@
 /**
- * GET  /api/admin/organizations
- * POST /api/admin/organizations
+ * GET  /api/admin/organizations — platform directory (all orgs)
+ * POST /api/admin/organizations — create organization
  */
 
 import { NextResponse } from "next/server";
@@ -10,14 +10,19 @@ import {
   identityErrorResponse,
   IdentityError,
 } from "@/lib/platform/identity";
+import { assertPlatformOrgDirectory } from "@/lib/platform/identity/middleware/assert-org-scope";
+import { isPlatformAuthority } from "@/lib/auth/privilege-authorization";
 
 export async function GET(req: Request) {
   try {
-    await requirePermission(req, [
+    const ctx = await requirePermission(req, [
       "organizations.manage",
       "platform.admin",
       "users.manage",
     ]);
+    // Listing every organization is a platform-level operation
+    assertPlatformOrgDirectory(ctx);
+
     const sp = new URL(req.url).searchParams;
     const result = await organizationService.list({
       status: sp.get("status") || undefined,
@@ -36,6 +41,14 @@ export async function POST(req: Request) {
       "organizations.manage",
       "platform.admin",
     ]);
+    // Creating orgs is platform-scoped (not ordinary org-admin self-elevation surface)
+    if (!isPlatformAuthority(ctx)) {
+      throw new IdentityError(
+        "Platform authority required to create organizations",
+        403,
+        "PLATFORM_AUTHORITY_REQUIRED"
+      );
+    }
     const body = await req.json().catch(() => ({}));
     const name = typeof body.name === "string" ? body.name : "";
     if (!name) {

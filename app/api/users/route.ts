@@ -60,19 +60,68 @@ export async function POST(req: Request) {
     const action = searchParams.get("action");
 
     if (action === "invite") {
+      // A8-015: require users.invite or users.manage; never trust client role elevation
+      const { hasPermission } = await import("@/lib/permissions");
+      const { normalizeLegacyInviteRole } = await import(
+        "@/lib/auth/privilege-authorization"
+      );
+
+      const actor = session.user as any;
+      if (
+        !hasPermission(actor, "users.invite") &&
+        !hasPermission(actor, "users.manage") &&
+        !actor.is_superuser
+      ) {
+        return NextResponse.json(
+          { error: "Forbidden: users.invite required", code: "PERMISSION_DENIED" },
+          { status: 403 }
+        );
+      }
+
       const { email, password, name, role } = await req.json();
       if (!email || !password) {
-        return NextResponse.json({ error: "Email and password required" }, { status: 400 });
+        return NextResponse.json(
+          { error: "Email and password required" },
+          { status: 400 }
+        );
+      }
+      if (String(password).length < 12) {
+        return NextResponse.json(
+          { error: "Password must be at least 12 characters" },
+          { status: 400 }
+        );
       }
 
       const existing = await prisma.user.findUnique({ where: { email } });
       if (existing) {
-        return NextResponse.json({ error: "Email already registered" }, { status: 400 });
+        return NextResponse.json(
+          { error: "Email already registered" },
+          { status: 400 }
+        );
       }
 
-      const ctx = await requireOrganization();
+      const orgCtx = await requireOrganization();
+      const orgId = orgCtx.organizationId;
 
-      const orgId = ctx.organizationId;
+      let safeRole = "member";
+      try {
+        safeRole = normalizeLegacyInviteRole(role, {
+          identityId: actor.identityId || actor.id,
+          organizationId: orgId,
+          isSuperAdmin: !!actor.is_superuser,
+          permissions: actor.permissions || [],
+          roles: actor.role ? [actor.role] : orgCtx.role ? [orgCtx.role] : [],
+        } as any);
+      } catch (e: any) {
+        return NextResponse.json(
+          {
+            error: e.message || "Invalid role",
+            code: e.code || "ROLE_GRANT_DENIED",
+          },
+          { status: e.status || 403 }
+        );
+      }
+
       const hashedPassword = await bcrypt.hash(password, 10);
 
       const newUser = await prisma.user.create({
@@ -81,10 +130,17 @@ export async function POST(req: Request) {
           hashed_password: hashedPassword,
           name: name || email.split("@")[0],
           organization_id: orgId,
-          role: role || "user",
+          role: safeRole,
+          is_active: true,
+          is_superuser: false,
+        },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
           is_active: true,
         },
-        select: { id: true, email: true, name: true, role: true, is_active: true },
       });
 
       return NextResponse.json(newUser, { status: 201 });

@@ -1,6 +1,5 @@
 /**
  * PATCH / DELETE /api/admin/organizations/:id/members/:memberId
- * memberId = identityId of the member
  */
 
 import { NextResponse } from "next/server";
@@ -10,6 +9,11 @@ import {
   identityErrorResponse,
   IdentityError,
 } from "@/lib/platform/identity";
+import { assertAdminOrganizationPath } from "@/lib/platform/identity/middleware/assert-org-scope";
+import {
+  assertCanGrantOrgRole,
+  isPlatformAuthority,
+} from "@/lib/auth/privilege-authorization";
 
 export async function PATCH(
   req: Request,
@@ -22,6 +26,7 @@ export async function PATCH(
       "roles.manage",
     ]);
     const { id, memberId } = await params;
+    assertAdminOrganizationPath(ctx, id);
     const body = await req.json().catch(() => ({}));
     const action = typeof body.action === "string" ? body.action : "";
 
@@ -46,6 +51,7 @@ export async function PATCH(
       if (!roleKey) {
         throw new IdentityError("roleKey required", 400, "VALIDATION_ERROR");
       }
+      assertCanGrantOrgRole(ctx, roleKey);
       const membership = await membershipService.setRole({
         organizationId: id,
         identityId: memberId,
@@ -55,6 +61,14 @@ export async function PATCH(
       return NextResponse.json({ membership });
     }
     if (action === "transfer_ownership") {
+      // Ownership transfer: owner or platform only
+      if (!ctx.roles.includes("owner") && !isPlatformAuthority(ctx)) {
+        throw new IdentityError(
+          "Only the organization owner (or platform authority) can transfer ownership",
+          403,
+          "ROLE_GRANT_DENIED"
+        );
+      }
       await membershipService.transferOwnership({
         organizationId: id,
         newOwnerIdentityId: memberId,
@@ -83,6 +97,7 @@ export async function DELETE(
       "organizations.manage",
     ]);
     const { id, memberId } = await params;
+    assertAdminOrganizationPath(ctx, id);
     await membershipService.remove({
       organizationId: id,
       identityId: memberId,

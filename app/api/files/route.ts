@@ -1,33 +1,66 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "@/lib/auth/session";
 import { getFileBuffer } from "@/lib/storage";
+import {
+  requireAttachmentInOrg,
+  requireOrgAuth,
+  resourceAuthErrorResponse,
+} from "@/lib/auth/resource-authorization";
 
+/**
+ * File download by attachment id only (A.8 IDOR fix).
+ * Raw storage paths are not accepted — use /api/storage/download/[id] preferred path.
+ */
 export async function GET(req: Request) {
   try {
-    const session = await getServerSession();
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
+    const ctx = await requireOrgAuth();
     const { searchParams } = new URL(req.url);
-    const path = searchParams.get("path");
+    const attachmentId =
+      searchParams.get("attachmentId") ||
+      searchParams.get("id") ||
+      searchParams.get("attachment_id");
 
-    if (!path) return NextResponse.json({ error: "Missing path parameter" }, { status: 400 });
+    // Reject path-based access (previous IDOR vector)
+    if (searchParams.get("path")) {
+      return NextResponse.json(
+        {
+          error:
+            "Path-based file access is disabled. Use attachmentId or /api/storage/download/{id}.",
+          code: "PATH_ACCESS_DISABLED",
+        },
+        { status: 400 }
+      );
+    }
 
-    const buffer = await getFileBuffer(path);
+    if (!attachmentId) {
+      return NextResponse.json(
+        { error: "Missing attachmentId parameter" },
+        { status: 400 }
+      );
+    }
+
+    const attachment = await requireAttachmentInOrg(attachmentId, ctx);
+    const buffer = await getFileBuffer(attachment.storageKey);
     if (!buffer) return NextResponse.json({ error: "File not found" }, { status: 404 });
 
-    const ext = path.split(".").pop()?.toLowerCase();
+    const name = attachment.originalName || attachment.storageKey;
+    const ext = name.split(".").pop()?.toLowerCase();
     const mimeMap: Record<string, string> = {
       pdf: "application/pdf",
-      jpg: "image/jpeg", jpeg: "image/jpeg",
-      png: "image/png", webp: "image/webp",
-      gif: "image/gif", doc: "application/msword",
+      jpg: "image/jpeg",
+      jpeg: "image/jpeg",
+      png: "image/png",
+      webp: "image/webp",
+      gif: "image/gif",
+      doc: "application/msword",
       docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       xls: "application/vnd.ms-excel",
       xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      csv: "text/csv", txt: "text/plain",
+      csv: "text/csv",
+      txt: "text/plain",
     };
 
-    const mimeType = mimeMap[ext || ""] || "application/octet-stream";
+    const mimeType =
+      attachment.mimeType || mimeMap[ext || ""] || "application/octet-stream";
 
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
@@ -37,6 +70,10 @@ export async function GET(req: Request) {
       },
     });
   } catch (err: any) {
+    const mapped = resourceAuthErrorResponse(err);
+    if (mapped.status === 401 || mapped.status === 403 || mapped.status === 404) {
+      return NextResponse.json(mapped.body, { status: mapped.status });
+    }
     console.error("[GET /api/files]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

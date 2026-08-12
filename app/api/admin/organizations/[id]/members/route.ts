@@ -10,18 +10,21 @@ import {
   identityErrorResponse,
   IdentityError,
 } from "@/lib/platform/identity";
+import { assertAdminOrganizationPath } from "@/lib/platform/identity/middleware/assert-org-scope";
+import { assertCanGrantOrgRole } from "@/lib/auth/privilege-authorization";
 
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requirePermission(req, [
+    const ctx = await requirePermission(req, [
       "users.manage",
       "organizations.manage",
       "users.invite",
     ]);
     const { id } = await params;
+    assertAdminOrganizationPath(ctx, id);
     const members = await membershipService.listMembers(id);
     return NextResponse.json({ members });
   } catch (err) {
@@ -40,12 +43,15 @@ export async function POST(
       "organizations.manage",
     ]);
     const { id } = await params;
+    assertAdminOrganizationPath(ctx, id);
     const body = await req.json().catch(() => ({}));
     const identityId =
       typeof body.identityId === "string" ? body.identityId : "";
     const email = typeof body.email === "string" ? body.email : "";
     const roleKey =
       typeof body.roleKey === "string" ? body.roleKey : "member";
+
+    assertCanGrantOrgRole(ctx, roleKey);
 
     let targetId = identityId;
     if (!targetId && email) {

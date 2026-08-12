@@ -60,6 +60,12 @@ export type PermissionKey = (typeof PERMISSION_CATALOG)[number]["key"];
 
 const ALL = PERMISSION_CATALOG.map((p) => p.key) as PermissionKey[];
 
+/**
+ * Organization-scoped full access — everything except platform.admin.
+ * Platform administration must not be implied by org ownership (A.8 A8-016).
+ */
+const ORG_OWNER = ALL.filter((k) => k !== "platform.admin") as PermissionKey[];
+
 const VIEW = [
   "contracts.view",
   "rights.view",
@@ -129,7 +135,8 @@ export const SYSTEM_ROLE_TEMPLATES: Record<
 > = {
   owner: {
     name: "Owner",
-    permissions: ALL,
+    // Org owner ≠ platform administrator (A8-016)
+    permissions: ORG_OWNER,
   },
   administrator: {
     name: "Administrator",
@@ -178,7 +185,7 @@ export const SYSTEM_ROLE_TEMPLATES: Record<
 };
 
 /** Catalog version — bump when catalog shape changes (cache invalidation) */
-export const PERMISSION_CATALOG_VERSION = 5;
+export const PERMISSION_CATALOG_VERSION = 6;
 
 export function isKnownPermission(key: string): boolean {
   return PERMISSION_CATALOG.some((p) => p.key === key);

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth/session";
+import { platformAuthorityFromSession } from "@/lib/auth/privilege-authorization";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(req: Request) {
@@ -48,6 +49,13 @@ export async function POST(req: Request) {
     const session = await getServerSession();
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+    if (!platformAuthorityFromSession(session.user)) {
+      return NextResponse.json(
+        { error: "Platform authority required", code: "PLATFORM_AUTHORITY_REQUIRED" },
+        { status: 403 }
+      );
+    }
+
     const body = await req.json();
 
     const existing = await prisma.pros.findFirst({ where: { name: body.name } });
@@ -76,6 +84,13 @@ export async function PUT(req: Request) {
   try {
     const session = await getServerSession();
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    if (!platformAuthorityFromSession(session.user)) {
+      return NextResponse.json(
+        { error: "Platform authority required", code: "PLATFORM_AUTHORITY_REQUIRED" },
+        { status: 403 }
+      );
+    }
 
     const { searchParams } = new URL(req.url);
     const idStr = searchParams.get("id");
@@ -115,6 +130,13 @@ export async function DELETE(req: Request) {
   try {
     const session = await getServerSession();
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    if (!platformAuthorityFromSession(session.user)) {
+      return NextResponse.json(
+        { error: "Platform authority required", code: "PLATFORM_AUTHORITY_REQUIRED" },
+        { status: 403 }
+      );
+    }
 
     const { searchParams } = new URL(req.url);
     const idStr = searchParams.get("id");

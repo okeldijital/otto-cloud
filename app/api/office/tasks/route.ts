@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
+import {
+  requireOrgAuth,
+  requireTaskInOrg,
+  resourceAuthErrorResponse,
+} from "@/lib/auth/resource-authorization";
 
 export async function GET(req: Request) {
   try {
@@ -120,16 +125,14 @@ export async function POST(req: Request) {
 
 export async function PUT(req: Request) {
   try {
-    const session = await getServerSession();
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
+    const ctx = await requireOrgAuth();
     const { searchParams } = new URL(req.url);
     const idStr = searchParams.get("id");
     if (!idStr) return NextResponse.json({ error: "Missing task ID" }, { status: 400 });
     const id = parseInt(idStr);
+    if (!Number.isFinite(id)) return NextResponse.json({ error: "Invalid task ID" }, { status: 400 });
 
-    const existing = await prisma.tasks.findUnique({ where: { id } });
-    if (!existing) return NextResponse.json({ error: "Task not found" }, { status: 404 });
+    await requireTaskInOrg(id, ctx);
 
     const body = await req.json();
     const updated = await prisma.tasks.update({
@@ -149,6 +152,10 @@ export async function PUT(req: Request) {
     });
     return NextResponse.json(updated);
   } catch (err: any) {
+    const mapped = resourceAuthErrorResponse(err);
+    if (mapped.status === 401 || mapped.status === 403 || mapped.status === 404) {
+      return NextResponse.json(mapped.body, { status: mapped.status });
+    }
     console.error("[PUT /api/office/tasks]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
@@ -156,16 +163,14 @@ export async function PUT(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
-    const session = await getServerSession();
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
+    const ctx = await requireOrgAuth();
     const { searchParams } = new URL(req.url);
     const idStr = searchParams.get("id");
     if (!idStr) return NextResponse.json({ error: "Missing task ID" }, { status: 400 });
     const id = parseInt(idStr);
+    if (!Number.isFinite(id)) return NextResponse.json({ error: "Invalid task ID" }, { status: 400 });
 
-    const existing = await prisma.tasks.findUnique({ where: { id } });
-    if (!existing) return NextResponse.json({ error: "Task not found" }, { status: 404 });
+    await requireTaskInOrg(id, ctx);
 
     await prisma.tasks.update({
       where: { id },
@@ -173,6 +178,10 @@ export async function DELETE(req: Request) {
     });
     return new NextResponse(null, { status: 204 });
   } catch (err: any) {
+    const mapped = resourceAuthErrorResponse(err);
+    if (mapped.status === 401 || mapped.status === 403 || mapped.status === 404) {
+      return NextResponse.json(mapped.body, { status: mapped.status });
+    }
     console.error("[DELETE /api/office/tasks]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

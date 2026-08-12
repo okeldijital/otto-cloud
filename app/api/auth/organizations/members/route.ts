@@ -12,6 +12,7 @@ import {
   identityErrorResponse,
   IdentityError,
 } from "@/lib/platform/identity";
+import { assertCanGrantOrgRole } from "@/lib/auth/privilege-authorization";
 
 export async function GET(req: Request) {
   try {
@@ -62,6 +63,8 @@ export async function POST(req: Request) {
     if (!email) {
       throw new IdentityError("email required", 400, "VALIDATION_ERROR");
     }
+
+    assertCanGrantOrgRole(ctx, roleKey);
 
     const identity = await organizationService.findIdentityByEmail(email);
     if (!identity) {

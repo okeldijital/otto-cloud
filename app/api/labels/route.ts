@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth/session";
+import { platformAuthorityFromSession } from "@/lib/auth/privilege-authorization";
 import { prisma } from "@/lib/prisma";
 import {
   orgContextErrorResponse,
@@ -7,7 +8,9 @@ import {
 } from "@/lib/auth/organization-context";
 
 /**
- * Labels are a GLOBAL entity today (no organization_id column).
+ * Labels are GLOBAL REFERENCE DATA (no organization_id column).
+ * Reads: authenticated org session.
+ * Mutations: platform authority only (A.8 Step 5 / R4-001).
  * See docs/architecture/multi-tenant-model.md §4.3.
  */
 export async function GET(req: Request) {
@@ -61,6 +64,13 @@ export async function POST(req: Request) {
     const session = await getServerSession();
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+    if (!platformAuthorityFromSession(session.user)) {
+      return NextResponse.json(
+        { error: "Platform authority required", code: "PLATFORM_AUTHORITY_REQUIRED" },
+        { status: 403 }
+      );
+    }
+
     const body = await req.json();
 
     const existing = await prisma.labels.findFirst({ where: { name: body.name } });
@@ -89,6 +99,13 @@ export async function PUT(req: Request) {
   try {
     const session = await getServerSession();
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    if (!platformAuthorityFromSession(session.user)) {
+      return NextResponse.json(
+        { error: "Platform authority required", code: "PLATFORM_AUTHORITY_REQUIRED" },
+        { status: 403 }
+      );
+    }
 
     const { searchParams } = new URL(req.url);
     const idStr = searchParams.get("id");
@@ -128,6 +145,13 @@ export async function DELETE(req: Request) {
   try {
     const session = await getServerSession();
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    if (!platformAuthorityFromSession(session.user)) {
+      return NextResponse.json(
+        { error: "Platform authority required", code: "PLATFORM_AUTHORITY_REQUIRED" },
+        { status: 403 }
+      );
+    }
 
     const { searchParams } = new URL(req.url);
     const idStr = searchParams.get("id");

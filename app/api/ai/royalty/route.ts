@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
+import {
+  requireLegacyIntOrgId,
+  requireActorUserId,
+  resourceAuthErrorResponse,
+} from "@/lib/auth/resource-authorization";
 
 function computeRequestHash(releaseId: number, contractDocId: number | null): string {
   const raw = `royalty-sim-${releaseId}-${contractDocId ?? "none"}-${Date.now()}`;
@@ -23,7 +28,7 @@ export async function GET(req: Request) {
     const action = searchParams.get("action");
     const ctx = await requireOrganization();
     const orgIdStr = ctx.organizationId;
-    const orgId = typeof orgIdStr === "string" ? parseInt(orgIdStr) || 1 : orgIdStr;
+    const orgId = requireLegacyIntOrgId(ctx);
 
     if (action === "health") {
       return NextResponse.json({ enabled: true, version: "royalty_sim_v1_deterministic", persist_enabled: true });
@@ -47,7 +52,15 @@ export async function GET(req: Request) {
     }
 
     return NextResponse.json({ error: "Unknown action" }, { status: 400 });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const mapped = resourceAuthErrorResponse(err);
+    if (mapped.status === 401 || mapped.status === 403 || mapped.status === 400) {
+      return NextResponse.json(mapped.body, { status: mapped.status });
+    }
+    const orgMapped = orgContextErrorResponse(err);
+    if (orgMapped.status === 401 || orgMapped.status === 403) {
+      return NextResponse.json(orgMapped.body, { status: orgMapped.status });
+    }
     console.error("[GET /api/ai/royalty]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
@@ -62,8 +75,8 @@ export async function POST(req: Request) {
     const action = searchParams.get("action");
     const ctx = await requireOrganization();
     const orgIdStr = ctx.organizationId;
-    const orgId = typeof orgIdStr === "string" ? parseInt(orgIdStr) || 1 : orgIdStr;
-    const userId = parseInt((session.user as any).id) || 1;
+    const orgId = requireLegacyIntOrgId(ctx);
+    const userId = requireActorUserId(ctx);
 
     if (action === "simulate") {
       const body = await req.json();
@@ -182,7 +195,15 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ error: "Unknown action" }, { status: 400 });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const mapped = resourceAuthErrorResponse(err);
+    if (mapped.status === 401 || mapped.status === 403 || mapped.status === 400) {
+      return NextResponse.json(mapped.body, { status: mapped.status });
+    }
+    const orgMapped = orgContextErrorResponse(err);
+    if (orgMapped.status === 401 || orgMapped.status === 403) {
+      return NextResponse.json(orgMapped.body, { status: orgMapped.status });
+    }
     console.error("[POST /api/ai/royalty]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

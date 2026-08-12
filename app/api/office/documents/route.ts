@@ -3,6 +3,11 @@ import { getServerSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { storeFile } from "@/lib/storage";
 import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
+import {
+  requireOrgAuth,
+  requireDocumentInOrg,
+  resourceAuthErrorResponse,
+} from "@/lib/auth/resource-authorization";
 
 export async function GET(req: Request) {
   try {
@@ -170,7 +175,8 @@ export async function PUT(req: Request) {
     if (!idStr) return NextResponse.json({ error: "Missing document ID" }, { status: 400 });
     const id = parseInt(idStr);
 
-    const existing = await prisma.documents.findUnique({ where: { id } });
+    const ctxMut = await requireOrgAuth();
+    const existing = await requireDocumentInOrg(id, ctxMut);
     if (!existing) return NextResponse.json({ error: "Document not found" }, { status: 404 });
 
     const body = await req.json();
@@ -186,6 +192,10 @@ export async function PUT(req: Request) {
     });
     return NextResponse.json(updated);
   } catch (err: any) {
+    const mapped = resourceAuthErrorResponse(err);
+    if (mapped.status === 401 || mapped.status === 403 || mapped.status === 404) {
+      return NextResponse.json(mapped.body, { status: mapped.status });
+    }
     console.error("[PUT /api/office/documents]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
@@ -201,7 +211,8 @@ export async function DELETE(req: Request) {
     if (!idStr) return NextResponse.json({ error: "Missing document ID" }, { status: 400 });
     const id = parseInt(idStr);
 
-    const existing = await prisma.documents.findUnique({ where: { id } });
+    const ctxMut = await requireOrgAuth();
+    const existing = await requireDocumentInOrg(id, ctxMut);
     if (!existing) return NextResponse.json({ error: "Document not found" }, { status: 404 });
 
     await prisma.documents.update({
@@ -210,6 +221,10 @@ export async function DELETE(req: Request) {
     });
     return new NextResponse(null, { status: 204 });
   } catch (err: any) {
+    const mappedDel = resourceAuthErrorResponse(err);
+    if (mappedDel.status === 401 || mappedDel.status === 403 || mappedDel.status === 404) {
+      return NextResponse.json(mappedDel.body, { status: mappedDel.status });
+    }
     console.error("[DELETE /api/office/documents]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

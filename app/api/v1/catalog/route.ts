@@ -23,8 +23,15 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ data, total, limit, offset });
       }
       case "tracks": {
-        const data = await prisma.tracks.findMany({ take: limit, skip: offset, orderBy: { title: "asc" } });
-        const total = await prisma.tracks.count();
+        const trackWhere = {
+          OR: [
+            { tenant_id: orgId },
+            { releases: { is: { organization_id: orgId } } },
+            { works: { is: { organization_id: orgId } } },
+          ],
+        };
+        const data = await prisma.tracks.findMany({ where: trackWhere, take: limit, skip: offset, orderBy: { title: "asc" } });
+        const total = await prisma.tracks.count({ where: trackWhere });
         return NextResponse.json({ data, total, limit, offset });
       }
       case "works": {
@@ -34,9 +41,8 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ data, total, limit, offset });
       }
       case "labels": {
-        const data = await prisma.labels.findMany({ take: limit, skip: offset, orderBy: { name: "asc" } });
-        const total = await prisma.labels.count();
-        return NextResponse.json({ data, total, limit, offset });
+        // labels table has no organization_id — do not leak platform-global catalog via API keys
+        return NextResponse.json({ data: [], total: 0, limit, offset, note: "labels are not tenant-scoped in schema" });
       }
       default:
         return NextResponse.json({ error: "Unknown entity: " + entity }, { status: 400 });

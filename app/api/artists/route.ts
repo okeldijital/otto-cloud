@@ -6,6 +6,11 @@ import {
   orgWhere,
   requireOrganization,
 } from "@/lib/auth/organization-context";
+import {
+  requireArtistInOrg,
+  requireOrgAuth,
+  resourceAuthErrorResponse,
+} from "@/lib/auth/resource-authorization";
 
 const includeMemberships = {
   artist_memberships_artist_memberships_group_idToartists: {
@@ -259,22 +264,25 @@ export async function POST(req: Request) {
 
 export async function PUT(req: Request) {
   try {
-    const session = await getServerSession();
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
+    const ctx = await requireOrgAuth();
     const { searchParams } = new URL(req.url);
     const idStr = searchParams.get("id");
     if (!idStr) return NextResponse.json({ error: "Missing artist ID" }, { status: 400 });
     const id = parseInt(idStr);
+    if (!Number.isFinite(id)) return NextResponse.json({ error: "Invalid artist ID" }, { status: 400 });
 
     const body = await req.json();
     const { member_ids, ...updateData } = body;
+    // Never allow client to re-home ownership
+    delete updateData.organization_id;
+    delete updateData.organizationId;
 
-    const existing = await prisma.artists.findUnique({ where: { id } });
-    if (!existing) return NextResponse.json({ error: "Artist not found" }, { status: 404 });
+    const existing = await requireArtistInOrg(id, ctx);
 
     if (updateData.name && updateData.name !== existing.name) {
-      const dup = await prisma.artists.findFirst({ where: { name: updateData.name } });
+      const dup = await prisma.artists.findFirst({
+        where: { name: updateData.name, organization_id: ctx.organizationId },
+      });
       if (dup) {
         return NextResponse.json(
           { error: `An artist with the name '${updateData.name}' already exists.` },
@@ -283,20 +291,33 @@ export async function PUT(req: Request) {
       }
     }
 
-    const updated = await prisma.artists.update({ where: { id }, data: updateData, include: includeMemberships });
+    const updated = await prisma.artists.update({
+      where: { id },
+      data: updateData,
+      include: includeMemberships,
+    });
 
     if (member_ids !== undefined && (updated.artist_kind || "solo") === "group") {
       await prisma.artist_memberships.deleteMany({ where: { group_id: id } });
       for (const mid of member_ids) {
+        // Member artists must also belong to this org
+        await requireArtistInOrg(mid, ctx);
         await prisma.artist_memberships.create({
           data: { group_id: id, member_id: mid },
         });
       }
     }
 
-    const full = await prisma.artists.findUnique({ where: { id }, include: includeMemberships });
+    const full = await prisma.artists.findFirst({
+      where: { id, organization_id: ctx.organizationId },
+      include: includeMemberships,
+    });
     return NextResponse.json(serializeArtist(full!));
   } catch (err: any) {
+    const mapped = resourceAuthErrorResponse(err);
+    if (mapped.status === 401 || mapped.status === 403 || mapped.status === 404) {
+      return NextResponse.json(mapped.body, { status: mapped.status });
+    }
     console.error("[PUT /api/artists]", err);
     if (err.code === "P2002") {
       return NextResponse.json(
@@ -310,13 +331,15 @@ export async function PUT(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
-    const session = await getServerSession();
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
+    const ctx = await requireOrgAuth();
     const { searchParams } = new URL(req.url);
     const idStr = searchParams.get("id");
     if (!idStr) return NextResponse.json({ error: "Missing artist ID" }, { status: 400 });
     const id = parseInt(idStr);
+    if (!Number.isFinite(id)) return NextResponse.json({ error: "Invalid artist ID" }, { status: 400 });
+
+    // Prove ownership before any mutation
+    await requireArtistInOrg(id, ctx);
 
     const memberIdStr = searchParams.get("memberId");
     if (memberIdStr) {
@@ -327,12 +350,13 @@ export async function DELETE(req: Request) {
       return new NextResponse(null, { status: 204 });
     }
 
-    const existing = await prisma.artists.findUnique({ where: { id } });
-    if (!existing) return NextResponse.json({ error: "Artist not found" }, { status: 404 });
-
     await prisma.artists.delete({ where: { id } });
     return new NextResponse(null, { status: 204 });
   } catch (err: any) {
+    const mapped = resourceAuthErrorResponse(err);
+    if (mapped.status === 401 || mapped.status === 403 || mapped.status === 404) {
+      return NextResponse.json(mapped.body, { status: mapped.status });
+    }
     console.error("[DELETE /api/artists]", err);
     if (err.code === "P2003" || err.code === "P2014") {
       return NextResponse.json(

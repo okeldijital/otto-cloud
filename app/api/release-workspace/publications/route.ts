@@ -4,6 +4,11 @@ import { prisma } from "@/lib/prisma";
 import { createPublicationSchema, updatePublicationSchema } from "@/types/release-workspace";
 import { calculateReadinessScore } from "@/app/api/release-workspace/route";
 import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
+import {
+  requireOrgAuth,
+  requireWorkspacePublicationInOrg,
+  resourceAuthErrorResponse,
+} from "@/lib/auth/resource-authorization";
 
 const PLATFORMS = ["Instagram", "Facebook", "TikTok", "YouTube", "Threads", "X", "Website", "Newsletter", "Press Release", "WhatsApp Broadcast"];
 
@@ -72,7 +77,8 @@ export async function PUT(req: Request) {
     const parsed = updatePublicationSchema.safeParse(body);
     if (!parsed.success) return NextResponse.json({ error: "Validation error", details: parsed.error.flatten() }, { status: 400 });
 
-    const existing = await prisma.workspace_publications.findUnique({ where: { id: parseInt(id) } });
+    const ctxMut = await requireOrgAuth();
+    const existing = await requireWorkspacePublicationInOrg(parseInt(id), ctxMut);
     if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
     const updateData: any = { ...parsed.data };
@@ -83,6 +89,10 @@ export async function PUT(req: Request) {
     await calculateReadinessScore(existing.workspace_id, orgId);
     return NextResponse.json(updated);
   } catch (err: any) {
+    const mapped = resourceAuthErrorResponse(err);
+    if (mapped.status === 401 || mapped.status === 403 || mapped.status === 404) {
+      return NextResponse.json(mapped.body, { status: mapped.status });
+    }
     console.error("[PUT /api/release-workspace/publications]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
@@ -95,11 +105,16 @@ export async function DELETE(req: Request) {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
     if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
-    const existing = await prisma.workspace_publications.findUnique({ where: { id: parseInt(id) } });
+    const ctxMut = await requireOrgAuth();
+    const existing = await requireWorkspacePublicationInOrg(parseInt(id), ctxMut);
     if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
     await prisma.workspace_publications.update({ where: { id: parseInt(id) }, data: { is_deleted: true } });
     return new NextResponse(null, { status: 204 });
   } catch (err: any) {
+    const mappedDel = resourceAuthErrorResponse(err);
+    if (mappedDel.status === 401 || mappedDel.status === 403 || mappedDel.status === 404) {
+      return NextResponse.json(mappedDel.body, { status: mappedDel.status });
+    }
     console.error("[DELETE /api/release-workspace/publications]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

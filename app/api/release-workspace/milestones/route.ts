@@ -3,6 +3,11 @@ import { getServerSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { createMilestoneSchema, updateMilestoneSchema } from "@/types/release-workspace";
 import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
+import {
+  requireOrgAuth,
+  requireWorkspaceMilestoneInOrg,
+  resourceAuthErrorResponse,
+} from "@/lib/auth/resource-authorization";
 
 export async function GET(req: Request) {
   try {
@@ -63,7 +68,8 @@ export async function PUT(req: Request) {
     const parsed = updateMilestoneSchema.safeParse(body);
     if (!parsed.success) return NextResponse.json({ error: "Validation error", details: parsed.error.flatten() }, { status: 400 });
 
-    const existing = await prisma.workspace_milestones.findUnique({ where: { id: parseInt(id) } });
+    const ctxMut = await requireOrgAuth();
+    const existing = await requireWorkspaceMilestoneInOrg(parseInt(id), ctxMut);
     if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
     const updateData: any = { ...parsed.data };
@@ -73,6 +79,10 @@ export async function PUT(req: Request) {
     const updated = await prisma.workspace_milestones.update({ where: { id: parseInt(id) }, data: updateData });
     return NextResponse.json(updated);
   } catch (err: any) {
+    const mapped = resourceAuthErrorResponse(err);
+    if (mapped.status === 401 || mapped.status === 403 || mapped.status === 404) {
+      return NextResponse.json(mapped.body, { status: mapped.status });
+    }
     console.error("[PUT /api/release-workspace/milestones]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
@@ -85,11 +95,16 @@ export async function DELETE(req: Request) {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
     if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
-    const existing = await prisma.workspace_milestones.findUnique({ where: { id: parseInt(id) } });
+    const ctxMut = await requireOrgAuth();
+    const existing = await requireWorkspaceMilestoneInOrg(parseInt(id), ctxMut);
     if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
     await prisma.workspace_milestones.update({ where: { id: parseInt(id) }, data: { is_deleted: true } });
     return new NextResponse(null, { status: 204 });
   } catch (err: any) {
+    const mappedDel = resourceAuthErrorResponse(err);
+    if (mappedDel.status === 401 || mappedDel.status === 403 || mappedDel.status === 404) {
+      return NextResponse.json(mappedDel.body, { status: mappedDel.status });
+    }
     console.error("[DELETE /api/release-workspace/milestones]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

@@ -4,6 +4,12 @@ import { prisma } from "@/lib/prisma";
 import { createMarketingPhaseSchema, updateMarketingPhaseSchema, createMarketingTaskSchema, updateMarketingTaskSchema } from "@/types/release-workspace";
 import { calculateReadinessScore } from "@/app/api/release-workspace/route";
 import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
+import {
+  requireOrgAuth,
+  requireWorkspaceMarketingPhaseInOrg,
+  requireWorkspaceMarketingTaskInOrg,
+  resourceAuthErrorResponse,
+} from "@/lib/auth/resource-authorization";
 
 export async function GET(req: Request) {
   try {
@@ -84,20 +90,20 @@ export async function PUT(req: Request) {
     if (type === "task") {
       const parsed = updateMarketingTaskSchema.safeParse(body);
       if (!parsed.success) return NextResponse.json({ error: "Validation error", details: parsed.error.flatten() }, { status: 400 });
-      const existing = await prisma.workspace_marketing_tasks.findUnique({ where: { id: parseInt(id) } });
-      if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+      const existing = await requireWorkspaceMarketingTaskInOrg(parseInt(id), ctx);
       const updateData: any = { ...parsed.data };
       if (parsed.data.due_date) updateData.due_date = new Date(parsed.data.due_date);
       const updated = await prisma.workspace_marketing_tasks.update({ where: { id: parseInt(id) }, data: updateData });
-      const phase = await prisma.workspace_marketing_phases.findUnique({ where: { id: existing.phase_id } });
+      const phase = await prisma.workspace_marketing_phases.findFirst({
+        where: { id: existing.phase_id, organization_id: orgId },
+      });
       if (phase) await calculateReadinessScore(phase.workspace_id, orgId);
       return NextResponse.json(updated);
     }
 
     const parsed = updateMarketingPhaseSchema.safeParse(body);
     if (!parsed.success) return NextResponse.json({ error: "Validation error", details: parsed.error.flatten() }, { status: 400 });
-    const existing = await prisma.workspace_marketing_phases.findUnique({ where: { id: parseInt(id) } });
-    if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    const existing = await requireWorkspaceMarketingPhaseInOrg(parseInt(id), ctx);
     const updateData: any = { ...parsed.data };
     if (parsed.data.start_date) updateData.start_date = new Date(parsed.data.start_date);
     if (parsed.data.end_date) updateData.end_date = new Date(parsed.data.end_date);
@@ -106,6 +112,10 @@ export async function PUT(req: Request) {
     await calculateReadinessScore(existing.workspace_id, orgId);
     return NextResponse.json(updated);
   } catch (err: any) {
+    const mapped = resourceAuthErrorResponse(err);
+    if (mapped.status === 401 || mapped.status === 403 || mapped.status === 404) {
+      return NextResponse.json(mapped.body, { status: mapped.status });
+    }
     console.error("[PUT /api/release-workspace/marketing]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
@@ -113,24 +123,25 @@ export async function PUT(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
-    const session = await getServerSession();
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const ctx = await requireOrgAuth();
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
     const type = searchParams.get("type") || "phase";
     if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
 
     if (type === "task") {
-      const existing = await prisma.workspace_marketing_tasks.findUnique({ where: { id: parseInt(id) } });
-      if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+      await requireWorkspaceMarketingTaskInOrg(parseInt(id), ctx);
       await prisma.workspace_marketing_tasks.update({ where: { id: parseInt(id) }, data: { is_deleted: true } });
     } else {
-      const existing = await prisma.workspace_marketing_phases.findUnique({ where: { id: parseInt(id) } });
-      if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+      await requireWorkspaceMarketingPhaseInOrg(parseInt(id), ctx);
       await prisma.workspace_marketing_phases.update({ where: { id: parseInt(id) }, data: { is_deleted: true } });
     }
     return new NextResponse(null, { status: 204 });
   } catch (err: any) {
+    const mapped = resourceAuthErrorResponse(err);
+    if (mapped.status === 401 || mapped.status === 403 || mapped.status === 404) {
+      return NextResponse.json(mapped.body, { status: mapped.status });
+    }
     console.error("[DELETE /api/release-workspace/marketing]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

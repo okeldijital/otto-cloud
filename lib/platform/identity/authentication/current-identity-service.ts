@@ -155,11 +155,20 @@ export class CurrentIdentityService {
       }
     }
 
-    // Super-admin: system role key or platform permission
-    const isSuperAdmin =
-      roleKeys.includes("super_admin") ||
-      roleKeys.includes("platform_admin") ||
-      permKeys.includes("platform.admin");
+    // Platform super-admin ONLY via explicit super_admin role or legacy DB flag.
+    // Do NOT treat org-scoped platform.admin / owner as platform authority (A8-016).
+    let isSuperAdmin = roleKeys.includes("super_admin");
+    if (!isSuperAdmin && identity.legacyUserId != null) {
+      try {
+        const legacy = await prisma.user.findUnique({
+          where: { id: identity.legacyUserId },
+          select: { is_superuser: true },
+        });
+        isSuperAdmin = !!legacy?.is_superuser;
+      } catch {
+        /* ignore */
+      }
+    }
 
     // Touch activity (non-blocking best-effort)
     void sessionService.touchActivity(sessionId).catch(() => undefined);

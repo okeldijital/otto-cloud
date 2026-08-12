@@ -1,16 +1,19 @@
 /**
  * GET /api/platform/health/identity
- * IAM subsystem health (no secrets).
+ *
+ * A.8 Step 5 (A8-002): Platform-authority-only IAM subsystem health.
+ * Anonymous and ordinary org members must not receive identity topology counts.
  */
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
   IAM_PLATFORM_VERSION,
-  iamMetrics,
   PERMISSION_CATALOG_VERSION,
   getPlatformConfig,
 } from "@/lib/platform/sdk";
+import { getServerSession } from "@/lib/auth/session";
+import { isPlatformAuthority } from "@/lib/auth/privilege-authorization";
 
 type ComponentHealth = {
   status: "up" | "degraded" | "down";
@@ -18,31 +21,40 @@ type ComponentHealth = {
 };
 
 export async function GET() {
+  const session = await getServerSession();
+  if (!session?.user) {
+    return NextResponse.json(
+      { error: "Authentication required", code: "UNAUTHENTICATED" },
+      { status: 401 }
+    );
+  }
+
+  const user = session.user;
+  const platform = isPlatformAuthority({
+    isSuperAdmin: !!user.is_superuser,
+    permissions: user.permissions || [],
+    roles: user.role ? [user.role] : [],
+  });
+
+  if (!platform) {
+    return NextResponse.json(
+      {
+        error: "Platform authority required",
+        code: "PLATFORM_AUTHORITY_REQUIRED",
+      },
+      { status: 403 }
+    );
+  }
+
   const components: Record<string, ComponentHealth> = {};
 
-  // Database / identity tables
+  // Connectivity only — no identity/session/org counts (topology leak)
   try {
     await prisma.$queryRaw`SELECT 1`;
-    const [identities, sessions, orgs] = await Promise.all([
-      prisma.iamIdentity.count(),
-      prisma.iamSession.count({
-        where: { revokedAt: null, expiresAt: { gt: new Date() } },
-      }),
-      prisma.iamOrganization.count({ where: { status: "active" } }),
-    ]);
     components.database = { status: "up" };
-    components.identity = {
-      status: "up",
-      detail: `identities=${identities}`,
-    };
-    components.sessions = {
-      status: "up",
-      detail: `active≈${sessions}`,
-    };
-    components.organizations = {
-      status: "up",
-      detail: `active=${orgs}`,
-    };
+    components.identity = { status: "up" };
+    components.sessions = { status: "up" };
+    components.organizations = { status: "up" };
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "db error";
     components.database = { status: "down", detail: msg };
@@ -51,7 +63,6 @@ export async function GET() {
     components.organizations = { status: "down" };
   }
 
-  // Policy / config load
   try {
     const cfg = getPlatformConfig();
     components.policyEngine = {
@@ -83,11 +94,10 @@ export async function GET() {
       : "up";
 
   return NextResponse.json({
-    service: "identity",
-    platform: IAM_PLATFORM_VERSION,
     status: overall,
+    platform: IAM_PLATFORM_VERSION,
+    catalogVersion: PERMISSION_CATALOG_VERSION,
     components,
-    metrics: iamMetrics.snapshot(),
     timestamp: new Date().toISOString(),
   });
 }

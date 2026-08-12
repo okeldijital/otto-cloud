@@ -1,47 +1,48 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import {
   uploadFile,
   validateUpload,
-  detectMimeCategory,
   logAttachmentActivity,
 } from "@/lib/storage";
 import { DEFAULT_FOLDER_NAMES } from "@/lib/storage/constants";
+import {
+  orgContextErrorResponse,
+} from "@/lib/auth/organization-context";
+import {
+  requireActorUserId,
+  requireOrgAuth,
+  requireUploadEntityInOrg,
+  resourceAuthErrorResponse,
+} from "@/lib/auth/resource-authorization";
 
 /**
  * Universal file upload endpoint for Otto Cloud.
  *
- * Every module uploads through here and receives an `Attachment` record. No
- * module uploads to Cloudflare R2 directly. The raw storage key is persisted
- * server-side only and never returned to the client.
+ * A.8 Step 5: organization from session context; entity ownership verified
+ * before association. Client-supplied organizationId is ignored.
  */
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const user = session.user as any;
-    const organizationId: string = user.organization_id;
-    const userId: number = parseInt(user.id) || 1;
+    const ctx = await requireOrgAuth();
+    const organizationId = ctx.organizationId;
+    const userId = requireActorUserId(ctx);
     const ipAddress = req.headers.get("x-forwarded-for") || undefined;
     const userAgent = req.headers.get("user-agent") || undefined;
-
-    if (!organizationId) {
-      return NextResponse.json({ error: "Missing organization context" }, { status: 400 });
-    }
 
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
     const entityType = formData.get("entityType") as string | null;
     const entityId = formData.get("entityId") as string | null;
-    const workspaceId = (formData.get("workspaceId") as string | null) || null;
+    const workspaceIdRaw =
+      (formData.get("workspaceId") as string | null) || null;
     const folder =
       (formData.get("folder") as string | null) ||
       (entityType as (typeof DEFAULT_FOLDER_NAMES)[keyof typeof DEFAULT_FOLDER_NAMES]) ||
       DEFAULT_FOLDER_NAMES.misc;
+
+    // Ignore client-supplied organization / tenant / ownership fields
+    // (form may include them from older clients — never trust)
 
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
@@ -51,6 +52,14 @@ export async function POST(req: NextRequest) {
         { error: "entityType and entityId are required" },
         { status: 400 }
       );
+    }
+
+    const bound = await requireUploadEntityInOrg(entityType, entityId, ctx);
+
+    let workspaceId: string | null = null;
+    if (workspaceIdRaw) {
+      const ws = await requireUploadEntityInOrg("workspace", workspaceIdRaw, ctx);
+      workspaceId = ws.entityId;
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
@@ -74,8 +83,8 @@ export async function POST(req: NextRequest) {
       fileName: validation.sanitizedFileName,
       mimeType: file.type,
       metadata: {
-        entityType,
-        entityId,
+        entityType: bound.entityType,
+        entityId: bound.entityId,
         uploadedBy: String(userId),
       },
     });
@@ -84,8 +93,8 @@ export async function POST(req: NextRequest) {
       data: {
         organizationId,
         workspaceId,
-        entityType,
-        entityId,
+        entityType: bound.entityType,
+        entityId: bound.entityId,
         fileName: result.fileName,
         originalName: file.name,
         mimeType: result.mimeType,
@@ -104,8 +113,8 @@ export async function POST(req: NextRequest) {
       attachmentId: attachment.id,
       organizationId,
       userId,
-      entityType,
-      entityId,
+      entityType: bound.entityType,
+      entityId: bound.entityId,
       fileName: file.name,
       ipAddress,
       userAgent,
@@ -126,8 +135,24 @@ export async function POST(req: NextRequest) {
     };
 
     return NextResponse.json({ attachment: dto }, { status: 201 });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const mapped = resourceAuthErrorResponse(err);
+    if (
+      mapped.status === 401 ||
+      mapped.status === 403 ||
+      mapped.status === 400 ||
+      mapped.status === 404
+    ) {
+      return NextResponse.json(mapped.body, { status: mapped.status });
+    }
+    const orgMapped = orgContextErrorResponse(err);
+    if (orgMapped.status === 401 || orgMapped.status === 403) {
+      return NextResponse.json(orgMapped.body, { status: orgMapped.status });
+    }
     console.error("[POST /api/storage/upload]", err);
-    return NextResponse.json({ error: err.message || "Internal server error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
   }
 }

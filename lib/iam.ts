@@ -153,16 +153,18 @@ export async function requireAdmin(): Promise<{
   }
   const su = session.user;
   const p = PermissionSet.from(su.permissions || []);
+  // Org admin surface. Bare platform.admin permission must not be the sole
+  // elevation path (catalog v5 owner seed drift). Explicit platform roles OK.
   const allowed =
     su.is_superuser ||
     p.has("security.manage") ||
     p.has("users.manage") ||
     p.has("organizations.manage") ||
-    p.has("platform.admin") ||
     p.has("admin.access") ||
     // Bridge until all admins have IAM permission grants
     su.role === "org_admin" ||
     su.role === "platform_admin" ||
+    su.role === "super_admin" ||
     su.role === "admin";
 
   if (!allowed) {

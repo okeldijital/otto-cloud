@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { deleteFile, logAttachmentActivity } from "@/lib/storage";
+import {
+  orgContextErrorResponse,
+} from "@/lib/auth/organization-context";
+import {
+  requireActorUserId,
+  requireOrgAuth,
+  resourceAuthErrorResponse,
+} from "@/lib/auth/resource-authorization";
 
 /**
- * Universal delete endpoint.
- *
- * Verifies ownership, deletes the underlying storage object via the Storage
- * Service, then hard-deletes the Attachment record (the project has no
- * soft-delete convention for this table). Emits `attachment.deleted` and
- * writes an audit/activity entry.
+ * Universal delete endpoint — attachment must belong to caller's organization.
  */
 export async function DELETE(
   req: NextRequest,
@@ -17,29 +19,23 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const user = session.user as any;
-    const organizationId: string = user.organization_id;
-    const userId: number = parseInt(user.id) || 1;
+    const ctx = await requireOrgAuth();
+    const organizationId = ctx.organizationId;
+    const userId = requireActorUserId(ctx);
     const ipAddress = req.headers.get("x-forwarded-for") || undefined;
     const userAgent = req.headers.get("user-agent") || undefined;
 
-    const attachment = await prisma.attachment.findUnique({
-      where: { id },
+    // Atomic org-scoped lookup (fail closed)
+    const attachment = await prisma.attachment.findFirst({
+      where: { id, organizationId },
     });
     if (!attachment) {
-      return NextResponse.json({ error: "Attachment not found" }, { status: 404 });
-    }
-    if (attachment.organizationId !== organizationId) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return NextResponse.json(
+        { error: "Attachment not found" },
+        { status: 404 }
+      );
     }
 
-    // Delete the underlying object via the Storage Service. This is the only
-    // place storage deletion is triggered; no module touches the provider.
     await deleteFile({ key: attachment.storageKey, bucket: attachment.bucket });
 
     const entityType = attachment.entityType;
@@ -62,8 +58,24 @@ export async function DELETE(
     });
 
     return new NextResponse(null, { status: 204 });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const mapped = resourceAuthErrorResponse(err);
+    if (
+      mapped.status === 401 ||
+      mapped.status === 403 ||
+      mapped.status === 400 ||
+      mapped.status === 404
+    ) {
+      return NextResponse.json(mapped.body, { status: mapped.status });
+    }
+    const orgMapped = orgContextErrorResponse(err);
+    if (orgMapped.status === 401 || orgMapped.status === 403) {
+      return NextResponse.json(orgMapped.body, { status: orgMapped.status });
+    }
     console.error("[DELETE /api/storage/[id]]", err);
-    return NextResponse.json({ error: err.message || "Internal server error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
   }
 }

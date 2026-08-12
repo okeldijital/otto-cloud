@@ -1,27 +1,38 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import {
   orgContextErrorResponse,
   requireOrganization,
 } from "@/lib/auth/organization-context";
+import {
+  requireOrgAuth,
+  requireReleaseInOrg,
+  requireTrackInOrg,
+  requireWorkInOrg,
+  resourceAuthErrorResponse,
+  trackOrgScopeWhere,
+} from "@/lib/auth/resource-authorization";
 
 /**
- * Tracks are a GLOBAL entity today (no organization_id column).
- * Auth still requires an active organization context for access control.
- * Schema debt: add organization_id + backfill (see multi-tenant-model.md §4.3).
+ * Tracks have no organization_id column.
+ * Access is scoped via tenant_id, primary release, work, or secondary track_releases
+ * belonging to the caller's organization (see trackOrgScopeWhere).
  */
 export async function GET(req: Request) {
   try {
-    await requireOrganization();
+    const ctx = await requireOrganization();
+    const scope = trackOrgScopeWhere(ctx);
 
     const { searchParams } = new URL(req.url);
     const idStr = searchParams.get("id");
 
     if (idStr) {
       const id = parseInt(idStr);
-      const track = await prisma.tracks.findUnique({
-        where: { id },
+      if (!Number.isFinite(id)) {
+        return NextResponse.json({ error: "Invalid track ID" }, { status: 400 });
+      }
+      const track = await prisma.tracks.findFirst({
+        where: { id, ...(scope as object) },
         include: { track_releases: true },
       });
       if (!track) return NextResponse.json({ error: "Track not found" }, { status: 404 });
@@ -37,14 +48,19 @@ export async function GET(req: Request) {
       const limit = parseInt(searchParams.get("limit") || "20");
       const offset = parseInt(searchParams.get("offset") || "0");
 
-      const where: any = q
-        ? {
-            OR: [
-              { title: { contains: q, mode: "insensitive" } },
-              { isrc_code: { contains: q, mode: "insensitive" } },
-            ],
-          }
-        : {};
+      const where: any = {
+        AND: [
+          scope,
+          q
+            ? {
+                OR: [
+                  { title: { contains: q, mode: "insensitive" } },
+                  { isrc_code: { contains: q, mode: "insensitive" } },
+                ],
+              }
+            : {},
+        ],
+      };
 
       const [items, total] = await Promise.all([
         prisma.tracks.findMany({
@@ -67,9 +83,12 @@ export async function GET(req: Request) {
 
     const idsStr = searchParams.get("ids");
     if (idsStr) {
-      const ids = idsStr.split(",").map((s) => parseInt(s)).filter((n) => !isNaN(n));
+      const ids = idsStr
+        .split(",")
+        .map((s) => parseInt(s))
+        .filter((n) => !isNaN(n));
       const items = await prisma.tracks.findMany({
-        where: { id: { in: ids } },
+        where: { id: { in: ids }, ...(scope as object) },
         include: { track_releases: true },
       });
       return NextResponse.json({
@@ -85,11 +104,12 @@ export async function GET(req: Request) {
 
     const [tracks, total] = await Promise.all([
       prisma.tracks.findMany({
+        where: scope as object,
         skip,
         take: limit,
         include: { track_releases: true },
       }),
-      prisma.tracks.count(),
+      prisma.tracks.count({ where: scope as object }),
     ]);
 
     return NextResponse.json({
@@ -111,18 +131,16 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession();
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
+    const ctx = await requireOrgAuth();
+    const scope = trackOrgScopeWhere(ctx);
     const body = await req.json();
 
-    // Check if it's the "by_ids" query
     if (Array.isArray(body.ids)) {
       const ids: number[] = body.ids;
       if (!ids.length) return NextResponse.json({ items: [] });
 
       const items = await prisma.tracks.findMany({
-        where: { id: { in: ids } },
+        where: { id: { in: ids }, ...(scope as object) },
         include: { track_releases: true },
       });
 
@@ -135,21 +153,26 @@ export async function POST(req: Request) {
     }
 
     const { secondary_release_ids, ...trackData } = body;
+    delete trackData.organization_id;
 
-    const existing = await prisma.tracks.findFirst({ where: { title: trackData.title } });
-    if (existing) {
-      return NextResponse.json(
-        { error: `A track with the title '${trackData.title}' already exists.` },
-        { status: 409 }
-      );
+    if (trackData.release_id) {
+      await requireReleaseInOrg(parseInt(String(trackData.release_id)), ctx);
+    }
+    if (trackData.work_id) {
+      await requireWorkInOrg(parseInt(String(trackData.work_id)), ctx);
     }
 
-    // Auto-assign credits/date/streaming_link from release
+    // Stamp tenant for future org scoping
+    trackData.tenant_id = ctx.organizationId;
+
     if (trackData.release_id) {
-      const release = await prisma.releases.findUnique({ where: { id: trackData.release_id } });
+      const release = await prisma.releases.findFirst({
+        where: { id: trackData.release_id, organization_id: ctx.organizationId },
+      });
       if (release) {
         if (!trackData.credits && release.credits) trackData.credits = release.credits;
-        if (!trackData.release_date && release.release_date) trackData.release_date = release.release_date;
+        if (!trackData.release_date && release.release_date)
+          trackData.release_date = release.release_date;
         if (!trackData.streaming_link && (release as any).streaming_link)
           trackData.streaming_link = (release as any).streaming_link;
       }
@@ -157,13 +180,13 @@ export async function POST(req: Request) {
 
     const newTrack = await prisma.tracks.create({ data: trackData });
 
-    // Handle secondary releases
     if (secondary_release_ids?.length) {
-      await Promise.all(
-        secondary_release_ids.map((rid: number) =>
-          prisma.track_releases.create({ data: { track_id: newTrack.id, release_id: rid } }).catch(() => null)
-        )
-      );
+      for (const rid of secondary_release_ids as number[]) {
+        await requireReleaseInOrg(rid, ctx);
+        await prisma.track_releases
+          .create({ data: { track_id: newTrack.id, release_id: rid } })
+          .catch(() => null);
+      }
     }
 
     const full = await prisma.tracks.findUnique({
@@ -176,6 +199,10 @@ export async function POST(req: Request) {
       { status: 201 }
     );
   } catch (err: any) {
+    const mapped = resourceAuthErrorResponse(err);
+    if (mapped.status === 401 || mapped.status === 403 || mapped.status === 404) {
+      return NextResponse.json(mapped.body, { status: mapped.status });
+    }
     console.error("[POST /api/tracks]", err);
     if (err.code === "P2002") {
       return NextResponse.json(
@@ -189,34 +216,33 @@ export async function POST(req: Request) {
 
 export async function PUT(req: Request) {
   try {
-    const session = await getServerSession();
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
+    const ctx = await requireOrgAuth();
     const { searchParams } = new URL(req.url);
     const idStr = searchParams.get("id");
     if (!idStr) return NextResponse.json({ error: "Missing track ID" }, { status: 400 });
     const id = parseInt(idStr);
+    if (!Number.isFinite(id)) return NextResponse.json({ error: "Invalid track ID" }, { status: 400 });
 
     const body = await req.json();
     const { secondary_release_ids, ...updateData } = body;
+    delete updateData.organization_id;
 
-    const existing = await prisma.tracks.findUnique({ where: { id } });
-    if (!existing) return NextResponse.json({ error: "Track not found" }, { status: 404 });
+    const existing = await requireTrackInOrg(id, ctx);
 
-    if (updateData.title && updateData.title !== existing.title) {
-      const dup = await prisma.tracks.findFirst({ where: { title: updateData.title } });
-      if (dup) {
-        return NextResponse.json(
-          { error: `A track with the title '${updateData.title}' already exists.` },
-          { status: 409 }
-        );
-      }
+    if (updateData.release_id) {
+      await requireReleaseInOrg(parseInt(String(updateData.release_id)), ctx);
+    }
+    if (updateData.work_id) {
+      await requireWorkInOrg(parseInt(String(updateData.work_id)), ctx);
     }
 
-    // Auto credits/date/streaming_link when release_id changes
+    updateData.tenant_id = ctx.organizationId;
+
     if (updateData.release_id !== undefined && updateData.release_id !== existing.release_id) {
       if (updateData.release_id) {
-        const release = await prisma.releases.findUnique({ where: { id: updateData.release_id } });
+        const release = await prisma.releases.findFirst({
+          where: { id: updateData.release_id, organization_id: ctx.organizationId },
+        });
         if (release) {
           if (!updateData.credits && !existing.credits && release.credits)
             updateData.credits = release.credits;
@@ -228,21 +254,22 @@ export async function PUT(req: Request) {
       }
     }
 
-    const updated = await prisma.tracks.update({ where: { id }, data: updateData });
+    await prisma.tracks.update({ where: { id }, data: updateData });
 
     if (secondary_release_ids !== undefined) {
       await prisma.track_releases.deleteMany({ where: { track_id: id } });
       if (secondary_release_ids.length) {
-        await Promise.all(
-          secondary_release_ids.map((rid: number) =>
-            prisma.track_releases.create({ data: { track_id: id, release_id: rid } }).catch(() => null)
-          )
-        );
+        for (const rid of secondary_release_ids as number[]) {
+          await requireReleaseInOrg(rid, ctx);
+          await prisma.track_releases
+            .create({ data: { track_id: id, release_id: rid } })
+            .catch(() => null);
+        }
       }
     }
 
-    const full = await prisma.tracks.findUnique({
-      where: { id },
+    const full = await prisma.tracks.findFirst({
+      where: { id, ...(trackOrgScopeWhere(ctx) as object) },
       include: { track_releases: true },
     });
 
@@ -251,6 +278,10 @@ export async function PUT(req: Request) {
       secondary_release_ids: full?.track_releases.map((tr) => tr.release_id) ?? [],
     });
   } catch (err: any) {
+    const mapped = resourceAuthErrorResponse(err);
+    if (mapped.status === 401 || mapped.status === 403 || mapped.status === 404) {
+      return NextResponse.json(mapped.body, { status: mapped.status });
+    }
     console.error("[PUT /api/tracks]", err);
     if (err.code === "P2002") {
       return NextResponse.json(
@@ -264,23 +295,24 @@ export async function PUT(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
-    const session = await getServerSession();
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
+    const ctx = await requireOrgAuth();
     const { searchParams } = new URL(req.url);
     const idStr = searchParams.get("id");
     if (!idStr) return NextResponse.json({ error: "Missing track ID" }, { status: 400 });
     const id = parseInt(idStr);
+    if (!Number.isFinite(id)) return NextResponse.json({ error: "Invalid track ID" }, { status: 400 });
 
-    const existing = await prisma.tracks.findUnique({ where: { id } });
-    if (!existing) return NextResponse.json({ error: "Track not found" }, { status: 404 });
+    await requireTrackInOrg(id, ctx);
 
-    // Clean up relations first
     await prisma.track_releases.deleteMany({ where: { track_id: id } });
     await prisma.tracks.delete({ where: { id } });
 
     return new NextResponse(null, { status: 204 });
   } catch (err: any) {
+    const mapped = resourceAuthErrorResponse(err);
+    if (mapped.status === 401 || mapped.status === 403 || mapped.status === 404) {
+      return NextResponse.json(mapped.body, { status: mapped.status });
+    }
     console.error("[DELETE /api/tracks]", err);
     return NextResponse.json({ error: `Could not delete track: ${err.message}` }, { status: 400 });
   }
