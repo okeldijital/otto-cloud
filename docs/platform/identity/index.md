@@ -22,6 +22,7 @@
 | [production-rehearsal-report.md](./production-rehearsal-report.md) | Production rehearsal plan & go/no-go |
 | [access-recovery-report.md](./access-recovery-report.md) | Admin access recovery investigation |
 | [rehearsal-baseline-snapshot.json](./rehearsal-baseline-snapshot.json) | Read-only DB baseline artifact |
+| [milestone-a7-cloud-runtime-stabilization.md](./milestone-a7-cloud-runtime-stabilization.md) | Cloud runtime stabilization & acceptance |
 | [operations.md](./operations.md) | Runbooks |
 | [migration-guide.md](./migration-guide.md) | Legacy user migration |
 | [security-review.md](./security-review.md) | Security audit |
@@ -46,3 +47,4 @@
 | A.0–A.5 | product/platform/milestone-iam-* |
 | A.4.5 Cutover | [milestone-iam-cutover.md](../../product/platform/milestone-iam-cutover.md) |
 | **A.6 Productization** | [milestone-iam-a6-complete.md](../../product/platform/milestone-iam-a6-complete.md) |
+| **A.7 Cloud Runtime** | [milestone-a7-cloud-runtime-stabilization.md](./milestone-a7-cloud-runtime-stabilization.md) |
