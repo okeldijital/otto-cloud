@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
-import { User, Key, Users, Shield, Building2, Clock, Save } from "lucide-react";
+import { User, Key, Users, Shield, Building2, Clock, LockKeyhole, ExternalLink } from "lucide-react";
+import Link from "next/link";
 import PageHeader from "@/components/ui/PageHeader";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
@@ -11,12 +12,29 @@ import TeamsTab from "@/components/settings/TeamsTab";
 import PermissionsTab from "@/components/settings/PermissionsTab";
 import ActivityLogTab from "@/components/settings/ActivityLogTab";
 
+type AuthProfile = {
+  id: string;
+  email: string;
+  full_name?: string | null;
+  name?: string | null;
+  organization?: { id?: string; name?: string; slug?: string } | null;
+  roles?: string[];
+  permissions?: string[];
+  emailVerified?: boolean;
+  status?: string;
+};
+
+function formatRole(role: string | null | undefined) {
+  if (!role) return "No role";
+  return role
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
 export default function SettingsPage() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<AuthProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [name, setName] = useState("");
-  const [tab, setTab] = useState<"profile" | "api-keys" | "users" | "roles" | "teams" | "permissions" | "activity-log">("profile");
+  const [tab, setTab] = useState<"profile" | "security" | "api-keys" | "users" | "roles" | "teams" | "permissions" | "activity-log">("profile");
   const [error, setError] = useState("");
 
   const [keys, setKeys] = useState<any[]>([]);
@@ -28,10 +46,10 @@ export default function SettingsPage() {
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
-    api.get("/users").then(r => {
-      setUser(r.data);
-      setName(r.data?.name || "");
-    }).catch(() => {}).finally(() => setLoading(false));
+    api.get("/auth/me")
+      .then((response) => setUser(response.data))
+      .catch(() => setError("Unable to load your account details"))
+      .finally(() => setLoading(false));
   }, []);
 
   const fetchKeys = async () => {
@@ -39,21 +57,16 @@ export default function SettingsPage() {
     try {
       const res = await api.get("/api-keys");
       setKeys(Array.isArray(res.data) ? res.data : []);
-    } catch { setKeys([]); }
-    finally { setLoadingKeys(false); }
+    } catch {
+      setKeys([]);
+    } finally {
+      setLoadingKeys(false);
+    }
   };
 
-  useEffect(() => { if (tab === "api-keys") fetchKeys(); }, [tab]);
-
-  const handleSaveProfile = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      const res = await api.put("/users", { full_name: name });
-      setUser(res.data);
-    } catch { setError("Failed to save"); }
-    finally { setSaving(false); }
-  };
+  useEffect(() => {
+    if (tab === "api-keys") fetchKeys();
+  }, [tab]);
 
   const handleCreateKey = async () => {
     if (!keyName.trim()) return;
@@ -68,18 +81,26 @@ export default function SettingsPage() {
       setShowNewKey(res.data.api_key);
       setKeyName("");
       fetchKeys();
-    } catch (err: any) { setError(err?.response?.data?.error || "Failed to create key"); }
-    finally { setCreating(false); }
+    } catch (err: any) {
+      setError(err?.response?.data?.error || "Failed to create key");
+    } finally {
+      setCreating(false);
+    }
   };
 
   const handleRevokeKey = async (id: number) => {
     if (!confirm("Revoke this API key? This cannot be undone.")) return;
-    try { await api.delete("/api-keys", { params: { id } }); fetchKeys(); }
-    catch { setError("Failed to revoke key"); }
+    try {
+      await api.delete("/api-keys", { params: { id } });
+      fetchKeys();
+    } catch {
+      setError("Failed to revoke key");
+    }
   };
 
   const tabs = [
     { id: "profile" as const, label: "Profile", icon: User },
+    { id: "security" as const, label: "Security", icon: LockKeyhole },
     { id: "api-keys" as const, label: "API Keys", icon: Key },
     { id: "users" as const, label: "Users", icon: Users },
     { id: "roles" as const, label: "Roles", icon: Shield },
@@ -90,12 +111,15 @@ export default function SettingsPage() {
 
   if (loading) return <div className="p-12 text-center text-text-secondary">Loading...</div>;
 
+  const primaryRole = user?.roles?.[0];
+  const displayName = user?.full_name || user?.name || "—";
+
   return (
     <div className="space-y-6">
       <PageHeader title="Settings" subtitle="Account and application settings" />
 
       <div className="flex gap-1 border-b border-white/5 mb-6 overflow-x-auto">
-        {tabs.map(t => (
+        {tabs.map((t) => (
           <button
             key={t.id}
             className={`whitespace-nowrap px-4 py-2 text-sm font-bold transition-colors ${tab === t.id ? "text-white border-b-2 border-accent" : "text-text-secondary hover:text-white"}`}
@@ -114,11 +138,11 @@ export default function SettingsPage() {
 
       {tab === "profile" && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card title="Profile" subtitle="Manage your account details">
-            <form onSubmit={handleSaveProfile} className="space-y-4">
+          <Card title="Profile" subtitle="Your current OTTO account identity">
+            <div className="space-y-4">
               <div>
                 <label className="text-xs text-text-secondary font-bold block mb-1">Name</label>
-                <input className="input w-full" value={name} onChange={(e) => setName(e.target.value)} />
+                <input className="input w-full" value={displayName} disabled />
               </div>
               <div>
                 <label className="text-xs text-text-secondary font-bold block mb-1">Email</label>
@@ -126,12 +150,48 @@ export default function SettingsPage() {
               </div>
               <div>
                 <label className="text-xs text-text-secondary font-bold block mb-1">Role</label>
-                <input className="input w-full" value={user?.role || (user?.is_superuser ? "Admin" : "User")} disabled />
+                <input className="input w-full" value={formatRole(primaryRole)} disabled />
               </div>
-              <Button variant="primary" size="sm" type="submit" disabled={saving}>
-                <Save size={16} /> {saving ? "Saving..." : "Save Changes"}
-              </Button>
-            </form>
+              <div>
+                <label className="text-xs text-text-secondary font-bold block mb-1">Organization</label>
+                <input className="input w-full" value={user?.organization?.name || "—"} disabled />
+              </div>
+              <div className="flex flex-wrap gap-2 pt-2">
+                <Button variant="primary" size="sm" onClick={() => setTab("security")}>
+                  <LockKeyhole size={16} /> Security settings
+                </Button>
+                <Link
+                  href="/settings/security/password"
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-text-secondary hover:text-white border border-white/10 hover:border-white/20 transition-colors"
+                >
+                  Change password <ExternalLink size={14} />
+                </Link>
+              </div>
+              <p className="text-xs text-text-secondary">
+                Account identity and authorization are managed by OTTO IAM. Password management is available under Security.
+              </p>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {tab === "security" && (
+        <div className="space-y-6">
+          <Card title="Security" subtitle="Manage authentication and account protection">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Link href="/settings/security/password" className="block rounded-xl border border-white/10 p-4 hover:bg-white/5 transition-colors">
+                <div className="flex items-center gap-2 text-white font-semibold"><LockKeyhole size={17} /> Password</div>
+                <p className="mt-2 text-sm text-text-secondary">Change your password and review password policy.</p>
+              </Link>
+              <Link href="/settings/security/mfa" className="block rounded-xl border border-white/10 p-4 hover:bg-white/5 transition-colors">
+                <div className="flex items-center gap-2 text-white font-semibold"><Shield size={17} /> MFA</div>
+                <p className="mt-2 text-sm text-text-secondary">Configure two-factor authentication.</p>
+              </Link>
+              <Link href="/settings/security/sessions" className="block rounded-xl border border-white/10 p-4 hover:bg-white/5 transition-colors">
+                <div className="flex items-center gap-2 text-white font-semibold"><Clock size={17} /> Sessions</div>
+                <p className="mt-2 text-sm text-text-secondary">Review active sessions and sign out remotely.</p>
+              </Link>
+            </div>
           </Card>
         </div>
       )}
@@ -203,8 +263,8 @@ export default function SettingsPage() {
                             ))}
                           </div>
                         </td>
-                        <td className="p-3 text-sm text-text-secondary">{k.last_used_at ? new Date(k.last_used_at).toLocaleDateString() : "\u2014"}</td>
-                        <td className="p-3 text-sm text-text-secondary">{k.expires_at ? new Date(k.expires_at).toLocaleDateString() : "\u2014"}</td>
+                        <td className="p-3 text-sm text-text-secondary">{k.last_used_at ? new Date(k.last_used_at).toLocaleDateString() : "—"}</td>
+                        <td className="p-3 text-sm text-text-secondary">{k.expires_at ? new Date(k.expires_at).toLocaleDateString() : "—"}</td>
                         <td className="p-3">
                           <span className={`inline-flex items-center font-bold rounded-full transition-all duration-fast px-2 py-0.5 text-[10px] uppercase tracking-wider ${k.is_active ? "bg-success/10 text-success border border-success/30" : "bg-danger/10 text-danger border border-danger/30"}`}>
                             {k.is_active ? "Active" : "Revoked"}
