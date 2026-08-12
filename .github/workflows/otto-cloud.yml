@@ -1,0 +1,50 @@
+name: OTTO Cloud
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: otto-cloud-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Root application validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/otto?sslmode=disable
+      DIRECT_URL: postgresql://ci:ci@localhost:5432/otto?sslmode=disable
+      OTTO_ENV: ci
+      APP_ENV: ci
+      NODE_ENV: test
+      IAM_ENCRYPTION_KEY: 0000000000000000000000000000000000000000000000000000000000000000
+      IAM_ACCESS_TOKEN_SECRET: ci-only-access-token-secret
+      NEXTAUTH_SECRET: ci-only-legacy-secret-placeholder
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: A.7 repository acceptance
+        run: npm run test:a7
+
+      - name: IAM identity suite
+        run: npm run test:identity
+
+      - name: Production build
+        run: npm run build
