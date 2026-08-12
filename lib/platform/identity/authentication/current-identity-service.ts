@@ -38,7 +38,8 @@ export type CurrentIdentityContext = {
 
 export class CurrentIdentityService {
   /**
-   * Resolve from Cookie header (preferred) or Authorization Bearer access token.
+   * Resolve the authenticated identity. organizationIdHint is only a
+   * membership selector; it never grants organization access by itself.
    */
   async resolveFromRequest(params: {
     cookieHeader?: string | null;
@@ -47,7 +48,6 @@ export class CurrentIdentityService {
   }): Promise<CurrentIdentityContext | null> {
     const cookies = cookieService.readFromRequest(params.cookieHeader ?? null);
 
-    // Prefer short-lived access token when present
     let identityId: string | null = null;
     let sessionId: string | null = null;
     let orgFromToken: string | null = null;
@@ -63,17 +63,14 @@ export class CurrentIdentityService {
         identityId = claims.sub;
         sessionId = claims.sid;
         orgFromToken = claims.org ?? null;
-        tokenSessionVersion =
-          typeof claims.sv === "number" ? claims.sv : null;
+        tokenSessionVersion = typeof claims.sv === "number" ? claims.sv : null;
       } catch {
-        // Fall through to session cookie
+        // Fall through to session cookie.
       }
     }
 
     if ((!identityId || !sessionId) && cookies.sessionToken) {
-      const session = await sessionService.findActiveBySessionToken(
-        cookies.sessionToken
-      );
+      const session = await sessionService.findActiveBySessionToken(cookies.sessionToken);
       if (!session) return null;
       identityId = session.identityId;
       sessionId = session.id;
@@ -81,30 +78,17 @@ export class CurrentIdentityService {
 
     if (!identityId || !sessionId) return null;
 
-    // Validate session still active (access token alone is not enough if revoked)
-    const session = await prisma.iamSession.findUnique({
-      where: { id: sessionId },
-    });
-    if (!session || session.revokedAt || session.expiresAt <= new Date()) {
-      return null;
-    }
+    const session = await prisma.iamSession.findUnique({ where: { id: sessionId } });
+    if (!session || session.revokedAt || session.expiresAt <= new Date()) return null;
     if (session.identityId !== identityId) return null;
 
-    const identity = await prisma.iamIdentity.findUnique({
-      where: { id: identityId },
-    });
-    if (!identity) return null;
-    if (identity.status === "disabled") return null;
+    const identity = await prisma.iamIdentity.findUnique({ where: { id: identityId } });
+    if (!identity || identity.status === "disabled") return null;
 
-    // Session version mismatch → credentials rotated; reject
-    if (
-      tokenSessionVersion !== null &&
-      tokenSessionVersion !== identity.sessionVersion
-    ) {
+    if (tokenSessionVersion !== null && tokenSessionVersion !== identity.sessionVersion) {
       return null;
     }
 
-    // Auto-unlock window handled at login; still block hard lock here
     if (
       identity.status === "locked" &&
       identity.lockedUntil &&
@@ -113,6 +97,8 @@ export class CurrentIdentityService {
       return null;
     }
 
+    // The requested org is only a lookup candidate. Authorization requires an
+    // active membership and an active organization below.
     const orgId =
       params.organizationIdHint ||
       orgFromToken ||
@@ -130,21 +116,19 @@ export class CurrentIdentityService {
             organization: true,
             role: {
               include: {
-                permissions: {
-                  include: { permission: true },
-                },
+                permissions: { include: { permission: true } },
               },
             },
           },
         })
       : null;
 
-    if (membership && membership.status !== "active") {
-      // Membership not usable — still return identity without org
-    }
-
     const activeMembership =
-      membership && membership.status === "active" ? membership : null;
+      membership &&
+      membership.status === "active" &&
+      membership.organization.status === "active"
+        ? membership
+        : null;
 
     const roleKeys: string[] = [];
     const permKeys: string[] = [];
@@ -155,13 +139,11 @@ export class CurrentIdentityService {
       }
     }
 
-    // Super-admin: system role key or platform permission
     const isSuperAdmin =
       roleKeys.includes("super_admin") ||
       roleKeys.includes("platform_admin") ||
       permKeys.includes("platform.admin");
 
-    // Touch activity (non-blocking best-effort)
     void sessionService.touchActivity(sessionId).catch(() => undefined);
 
     return {
@@ -204,13 +186,12 @@ export class CurrentIdentityService {
     return ctx;
   }
 
-  private async resolveDefaultOrganizationId(
-    identityId: string
-  ): Promise<string | null> {
+  private async resolveDefaultOrganizationId(identityId: string): Promise<string | null> {
     const membership = await prisma.iamOrganizationMembership.findFirst({
       where: {
         identityId,
         status: "active",
+        organization: { status: "active" },
       },
       orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
     });
