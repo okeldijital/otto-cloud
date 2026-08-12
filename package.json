@@ -9,6 +9,7 @@
     "lint": "next lint",
     "postinstall": "prisma generate",
     "diagnose:cloud": "tsx scripts/cloud-runtime-diagnostics.ts",
+    "test:a7": "tsx lib/platform/identity/__tests__/a7-runtime.test.ts",
     "seed:workspaces": "tsx prisma/seed-workspaces.ts",
     "migrate:assets:discover": "tsx scripts/migrate-assets/index.ts discover",
     "migrate:assets:dry-run": "tsx scripts/migrate-assets/index.ts dry-run",
@@ -68,6 +69,7 @@
     "react-dom": "^18.3.1",
     "react-grid-layout": "^2.2.3",
     "recharts": "^3.8.1",
+    "recharts": "^3.8.1",
     "uuid": "^14.0.0",
     "xlsx": "^0.18.5",
     "zod": "^4.4.3",
@@ -86,7 +88,6 @@
     "prisma": "^5.22.0",
     "tailwindcss": "^3.4.19",
     "tsx": "^4.22.4",
-    "typescript": "^5",
     "vercel": "^58.1.0"
   },
   "optionalDependencies": {
