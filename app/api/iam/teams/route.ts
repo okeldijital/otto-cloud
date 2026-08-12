@@ -17,6 +17,9 @@ export async function GET(req: Request) {
   if (action === "members") {
     const teamId = parseInt(searchParams.get("team_id") || "");
     if (!teamId) return NextResponse.json({ error: "team_id required" }, { status: 400 });
+    // F3: members list is org-bound — foreign teams are indistinguishable (404).
+    const team = await prisma.teams.findFirst({ where: { id: teamId, organization_id: orgId } });
+    if (!team) return NextResponse.json({ error: "Team not found" }, { status: 404 });
     const members = await prisma.team_members.findMany({
       where: { team_id: teamId },
       include: { users: { select: { id: true, email: true, name: true, is_active: true, role: true } } },
@@ -43,6 +46,14 @@ export async function POST(req: Request) {
     const teamId = body.team_id;
     const userId = body.user_id;
     if (!teamId || !userId) return NextResponse.json({ error: "team_id and user_id required" }, { status: 400 });
+
+    // F3: add-member is org-bound — team must belong to the caller's org.
+    const team = await prisma.teams.findFirst({ where: { id: teamId, organization_id: orgId } });
+    if (!team) return NextResponse.json({ error: "Team not found" }, { status: 404 });
+    const targetUser = await prisma.user.findFirst({
+      where: { id: userId, organization_id: orgId },
+    });
+    if (!targetUser) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
     const existing = await prisma.team_members.findUnique({
       where: { team_id_user_id: { team_id: teamId, user_id: userId } },
@@ -77,14 +88,18 @@ export async function PUT(req: Request) {
   const body = await req.json();
   if (!body.id) return NextResponse.json({ error: "Team ID required" }, { status: 400 });
 
+  const orgId = (user as any).organization_id;
+
   if (body.action === "remove-member") {
+    // F3: remove-member is org-bound — the team must belong to the caller's org.
+    const team = await prisma.teams.findFirst({ where: { id: body.id, organization_id: orgId } });
+    if (!team) return NextResponse.json({ error: "Team not found" }, { status: 404 });
     await prisma.team_members.deleteMany({
       where: { team_id: body.id, user_id: body.user_id },
     });
     return NextResponse.json({ success: true });
   }
 
-  const orgId = (user as any).organization_id;
   const team = await prisma.teams.findFirst({ where: { id: body.id, organization_id: orgId } });
   if (!team) return NextResponse.json({ error: "Team not found" }, { status: 404 });
 
@@ -104,7 +119,9 @@ export async function DELETE(req: Request) {
   const id = parseInt(searchParams.get("id") || "");
   if (!id) return NextResponse.json({ error: "Team ID required" }, { status: 400 });
 
-  const team = await prisma.teams.findUnique({ where: { id } });
+  const team = await prisma.teams.findFirst({
+    where: { id, organization_id: (await requireOrganization()).organizationId },
+  });
   if (!team) return NextResponse.json({ error: "Team not found" }, { status: 404 });
 
   await prisma.teams.delete({ where: { id } });

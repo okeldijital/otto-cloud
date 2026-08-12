@@ -5,6 +5,7 @@ import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organiz
 import {
   requireLegacyIntOrgId,
   requireActorUserId,
+  trackOrgScopeWhere,
   resourceAuthErrorResponse,
 } from "@/lib/auth/resource-authorization";
 
@@ -25,7 +26,7 @@ export async function GET(req: Request) {
           prisma.contracts.count({ where: { organization_id: orgIdInt } }),
           prisma.artists.count({ where: { organization_id: orgIdStr } }),
           prisma.releases.count({ where: { organization_id: orgIdStr } }),
-          prisma.tracks.count(),
+          prisma.tracks.count({ where: trackOrgScopeWhere(ctx) }),
           prisma.works.count({ where: { organization_id: orgIdStr } }),
           prisma.ai_sessions.count({ where: { organization_id: orgIdStr } }),
         ]);
@@ -91,7 +92,7 @@ export async function GET(req: Request) {
       const [totalArtists, totalReleases, totalTracks, totalWorks] = await Promise.all([
         prisma.artists.count({ where: { organization_id: orgIdStr } }),
         prisma.releases.count({ where: { organization_id: orgIdStr } }),
-        prisma.tracks.count(),
+        prisma.tracks.count({ where: trackOrgScopeWhere(ctx) }),
         prisma.works.count({ where: { organization_id: orgIdStr } }),
       ]);
 

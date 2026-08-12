@@ -5,6 +5,9 @@ import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organiz
 import {
   requireLegacyIntOrgId,
   requireActorUserId,
+  requirePositiveIntId,
+  requireReleaseInOrg,
+  requireContractInOrg,
   resourceAuthErrorResponse,
 } from "@/lib/auth/resource-authorization";
 
@@ -70,10 +73,19 @@ export async function POST(req: Request) {
       const body = await req.json();
       const { release_id, contract_id, planner_version } = body;
 
+      // A.9 F2: organization-bound resolution — foreign releases 404 (non-leaking).
+      const releaseId = requirePositiveIntId(release_id, "release_id");
+      await requireReleaseInOrg(releaseId, ctx);
       const release = await prisma.releases.findFirst({
-        where: { id: parseInt(release_id) },
+        where: { id: releaseId, organization_id: ctx.organizationId, is_deleted: false },
         include: { artists: true, tracks: true },
       });
+
+      let contractIdForRun: number | null = null;
+      if (contract_id !== undefined && contract_id !== null && contract_id !== "") {
+        contractIdForRun = requirePositiveIntId(contract_id, "contract_id");
+        await requireContractInOrg(contractIdForRun, ctx);
+      }
 
       const linksData: any[] = [];
       if (release?.artists) {
@@ -106,8 +118,8 @@ export async function POST(req: Request) {
         data: {
           organization_id: orgId,
           user_id: userId,
-          release_id: parseInt(release_id),
-          contract_id: contract_id ? parseInt(contract_id) : null,
+          release_id: releaseId,
+          contract_id: contractIdForRun,
           request_hash: `integrate-${Date.now()}`,
           planner_version: planner_version || "v1",
           ai_release_integration_links: { create: linksData },

@@ -253,6 +253,30 @@ export async function requireContractInOrg(id: number, ctx: OrganizationContext)
 }
 
 /**
+ * A.9 F2 — AI contract documents use INT organization_id (+ optional tenant_id UUID).
+ * Organization-bound before any simulation/planning read; foreign rows 404 (non-leaking).
+ */
+export async function requireAIContractDocumentInOrg(
+  id: number,
+  ctx: OrganizationContext
+) {
+  const intOrg = requireLegacyIntOrgId(ctx);
+  const row = await prisma.ai_contract_documents.findFirst({
+    where: {
+      id,
+      OR: [
+        { organization_id: intOrg },
+        ...(ctx.organizationId
+          ? [{ tenant_id: ctx.organizationId }]
+          : []),
+      ],
+    },
+  });
+  if (!row) notFound("Contract document");
+  return row;
+}
+
+/**
  * Tracks have no organization_id. Access only via:
  * - tenant_id matching org UUID
  * - primary release belonging to org

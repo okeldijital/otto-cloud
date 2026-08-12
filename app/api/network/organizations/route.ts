@@ -16,12 +16,16 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const idStr = searchParams.get("id");
 
+    const ctx = await requireOrganization();
+    const intOrg = requireLegacyIntOrgId(ctx);
+
     if (idStr) {
       const id = parseInt(idStr);
-      const org = await prisma.organizations.findUnique({
-        where: { id },
+      const org = await prisma.organizations.findFirst({
+        where: { id, organization_id: intOrg },
         include: {
           individual_organizations: {
+            where: { individuals: { organization_id: intOrg } },
             include: { individuals: true },
           },
           _count: { select: { releases: true } },
@@ -34,6 +38,7 @@ export async function GET(req: Request) {
     const skip = parseInt(searchParams.get("skip") || "0");
     const limit = parseInt(searchParams.get("limit") || "200");
     const orgs = await prisma.organizations.findMany({
+      where: { organization_id: intOrg },
       skip,
       take: limit,
       orderBy: { name: "asc" },
@@ -100,7 +105,12 @@ export async function PUT(req: Request) {
     if (!idStr) return NextResponse.json({ error: "Missing id" }, { status: 400 });
     const id = parseInt(idStr);
 
-    const existing = await prisma.organizations.findUnique({ where: { id } });
+    const ctx = await requireOrganization();
+    const intOrg = requireLegacyIntOrgId(ctx);
+
+    const existing = await prisma.organizations.findFirst({
+      where: { id, organization_id: intOrg },
+    });
     if (!existing) return NextResponse.json({ error: "Organization not found" }, { status: 404 });
 
     const body = await req.json();
@@ -138,7 +148,12 @@ export async function DELETE(req: Request) {
     if (!idStr) return NextResponse.json({ error: "Missing id" }, { status: 400 });
     const id = parseInt(idStr);
 
-    const existing = await prisma.organizations.findUnique({ where: { id } });
+    const ctx = await requireOrganization();
+    const intOrg = requireLegacyIntOrgId(ctx);
+
+    const existing = await prisma.organizations.findFirst({
+      where: { id, organization_id: intOrg },
+    });
     if (!existing) return NextResponse.json({ error: "Organization not found" }, { status: 404 });
 
     await prisma.individual_organizations.deleteMany({ where: { organization_id: id } });

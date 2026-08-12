@@ -1,11 +1,23 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth/session";
+import { platformAuthorityFromSession } from "@/lib/auth/privilege-authorization";
 import { prisma } from "@/lib/prisma";
+
+function platformOnly(session: Awaited<ReturnType<typeof getServerSession>>): NextResponse | null {
+  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!platformAuthorityFromSession(session.user)) {
+    return NextResponse.json(
+      { error: "Platform authority required", code: "PLATFORM_AUTHORITY_REQUIRED" },
+      { status: 403 }
+    );
+  }
+  return null;
+}
 
 export async function GET(req: Request) {
   try {
-    const session = await getServerSession();
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const denied = platformOnly(await getServerSession());
+    if (denied) return denied;
 
     const relationships = await prisma.network_relationships.findMany({
       orderBy: { created_at: "desc" },
@@ -19,8 +31,8 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession();
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const denied = platformOnly(await getServerSession());
+    if (denied) return denied;
 
     const body = await req.json();
     if (!body.relationship_type || !body.source_type || !body.target_type) {
@@ -48,8 +60,8 @@ export async function POST(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
-    const session = await getServerSession();
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const denied = platformOnly(await getServerSession());
+    if (denied) return denied;
 
     const { searchParams } = new URL(req.url);
     const idStr = searchParams.get("id");

@@ -19,6 +19,7 @@ export async function GET(req: Request) {
         where: { id, organization_id: intOrgId },
         include: {
           individual_organizations: {
+            where: { organizations: { organization_id: intOrgId } },
             include: { organizations: true },
           },
         },
@@ -36,6 +37,7 @@ export async function GET(req: Request) {
       orderBy: [{ last_name: "asc" }, { first_name: "asc" }],
       include: {
         individual_organizations: {
+          where: { organizations: { organization_id: intOrgId } },
           include: { organizations: true },
         },
       },
@@ -73,8 +75,11 @@ export async function POST(req: Request) {
       },
     });
 
-    if (body.organization_ids?.length) {
-      for (const orgId2 of body.organization_ids) {
+    const allowedOrgIds = (body.organization_ids || [])
+      .map((v: any) => parseInt(v))
+      .filter((v: number) => Number.isFinite(v) && v > 0 && v === intOrgId);
+    if (allowedOrgIds.length) {
+      for (const orgId2 of allowedOrgIds) {
         await prisma.individual_organizations.create({
           data: { individual_id: individual.id, organization_id: parseInt(orgId2) },
         });
@@ -119,9 +124,12 @@ export async function PUT(req: Request) {
 
     if (body.organization_ids !== undefined) {
       await prisma.individual_organizations.deleteMany({ where: { individual_id: id } });
-      for (const orgId2 of body.organization_ids) {
+      const allowedOrgIds = (body.organization_ids as any[])
+        .map((v: any) => parseInt(v))
+        .filter((v: number) => Number.isFinite(v) && v > 0 && v === intOrgId);
+      for (const orgId2 of allowedOrgIds) {
         await prisma.individual_organizations.create({
-          data: { individual_id: id, organization_id: parseInt(orgId2) },
+          data: { individual_id: id, organization_id: orgId2 },
         });
       }
     }

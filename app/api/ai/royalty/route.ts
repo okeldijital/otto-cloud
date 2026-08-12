@@ -5,6 +5,9 @@ import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organiz
 import {
   requireLegacyIntOrgId,
   requireActorUserId,
+  requirePositiveIntId,
+  requireReleaseInOrg,
+  requireAIContractDocumentInOrg,
   resourceAuthErrorResponse,
 } from "@/lib/auth/resource-authorization";
 
@@ -82,17 +85,19 @@ export async function POST(req: Request) {
       const body = await req.json();
       const { release_id, contract_document_id, gross_revenue, units, period_start, period_end, persist_result } = body;
 
+      // A.9 F2: organization-bound resource resolution — foreign ids 404 (non-leaking).
+      const releaseId = requirePositiveIntId(release_id, "release_id");
+      await requireReleaseInOrg(releaseId, ctx);
       const release = await prisma.releases.findFirst({
-        where: { id: parseInt(release_id) },
+        where: { id: releaseId, organization_id: ctx.organizationId, is_deleted: false },
         include: { artists: true, tracks: true },
       });
       if (!release) return NextResponse.json({ error: "Release not found" }, { status: 404 });
 
-      let contractDoc = null;
-      if (contract_document_id) {
-        contractDoc = await prisma.ai_contract_documents.findFirst({
-          where: { id: parseInt(contract_document_id) },
-        });
+      let contractDoc: Awaited<ReturnType<typeof requireAIContractDocumentInOrg>> | null = null;
+      if (contract_document_id !== undefined && contract_document_id !== null && contract_document_id !== "") {
+        const contractDocumentId = requirePositiveIntId(contract_document_id, "contract_document_id");
+        contractDoc = await requireAIContractDocumentInOrg(contractDocumentId, ctx);
       }
 
       const effectiveRevenue = gross_revenue ? Number(gross_revenue) : 100000;
@@ -141,14 +146,14 @@ export async function POST(req: Request) {
         });
       }
 
-      const requestHash = computeRequestHash(parseInt(release_id), contract_document_id ? parseInt(contract_document_id) : null);
+      const requestHash = computeRequestHash(releaseId, contractDoc ? contractDoc.id : null);
 
       let persisted = false;
       let runId: number | null = null;
 
       if (persist_result !== false) {
         const existing = await prisma.ai_royalty_simulation_runs.findFirst({
-          where: { organization_id: orgId, release_id: parseInt(release_id), request_hash: requestHash },
+          where: { organization_id: orgId, release_id: releaseId, request_hash: requestHash },
         });
 
         if (!existing) {
@@ -156,8 +161,8 @@ export async function POST(req: Request) {
             data: {
               organization_id: orgId,
               user_id: userId,
-              release_id: parseInt(release_id),
-              contract_document_id: contract_document_id ? parseInt(contract_document_id) : null,
+              release_id: releaseId,
+              contract_document_id: contractDoc ? contractDoc.id : null,
               request_hash: requestHash,
               royalty_version: "royalty_sim_v1_deterministic",
               splits_total: splitsTotal,
@@ -176,8 +181,8 @@ export async function POST(req: Request) {
 
       return NextResponse.json({
         status: "ok",
-        release_id: parseInt(release_id),
-        contract_document_id: contract_document_id ? parseInt(contract_document_id) : null,
+        release_id: releaseId,
+        contract_document_id: contractDoc ? contractDoc.id : null,
         computed_splits: computedSplits,
         results,
         splits_total: splitsTotal,

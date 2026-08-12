@@ -3,18 +3,42 @@ import { getServerSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { requirePermission, clearPermissionCache } from "@/lib/iam";
 import { recordAudit } from "@/lib/audit";
+import { requireOrganization } from "@/lib/auth/organization-context";
+import { isPlatformAuthority } from "@/lib/auth/privilege-authorization";
+
+function platformOf(user: { is_superuser?: boolean; role?: string | null; permissions?: string[] }): boolean {
+  return isPlatformAuthority({
+    isSuperAdmin: !!user.is_superuser,
+    roles: user.role ? [user.role] : [],
+    permissions: user.permissions || [],
+  });
+}
 
 export async function GET() {
   const session = await getServerSession();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const platform = platformOf(session.user);
+
+  // F3: organization roles visible only within the actor's organization;
+  // system/platform roles remain protected (global reference, platform view only).
+  const organizationId = platform ? null : (await requireOrganization()).organizationId;
+  const where = platform ? {} : { organization_id: organizationId };
+
   const roles = await prisma.roles.findMany({
+    where,
     orderBy: { name: "asc" },
     include: {
       role_permissions: {
         include: { permissions: true },
       },
-      _count: { select: { user_roles: true } },
+      _count: {
+        select: {
+          user_roles: platform
+            ? true
+            : { where: { users: { organization_id: organizationId } } },
+        },
+      } as any,
     },
   });
   return NextResponse.json(roles);
@@ -27,6 +51,17 @@ export async function POST(req: Request) {
   const body = await req.json();
   if (!body.name) return NextResponse.json({ error: "Role name required" }, { status: 400 });
 
+  const platform = platformOf(user as any);
+  // F3: client organization override is ignored for org actors — the org is
+  // always derived from the session (platform authority may target any org).
+  const organization_id =
+    platform && body.organization_id
+      ? body.organization_id
+      : (user as any).organization_id;
+  if (!organization_id) {
+    return NextResponse.json({ error: "Organization context required" }, { status: 403 });
+  }
+
   const existing = await prisma.roles.findUnique({ where: { name: body.name } });
   if (existing) return NextResponse.json({ error: "Role already exists" }, { status: 400 });
 
@@ -35,7 +70,7 @@ export async function POST(req: Request) {
       name: body.name,
       description: body.description || null,
       is_system: false,
-      organization_id: body.organization_id || null,
+      organization_id,
     },
   });
 
@@ -63,7 +98,14 @@ export async function PUT(req: Request) {
   const body = await req.json();
   if (!body.id) return NextResponse.json({ error: "Role ID required" }, { status: 400 });
 
-  const role = await prisma.roles.findUnique({ where: { id: body.id } });
+  const platform = platformOf(user as any);
+  // F3: non-platform actors may only mutate roles bound to their organization
+  // (404 keeps foreign/existing roles indistinguishable).
+  const role = platform
+    ? await prisma.roles.findUnique({ where: { id: body.id } })
+    : await prisma.roles.findFirst({
+        where: { id: body.id, organization_id: (user as any).organization_id },
+      });
   if (!role) return NextResponse.json({ error: "Role not found" }, { status: 404 });
   if (role.is_system) return NextResponse.json({ error: "Cannot modify system role" }, { status: 400 });
 
@@ -99,7 +141,12 @@ export async function DELETE(req: Request) {
   const id = parseInt(searchParams.get("id") || "");
   if (!id) return NextResponse.json({ error: "Role ID required" }, { status: 400 });
 
-  const role = await prisma.roles.findUnique({ where: { id } });
+  const platform = platformOf(user as any);
+  const role = platform
+    ? await prisma.roles.findUnique({ where: { id } })
+    : await prisma.roles.findFirst({
+        where: { id, organization_id: (user as any).organization_id },
+      });
   if (!role) return NextResponse.json({ error: "Role not found" }, { status: 404 });
   if (role.is_system) return NextResponse.json({ error: "Cannot delete system role" }, { status: 400 });
 

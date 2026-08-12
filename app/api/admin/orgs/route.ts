@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/permissions";
+import { requirePlatformAdmin } from "@/lib/permissions";
 
 export async function GET() {
-  const { user, error } = await requireAdmin();
+  const { user, error } = await requirePlatformAdmin();
   if (error) return error;
 
   const orgs = await prisma.organizations.findMany({
@@ -26,7 +26,7 @@ export async function GET() {
 }
 
 export async function PUT(req: Request) {
-  const { user, error } = await requireAdmin();
+  const { user, error } = await requirePlatformAdmin();
   if (error) return error;
 
   const body = await req.json();

@@ -4,12 +4,23 @@ import {
   orgContextErrorResponse,
   requireOrganization,
 } from "@/lib/auth/organization-context";
+import {
+  playlistOrgScopeWhere,
+  trackOrgScopeWhere,
+} from "@/lib/auth/resource-authorization";
 import { releaseContractReadModelService } from "@/lib/release-workspace/contracts";
 
 export async function GET(req: Request) {
   try {
     const ctx = await requireOrganization();
     const orgId = ctx.organizationId;
+
+    // Network directory rows (organizations/individuals) are owned by the
+    // legacy INT org id. Fail closed when no int scope is resolvable.
+    const legacyIntOrgId =
+      Number.isFinite(ctx.legacyIntOrgId) && ctx.legacyIntOrgId > 0
+        ? ctx.legacyIntOrgId
+        : -1;
 
     const { searchParams } = new URL(req.url);
     const q = searchParams.get("q");
@@ -63,10 +74,15 @@ export async function GET(req: Request) {
 
       prisma.tracks.findMany({
         where: {
-          OR: [
-            { title: searchFilter },
-            { isrc_code: searchFilter },
-            { track_id: searchFilter }
+          AND: [
+            trackOrgScopeWhere(ctx),
+            {
+              OR: [
+                { title: searchFilter },
+                { isrc_code: searchFilter },
+                { track_id: searchFilter }
+              ]
+            }
           ]
         },
         take: 5
@@ -143,9 +159,14 @@ export async function GET(req: Request) {
 
       prisma.playlists.findMany({
         where: {
-          OR: [
-            { name: searchFilter },
-            { description: searchFilter }
+          AND: [
+            playlistOrgScopeWhere(ctx),
+            {
+              OR: [
+                { name: searchFilter },
+                { description: searchFilter }
+              ]
+            }
           ]
         },
         take: 5
@@ -153,13 +174,15 @@ export async function GET(req: Request) {
 
       prisma.organizations.findMany({
         where: {
-          name: searchFilter
+          name: searchFilter,
+          organization_id: legacyIntOrgId,
         },
         take: 5
       }).catch(() => []),
 
       prisma.individuals.findMany({
         where: {
+          organization_id: legacyIntOrgId,
           OR: [
             { first_name: searchFilter },
             { last_name: searchFilter }
