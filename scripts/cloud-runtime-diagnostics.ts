@@ -74,7 +74,6 @@ async function main() {
     count("iamRole", () => prisma.iamRole.count()),
     count("iamPermission", () => prisma.iamPermission.count()),
     count("iamSession", () => prisma.iamSession.count()),
-    count("iamMfa", () => prisma.iamMfa.count()),
   ]);
 
   console.log("\nIAM inventory");
