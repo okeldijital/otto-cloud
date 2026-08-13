@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import {
+  requireContractInOrg,
   requireOrgAuth,
+  requirePositiveIntId,
   requireRoyaltyInOrg,
   resourceAuthErrorResponse,
   royaltyOrgScopeWhere,
@@ -109,9 +110,13 @@ export async function GET(req: Request) {
     if (action === "validate-splits") {
       const contractIdStr = searchParams.get("contract_id");
       if (!contractIdStr) return NextResponse.json({ error: "Missing contract_id" }, { status: 400 });
-      const contractId = parseInt(contractIdStr);
+      const contractId = requirePositiveIntId(contractIdStr, "contract_id");
 
-      const contract = await prisma.contracts.findFirst({
+      // Fail closed: the contract must belong to the authenticated organization
+      // (INT organization_id or tenant UUID). Foreign/non-existent → 404.
+      await requireContractInOrg(contractId, ctx);
+
+      const contract = await prisma.contracts.findUnique({
         where: { id: contractId },
         include: {
           contract_split_groups: {
@@ -141,15 +146,22 @@ export async function GET(req: Request) {
         if (asset.asset_type === "artist" && asset.asset_id) artistIds.push(asset.asset_id);
       }
 
-      const royalties = await prisma.royalties.findMany({
-        where: {
-          OR: [
-            artistIds.length > 0 ? { artist_id: { in: artistIds } } : {},
-            workIds.length > 0 ? { work_id: { in: workIds } } : {},
-            trackIds.length > 0 ? { track_id: { in: trackIds } } : {},
-          ].filter((c) => Object.keys(c).length > 0),
-        },
-      });
+      const entityClauses = [
+        artistIds.length > 0 ? { artist_id: { in: artistIds } } : null,
+        workIds.length > 0 ? { work_id: { in: workIds } } : null,
+        trackIds.length > 0 ? { track_id: { in: trackIds } } : null,
+      ].filter(Boolean) as Record<string, any>[];
+
+      // Scope royalty aggregation to the authenticated organization. An empty
+      // entity/link set must never fall through to a global query.
+      const royalties =
+        entityClauses.length > 0
+          ? await prisma.royalties.findMany({
+              where: {
+                AND: [royaltyOrgScopeWhere(ctx), { OR: entityClauses }],
+              },
+            })
+          : [];
 
       const totalRoyaltyAmount = royalties.reduce((sum, r) => sum + (r.amount?.toNumber() ?? 0), 0);
 
@@ -192,7 +204,10 @@ export async function GET(req: Request) {
 
     const idStr = searchParams.get("id");
     if (idStr) {
-      const id = parseInt(idStr);
+      const id = requirePositiveIntId(idStr, "id");
+      // Fail closed: royalty must belong to the authenticated organization.
+      // Foreign/non-existent → 404 (non-leaking).
+      await requireRoyaltyInOrg(id, ctx);
       const royalty = await prisma.royalties.findUnique({
         where: { id },
         include: royaltyIncludes,
@@ -265,8 +280,7 @@ export async function PUT(req: Request) {
     const { searchParams } = new URL(req.url);
     const idStr = searchParams.get("id");
     if (!idStr) return NextResponse.json({ error: "Missing royalty ID" }, { status: 400 });
-    const id = parseInt(idStr);
-    if (!Number.isFinite(id)) return NextResponse.json({ error: "Invalid royalty ID" }, { status: 400 });
+    const id = requirePositiveIntId(idStr, "id");
 
     await requireRoyaltyInOrg(id, ctx);
 
@@ -307,8 +321,7 @@ export async function DELETE(req: Request) {
     const { searchParams } = new URL(req.url);
     const idStr = searchParams.get("id");
     if (!idStr) return NextResponse.json({ error: "Missing royalty ID" }, { status: 400 });
-    const id = parseInt(idStr);
-    if (!Number.isFinite(id)) return NextResponse.json({ error: "Invalid royalty ID" }, { status: 400 });
+    const id = requirePositiveIntId(idStr, "id");
 
     await requireRoyaltyInOrg(id, ctx);
 

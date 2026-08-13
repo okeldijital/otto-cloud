@@ -12,6 +12,7 @@
     "test:a8-step5": "tsx lib/auth/__tests__/step5-security-remediation.test.ts",
     "test:a8-http": "tsx lib/auth/__tests__/http-authorization-boundary.test.ts",
     "test:a9-http": "tsx lib/auth/__tests__/a9-http-boundary.test.ts",
+    "test:r1-r3-http": "tsx lib/auth/__tests__/r1-r3-http-boundary.test.ts",
     "postinstall": "prisma generate",
     "seed:workspaces": "tsx prisma/seed-workspaces.ts",
     "migrate:assets:discover": "tsx scripts/migrate-assets/index.ts discover",

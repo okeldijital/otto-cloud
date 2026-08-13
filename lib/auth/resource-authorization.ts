@@ -384,6 +384,23 @@ export async function requireAuditLogInOrg(id: number, ctx: OrganizationContext)
   return row;
 }
 
+/**
+ * Activities have no organization_id column. Scope via the authoritative
+ * relationship activities.user_id → users.organization_id (server-derived).
+ * Never trusts client-supplied organization_id/tenant_id.
+ */
+export function activityOrgScopeWhere(ctx: OrganizationContext): Record<string, unknown> {
+  return { users: { is: { organization_id: ctx.organizationId } } };
+}
+
+export async function requireActivityInOrg(id: number, ctx: OrganizationContext) {
+  const row = await prisma.activities.findFirst({
+    where: { id, ...(activityOrgScopeWhere(ctx) as object) },
+  });
+  if (!row) notFound("Activity");
+  return row;
+}
+
 // ── Workspace children (UUID organization_id) ──────────────────────────────
 
 async function requireWorkspaceChild<T extends { organization_id: string }>(

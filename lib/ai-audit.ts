@@ -1,4 +1,9 @@
 import { prisma } from "@/lib/prisma";
+import {
+  royaltyOrgScopeWhere,
+  trackOrgScopeWhere,
+} from "@/lib/auth/resource-authorization";
+import type { OrganizationContext } from "@/lib/auth/organization-context";
 
 export interface AuditFinding {
   issue_type: string;
@@ -20,12 +25,16 @@ function orgFilter(orgId: string | number) {
   return { organization_id: Number(orgId) || orgId } as any;
 }
 
-export async function checkCatalogConsistency(orgId: string | number): Promise<AuditReport> {
+export async function checkCatalogConsistency(ctx: OrganizationContext): Promise<AuditReport> {
   const findings: AuditFinding[] = [];
-  const oid = Number(orgId) || orgId;
+  const orgId = ctx.organizationId;
+
+  // Tracks have no organization_id — scope via trackOrgScopeWhere (tenant UUID
+  // or linked release/work/track_releases ownership).
+  const trackScope = trackOrgScopeWhere(ctx) as object;
 
   const orphans = await prisma.tracks.findMany({
-    where: { release_id: null },
+    where: { release_id: null, ...trackScope },
     take: 50,
   });
   for (const t of orphans) {
@@ -40,7 +49,7 @@ export async function checkCatalogConsistency(orgId: string | number): Promise<A
   }
 
   const tracksWithoutWork = await prisma.tracks.findMany({
-    where: { work_id: null },
+    where: { work_id: null, ...trackScope },
     take: 50,
   });
   for (const t of tracksWithoutWork) {
@@ -74,7 +83,12 @@ export async function checkCatalogConsistency(orgId: string | number): Promise<A
     take: 50,
   });
   const linkedWorkIds = new Set(
-    (await prisma.tracks.findMany({ where: { work_id: { not: null } }, select: { work_id: true } }))
+    (
+      await prisma.tracks.findMany({
+        where: { work_id: { not: null }, ...trackScope },
+        select: { work_id: true },
+      })
+    )
       .map((t) => t.work_id)
       .filter(Boolean) as number[]
   );
@@ -103,11 +117,11 @@ export async function checkCatalogConsistency(orgId: string | number): Promise<A
   };
 }
 
-export async function checkReleaseQuality(orgId: string | number): Promise<AuditReport> {
+export async function checkReleaseQuality(ctx: OrganizationContext): Promise<AuditReport> {
   const findings: AuditFinding[] = [];
 
   const releases = await prisma.releases.findMany({
-    where: { ...orgFilter(orgId), is_deleted: false },
+    where: { ...orgFilter(ctx.organizationId), is_deleted: false },
     take: 100,
   });
 
@@ -156,10 +170,14 @@ export async function checkReleaseQuality(orgId: string | number): Promise<Audit
   };
 }
 
-export async function checkRoyaltyAnomalies(orgId: string | number): Promise<AuditReport> {
+export async function checkRoyaltyAnomalies(ctx: OrganizationContext): Promise<AuditReport> {
   const findings: AuditFinding[] = [];
 
-  const royalties = await prisma.royalties.findMany({ take: 500 });
+  // Organization-scoped — never a global 500-row royalties query.
+  const royalties = await prisma.royalties.findMany({
+    where: royaltyOrgScopeWhere(ctx),
+    take: 500,
+  });
 
   if (royalties.length > 0) {
     const amounts = royalties.map((r) => r.amount?.toNumber() || 0);
@@ -206,11 +224,11 @@ export async function checkRoyaltyAnomalies(orgId: string | number): Promise<Aud
   };
 }
 
-export async function checkContracts(orgId: string | number): Promise<AuditReport> {
+export async function checkContracts(ctx: OrganizationContext): Promise<AuditReport> {
   const findings: AuditFinding[] = [];
 
   const contracts = await prisma.contracts.findMany({
-    where: { ...orgFilter(orgId) },
+    where: { ...orgFilter(ctx.organizationId) },
     include: {
       _count: { select: { contract_parties: true, contract_documents: true, contract_assets: true } },
     },
@@ -260,16 +278,17 @@ export async function checkContracts(orgId: string | number): Promise<AuditRepor
   };
 }
 
-export async function runAllAudits(orgId: string | number): Promise<AuditReport[]> {
+export async function runAllAudits(ctx: OrganizationContext): Promise<AuditReport[]> {
   return Promise.all([
-    checkCatalogConsistency(orgId),
-    checkReleaseQuality(orgId),
-    checkRoyaltyAnomalies(orgId),
-    checkContracts(orgId),
+    checkCatalogConsistency(ctx),
+    checkReleaseQuality(ctx),
+    checkRoyaltyAnomalies(ctx),
+    checkContracts(ctx),
   ]);
 }
 
-export async function postFindingsToStatusQuo(orgId: string | number, findings: AuditFinding[]): Promise<number> {
+export async function postFindingsToStatusQuo(ctx: OrganizationContext, findings: AuditFinding[]): Promise<number> {
+  const orgId = ctx.organizationId;
   let count = 0;
   for (const f of findings) {
     const existing = await prisma.status_quo_items.findFirst({
@@ -284,7 +303,7 @@ export async function postFindingsToStatusQuo(orgId: string | number, findings: 
     if (!existing) {
       await prisma.status_quo_items.create({
         data: {
-          organization_id: String(Number(orgId) || orgId),
+          organization_id: orgId,
           entity_type: f.entity_type,
           entity_id: f.entity_id,
           issue_type: f.issue_type,

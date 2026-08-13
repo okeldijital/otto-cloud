@@ -1,15 +1,15 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { getReportDefinitions, runReport } from "@/lib/reports";
-import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
+import {
+  requireOrgAuth,
+  requirePositiveIntId,
+  resourceAuthErrorResponse,
+} from "@/lib/auth/resource-authorization";
 
 export async function GET(req: Request) {
   try {
-    const session = await getServerSession();
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-    const ctx = await requireOrganization();
+    const ctx = await requireOrgAuth();
 
     const orgId = ctx.organizationId;
     const { searchParams } = new URL(req.url);
@@ -34,6 +34,10 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ items: runs, total });
   } catch (err: any) {
+    const mapped = resourceAuthErrorResponse(err);
+    if (mapped.status === 401 || mapped.status === 403 || mapped.status === 404) {
+      return NextResponse.json(mapped.body, { status: mapped.status });
+    }
     console.error("[GET /api/reports]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
@@ -41,41 +45,50 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession();
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const ctx = await requireOrgAuth();
 
-    const ctx = await requireOrganization();
-
-    const orgId = ctx.organizationId;
-    const userId = parseInt((session.user as any).id) || 1;
     const body = await req.json();
     const { report_type, params } = body;
 
     if (!report_type) return NextResponse.json({ error: "report_type is required" }, { status: 400 });
 
-    const { runId, result } = await runReport(orgId, userId, report_type, params || {});
+    // Actor identity and org are server-derived inside runReport (no || 1 fallback).
+    const { runId, result } = await runReport(ctx, report_type, params || {});
 
     return NextResponse.json({ run_id: runId, ...result });
   } catch (err: any) {
+    const mapped = resourceAuthErrorResponse(err);
+    if (mapped.status === 401 || mapped.status === 403 || mapped.status === 404) {
+      return NextResponse.json(mapped.body, { status: mapped.status });
+    }
     console.error("[POST /api/reports]", err);
-    return NextResponse.json({ error: err.message || "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 
 export async function DELETE(req: Request) {
   try {
-    const session = await getServerSession();
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const ctx = await requireOrgAuth();
 
     const { searchParams } = new URL(req.url);
-    const id = parseInt(searchParams.get("id") || "");
-    if (!id) return NextResponse.json({ error: "Missing report run ID" }, { status: 400 });
+    const id = requirePositiveIntId(searchParams.get("id") || "", "id");
+
+    // Deletion is organization-bound: the run must belong to the caller's org.
+    const run = await prisma.report_runs.findFirst({
+      where: { id, organization_id: ctx.organizationId },
+      select: { id: true },
+    });
+    if (!run) return NextResponse.json({ error: "Report run not found" }, { status: 404 });
 
     await prisma.report_artifacts.deleteMany({ where: { report_run_id: id } });
     await prisma.report_runs.delete({ where: { id } });
 
     return new NextResponse(null, { status: 204 });
   } catch (err: any) {
+    const mapped = resourceAuthErrorResponse(err);
+    if (mapped.status === 401 || mapped.status === 403 || mapped.status === 404) {
+      return NextResponse.json(mapped.body, { status: mapped.status });
+    }
     console.error("[DELETE /api/reports]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
