@@ -14,6 +14,16 @@ export interface AuditEntry {
 
 export async function recordAudit(entry: AuditEntry): Promise<void> {
   try {
+    // R6: audit_logs.organization_id is INT. When a UUID org id is supplied
+    // (non-numeric) the write falls back to null rather than a coerced integer;
+    // this is non-auth-critical (the write-side org stamp is best-effort) and
+    // fail-closed (a null org id never grants access, it only loses attribution).
+    const orgIntValue = entry.organization_id
+      ? (() => {
+          const n = Number(entry.organization_id);
+          return Number.isInteger(n) && n > 0 ? n : null;
+        })()
+      : null;
     await prisma.audit_logs.create({
       data: {
         action: entry.action,
@@ -22,7 +32,7 @@ export async function recordAudit(entry: AuditEntry): Promise<void> {
         entity_name: entry.entity_name ?? null,
         changes: entry.changes ?? {},
         user_id: entry.user_id,
-        organization_id: entry.organization_id ? parseInt(entry.organization_id) || null : null,
+        organization_id: orgIntValue,
         ip_address: entry.ip_address ?? null,
         user_agent: entry.user_agent ?? null,
       },
@@ -30,32 +40,4 @@ export async function recordAudit(entry: AuditEntry): Promise<void> {
   } catch (error) {
     console.error("Failed to record audit entry:", error);
   }
-}
-
-export async function getAuditLogs(params: {
-  organization_id?: string;
-  user_id?: number;
-  action?: string;
-  entity_type?: string;
-  limit?: number;
-  offset?: number;
-}) {
-  const where: any = {};
-  if (params.organization_id) where.organization_id = parseInt(params.organization_id) || params.organization_id;
-  if (params.user_id) where.user_id = params.user_id;
-  if (params.action) where.action = params.action;
-  if (params.entity_type) where.entity_type = params.entity_type;
-
-  const [items, total] = await Promise.all([
-    prisma.audit_logs.findMany({
-      where,
-      orderBy: { created_at: "desc" },
-      take: params.limit ?? 50,
-      skip: params.offset ?? 0,
-      include: { users: { select: { id: true, name: true, email: true } } },
-    }),
-    prisma.audit_logs.count({ where }),
-  ]);
-
-  return { items, total };
 }

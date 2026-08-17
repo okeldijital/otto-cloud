@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import {
+  contractOrgScopeWhere,
   royaltyOrgScopeWhere,
   trackOrgScopeWhere,
 } from "@/lib/auth/resource-authorization";
@@ -21,9 +22,6 @@ export interface AuditReport {
   summary: { total: number; red: number; amber: number; green: number };
 }
 
-function orgFilter(orgId: string | number) {
-  return { organization_id: Number(orgId) || orgId } as any;
-}
 
 export async function checkCatalogConsistency(ctx: OrganizationContext): Promise<AuditReport> {
   const findings: AuditFinding[] = [];
@@ -63,7 +61,7 @@ export async function checkCatalogConsistency(ctx: OrganizationContext): Promise
   }
 
   const releasesWithoutTracks = await prisma.releases.findMany({
-    where: { ...orgFilter(orgId), is_deleted: false },
+    where: { organization_id: orgId, is_deleted: false },
     include: { _count: { select: { track_releases: true } } },
     take: 50,
   });
@@ -79,7 +77,7 @@ export async function checkCatalogConsistency(ctx: OrganizationContext): Promise
   }
 
   const worksWithoutTracks = await prisma.works.findMany({
-    where: { ...orgFilter(orgId), is_deleted: false },
+    where: { organization_id: orgId, is_deleted: false },
     take: 50,
   });
   const linkedWorkIds = new Set(
@@ -121,7 +119,7 @@ export async function checkReleaseQuality(ctx: OrganizationContext): Promise<Aud
   const findings: AuditFinding[] = [];
 
   const releases = await prisma.releases.findMany({
-    where: { ...orgFilter(ctx.organizationId), is_deleted: false },
+    where: { organization_id: ctx.organizationId, is_deleted: false },
     take: 100,
   });
 
@@ -227,8 +225,12 @@ export async function checkRoyaltyAnomalies(ctx: OrganizationContext): Promise<A
 export async function checkContracts(ctx: OrganizationContext): Promise<AuditReport> {
   const findings: AuditFinding[] = [];
 
+  // R6: contracts.organization_id is INT. Use the canonical contractOrgScopeWhere
+  // (INT org_id OR tenant UUID) instead of orgFilter(ctx.organizationId), which
+  // would coerce a UUID string to NaN → 0 and throw a PrismaClientValidationError
+  // (the Observation B 500). Fail closed (403) when no INT scope is available.
   const contracts = await prisma.contracts.findMany({
-    where: { ...orgFilter(ctx.organizationId) },
+    where: contractOrgScopeWhere(ctx),
     include: {
       _count: { select: { contract_parties: true, contract_documents: true, contract_assets: true } },
     },
@@ -293,7 +295,7 @@ export async function postFindingsToStatusQuo(ctx: OrganizationContext, findings
   for (const f of findings) {
     const existing = await prisma.status_quo_items.findFirst({
       where: {
-        ...orgFilter(orgId),
+        organization_id: orgId,
         entity_type: f.entity_type,
         entity_id: f.entity_id,
         issue_type: f.issue_type,

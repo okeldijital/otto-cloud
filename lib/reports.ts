@@ -1,14 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import {
   activityOrgScopeWhere,
+  contractOrgScopeWhere,
   requireActorUserId,
   royaltyOrgScopeWhere,
 } from "@/lib/auth/resource-authorization";
 import type { OrganizationContext } from "@/lib/auth/organization-context";
 
-function orgFilter(orgId: string | number) {
-  return { organization_id: Number(orgId) || orgId } as any;
-}
 
 export interface ReportDefinition {
   type: string;
@@ -32,10 +30,10 @@ const definitions: ReportDefinition[] = [
     defaultParams: {},
     async run(ctx) {
       const [artists, releases, tracks, works, labels, publishers, pros] = await Promise.all([
-        prisma.artists.count({ where: { ...orgFilter(ctx.organizationId), is_deleted: false } }),
-        prisma.releases.count({ where: { ...orgFilter(ctx.organizationId), is_deleted: false } }),
+        prisma.artists.count({ where: { organization_id: ctx.organizationId, is_deleted: false } }),
+        prisma.releases.count({ where: { organization_id: ctx.organizationId, is_deleted: false } }),
         prisma.tracks.count(),
-        prisma.works.count({ where: { ...orgFilter(ctx.organizationId), is_deleted: false } }),
+        prisma.works.count({ where: { organization_id: ctx.organizationId, is_deleted: false } }),
         prisma.labels.count(),
         prisma.publishers.count(),
         prisma.pros.count(),
@@ -64,8 +62,11 @@ const definitions: ReportDefinition[] = [
     description: "Contract completeness, status and health overview",
     defaultParams: {},
     async run(ctx) {
+      // R6: contracts.organization_id is INT. Use the canonical
+      // contractOrgScopeWhere (INT org_id OR tenant UUID) so a UUID
+      // organizationId does not coerce to NaN/0 and cause a 500.
       const contracts = await prisma.contracts.findMany({
-        where: { ...orgFilter(ctx.organizationId) },
+        where: contractOrgScopeWhere(ctx),
         include: {
           _count: { select: { contract_parties: true, contract_documents: true, contract_assets: true } },
         },
@@ -166,7 +167,7 @@ const definitions: ReportDefinition[] = [
     description: "Task status and completion overview",
     defaultParams: {},
     async run(ctx) {
-      const tasks = await prisma.tasks.findMany({ where: { ...orgFilter(ctx.organizationId) } });
+      const tasks = await prisma.tasks.findMany({ where: { organization_id: ctx.organizationId } });
       const statusDist: Record<string, number> = {};
       for (const t of tasks) {
         const s = t.status || "unknown";
@@ -202,7 +203,7 @@ const definitions: ReportDefinition[] = [
     description: "Active issues by severity and entity",
     defaultParams: {},
     async run(ctx) {
-      const items = await prisma.status_quo_items.findMany({ where: { ...orgFilter(ctx.organizationId) } });
+      const items = await prisma.status_quo_items.findMany({ where: { organization_id: ctx.organizationId } });
       const severityDist: Record<string, number> = {};
       const typeDist: Record<string, number> = {};
       for (const item of items) {

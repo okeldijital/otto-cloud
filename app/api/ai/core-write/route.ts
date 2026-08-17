@@ -5,6 +5,10 @@ import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organiz
 import {
   requireLegacyIntOrgId,
   requireActorUserId,
+  requirePositiveIntId,
+  requireContractInOrg,
+  requireReleaseInOrg,
+  requireAIContractDocumentInOrg,
   resourceAuthErrorResponse,
 } from "@/lib/auth/resource-authorization";
 
@@ -76,13 +80,38 @@ export async function POST(req: Request) {
       const body = await req.json();
       const { contract_id, release_id, contract_document_id } = body;
 
+      // R5: every reference is validated and org-probed server-side before it
+      // is persisted. Foreign/non-existent entities → 404 (non-leaking);
+      // malformed ids → 400; null optional references remain valid.
+      const contractId = requirePositiveIntId(contract_id, "contract_id");
+      await requireContractInOrg(contractId, ctx);
+
+      let releaseId: number | null = null;
+      if (release_id !== undefined && release_id !== null && release_id !== "") {
+        releaseId = requirePositiveIntId(release_id, "release_id");
+        await requireReleaseInOrg(releaseId, ctx);
+      }
+
+      let contractDocumentId: number | null = null;
+      if (
+        contract_document_id !== undefined &&
+        contract_document_id !== null &&
+        contract_document_id !== ""
+      ) {
+        contractDocumentId = requirePositiveIntId(
+          contract_document_id,
+          "contract_document_id"
+        );
+        await requireAIContractDocumentInOrg(contractDocumentId, ctx);
+      }
+
       const run = await prisma.ai_core_write_proposal_runs.create({
         data: {
           organization_id: orgId,
           user_id: userId,
-          contract_id: parseInt(contract_id),
-          release_id: release_id ? parseInt(release_id) : null,
-          contract_document_id: contract_document_id ? parseInt(contract_document_id) : null,
+          contract_id: contractId,
+          release_id: releaseId,
+          contract_document_id: contractDocumentId,
           request_hash: `propose-${Date.now()}`,
           parser_version: "v1",
           linker_version: "v1",
@@ -92,7 +121,7 @@ export async function POST(req: Request) {
               {
                 organization_id: orgId,
                 entity_type: "contract",
-                entity_id: parseInt(contract_id),
+                entity_id: contractId,
                 operation: "update",
                 patch_json: JSON.stringify({ status: "Active" }),
                 requires_user_review: true,
@@ -109,8 +138,11 @@ export async function POST(req: Request) {
       const body = await req.json();
       const { run_id } = body;
 
+      // R5: run_id is validated (malformed → 400, never id-coerced) and must
+      // belong to the caller's organization (foreign → 404).
+      const runId = requirePositiveIntId(run_id, "run_id");
       const run = await prisma.ai_core_write_proposal_runs.findFirst({
-        where: { id: parseInt(run_id), organization_id: orgId },
+        where: { id: runId, organization_id: orgId },
         include: { ai_core_write_proposal_items: true },
       });
       if (!run) return NextResponse.json({ error: "Proposal run not found" }, { status: 404 });
@@ -133,7 +165,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unknown action" }, { status: 400 });
   } catch (err: unknown) {
     const mapped = resourceAuthErrorResponse(err);
-    if (mapped.status === 401 || mapped.status === 403 || mapped.status === 400) {
+    if (
+      mapped.status === 401 ||
+      mapped.status === 403 ||
+      mapped.status === 400 ||
+      mapped.status === 404
+    ) {
       return NextResponse.json(mapped.body, { status: mapped.status });
     }
     const orgMapped = orgContextErrorResponse(err);

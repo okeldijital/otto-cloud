@@ -62,7 +62,24 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Organization context required" }, { status: 403 });
   }
 
-  const existing = await prisma.roles.findUnique({ where: { name: body.name } });
+  // R4: role-name existence pre-check is org-scoped — never a global oracle.
+  // Org actors may only collide with a role in their own org or a system role
+  // (organization_id null, is_system true); a name held by a foreign org does
+  // not block creation at the authorization layer. Platform authority retains
+  // the global check (cross-org / platform naming authority). The schema-level
+  // global roles.name @unique remains an intentional platform naming
+  // constraint (documented in the R4–R7 Step 1 audit §5 F-R4).
+  const existing = platform
+    ? await prisma.roles.findUnique({ where: { name: body.name } })
+    : await prisma.roles.findFirst({
+        where: {
+          name: body.name,
+          OR: [
+            { organization_id },
+            { organization_id: null, is_system: true },
+          ],
+        },
+      });
   if (existing) return NextResponse.json({ error: "Role already exists" }, { status: 400 });
 
   const role = await prisma.roles.create({

@@ -33,6 +33,10 @@ yarn-error.log
 .next/
 .nuxt/
 
+# TypeScript generated artifacts (R7: regenerated on every build, keep out of diff)
+tsconfig.tsbuildinfo
+*.tsbuildinfo
+
 # Frontend Build
 frontend/dist/
 frontend/build/

@@ -253,6 +253,24 @@ export async function requireContractInOrg(id: number, ctx: OrganizationContext)
 }
 
 /**
+ * R5 — Organization-scoped predicate for contracts list/count queries.
+ * Contracts use INT organization_id (+ optional tenant_id UUID); mirrors the
+ * ownership test in requireContractInOrg. Fail closed (403) when the legacy
+ * INT org scope is unavailable; never derives scope from client input.
+ */
+export function contractOrgScopeWhere(
+  ctx: OrganizationContext
+): Record<string, unknown> {
+  const intOrg = requireLegacyIntOrgId(ctx);
+  return {
+    OR: [
+      { organization_id: intOrg },
+      ...(ctx.organizationId ? [{ tenant_id: ctx.organizationId }] : []),
+    ],
+  };
+}
+
+/**
  * A.9 F2 — AI contract documents use INT organization_id (+ optional tenant_id UUID).
  * Organization-bound before any simulation/planning read; foreign rows 404 (non-leaking).
  */
@@ -532,6 +550,75 @@ export function playlistOrgScopeWhere(
         : []),
     ],
   };
+}
+
+/**
+ * R5 — Validate a client-supplied entity reference before it is persisted to
+ * an AI registry row (ai_contract_resolution_links / ai_core_write_proposal_items
+ * / ai_release_integration_links). Reuses only the canonical require*InOrg
+ * primitives — ownership is always established server-side from the org
+ * context. Null/empty references are allowed (nullable columns); any non-null
+ * reference must resolve to a positive integer owned by the caller's
+ * organization (foreign/non-existent → 404 NOT_FOUND, non-leaking). Unknown
+ * entity types fail closed (400) so a link can never reference an unverified
+ * id.
+ */
+export async function requireEntityReferenceInOrg(
+  entityTypeRaw: unknown,
+  entityIdRaw: unknown,
+  ctx: OrganizationContext
+): Promise<number | null> {
+  if (entityIdRaw === undefined || entityIdRaw === null || entityIdRaw === "") {
+    return null;
+  }
+  const id = requirePositiveIntId(entityIdRaw, "entity_id");
+  const type = String(entityTypeRaw ?? "")
+    .trim()
+    .toLowerCase();
+
+  switch (type) {
+    case "artist":
+    case "artists":
+      await requireArtistInOrg(id, ctx);
+      break;
+    case "release":
+    case "releases":
+      await requireReleaseInOrg(id, ctx);
+      break;
+    case "work":
+    case "works":
+      await requireWorkInOrg(id, ctx);
+      break;
+    case "contract":
+    case "contracts":
+      await requireContractInOrg(id, ctx);
+      break;
+    case "track":
+    case "tracks":
+      await requireTrackInOrg(id, ctx);
+      break;
+    case "royalty":
+    case "royalties":
+      await requireRoyaltyInOrg(id, ctx);
+      break;
+    case "playlist":
+    case "playlists":
+      await requirePlaylistInOrg(id, ctx);
+      break;
+    case "contract_document":
+    case "contract_documents":
+    case "ai_contract_document":
+    case "ai_contract_documents":
+      await requireAIContractDocumentInOrg(id, ctx);
+      break;
+    default:
+      throw new ResourceAuthError(
+        "Unsupported entity_type",
+        400,
+        "VALIDATION_ERROR"
+      );
+  }
+  return id;
 }
 
 /**

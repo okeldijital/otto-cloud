@@ -5,6 +5,7 @@ import {
   requireOrganization,
 } from "@/lib/auth/organization-context";
 import {
+  contractOrgScopeWhere,
   playlistOrgScopeWhere,
   trackOrgScopeWhere,
 } from "@/lib/auth/resource-authorization";
@@ -100,15 +101,23 @@ export async function GET(req: Request) {
         take: 5
       }).catch(() => []),
 
+      // R6: contracts use INT organization_id (+ optional tenant_id UUID).
+      // contractOrgScopeWhere derives the INT scope server-side from the org
+      // context — never from parseInt(clientValue)||0. Fail closed (403) when
+      // no INT scope is available; fail-safe empty set if the query errors.
       prisma.contracts.findMany({
         where: {
-          organization_id: parseInt(orgId) || 0, // In db contracts might use Int, handle safely
-          OR: [
-            { title: searchFilter },
-            { contract_number: searchFilter }
-          ]
+          AND: [
+            contractOrgScopeWhere(ctx),
+            {
+              OR: [
+                { title: searchFilter },
+                { contract_number: searchFilter },
+              ],
+            },
+          ],
         },
-        take: 5
+        take: 5,
       }).catch(() => []),
 
       prisma.labels.findMany({

@@ -8,6 +8,7 @@ import {
   requirePositiveIntId,
   requireReleaseInOrg,
   requireContractInOrg,
+  requireEntityReferenceInOrg,
   resourceAuthErrorResponse,
 } from "@/lib/auth/resource-authorization";
 
@@ -134,27 +135,38 @@ export async function POST(req: Request) {
       const body = await req.json();
       const { run_id, links } = body;
 
+      // R5: run_id is validated (malformed → 400, never id-coerced) and must
+      // belong to the caller's organization (foreign → 404).
+      const runId = requirePositiveIntId(run_id, "run_id");
       const existingRun = await prisma.ai_release_integration_runs.findFirst({
-        where: { id: parseInt(run_id), organization_id: orgId },
+        where: { id: runId, organization_id: orgId },
       });
       if (!existingRun) return NextResponse.json({ error: "Run not found" }, { status: 404 });
 
+      // R5: each client-supplied entity reference must resolve to the caller's
+      // organization before being persisted (404 foreign/non-existent; null
+      // references remain valid; unknown entity types fail closed 400).
       const created = await Promise.all(
-        (links || []).map((link: any) =>
-          prisma.ai_release_integration_links.create({
+        (links || []).map(async (link: any) => {
+          const entityId = await requireEntityReferenceInOrg(
+            link.entity_type,
+            link.entity_id,
+            ctx
+          );
+          return prisma.ai_release_integration_links.create({
             data: {
               organization_id: orgId,
-              run_id: parseInt(run_id),
+              run_id: runId,
               entity_type: link.entity_type,
-              entity_id: link.entity_id ? parseInt(link.entity_id) : null,
+              entity_id: entityId,
               display_name: link.display_name,
               action: link.action || "attach",
               confidence: link.confidence ?? null,
               match_strategy: link.match_strategy || "suggested",
               rationale: link.rationale || null,
             },
-          })
-        )
+          });
+        })
       );
       return NextResponse.json(created, { status: 201 });
     }
