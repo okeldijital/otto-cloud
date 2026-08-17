@@ -1,5 +1,6 @@
 import type { OrganizationContext } from "@/lib/auth/organization-context";
 import {
+  ResourceAuthError,
   requireAIContractDocumentInOrg,
   requireArtistInOrg,
   requireContractInOrg,
@@ -13,7 +14,6 @@ import {
 
 /**
  * Validate an AI-provided entity reference against the active organization.
- *
  * AI workflows accept entity_type/entity_id pairs from the client. Those pairs
  * are data references, not authorization. Every supported numeric entity is
  * resolved through the canonical org-bound resource helper before it can be
@@ -26,7 +26,7 @@ export async function requireAIEntityInOrg(
 ): Promise<{ entityType: string; entityId: number }> {
   const entityType = String(entityTypeRaw ?? "").trim().toLowerCase();
   if (!entityType) {
-    throw new Error("VALIDATION_ERROR: entity_type is required");
+    throw new ResourceAuthError("entity_type is required", 400, "VALIDATION_ERROR");
   }
 
   const entityId = requirePositiveIntId(entityIdRaw, "entity_id");
@@ -67,7 +67,11 @@ export async function requireAIEntityInOrg(
       await requirePlaylistInOrg(entityId, ctx);
       break;
     default:
-      throw new Error(`VALIDATION_ERROR: unsupported entity_type '${entityType}'`);
+      throw new ResourceAuthError(
+        "Unsupported entity_type",
+        400,
+        "VALIDATION_ERROR"
+      );
   }
 
   return { entityType, entityId };
