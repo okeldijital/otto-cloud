@@ -10,6 +10,7 @@ import {
   requireContractInOrg,
   resourceAuthErrorResponse,
 } from "@/lib/auth/resource-authorization";
+import { requireAIEntityInOrg } from "@/lib/auth/ai-entity-authorization";
 
 export async function GET(req: Request) {
   try {
@@ -19,7 +20,6 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const action = searchParams.get("action");
     const ctx = await requireOrganization();
-    const orgIdStr = ctx.organizationId;
     const orgId = requireLegacyIntOrgId(ctx);
 
     if (action === "health") {
@@ -30,7 +30,7 @@ export async function GET(req: Request) {
       const id = searchParams.get("id");
       if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
       const run = await prisma.ai_release_integration_runs.findFirst({
-        where: { id: parseInt(id), organization_id: orgId },
+        where: { id: requirePositiveIntId(id), organization_id: orgId },
         include: { ai_release_integration_links: true },
       });
       if (!run) return NextResponse.json({ error: "Run not found" }, { status: 404 });
@@ -65,27 +65,24 @@ export async function POST(req: Request) {
     const { searchParams } = new URL(req.url);
     const action = searchParams.get("action");
     const ctx = await requireOrganization();
-    const orgIdStr = ctx.organizationId;
     const orgId = requireLegacyIntOrgId(ctx);
     const userId = requireActorUserId(ctx);
 
     if (action === "plan") {
       const body = await req.json();
-      const { release_id, contract_id, planner_version } = body;
-
-      // A.9 F2: organization-bound resolution — foreign releases 404 (non-leaking).
-      const releaseId = requirePositiveIntId(release_id, "release_id");
+      const releaseId = requirePositiveIntId(body.release_id, "release_id");
       await requireReleaseInOrg(releaseId, ctx);
+
+      let contractIdForRun: number | null = null;
+      if (body.contract_id !== undefined && body.contract_id !== null && body.contract_id !== "") {
+        contractIdForRun = requirePositiveIntId(body.contract_id, "contract_id");
+        await requireContractInOrg(contractIdForRun, ctx);
+      }
+
       const release = await prisma.releases.findFirst({
         where: { id: releaseId, organization_id: ctx.organizationId, is_deleted: false },
         include: { artists: true, tracks: true },
       });
-
-      let contractIdForRun: number | null = null;
-      if (contract_id !== undefined && contract_id !== null && contract_id !== "") {
-        contractIdForRun = requirePositiveIntId(contract_id, "contract_id");
-        await requireContractInOrg(contractIdForRun, ctx);
-      }
 
       const linksData: any[] = [];
       if (release?.artists) {
@@ -121,7 +118,7 @@ export async function POST(req: Request) {
           release_id: releaseId,
           contract_id: contractIdForRun,
           request_hash: `integrate-${Date.now()}`,
-          planner_version: planner_version || "v1",
+          planner_version: body.planner_version || "v1",
           ai_release_integration_links: { create: linksData },
         },
         include: { ai_release_integration_links: true },
@@ -132,37 +129,45 @@ export async function POST(req: Request) {
 
     if (action === "attach") {
       const body = await req.json();
-      const { run_id, links } = body;
+      const runId = requirePositiveIntId(body.run_id, "run_id");
 
       const existingRun = await prisma.ai_release_integration_runs.findFirst({
-        where: { id: parseInt(run_id), organization_id: orgId },
+        where: { id: runId, organization_id: orgId },
       });
       if (!existingRun) return NextResponse.json({ error: "Run not found" }, { status: 404 });
 
+      const normalizedLinks = await Promise.all(
+        (Array.isArray(body.links) ? body.links : []).map(async (link: any) => {
+          const entity = await requireAIEntityInOrg(link?.entity_type, link?.entity_id, ctx);
+          return {
+            organization_id: orgId,
+            run_id: runId,
+            entity_type: entity.entityType,
+            entity_id: entity.entityId,
+            display_name: link.display_name,
+            action: link.action || "attach",
+            confidence: link.confidence ?? null,
+            match_strategy: link.match_strategy || "suggested",
+            rationale: link.rationale || null,
+          };
+        })
+      );
+
       const created = await Promise.all(
-        (links || []).map((link: any) =>
-          prisma.ai_release_integration_links.create({
-            data: {
-              organization_id: orgId,
-              run_id: parseInt(run_id),
-              entity_type: link.entity_type,
-              entity_id: link.entity_id ? parseInt(link.entity_id) : null,
-              display_name: link.display_name,
-              action: link.action || "attach",
-              confidence: link.confidence ?? null,
-              match_strategy: link.match_strategy || "suggested",
-              rationale: link.rationale || null,
-            },
-          })
-        )
+        normalizedLinks.map((data) => prisma.ai_release_integration_links.create({ data }))
       );
       return NextResponse.json(created, { status: 201 });
     }
 
     if (action === "ingest") {
       const body = await req.json();
-      const { run_id } = body;
-      return NextResponse.json({ status: "ok", message: "Fully ingested", run_id });
+      const runId = requirePositiveIntId(body.run_id, "run_id");
+      const run = await prisma.ai_release_integration_runs.findFirst({
+        where: { id: runId, organization_id: orgId },
+        select: { id: true },
+      });
+      if (!run) return NextResponse.json({ error: "Run not found" }, { status: 404 });
+      return NextResponse.json({ status: "ok", message: "Fully ingested", run_id: run.id });
     }
 
     return NextResponse.json({ error: "Unknown action" }, { status: 400 });
