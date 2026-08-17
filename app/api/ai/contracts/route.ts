@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
-import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
+import { requireOrganization } from "@/lib/auth/organization-context";
+import {
+  requireActorUserId,
+  requirePositiveIntId,
+  resourceAuthErrorResponse,
+} from "@/lib/auth/resource-authorization";
+import { requireAIEntityInOrg } from "@/lib/auth/ai-entity-authorization";
 
 export async function GET(req: Request) {
   try {
@@ -16,7 +22,7 @@ export async function GET(req: Request) {
       const id = searchParams.get("id");
       if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
       const run = await prisma.ai_contract_resolution_runs.findFirst({
-        where: { id: parseInt(id), organization_id: orgId },
+        where: { id: requirePositiveIntId(id), organization_id: orgId },
         include: { ai_contract_resolution_links: true, contract_intake_release_links: true },
       });
       if (!run) return NextResponse.json({ error: "Run not found" }, { status: 404 });
@@ -29,7 +35,11 @@ export async function GET(req: Request) {
       include: { _count: { select: { ai_contract_resolution_links: true } } },
     });
     return NextResponse.json(runs);
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const mapped = resourceAuthErrorResponse(err);
+    if (mapped.status === 401 || mapped.status === 403 || mapped.status === 400) {
+      return NextResponse.json(mapped.body, { status: mapped.status });
+    }
     console.error("[GET /api/ai/contracts]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
@@ -44,7 +54,7 @@ export async function POST(req: Request) {
     const action = searchParams.get("action");
     const ctx = await requireOrganization();
     const orgId = ctx.organizationId;
-    const userId = parseInt((session.user as any).id) || 1;
+    const userId = requireActorUserId(ctx);
 
     if (action === "extract") {
       const body = await req.json();
@@ -65,21 +75,48 @@ export async function POST(req: Request) {
     if (action === "resolve") {
       const body = await req.json();
       const { run_id, links } = body;
+      const runId = requirePositiveIntId(run_id, "run_id");
 
       const existingRun = await prisma.ai_contract_resolution_runs.findFirst({
-        where: { id: parseInt(run_id), organization_id: orgId },
+        where: { id: runId, organization_id: orgId },
       });
       if (!existingRun) return NextResponse.json({ error: "Run not found" }, { status: 404 });
 
+      const normalizedLinks = await Promise.all(
+        (Array.isArray(links) ? links : []).map(async (link: any) => {
+          const entityType = String(link?.entity_type ?? "").trim();
+          if (!entityType) {
+            throw new Error("VALIDATION_ERROR: entity_type is required");
+          }
+          if (link?.entity_id === undefined || link?.entity_id === null || link?.entity_id === "") {
+            return {
+              entity_type: entityType,
+              entity_id: null,
+              action: link.action,
+              confidence: link.confidence,
+              rationale: link.rationale || null,
+            };
+          }
+          const entity = await requireAIEntityInOrg(entityType, link.entity_id, ctx);
+          return {
+            entity_type: entity.entityType,
+            entity_id: entity.entityId,
+            action: link.action,
+            confidence: link.confidence,
+            rationale: link.rationale || null,
+          };
+        })
+      );
+
       const created = await Promise.all(
-        (links || []).map((link: any) =>
+        normalizedLinks.map((link) =>
           prisma.ai_contract_resolution_links.create({
             data: {
-              run_id: parseInt(run_id),
+              run_id: runId,
               entity_type: link.entity_type,
-              entity_id: link.entity_id ? parseInt(link.entity_id) : null,
+              entity_id: link.entity_id,
               action: link.action,
-              confidence: link.confidence ? parseInt(link.confidence) : null,
+              confidence: link.confidence ? requirePositiveIntId(link.confidence, "confidence") : null,
               rationale: link.rationale || null,
             },
           })
@@ -147,7 +184,11 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ error: "Unknown action" }, { status: 400 });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const mapped = resourceAuthErrorResponse(err);
+    if (mapped.status === 401 || mapped.status === 403 || mapped.status === 400) {
+      return NextResponse.json(mapped.body, { status: mapped.status });
+    }
     console.error("[POST /api/ai/contracts]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
