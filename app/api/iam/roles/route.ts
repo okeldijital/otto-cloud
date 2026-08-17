@@ -19,9 +19,6 @@ export async function GET() {
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const platform = platformOf(session.user);
-
-  // F3: organization roles visible only within the actor's organization;
-  // system/platform roles remain protected (global reference, platform view only).
   const organizationId = platform ? null : (await requireOrganization()).organizationId;
   const where = platform ? {} : { organization_id: organizationId };
 
@@ -52,8 +49,6 @@ export async function POST(req: Request) {
   if (!body.name) return NextResponse.json({ error: "Role name required" }, { status: 400 });
 
   const platform = platformOf(user as any);
-  // F3: client organization override is ignored for org actors — the org is
-  // always derived from the session (platform authority may target any org).
   const organization_id =
     platform && body.organization_id
       ? body.organization_id
@@ -62,33 +57,48 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Organization context required" }, { status: 403 });
   }
 
-  const existing = await prisma.roles.findUnique({ where: { name: body.name } });
-  if (existing) return NextResponse.json({ error: "Role already exists" }, { status: 400 });
-
-  const role = await prisma.roles.create({
-    data: {
-      name: body.name,
-      description: body.description || null,
-      is_system: false,
-      organization_id,
-    },
+  // The roles table currently has a global unique constraint on name. Keep the
+  // explicit availability check organization-bound so a foreign organization's
+  // role is never resolved as a separate preflight read. The database constraint
+  // remains the final race-safe uniqueness gate and is mapped to the same generic
+  // conflict response below.
+  const existing = await prisma.roles.findFirst({
+    where: { name: body.name, organization_id },
+    select: { id: true },
   });
+  if (existing) return NextResponse.json({ error: "Role name unavailable" }, { status: 400 });
 
-  if (body.permission_ids?.length) {
-    await prisma.role_permissions.createMany({
-      data: body.permission_ids.map((pid: number) => ({ role_id: role.id, permission_id: pid })),
-      skipDuplicates: true,
+  try {
+    const role = await prisma.roles.create({
+      data: {
+        name: body.name,
+        description: body.description || null,
+        is_system: false,
+        organization_id,
+      },
     });
+
+    if (body.permission_ids?.length) {
+      await prisma.role_permissions.createMany({
+        data: body.permission_ids.map((pid: number) => ({ role_id: role.id, permission_id: pid })),
+        skipDuplicates: true,
+      });
+    }
+
+    clearPermissionCache();
+    recordAudit({ action: "role.created", entity_type: "role", entity_id: role.id, entity_name: role.name, user_id: parseInt(user.id) });
+
+    const full = await prisma.roles.findUnique({
+      where: { id: role.id },
+      include: { role_permissions: { include: { permissions: true } }, _count: { select: { user_roles: true } } },
+    });
+    return NextResponse.json(full, { status: 201 });
+  } catch (err: any) {
+    if (err?.code === "P2002") {
+      return NextResponse.json({ error: "Role name unavailable" }, { status: 400 });
+    }
+    throw err;
   }
-
-  clearPermissionCache();
-  recordAudit({ action: "role.created", entity_type: "role", entity_id: role.id, entity_name: role.name, user_id: parseInt(user.id) });
-
-  const full = await prisma.roles.findUnique({
-    where: { id: role.id },
-    include: { role_permissions: { include: { permissions: true } }, _count: { select: { user_roles: true } } },
-  });
-  return NextResponse.json(full, { status: 201 });
 }
 
 export async function PUT(req: Request) {
@@ -99,8 +109,6 @@ export async function PUT(req: Request) {
   if (!body.id) return NextResponse.json({ error: "Role ID required" }, { status: 400 });
 
   const platform = platformOf(user as any);
-  // F3: non-platform actors may only mutate roles bound to their organization
-  // (404 keeps foreign/existing roles indistinguishable).
   const role = platform
     ? await prisma.roles.findUnique({ where: { id: body.id } })
     : await prisma.roles.findFirst({
