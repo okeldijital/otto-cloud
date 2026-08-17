@@ -5,8 +5,10 @@ import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organiz
 import {
   requireLegacyIntOrgId,
   requireActorUserId,
+  requirePositiveIntId,
   resourceAuthErrorResponse,
 } from "@/lib/auth/resource-authorization";
+import { requireAIEntityInOrg } from "@/lib/auth/ai-entity-authorization";
 
 export async function GET(req: Request) {
   try {
@@ -16,7 +18,6 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const action = searchParams.get("action");
     const ctx = await requireOrganization();
-    const orgIdStr = ctx.organizationId;
     const orgId = requireLegacyIntOrgId(ctx);
 
     if (action === "health") {
@@ -27,7 +28,7 @@ export async function GET(req: Request) {
       const id = searchParams.get("id");
       if (id) {
         const run = await prisma.ai_core_write_proposal_runs.findFirst({
-          where: { id: parseInt(id), organization_id: orgId },
+          where: { id: requirePositiveIntId(id), organization_id: orgId },
           include: {
             ai_core_write_proposal_items: true,
             ai_core_write_apply_events: true,
@@ -68,21 +69,30 @@ export async function POST(req: Request) {
     const { searchParams } = new URL(req.url);
     const action = searchParams.get("action");
     const ctx = await requireOrganization();
-    const orgIdStr = ctx.organizationId;
     const orgId = requireLegacyIntOrgId(ctx);
     const userId = requireActorUserId(ctx);
 
     if (action === "propose") {
       const body = await req.json();
-      const { contract_id, release_id, contract_document_id } = body;
+      const contractId = requirePositiveIntId(body.contract_id, "contract_id");
+      const releaseId = body.release_id !== undefined && body.release_id !== null && body.release_id !== ""
+        ? requirePositiveIntId(body.release_id, "release_id")
+        : null;
+      const contractDocumentId = body.contract_document_id !== undefined && body.contract_document_id !== null && body.contract_document_id !== ""
+        ? requirePositiveIntId(body.contract_document_id, "contract_document_id")
+        : null;
+
+      await requireAIEntityInOrg("contract", contractId, ctx);
+      if (releaseId !== null) await requireAIEntityInOrg("release", releaseId, ctx);
+      if (contractDocumentId !== null) await requireAIEntityInOrg("ai_contract_document", contractDocumentId, ctx);
 
       const run = await prisma.ai_core_write_proposal_runs.create({
         data: {
           organization_id: orgId,
           user_id: userId,
-          contract_id: parseInt(contract_id),
-          release_id: release_id ? parseInt(release_id) : null,
-          contract_document_id: contract_document_id ? parseInt(contract_document_id) : null,
+          contract_id: contractId,
+          release_id: releaseId,
+          contract_document_id: contractDocumentId,
           request_hash: `propose-${Date.now()}`,
           parser_version: "v1",
           linker_version: "v1",
@@ -92,7 +102,7 @@ export async function POST(req: Request) {
               {
                 organization_id: orgId,
                 entity_type: "contract",
-                entity_id: parseInt(contract_id),
+                entity_id: contractId,
                 operation: "update",
                 patch_json: JSON.stringify({ status: "Active" }),
                 requires_user_review: true,
@@ -107,10 +117,10 @@ export async function POST(req: Request) {
 
     if (action === "apply") {
       const body = await req.json();
-      const { run_id } = body;
+      const runId = requirePositiveIntId(body.run_id, "run_id");
 
       const run = await prisma.ai_core_write_proposal_runs.findFirst({
-        where: { id: parseInt(run_id), organization_id: orgId },
+        where: { id: runId, organization_id: orgId },
         include: { ai_core_write_proposal_items: true },
       });
       if (!run) return NextResponse.json({ error: "Proposal run not found" }, { status: 404 });
