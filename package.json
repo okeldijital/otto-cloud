@@ -9,6 +9,7 @@
     "lint": "eslint app/api lib/auth lib/permissions.ts lib/platform/identity --max-warnings 0",
     "lint:full": "eslint app lib components hooks contexts --max-warnings 50",
     "typecheck": "tsc --noEmit",
+    "test:r7-release-api": "tsx lib/releases/__tests__/acceptance.test.ts",
     "test:a8-step5": "tsx lib/auth/__tests__/step5-security-remediation.test.ts",
     "test:a8-http": "tsx lib/auth/__tests__/http-authorization-boundary.test.ts",
     "test:a9-http": "tsx lib/auth/__tests__/a9-http-boundary.test.ts",
@@ -76,9 +77,9 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-grid-layout": "^2.2.3",
-    "react-pdf": "^10.4.1",
+    "react-pdf": "^10.4.0",
     "recharts": "^3.8.1",
-    "uuid": "^14.0.0",
+    "uuid": "^13.0.0",
     "xlsx": "^0.18.5",
     "zod": "^4.4.3",
     "zustand": "^5.0.14"
@@ -101,6 +102,6 @@
   },
   "optionalDependencies": {
     "@anthropic-ai/sdk": "^0.104.1",
-    "openai": "^6.42.0"
+    "openai": "^6.42.1"
   }
 }
