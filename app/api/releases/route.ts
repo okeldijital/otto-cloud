@@ -171,6 +171,11 @@ export async function PUT(req: Request) {
     if (track_ids !== undefined && (!Array.isArray(track_ids) || track_ids.some((tid: unknown) => !Number.isInteger(tid)))) {
       return NextResponse.json({ error: "track_ids must be an array of integer track IDs." }, { status: 400 });
     }
+    if (track_ids !== undefined) {
+      const uniqueTrackIds = [...new Set<number>(track_ids)];
+      const accessibleTracks = await prisma.tracks.findMany({ where: { id: { in: uniqueTrackIds }, ...(trackOrgScopeWhere(ctx) as object) }, select: { id: true } });
+      if (accessibleTracks.length !== uniqueTrackIds.length) return NextResponse.json({ error: "One or more tracks are not accessible to this organization" }, { status: 404 });
+    }
     if (updateData.title && updateData.title !== existing.title) {
       const dup = await prisma.releases.findFirst({ where: { title: updateData.title, organization_id: ctx.organizationId, is_deleted: false } });
       if (dup) return NextResponse.json({ error: `A release with the title '${updateData.title}' already exists.` }, { status: 409 });
@@ -183,11 +188,10 @@ export async function PUT(req: Request) {
       const currentIds = new Set(currentTracks.map((t) => t.id));
       const newIds = new Set<number>(track_ids);
       const toUnassign = Array.from(currentIds).filter((tid) => !newIds.has(tid));
-      if (toUnassign.length) await prisma.tracks.updateMany({ where: { id: { in: toUnassign }, release_id: id }, data: { release_id: null } });
+      if (toUnassign.length) await prisma.tracks.updateMany({ where: { id: { in: toUnassign }, release_id: id, ...(trackOrgScopeWhere(ctx) as object) }, data: { release_id: null } });
       const toAssign = Array.from(newIds).filter((tid) => !currentIds.has(tid));
       if (toAssign.length) {
         const tracksToAssign = await prisma.tracks.findMany({ where: { id: { in: toAssign }, ...(trackOrgScopeWhere(ctx) as object) } });
-        if (tracksToAssign.length !== toAssign.length) return NextResponse.json({ error: "One or more tracks are not accessible to this organization" }, { status: 404 });
         await Promise.all(tracksToAssign.map((t) => prisma.tracks.update({ where: { id: t.id }, data: { release_id: id, tenant_id: ctx.organizationId, credits: !t.credits && responseRelease.credits ? (responseRelease.credits as any) : ((t.credits as any) ?? undefined) } })));
       }
     }
