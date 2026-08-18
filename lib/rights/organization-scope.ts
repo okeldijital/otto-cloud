@@ -24,7 +24,7 @@ export function scopeRightRelationships<T extends RightWithRelationships>(
   right: T,
   organizationId: string
 ): T {
-  const scoped = { ...right };
+  const scoped = { ...right } as T;
 
   for (const key of [
     "grants",
@@ -35,10 +35,12 @@ export function scopeRightRelationships<T extends RightWithRelationships>(
     "releases",
     "contractRefs",
   ] as const) {
-    if (Array.isArray(scoped[key])) {
-      scoped[key] = scoped[key]!.filter((item) =>
+    const value = scoped[key];
+    if (Array.isArray(value)) {
+      const filtered = value.filter((item) =>
         sameOrganization(item, organizationId)
-      ) as T[typeof key];
+      );
+      (scoped as Record<typeof key, ScopedRelationship[] | undefined>)[key] = filtered;
     }
   }
 
@@ -49,17 +51,18 @@ export function scopeRightRelationshipCollections<T extends Record<string, unkno
   relationships: T,
   organizationId: string
 ): T {
-  const scoped = { ...relationships };
+  const scoped = { ...relationships } as T;
 
   for (const key of ["works", "releases", "contractRelationships"] as const) {
     const value = scoped[key];
     if (Array.isArray(value)) {
-      scoped[key] = value.filter(
+      const filtered = value.filter(
         (item) =>
           item &&
           typeof item === "object" &&
           (item as ScopedRelationship).organizationId === organizationId
-      ) as T[typeof key];
+      );
+      (scoped as Record<typeof key, unknown[]>)[key] = filtered;
     }
   }
 
