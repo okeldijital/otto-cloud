@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth/session";
+import { prisma } from "@/lib/prisma";
 import { requirePermission, clearPermissionCache } from "@/lib/iam";
 import { recordAudit } from "@/lib/audit";
 import { requireOrganization } from "@/lib/auth/organization-context";
@@ -22,9 +23,6 @@ export async function GET() {
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const platform = platformOf(session.user);
-
-  // F3: organization roles visible only within the actor's organization;
-  // system/platform roles remain protected (global reference, platform view only).
   const organizationId = platform ? null : (await requireOrganization()).organizationId;
   const where = platform ? {} : { organization_id: organizationId };
 
@@ -55,8 +53,6 @@ export async function POST(req: Request) {
   if (!body.name) return NextResponse.json({ error: "Role name required" }, { status: 400 });
 
   const platform = platformOf(user as any);
-  // F3: client organization override is ignored for org actors — the org is
-  // always derived from the session (platform authority may target any org).
   const organization_id =
     platform && body.organization_id
       ? body.organization_id
@@ -65,13 +61,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Organization context required" }, { status: 403 });
   }
 
-  // R4: role-name existence pre-check is org-scoped — never a global oracle.
-  // Org actors may only collide with a role in their own org or a system role
-  // (organization_id null, is_system true); a name held by a foreign org does
-  // not block creation at the authorization layer. Platform authority retains
-  // the global check (cross-org / platform naming authority). The schema-level
-  // global roles.name @unique remains an intentional platform naming
-  // constraint (documented in the R4–R7 Step 1 audit §5 F-R4).
+  // R4: keep the authorization pre-check organization-scoped. A foreign role
+  // name is not queried here; the database constraint is handled below.
   const existing = platform
     ? await prisma.roles.findUnique({ where: { name: body.name } })
     : await prisma.roles.findFirst({
@@ -96,11 +87,9 @@ export async function POST(req: Request) {
       },
     });
   } catch (err) {
-    // The legacy roles table has a global UNIQUE(name) constraint. The scoped
-    // pre-check above intentionally does not query foreign organizations, so a
-    // foreign-name collision can still reach the database. Convert that race
-    // (or system-role collision) into the same non-leaking deterministic 400
-    // response instead of exposing a Prisma 500.
+    // The legacy roles table has a global UNIQUE(name) constraint. A foreign
+    // collision is intentionally not discovered by the scoped pre-check, so
+    // translate the database conflict into the same generic response.
     if (isUniqueConstraintError(err)) {
       return NextResponse.json({ error: "Role already exists" }, { status: 400 });
     }
@@ -132,8 +121,6 @@ export async function PUT(req: Request) {
   if (!body.id) return NextResponse.json({ error: "Role ID required" }, { status: 400 });
 
   const platform = platformOf(user as any);
-  // F3: non-platform actors may only mutate roles bound to their organization
-  // (404 keeps foreign/existing roles indistinguishable).
   const role = platform
     ? await prisma.roles.findUnique({ where: { id: body.id } })
     : await prisma.roles.findFirst({
