@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth/session";
-import { prisma } from "@/lib/prisma";
 import { requirePermission, clearPermissionCache } from "@/lib/iam";
 import { recordAudit } from "@/lib/audit";
 import { requireOrganization } from "@/lib/auth/organization-context";
@@ -12,6 +11,10 @@ function platformOf(user: { is_superuser?: boolean; role?: string | null; permis
     roles: user.role ? [user.role] : [],
     permissions: user.permissions || [],
   });
+}
+
+function isUniqueConstraintError(err: unknown): boolean {
+  return !!err && typeof err === "object" && "code" in err && (err as { code?: unknown }).code === "P2002";
 }
 
 export async function GET() {
@@ -82,14 +85,27 @@ export async function POST(req: Request) {
       });
   if (existing) return NextResponse.json({ error: "Role already exists" }, { status: 400 });
 
-  const role = await prisma.roles.create({
-    data: {
-      name: body.name,
-      description: body.description || null,
-      is_system: false,
-      organization_id,
-    },
-  });
+  let role;
+  try {
+    role = await prisma.roles.create({
+      data: {
+        name: body.name,
+        description: body.description || null,
+        is_system: false,
+        organization_id,
+      },
+    });
+  } catch (err) {
+    // The legacy roles table has a global UNIQUE(name) constraint. The scoped
+    // pre-check above intentionally does not query foreign organizations, so a
+    // foreign-name collision can still reach the database. Convert that race
+    // (or system-role collision) into the same non-leaking deterministic 400
+    // response instead of exposing a Prisma 500.
+    if (isUniqueConstraintError(err)) {
+      return NextResponse.json({ error: "Role already exists" }, { status: 400 });
+    }
+    throw err;
+  }
 
   if (body.permission_ids?.length) {
     await prisma.role_permissions.createMany({
@@ -126,10 +142,17 @@ export async function PUT(req: Request) {
   if (!role) return NextResponse.json({ error: "Role not found" }, { status: 404 });
   if (role.is_system) return NextResponse.json({ error: "Cannot modify system role" }, { status: 400 });
 
-  await prisma.roles.update({
-    where: { id: body.id },
-    data: { name: body.name, description: body.description },
-  });
+  try {
+    await prisma.roles.update({
+      where: { id: body.id },
+      data: { name: body.name, description: body.description },
+    });
+  } catch (err) {
+    if (isUniqueConstraintError(err)) {
+      return NextResponse.json({ error: "Role already exists" }, { status: 400 });
+    }
+    throw err;
+  }
 
   if (body.permission_ids) {
     await prisma.role_permissions.deleteMany({ where: { role_id: body.id } });
