@@ -24,14 +24,20 @@ export async function evaluateReleaseReadiness(
   });
   if (!release) return null;
 
-  const metadata = validateReleaseMetadata(release as unknown as Record<string, unknown>, "update");
+  const releaseRecord = release as unknown as Record<string, unknown>;
+  const metadata = validateReleaseMetadata(releaseRecord, "update");
   const tracks = await prisma.tracks.findMany({
     where: { release_id: releaseId, ...(trackOrgScopeWhere(ctx) as object) },
     select: { id: true },
   });
 
-  const hasArtwork = typeof release.artwork_url === "string" && release.artwork_url.trim().length > 0;
-  const hasReleaseDate = typeof release.release_date === "string" && !Number.isNaN(Date.parse(release.release_date));
+  const artwork = releaseRecord["artwork_url"];
+  const releaseDate = releaseRecord["release_date"];
+  const artistIdsValue = releaseRecord["artist_ids"];
+
+  const hasArtwork = typeof artwork === "string" && artwork.trim().length > 0;
+  const hasReleaseDate =
+    typeof releaseDate === "string" && !Number.isNaN(Date.parse(releaseDate));
 
   const trackIds = tracks.map((track) => track.id);
   const hasReleaseContract = !!(await prisma.contract_assets.findFirst({
@@ -40,13 +46,20 @@ export async function evaluateReleaseReadiness(
   const hasTrackContract = trackIds.length > 0 && !!(await prisma.contract_assets.findFirst({
     where: { asset_type: "Track", asset_id: { in: trackIds } },
   }));
+
   const artistIds: number[] = [];
   if (release.artist_id) artistIds.push(release.artist_id);
-  if (Array.isArray(release.artist_ids)) artistIds.push(...(release.artist_ids as number[]));
-  const hasArtistContract = artistIds.length > 0 && !!(await prisma.contract_parties.findFirst({
-    where: { entity_type: "Artist", entity_id: { in: artistIds } },
-  }));
-  const rights = hasReleaseContract || hasTrackContract || (artistIds.length === 0 ? true : hasArtistContract);
+  if (Array.isArray(artistIdsValue)) {
+    artistIds.push(...artistIdsValue.filter((id): id is number => typeof id === "number"));
+  }
+
+  const hasArtistContract =
+    artistIds.length > 0 &&
+    !!(await prisma.contract_parties.findFirst({
+      where: { entity_type: "Artist", entity_id: { in: artistIds } },
+    }));
+  const rights =
+    hasReleaseContract || hasTrackContract || (artistIds.length === 0 ? true : hasArtistContract);
 
   const blockers: string[] = [];
   if (!metadata.valid) blockers.push("Required release metadata is incomplete or invalid.");
