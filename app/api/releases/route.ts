@@ -27,6 +27,17 @@ function validateReleaseTransition(current: unknown, next: unknown): { ok: true 
   return { ok: true };
 }
 
+async function getReleaseStatus(id: number): Promise<ReleaseStatus> {
+  const rows = await prisma.$queryRaw<Array<{ status: string }>>`SELECT status FROM "releases" WHERE id = ${id} LIMIT 1`;
+  const status = rows[0]?.status;
+  if (!isReleaseStatus(status)) throw new Error(`Invalid persisted release status for release ${id}`);
+  return status;
+}
+
+async function setReleaseStatus(id: number, status: ReleaseStatus): Promise<void> {
+  await prisma.$executeRaw`UPDATE "releases" SET status = ${status}, updated_at = NOW() WHERE id = ${id}`;
+}
+
 export async function GET(req: Request) {
   try {
     const ctx = await requireOrganization();
@@ -55,7 +66,8 @@ export async function GET(req: Request) {
       if (release.artist_id) artistIdList.push(release.artist_id);
       if (Array.isArray(release.artist_ids)) artistIdList.push(...(release.artist_ids as number[]));
       const hasArtistContract = artistIdList.length > 0 ? !!(await prisma.contract_parties.findFirst({ where: { entity_type: "Artist", entity_id: { in: artistIdList } } })) : false;
-      return NextResponse.json({ ...release, _tracks: tracks, _hasContract: hasContract, _hasArtistContract: hasArtistContract });
+      const status = await getReleaseStatus(id);
+      return NextResponse.json({ ...release, status, _tracks: tracks, _hasContract: hasContract, _hasArtistContract: hasArtistContract });
     }
     const skip = parseInt(searchParams.get("skip") || "0");
     const limit = parseInt(searchParams.get("limit") || "100");
@@ -70,7 +82,7 @@ export async function GET(req: Request) {
       if (r.artist_id) artistIdList.push(r.artist_id);
       if (Array.isArray(r.artist_ids)) artistIdList.push(...(r.artist_ids as number[]));
       const hasArtistContract = artistIdList.length > 0 ? !!(await prisma.contract_parties.findFirst({ where: { entity_type: "Artist", entity_id: { in: artistIdList } } })) : false;
-      return { ...r, _tracks: tracks, _hasContract: hasContract, _hasArtistContract: hasArtistContract };
+      return { ...r, status: await getReleaseStatus(r.id), _tracks: tracks, _hasContract: hasContract, _hasArtistContract: hasArtistContract };
     }));
     return NextResponse.json({ total, items: enriched });
   } catch (err: any) {
@@ -88,9 +100,11 @@ export async function POST(req: Request) {
     const ctx = await requireOrganization();
     const body = await req.json();
     const { track_ids, ...releaseData } = body;
+    const requestedStatus = releaseData.status;
+    delete releaseData.status;
     releaseData.organization_id = ctx.organizationId;
-    if (releaseData.status !== undefined) {
-      const transition = validateReleaseTransition("draft", releaseData.status);
+    if (requestedStatus !== undefined) {
+      const transition = validateReleaseTransition("draft", requestedStatus);
       if (!transition.ok) return NextResponse.json({ error: transition.error }, { status: 400 });
     }
     if (track_ids?.length) {
@@ -100,7 +114,13 @@ export async function POST(req: Request) {
     }
     const existing = await prisma.releases.findFirst({ where: { title: releaseData.title, organization_id: ctx.organizationId } });
     if (existing) return NextResponse.json({ error: `A release with the title '${releaseData.title}' already exists.` }, { status: 409 });
-    const newRelease = await prisma.releases.create({ data: releaseData });
+    let newRelease = await prisma.releases.create({ data: releaseData });
+    if (requestedStatus !== undefined && requestedStatus !== "draft") {
+      await setReleaseStatus(newRelease.id, requestedStatus);
+      newRelease = { ...newRelease, status: requestedStatus } as typeof newRelease;
+    } else {
+      newRelease = { ...newRelease, status: "draft" } as typeof newRelease;
+    }
     try {
       const userId = (session.user as any).id;
       const template = await prisma.workspace_templates.findFirst({ where: { slug: "release" } });
@@ -133,8 +153,11 @@ export async function PUT(req: Request) {
     delete updateData.organization_id;
     delete updateData.organizationId;
     const existing = await requireReleaseInOrg(id, ctx);
-    if (updateData.status !== undefined) {
-      const transition = validateReleaseTransition(existing.status, updateData.status);
+    const requestedStatus = updateData.status;
+    delete updateData.status;
+    if (requestedStatus !== undefined) {
+      const currentStatus = await getReleaseStatus(id);
+      const transition = validateReleaseTransition(currentStatus, requestedStatus);
       if (!transition.ok) return NextResponse.json({ error: transition.error }, { status: 400 });
     }
     if (updateData.title && updateData.title !== existing.title) {
@@ -142,6 +165,8 @@ export async function PUT(req: Request) {
       if (dup) return NextResponse.json({ error: `A release with the title '${updateData.title}' already exists.` }, { status: 409 });
     }
     const updated = await prisma.releases.update({ where: { id }, data: updateData });
+    if (requestedStatus !== undefined) await setReleaseStatus(id, requestedStatus);
+    const responseRelease = { ...updated, status: requestedStatus !== undefined ? requestedStatus : await getReleaseStatus(id) };
     if (track_ids !== undefined) {
       const currentTracks = await prisma.tracks.findMany({ where: { release_id: id, ...(trackOrgScopeWhere(ctx) as object) } });
       const currentIds = new Set(currentTracks.map((t) => t.id));
@@ -152,10 +177,10 @@ export async function PUT(req: Request) {
       if (toAssign.length) {
         const tracksToAssign = await prisma.tracks.findMany({ where: { id: { in: toAssign }, ...(trackOrgScopeWhere(ctx) as object) } });
         if (tracksToAssign.length !== toAssign.length) return NextResponse.json({ error: "One or more tracks are not accessible to this organization" }, { status: 404 });
-        await Promise.all(tracksToAssign.map((t) => prisma.tracks.update({ where: { id: t.id }, data: { release_id: id, tenant_id: ctx.organizationId, credits: !t.credits && updated.credits ? (updated.credits as any) : ((t.credits as any) ?? undefined) } })));
+        await Promise.all(tracksToAssign.map((t) => prisma.tracks.update({ where: { id: t.id }, data: { release_id: id, tenant_id: ctx.organizationId, credits: !t.credits && responseRelease.credits ? (responseRelease.credits as any) : ((t.credits as any) ?? undefined) } })));
       }
     }
-    return NextResponse.json(updated);
+    return NextResponse.json(responseRelease);
   } catch (err: any) {
     const mapped = resourceAuthErrorResponse(err);
     if (mapped.status === 401 || mapped.status === 403 || mapped.status === 404) return NextResponse.json(mapped.body, { status: mapped.status });
