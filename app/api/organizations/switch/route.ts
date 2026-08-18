@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
-import { validateMembership } from "@/lib/auth/organization-context";
 
 /**
  * Switch the active IAM organization for the authenticated identity.
@@ -23,8 +22,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "tenant_id is required" }, { status: 400 });
     }
 
-    const allowed = await validateMembership(identityId, organizationId);
-    if (!allowed) {
+    const membership = await prisma.iamOrganizationMembership.findFirst({
+      where: { identityId, organizationId, status: "active" },
+      select: { id: true },
+    });
+
+    if (!membership) {
       return NextResponse.json({ error: "Not a member of this organization" }, { status: 403 });
     }
 
@@ -33,8 +36,8 @@ export async function POST(req: Request) {
       data: { isDefault: false },
     });
 
-    await prisma.iamOrganizationMembership.updateMany({
-      where: { identityId, organizationId, status: "active" },
+    await prisma.iamOrganizationMembership.update({
+      where: { id: membership.id },
       data: { isDefault: true },
     });
 
