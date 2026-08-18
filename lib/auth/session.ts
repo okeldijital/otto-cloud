@@ -1,8 +1,8 @@
 /**
- * Server session resolution — IAM native (post NextAuth cutover).
+ * Server session resolution — IAM native.
  *
- * Prefer identityId / organizationId from IAM cookies.
- * legacyUserId bridges remaining INT-scoped tables until full data migration.
+ * Authentication and authorization are resolved exclusively through IAM
+ * identity, session, organization membership, roles, and permissions.
  */
 
 import { headers, cookies } from "next/headers";
@@ -12,7 +12,6 @@ import {
 } from "@/lib/platform/sdk";
 
 export type AuthSessionUser = {
-  /** Prefer identity UUID; may be legacy numeric string when bridged */
   id: string;
   identityId: string;
   email: string;
@@ -22,7 +21,6 @@ export type AuthSessionUser = {
   role: string | null;
   is_superuser: boolean;
   permissions: string[];
-  legacyUserId: number | null;
   emailVerified: boolean;
 };
 
@@ -44,14 +42,12 @@ export async function resolveIdentityFromHeaders(
       const h = await headers();
       cookie = cookie ?? h.get("cookie");
       authorization = authorization ?? h.get("authorization");
-      orgHint =
-        orgHint ?? h.get("x-organization-id") ?? h.get("x-org-id");
+      orgHint = orgHint ?? h.get("x-organization-id") ?? h.get("x-org-id");
     } catch {
       // outside request context
     }
   }
 
-  // Also try Next cookies() API
   if (!cookie) {
     try {
       const jar = await cookies();
@@ -75,7 +71,7 @@ export async function resolveIdentityFromHeaders(
 export function toAuthSession(ctx: CurrentIdentityContext): AuthSession {
   return {
     user: {
-      id: ctx.legacyUserId?.toString() ?? ctx.identityId,
+      id: ctx.identityId,
       identityId: ctx.identityId,
       email: ctx.email,
       name: ctx.displayName,
@@ -84,7 +80,6 @@ export function toAuthSession(ctx: CurrentIdentityContext): AuthSession {
       role: ctx.roles[0] ?? null,
       is_superuser: ctx.isSuperAdmin,
       permissions: ctx.permissions,
-      legacyUserId: ctx.legacyUserId,
       emailVerified: ctx.emailVerified,
     },
   };
