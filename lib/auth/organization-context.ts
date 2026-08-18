@@ -81,10 +81,6 @@ function parseIdentityId(session: SessionLike): string | null {
   return session?.user?.identityId ?? session?.user?.id ?? null;
 }
 
-/**
- * Resolve organization context exclusively from the authenticated IAM identity
- * and its active IAM organization membership.
- */
 export async function getOrganizationContext(
   session?: SessionLike | null
 ): Promise<OrganizationContext> {
@@ -159,9 +155,6 @@ export async function getOrganizationContext(
     ? [...new Set(active.role.permissions.map((rp) => rp.permission.key))]
     : [...new Set(sess.user.permissions ?? [])];
 
-  // The IAM membership is authoritative. legacyTenantId only exists here as
-  // a data-migration mapping for imported catalog rows; it grants no identity
-  // or authorization authority.
   const organizationId =
     org.legacyTenantId && orgOwnsLegacyCatalog(org.legacyTenantId)
       ? catalogOrganizationId
@@ -215,21 +208,17 @@ export async function requireOrganization(
   return getOrganizationContext(session);
 }
 
-/**
- * Validate IAM membership. `userId` is retained as a compatibility signature;
- * new callers should pass the authenticated identity through organization
- * context rather than using legacy numeric users.
- */
+/** Validate an authenticated IAM identity's active membership in an organization. */
 export async function validateMembership(
-  userId: number,
+  identityId: string,
   organizationId: string
 ): Promise<boolean> {
-  if (!userId || !organizationId) return false;
-  const legacyUser = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { is_superuser: true },
+  if (!identityId || !organizationId) return false;
+  const membership = await prisma.iamOrganizationMembership.findFirst({
+    where: { identityId, organizationId, status: "active" },
+    select: { id: true },
   });
-  return !!legacyUser?.is_superuser;
+  return !!membership;
 }
 
 export function orgContextErrorResponse(err: unknown): {
