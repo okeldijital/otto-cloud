@@ -10,6 +10,7 @@ import {
 } from "@/lib/rights";
 import { IntelligenceError } from "@/lib/document-intelligence";
 import { bootstrapPlatformEvents } from "@/lib/platform/events";
+import { scopeRightRelationships } from "@/lib/rights/organization-scope";
 
 function ok<T>(data: T, message?: string) {
   return NextResponse.json({
@@ -41,7 +42,7 @@ export async function GET(
       rightId: params.id,
     });
     return ok({
-      right,
+      right: scopeRightRelationships(right, ctx.organizationId),
       permissions: {
         canReview: canReviewRights(ctx),
         canManage: canManageRights(ctx),
@@ -83,7 +84,10 @@ export async function PATCH(
       expirationDate: body.expirationDate,
       restrictions: body.restrictions,
     });
-    return ok({ right }, "Right updated");
+    return ok(
+      { right: scopeRightRelationships(right, ctx.organizationId) },
+      "Right updated"
+    );
   } catch (error) {
     if (error instanceof IntelligenceError) {
       return fail(error.message, error.status, error.code);
