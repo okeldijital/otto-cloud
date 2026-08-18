@@ -3,6 +3,7 @@ import { getServerSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { orgContextErrorResponse, orgWhereActive, requireOrganization } from "@/lib/auth/organization-context";
 import { requireOrgAuth, requireReleaseInOrg, resourceAuthErrorResponse, trackOrgScopeWhere } from "@/lib/auth/resource-authorization";
+import { validateReleaseMetadata } from "@/lib/releases/validation";
 
 const RELEASE_STATUSES = ["draft", "ready", "scheduled", "released"] as const;
 type ReleaseStatus = (typeof RELEASE_STATUSES)[number];
@@ -102,10 +103,15 @@ export async function POST(req: Request) {
     const { track_ids, ...releaseData } = body;
     const requestedStatus = releaseData.status;
     delete releaseData.status;
+    const metadataValidation = validateReleaseMetadata(releaseData, "create");
+    if (!metadataValidation.valid) return NextResponse.json({ error: "Invalid release metadata", fields: metadataValidation.errors }, { status: 400 });
     releaseData.organization_id = ctx.organizationId;
     if (requestedStatus !== undefined) {
       const transition = validateReleaseTransition("draft", requestedStatus);
       if (!transition.ok) return NextResponse.json({ error: transition.error }, { status: 400 });
+    }
+    if (track_ids !== undefined && (!Array.isArray(track_ids) || track_ids.some((id: unknown) => !Number.isInteger(id)))) {
+      return NextResponse.json({ error: "track_ids must be an array of integer track IDs." }, { status: 400 });
     }
     if (track_ids?.length) {
       const uniqueTrackIds = [...new Set<number>(track_ids)];
@@ -153,12 +159,17 @@ export async function PUT(req: Request) {
     delete updateData.organization_id;
     delete updateData.organizationId;
     const existing = await requireReleaseInOrg(id, ctx);
+    const metadataValidation = validateReleaseMetadata(updateData, "update");
+    if (!metadataValidation.valid) return NextResponse.json({ error: "Invalid release metadata", fields: metadataValidation.errors }, { status: 400 });
     const requestedStatus = updateData.status;
     delete updateData.status;
     if (requestedStatus !== undefined) {
       const currentStatus = await getReleaseStatus(id);
       const transition = validateReleaseTransition(currentStatus, requestedStatus);
       if (!transition.ok) return NextResponse.json({ error: transition.error }, { status: 400 });
+    }
+    if (track_ids !== undefined && (!Array.isArray(track_ids) || track_ids.some((tid: unknown) => !Number.isInteger(tid)))) {
+      return NextResponse.json({ error: "track_ids must be an array of integer track IDs." }, { status: 400 });
     }
     if (updateData.title && updateData.title !== existing.title) {
       const dup = await prisma.releases.findFirst({ where: { title: updateData.title, organization_id: ctx.organizationId, is_deleted: false } });
