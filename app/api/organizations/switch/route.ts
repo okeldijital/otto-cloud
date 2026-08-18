@@ -2,82 +2,50 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { validateMembership } from "@/lib/auth/organization-context";
-import {
-  getLegacyCatalogScopeId,
-  resolveCatalogOrganizationId,
-} from "@/lib/auth/migration-compat";
 
 /**
- * Switch active organization for the authenticated user.
- * Updates membership default, user row (tenant_id + organization_id),
- * and returns claims for the client to pass to session.update().
+ * Switch the active IAM organization for the authenticated identity.
+ * Organization membership is authoritative; legacy user/tenant tables are not consulted.
  */
 export async function POST(req: Request) {
   const session = await getServerSession();
-  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-  const userId = parseInt((session.user as any).id);
-  if (isNaN(userId)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const identityId = session.user.identityId;
 
   try {
     const body = await req.json();
-    const { tenant_id } = body;
+    const { tenant_id: organizationId } = body;
 
-    if (!tenant_id) {
+    if (!organizationId || typeof organizationId !== "string") {
       return NextResponse.json({ error: "tenant_id is required" }, { status: 400 });
     }
 
-    const allowed = await validateMembership(userId, tenant_id);
+    const allowed = await validateMembership(identityId, organizationId);
     if (!allowed) {
       return NextResponse.json({ error: "Not a member of this organization" }, { status: 403 });
     }
 
-    const membership = await prisma.tenant_users.findUnique({
-      where: { tenant_id_user_id: { tenant_id, user_id: userId } },
+    await prisma.iamOrganizationMembership.updateMany({
+      where: { identityId, status: "active" },
+      data: { isDefault: false },
     });
 
-    if (!membership) {
-      return NextResponse.json({ error: "Not a member of this organization" }, { status: 403 });
-    }
-
-    await prisma.tenant_users.updateMany({
-      where: { user_id: userId },
-      data: { is_default: false },
-    });
-
-    await prisma.tenant_users.update({
-      where: { id: membership.id },
-      data: { is_default: true },
-    });
-
-    // Catalog scope: preserve legacy visibility if user still on import UUID
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { organization_id: true },
-    });
-
-    let organizationId = resolveCatalogOrganizationId(tenant_id);
-    if (user?.organization_id === getLegacyCatalogScopeId()) {
-      organizationId = getLegacyCatalogScopeId();
-    }
-
-    await prisma.user.update({
-      where: { id: userId },
-      data: {
-        tenant_id,
-        organization_id: organizationId,
-      },
+    await prisma.iamOrganizationMembership.updateMany({
+      where: { identityId, organizationId, status: "active" },
+      data: { isDefault: true },
     });
 
     return NextResponse.json({
       success: true,
-      tenant_id,
+      tenant_id: organizationId,
       organization_id: organizationId,
-      // camelCase for session.update()
-      tenantId: tenant_id,
+      tenantId: organizationId,
       organizationId,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error switching organization:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
