@@ -5,6 +5,7 @@ import {
 } from "@/lib/auth/organization-context";
 import { rightsRegistryService } from "@/lib/rights";
 import { IntelligenceError } from "@/lib/document-intelligence";
+import { scopeRightRelationshipCollections } from "@/lib/rights/organization-scope";
 
 /** GET /api/rights/:id/relationships */
 export async function GET(
@@ -20,7 +21,12 @@ export async function GET(
     });
     return NextResponse.json({
       success: true,
-      data: { relationships },
+      data: {
+        relationships: scopeRightRelationshipCollections(
+          relationships,
+          ctx.organizationId
+        ),
+      },
       message: null,
       errors: null,
     });
