@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { validateReleaseMetadata } from "@/lib/releases/validation";
+import { trackOrgScopeWhere } from "@/lib/auth/resource-authorization";
+import type { OrganizationContext } from "@/lib/auth/organization-context";
 
 export type ReleaseReadiness = {
   ready: boolean;
@@ -15,16 +17,16 @@ export type ReleaseReadiness = {
 
 export async function evaluateReleaseReadiness(
   releaseId: number,
-  organizationId: string
+  ctx: OrganizationContext
 ): Promise<ReleaseReadiness | null> {
   const release = await prisma.releases.findFirst({
-    where: { id: releaseId, organization_id: organizationId, is_deleted: false },
+    where: { id: releaseId, organization_id: ctx.organizationId, is_deleted: false },
   });
   if (!release) return null;
 
   const metadata = validateReleaseMetadata(release as unknown as Record<string, unknown>, "update");
   const tracks = await prisma.tracks.findMany({
-    where: { release_id: releaseId, organization_id: organizationId },
+    where: { release_id: releaseId, ...(trackOrgScopeWhere(ctx) as object) },
     select: { id: true },
   });
 
