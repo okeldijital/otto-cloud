@@ -62,25 +62,5 @@ export const auth = betterAuth({
       joins: true,
     },
   },
-  databaseHooks: {
-    user: {
-      create: {
-        before: async (user) => {
-          // Better Auth users must already exist in OTTO IAM. This prevents
-          // authentication from creating an actor without a tenant boundary.
-          const identity = await prisma.iamIdentity.findFirst({
-            where: { email: user.email },
-            select: { id: true, status: true },
-          });
-
-          if (!identity || identity.status === "disabled") {
-            return false;
-          }
-
-          return undefined;
-        },
-      },
-    },
-  },
   plugins: [nextCookies()],
 });
