@@ -2,6 +2,7 @@ import { betterAuth } from "better-auth";
 import { nextCookies } from "better-auth/next-js";
 import { Pool } from "pg";
 import { prisma } from "@/lib/prisma";
+import { getResendClient, OTTO_EMAIL_FROM } from "@/lib/email/resend";
 
 const databaseUrl = process.env.DATABASE_URL;
 const baseURL =
@@ -35,6 +36,25 @@ export const auth = betterAuth({
   trustedOrigins: [baseURL],
   emailAndPassword: {
     enabled: true,
+    requireEmailVerification: true,
+    sendVerificationEmail: async ({ user, url }) => {
+      const resend = getResendClient();
+
+      await resend.emails.send({
+        from: OTTO_EMAIL_FROM,
+        to: user.email,
+        subject: "Verify your OTTO Cloud email address",
+        html: `
+          <div style="font-family: Arial, sans-serif; line-height: 1.6; max-width: 560px; margin: 0 auto;">
+            <h1>Verify your OTTO Cloud account</h1>
+            <p>Hello ${user.name || "there"},</p>
+            <p>Confirm your email address to finish creating your OTTO Cloud account.</p>
+            <p><a href="${url}" style="display:inline-block;padding:12px 18px;background:#111;color:#fff;text-decoration:none;border-radius:6px;">Verify email address</a></p>
+            <p>If you did not create this account, you can safely ignore this email.</p>
+          </div>
+        `,
+      });
+    },
   },
   session: {
     expiresIn: 60 * 60 * 24 * 30,
