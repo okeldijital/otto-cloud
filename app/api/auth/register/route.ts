@@ -49,31 +49,43 @@ export async function POST(req: Request) {
       creatorIdentityId: identity.id,
     });
 
-    // Send verification (dev logs URL)
     try {
-      await emailVerificationService.requestVerification({
+      const delivery = await emailVerificationService.requestVerification({
         identityId: identity.id,
         ipAddress: clientIp(req),
         userAgent: clientUserAgent(req),
       });
-    } catch {
-      /* non-blocking */
-    }
 
-    return NextResponse.json(
-      {
-        id: identity.id,
-        email: identity.email,
-        displayName: identity.displayName,
-        status: identity.status,
-        organization,
-        requiresEmailVerification: true,
-        requiresOrganization: false,
-        message:
-          "Account created. Verify your email, then sign in to continue.",
-      },
-      { status: 201 }
-    );
+      return NextResponse.json(
+        {
+          id: identity.id,
+          email: identity.email,
+          displayName: identity.displayName,
+          status: identity.status,
+          organization,
+          requiresEmailVerification: true,
+          requiresOrganization: false,
+          message:
+            "Account created. Verify your email, then sign in to continue.",
+          emailDelivery: { sent: true, channel: "resend" },
+        },
+        { status: 201 }
+      );
+    } catch (verificationError) {
+      console.error("[AUTH] Verification email delivery failed", {
+        identityId: identity.id,
+        error:
+          verificationError instanceof Error
+            ? verificationError.message
+            : String(verificationError),
+      });
+
+      throw new IdentityError(
+        "Your account was created, but we could not send the verification email. Please request a new verification email and try again.",
+        502,
+        "EMAIL_DELIVERY_FAILED"
+      );
+    }
   } catch (err) {
     return identityErrorResponse(err);
   }
