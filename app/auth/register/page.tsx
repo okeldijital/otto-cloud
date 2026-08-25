@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 
+const PASSWORD_MIN_LENGTH = 8;
+
 export default function RegisterPage() {
   const router = useRouter();
   const { register } = useAuth();
@@ -17,6 +19,8 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [created, setCreated] = useState(false);
 
+  const passwordMeetsPolicy = password.length >= PASSWORD_MIN_LENGTH;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -26,13 +30,13 @@ export default function RegisterPage() {
       return;
     }
 
-    if (password !== confirmPassword) {
-      setError("Passwords do not match.");
+    if (password.length < PASSWORD_MIN_LENGTH) {
+      setError(`Password must be at least ${PASSWORD_MIN_LENGTH} characters long.`);
       return;
     }
 
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters.");
+    if (password !== confirmPassword) {
+      setError("Passwords do not match. Enter the same password in both fields.");
       return;
     }
 
@@ -52,7 +56,16 @@ export default function RegisterPage() {
 
       setCreated(true);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Registration failed");
+      const message = err instanceof Error ? err.message : "Registration failed.";
+      const normalized = message.toLowerCase();
+
+      if (normalized.includes("password") && normalized.includes("policy")) {
+        setError(
+          `Password must be at least ${PASSWORD_MIN_LENGTH} characters long. Please choose a longer password and try again.`,
+        );
+      } else {
+        setError(message);
+      }
     } finally {
       setLoading(false);
     }
@@ -126,10 +139,14 @@ export default function RegisterPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 focus:outline-none focus:border-accent"
-                placeholder="••••••••"
+                placeholder="At least 8 characters"
                 autoComplete="new-password"
+                minLength={PASSWORD_MIN_LENGTH}
                 required
               />
+              <p className={`mt-1 text-xs ${password.length === 0 || passwordMeetsPolicy ? "text-white/50" : "text-danger"}`}>
+                Use at least {PASSWORD_MIN_LENGTH} characters.
+              </p>
             </div>
             <div>
               <label className="block text-sm font-medium text-white/70 mb-1">Confirm password</label>
@@ -138,14 +155,17 @@ export default function RegisterPage() {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/30 focus:outline-none focus:border-accent"
-                placeholder="••••••••"
+                placeholder="Enter your password again"
                 autoComplete="new-password"
+                minLength={PASSWORD_MIN_LENGTH}
                 required
               />
             </div>
 
             {error && (
-              <div className="p-3 bg-danger/10 border border-danger/20 rounded-xl text-sm text-danger">{error}</div>
+              <div className="p-3 bg-danger/10 border border-danger/20 rounded-xl text-sm text-danger" role="alert">
+                {error}
+              </div>
             )}
 
             <button
