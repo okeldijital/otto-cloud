@@ -2,25 +2,24 @@ import { NextResponse } from "next/server";
 import {
   identityService,
   membershipService,
-  requireAuthentication,
+  requireOrganization,
   IdentityError,
+  identityErrorResponse,
 } from "@/lib/platform/identity";
-import { orgContextErrorResponse } from "@/lib/auth/organization-context";
 
 export async function GET(req: Request) {
   try {
-    const ctx = await requireAuthentication(req);
+    const ctx = await requireOrganization(req);
     const members = await membershipService.listMembers(ctx.organizationId);
     return NextResponse.json(members);
   } catch (err) {
-    const response = orgContextErrorResponse(err);
-    return NextResponse.json(response.body, { status: response.status });
+    return identityErrorResponse(err);
   }
 }
 
 export async function POST(req: Request) {
   try {
-    const ctx = await requireAuthentication(req);
+    const ctx = await requireOrganization(req);
     const body = await req.json().catch(() => ({}));
     const email = typeof body.email === "string" ? body.email.trim() : "";
     const roleKey = typeof body.role_key === "string" && body.role_key.trim()
@@ -55,14 +54,13 @@ export async function POST(req: Request) {
       "IDENTITY_NOT_FOUND"
     );
   } catch (err) {
-    const response = orgContextErrorResponse(err);
-    return NextResponse.json(response.body, { status: response.status });
+    return identityErrorResponse(err);
   }
 }
 
 export async function PATCH(req: Request) {
   try {
-    const ctx = await requireAuthentication(req);
+    const ctx = await requireOrganization(req);
     const body = await req.json().catch(() => ({}));
     const identityId = typeof body.identity_id === "string" ? body.identity_id : "";
     const roleKey = typeof body.role_key === "string" ? body.role_key.trim() : "";
@@ -84,14 +82,13 @@ export async function PATCH(req: Request) {
 
     return NextResponse.json({ success: true, membership });
   } catch (err) {
-    const response = orgContextErrorResponse(err);
-    return NextResponse.json(response.body, { status: response.status });
+    return identityErrorResponse(err);
   }
 }
 
 export async function DELETE(req: Request) {
   try {
-    const ctx = await requireAuthentication(req);
+    const ctx = await requireOrganization(req);
     const { searchParams } = new URL(req.url);
     const identityId = searchParams.get("identity_id");
 
@@ -107,7 +104,6 @@ export async function DELETE(req: Request) {
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    const response = orgContextErrorResponse(err);
-    return NextResponse.json(response.body, { status: response.status });
+    return identityErrorResponse(err);
   }
 }
