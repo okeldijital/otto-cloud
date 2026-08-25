@@ -37,7 +37,9 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,
-    sendVerificationEmail: async ({ user, url }) => {
+    sendVerificationEmail: async (data) => {
+      const user = data.user;
+      const url = data.url;
       await sendOttoEmail({
         to: user.email,
         subject: "Verify your OTTO Cloud email address",
