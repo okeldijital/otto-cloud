@@ -44,21 +44,10 @@ export async function POST(req: Request) {
       displayName,
     });
 
-    let organization;
-    try {
-      organization = await organizationService.createOrganization({
-        name: organizationName,
-        creatorIdentityId: identity.id,
-      });
-    } catch (err) {
-      // Do not leave an orphaned identity when initial tenant creation fails.
-      try {
-        await identityService.delete(identity.id);
-      } catch {
-        /* best-effort rollback */
-      }
-      throw err;
-    }
+    const organization = await organizationService.createOrganization({
+      name: organizationName,
+      creatorIdentityId: identity.id,
+    });
 
     // Send verification (dev logs URL)
     try {
