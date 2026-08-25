@@ -7,68 +7,68 @@ const OrgContext = createContext({
   organizations: [],
   currentOrg: null,
   loading: true,
-  switchOrg: async () => {},
+  switchOrg: async () => false,
   refreshOrgs: async () => {},
   currentOrgId: null,
 });
 
 export function OrgProvider({ children }) {
-  const { user, isAuthenticated, refreshUser } = useAuth();
+  const { isAuthenticated, refreshUser } = useAuth();
   const [organizations, setOrganizations] = useState([]);
   const [currentOrg, setCurrentOrg] = useState(null);
+  const [activeOrgId, setActiveOrgId] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const currentOrgId =
-    user?.organization?.id || user?.organization_id || null;
-
   const refreshOrgs = useCallback(async () => {
+    setLoading(true);
     try {
-      // Prefer IAM org list
-      const iamRes = await fetch("/api/auth/organizations", {
-        credentials: "include",
-      });
+      const iamRes = await fetch("/api/auth/organizations", { credentials: "include" });
       if (iamRes.ok) {
         const data = await iamRes.json();
         const orgs = (data.organizations || []).map((o) => ({
           id: o.id,
           name: o.name,
           slug: o.slug,
+          status: o.status,
           role: o.role,
           isDefault: o.isDefault,
+          isOwner: o.isOwner,
+          membershipStatus: o.membershipStatus,
         }));
+        const nextActiveId = data.activeOrganizationId || activeOrgId || orgs.find((o) => o.isDefault)?.id || orgs[0]?.id || null;
         setOrganizations(orgs);
-        const activeId = data.activeOrganizationId || currentOrgId;
-        const active =
-          orgs.find((o) => o.id === activeId) || orgs[0] || null;
-        setCurrentOrg(active);
+        setActiveOrgId(nextActiveId);
+        setCurrentOrg(orgs.find((o) => o.id === nextActiveId) || null);
         return;
       }
 
-      // Fallback legacy organizations API
       const res = await api.get("/organizations");
       const orgs = Array.isArray(res.data) ? res.data : [];
+      const nextActiveId = activeOrgId || orgs[0]?.id || null;
       setOrganizations(orgs);
-      const active = orgs.find((o) => o.id === currentOrgId) || orgs[0] || null;
-      setCurrentOrg(active);
+      setActiveOrgId(nextActiveId);
+      setCurrentOrg(orgs.find((o) => o.id === nextActiveId) || null);
     } catch {
       setOrganizations([]);
       setCurrentOrg(null);
+      setActiveOrgId(null);
     } finally {
       setLoading(false);
     }
-  }, [currentOrgId]);
+  }, [activeOrgId]);
 
   useEffect(() => {
-    if (isAuthenticated) {
-      refreshOrgs();
-    } else {
+    if (isAuthenticated) refreshOrgs();
+    else {
       setOrganizations([]);
       setCurrentOrg(null);
+      setActiveOrgId(null);
       setLoading(false);
     }
-  }, [isAuthenticated, currentOrgId, refreshOrgs]);
+  }, [isAuthenticated, refreshOrgs]);
 
   const switchOrg = async (orgId) => {
+    if (!orgId || !organizations.some((o) => o.id === orgId)) return false;
     try {
       const res = await fetch("/api/auth/organizations/switch", {
         method: "POST",
@@ -76,13 +76,12 @@ export function OrgProvider({ children }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ organizationId: orgId }),
       });
-      if (!res.ok) {
-        // Legacy fallback
-        await api.post("/organizations/switch", { tenant_id: orgId });
-      }
+      if (!res.ok) return false;
       const org = organizations.find((o) => o.id === orgId) || null;
+      setActiveOrgId(orgId);
       setCurrentOrg(org);
       await refreshUser?.();
+      await refreshOrgs();
       return true;
     } catch {
       return false;
@@ -90,32 +89,19 @@ export function OrgProvider({ children }) {
   };
 
   return (
-    <OrgContext.Provider
-      value={{
-        organizations,
-        currentOrg,
-        loading,
-        switchOrg,
-        refreshOrgs,
-        currentOrgId: currentOrg?.id || currentOrgId,
-      }}
-    >
+    <OrgContext.Provider value={{
+      organizations,
+      currentOrg,
+      loading,
+      switchOrg,
+      refreshOrgs,
+      currentOrgId: activeOrgId,
+    }}>
       {children}
     </OrgContext.Provider>
   );
 }
 
 export function useOrg() {
-  const ctx = useContext(OrgContext);
-  if (!ctx) {
-    return {
-      organizations: [],
-      currentOrg: null,
-      loading: false,
-      switchOrg: async () => false,
-      refreshOrgs: async () => {},
-      currentOrgId: null,
-    };
-  }
-  return ctx;
+  return useContext(OrgContext);
 }
