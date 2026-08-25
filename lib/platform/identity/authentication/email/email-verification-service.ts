@@ -9,6 +9,25 @@ import { generateSecureToken, hashToken, normalizeEmail } from "../crypto/tokens
 import { emitIdentityEvent, IDENTITY_EVENTS } from "../events";
 import { rateLimitService } from "../rate-limit/rate-limit-service";
 
+const OTTO_PUBLIC_URL = "https://otto.okeldijital.africa";
+
+function getPublicAppUrl(): string {
+  const configured =
+    process.env.NEXTAUTH_URL ||
+    process.env.NEXT_PUBLIC_URL ||
+    process.env.APP_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null);
+
+  if (!configured) return OTTO_PUBLIC_URL;
+
+  const normalized = configured.replace(/\/$/, "");
+  if (/^https?:\/\/localhost(?::\d+)?$/i.test(normalized)) {
+    return OTTO_PUBLIC_URL;
+  }
+
+  return normalized;
+}
+
 export class EmailVerificationService {
   private ttlHours(): number {
     return getPlatformConfig().security.tokens.emailVerificationTtlHours;
@@ -61,14 +80,7 @@ export class EmailVerificationService {
       },
     });
 
-    const base = (
-      process.env.NEXTAUTH_URL ||
-      process.env.NEXT_PUBLIC_URL ||
-      process.env.APP_URL ||
-      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
-      "http://localhost:3000"
-    ).replace(/\/$/, "");
-    const verifyUrl = `${base}/auth/verify-email?token=${encodeURIComponent(raw)}`;
+    const verifyUrl = `${getPublicAppUrl()}/auth/verify-email?token=${encodeURIComponent(raw)}`;
 
     await emitIdentityEvent({
       eventType: IDENTITY_EVENTS.EmailVerificationSent,
