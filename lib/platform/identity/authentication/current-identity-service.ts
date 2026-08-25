@@ -35,6 +35,18 @@ export type CurrentIdentityContext = {
   isSuperAdmin: boolean;
 };
 
+type BetterAuthSession = {
+  session: {
+    id: string;
+    expiresAt: Date;
+  };
+  user: {
+    email: string;
+    name?: string | null;
+    emailVerified?: boolean;
+  };
+};
+
 export class CurrentIdentityService {
   async resolveFromRequest(params: {
     cookieHeader?: string | null;
@@ -84,11 +96,59 @@ export class CurrentIdentityService {
       return null;
     }
 
-    const orgId = params.organizationIdHint || orgFromToken || (await this.resolveDefaultOrganizationId(identityId));
+    return this.buildContext(identity, session.id, session.expiresAt, params.organizationIdHint || orgFromToken);
+  }
+
+  /**
+   * Resolve a Better Auth session into the existing OTTO IAM context.
+   * Better Auth authenticates the request; OTTO IAM remains authoritative for
+   * actor status, organization membership, roles and permissions.
+   */
+  async resolveFromBetterAuthSession(
+    session: BetterAuthSession,
+    organizationIdHint?: string | null
+  ): Promise<CurrentIdentityContext | null> {
+    const identity = await prisma.iamIdentity.findFirst({
+      where: { email: session.user.email },
+    });
+
+    if (!identity || identity.status === "disabled") return null;
+    if (identity.status === "locked" && identity.lockedUntil && identity.lockedUntil > new Date()) {
+      return null;
+    }
+
+    return this.buildContext(identity, session.session.id, session.session.expiresAt, organizationIdHint);
+  }
+
+  async requireFromRequest(params: {
+    cookieHeader?: string | null;
+    authorizationHeader?: string | null;
+    organizationIdHint?: string | null;
+  }): Promise<CurrentIdentityContext> {
+    const ctx = await this.resolveFromRequest(params);
+    if (!ctx) throw new IdentityError("Authentication required", 401, "UNAUTHENTICATED");
+    return ctx;
+  }
+
+  private async buildContext(
+    identity: {
+      id: string;
+      email: string;
+      displayName: string | null;
+      emailVerifiedAt: Date | null;
+      status: string;
+      sessionVersion: number;
+      mustChangePassword: boolean;
+    },
+    sessionId: string,
+    sessionExpiresAt: Date,
+    organizationIdHint?: string | null
+  ): Promise<CurrentIdentityContext> {
+    const orgId = organizationIdHint || (await this.resolveDefaultOrganizationId(identity.id));
 
     const membership = orgId
       ? await prisma.iamOrganizationMembership.findUnique({
-          where: { identityId_organizationId: { identityId, organizationId: orgId } },
+          where: { identityId_organizationId: { identityId: identity.id, organizationId: orgId } },
           include: {
             organization: true,
             role: { include: { permissions: { include: { permission: true } } } },
@@ -101,8 +161,6 @@ export class CurrentIdentityService {
     const permKeys = activeMembership?.role?.permissions.map((rp) => rp.permission.key) ?? [];
     const isSuperAdmin = roleKeys.includes("super_admin");
 
-    void sessionService.touchActivity(sessionId).catch(() => undefined);
-
     return {
       identityId: identity.id,
       email: identity.email,
@@ -111,7 +169,7 @@ export class CurrentIdentityService {
       emailVerifiedAt: identity.emailVerifiedAt,
       status: identity.status,
       sessionId,
-      sessionExpiresAt: session.expiresAt,
+      sessionExpiresAt,
       sessionVersion: identity.sessionVersion,
       mustChangePassword: identity.mustChangePassword,
       organizationId: activeMembership?.organizationId ?? null,
@@ -128,16 +186,6 @@ export class CurrentIdentityService {
       permissionSet: PermissionSet.from(permKeys),
       isSuperAdmin,
     };
-  }
-
-  async requireFromRequest(params: {
-    cookieHeader?: string | null;
-    authorizationHeader?: string | null;
-    organizationIdHint?: string | null;
-  }): Promise<CurrentIdentityContext> {
-    const ctx = await this.resolveFromRequest(params);
-    if (!ctx) throw new IdentityError("Authentication required", 401, "UNAUTHENTICATED");
-    return ctx;
   }
 
   private async resolveDefaultOrganizationId(identityId: string): Promise<string | null> {

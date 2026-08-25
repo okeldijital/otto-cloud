@@ -1,11 +1,12 @@
 /**
- * Server session resolution — IAM native.
+ * Server session resolution.
  *
- * Authentication and authorization are resolved exclusively through IAM
- * identity, session, organization membership, roles, and permissions.
+ * Better Auth is the authentication/session provider. OTTO IAM remains the
+ * authoritative identity, organization membership and authorization boundary.
  */
 
 import { headers, cookies } from "next/headers";
+import { auth as betterAuth } from "@/lib/auth/better-auth";
 import {
   currentIdentityService,
   type CurrentIdentityContext,
@@ -61,11 +62,35 @@ export async function resolveIdentityFromHeaders(
     }
   }
 
+  // Better Auth is authoritative when its session cookie is present. An
+  // invalid Better Auth session must fail closed rather than falling through
+  // to the legacy/native session path.
+  if (hasBetterAuthSessionCookie(cookie)) {
+    const requestHeaders = new Headers();
+    if (cookie) requestHeaders.set("cookie", cookie);
+    if (authorization) requestHeaders.set("authorization", authorization);
+
+    try {
+      const session = await betterAuth.api.getSession({ headers: requestHeaders });
+      if (!session) return null;
+
+      return currentIdentityService.resolveFromBetterAuthSession(session, orgHint);
+    } catch {
+      return null;
+    }
+  }
+
   return currentIdentityService.resolveFromRequest({
     cookieHeader: cookie,
     authorizationHeader: authorization,
     organizationIdHint: orgHint,
   });
+}
+
+function hasBetterAuthSessionCookie(cookieHeader: string | null): boolean {
+  if (!cookieHeader) return false;
+  return cookieHeader.includes("better-auth.session_token=") ||
+    cookieHeader.includes("__Secure-better-auth.session_token=");
 }
 
 export function toAuthSession(ctx: CurrentIdentityContext): AuthSession {
