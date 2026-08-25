@@ -5,6 +5,7 @@ import { orgContextErrorResponse, orgWhereActive, requireOrganization } from "@/
 import { requireOrgAuth, requireReleaseInOrg, resourceAuthErrorResponse, trackOrgScopeWhere } from "@/lib/auth/resource-authorization";
 import { validateReleaseMetadata } from "@/lib/releases/validation";
 
+// RRM-002B: release lifecycle transitions are enforced at the API boundary.
 const RELEASE_STATUSES = ["draft", "ready", "scheduled", "released"] as const;
 type ReleaseStatus = (typeof RELEASE_STATUSES)[number];
 const RELEASE_TRANSITIONS: Record<ReleaseStatus, readonly ReleaseStatus[]> = {
