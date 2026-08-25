@@ -174,11 +174,15 @@ export default function AuthLoginPage() {
           </button>
         </form>
 
-        <p className="text-center text-sm text-white/50 mt-6">
+        <div className="flex items-center justify-center gap-3 text-sm text-white/50 mt-6">
           <Link href="/auth/forgot-password" className="underline">
             Forgot password?
           </Link>
-        </p>
+          <span aria-hidden="true">·</span>
+          <Link href="/auth/register" className="underline text-white/70">
+            Create account
+          </Link>
+        </div>
       </div>
     </div>
   );
