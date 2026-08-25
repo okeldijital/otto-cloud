@@ -1,148 +1,95 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth/session";
-import { prisma } from "@/lib/prisma";
-import { v4 as uuidv4 } from "uuid";
+import {
+  identityService,
+  membershipService,
+  organizationPolicyService,
+  requireAuthentication,
+  IdentityError,
+} from "@/lib/platform/identity";
 import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
 
-export async function GET() {
-  const session = await getServerSession();
-  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const ctx = await requireOrganization();
-
-  const tenantId = ctx.tenantId;
-  if (!tenantId) return NextResponse.json({ error: "No organization context" }, { status: 400 });
-
-  const memberships = await prisma.tenant_users.findMany({
-    where: { tenant_id: tenantId },
-    include: {
-      users: {
-        select: {
-          id: true,
-          email: true,
-          name: true,
-          is_active: true,
-          role: true,
-          avatar_url: true,
-          last_login: true,
-          createdAt: true,
-        },
-      },
-    },
-    orderBy: { invited_at: "asc" },
-  });
-
-  const members = await Promise.all(memberships.map(async (m) => {
-    const userRoles = await prisma.user_roles.findMany({
-      where: { user_id: m.user_id },
-      include: { roles: true },
-    });
-    return {
-      id: m.id,
-      user_id: m.user_id,
-      email: m.users.email,
-      name: m.users.name,
-      is_active: m.users.is_active,
-      avatar_url: m.users.avatar_url,
-      role: m.users.role,
-      last_login: m.users.last_login,
-      createdAt: m.users.createdAt,
-      roles: userRoles.map(ur => ur.roles),
-      is_default: m.is_default,
-      invited_at: m.invited_at,
-      accepted_at: m.accepted_at,
-    };
-  }));
-
-  return NextResponse.json(members);
+export async function GET(req: Request) {
+  try {
+    const ctx = await requireAuthentication(req);
+    const members = await membershipService.listMembers(ctx.organizationId);
+    return NextResponse.json(members);
+  } catch (err) {
+    return NextResponse.json(
+      orgContextErrorResponse(err).body,
+      { status: orgContextErrorResponse(err).status }
+    );
+  }
 }
 
 export async function POST(req: Request) {
-  const session = await getServerSession();
-  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const ctx = await requireOrganization();
-
-  const tenantId = ctx.tenantId;
-  const actorId = parseInt((session.user as any).id);
-  if (!tenantId || isNaN(actorId)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
   try {
-    const body = await req.json();
-    const { email, role_id } = body;
+    const reqContext = await requireAuthentication(req);
+    const ctx = await requireOrganization();
+    const body = await req.json().catch(() => ({}));
+    const email = typeof body.email === "string" ? body.email.trim() : "";
+    const roleKey = typeof body.role_key === "string" && body.role_key.trim()
+      ? body.role_key.trim()
+      : "member";
 
     if (!email) {
-      return NextResponse.json({ error: "Email is required" }, { status: 400 });
+      throw new IdentityError("Email is required", 400, "VALIDATION_ERROR");
     }
 
-    const existingUser = await prisma.user.findUnique({ where: { email } });
-    if (existingUser) {
-      const alreadyMember = await prisma.tenant_users.findUnique({
-        where: { tenant_id_user_id: { tenant_id: tenantId, user_id: existingUser.id } },
-      });
-      if (alreadyMember) {
-        return NextResponse.json({ error: "User is already a member" }, { status: 400 });
-      }
+    const identity = await identityService.findByEmail(email);
 
-      await prisma.tenant_users.create({
-        data: {
-          tenant_id: tenantId,
-          user_id: existingUser.id,
-          role_id: role_id || null,
-          is_default: false,
-          invited_at: new Date(),
-          accepted_at: new Date(),
-        },
+    // Existing OTTO identity: create an IAM-native membership. This is the
+    // canonical path for adding an existing user to another organisation.
+    if (identity) {
+      const membership = await membershipService.createMembership({
+        organizationId: ctx.organizationId,
+        identityId: identity.id,
+        roleKey,
+        isDefault: false,
+        isOwner: false,
+        actorIdentityId: reqContext.identityId,
       });
 
-      return NextResponse.json({ success: true, message: "Member added" });
+      return NextResponse.json({
+        success: true,
+        message: "Member added",
+        membership,
+      }, { status: 201 });
     }
 
-    const token = uuidv4().replace(/-/g, "").slice(0, 32);
-    await prisma.invitations.create({
-      data: {
-        tenant_id: tenantId,
-        email,
-        invited_by: actorId,
-        token,
-        role_id: role_id || null,
-        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      },
-    });
-
-    return NextResponse.json({ success: true, message: "Invitation sent" });
-  } catch (error: any) {
-    console.error("Error inviting member:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    // New identities must use the invitation workflow. Do not create a legacy
+    // tenant membership here; invitation delivery/acceptance is handled by
+    // the IAM invitation flow in the next RRM-003 increment.
+    throw new IdentityError(
+      "No OTTO account exists for this email. Use an invitation to add a new user.",
+      404,
+      "IDENTITY_NOT_FOUND"
+    );
+  } catch (err) {
+    const response = orgContextErrorResponse(err);
+    return NextResponse.json(response.body, { status: response.status });
   }
 }
 
 export async function DELETE(req: Request) {
-  const session = await getServerSession();
-  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const ctx = await requireAuthentication(req);
+    const { searchParams } = new URL(req.url);
+    const identityId = searchParams.get("identity_id");
 
-  const ctx = await requireOrganization();
+    if (!identityId) {
+      throw new IdentityError("identity_id is required", 400, "VALIDATION_ERROR");
+    }
 
-  const tenantId = ctx.tenantId;
-  if (!tenantId) return NextResponse.json({ error: "No organization context" }, { status: 400 });
+    await membershipService.remove({
+      organizationId: ctx.organizationId,
+      identityId,
+      actorIdentityId: ctx.identityId,
+    });
 
-  const { searchParams } = new URL(req.url);
-  const userId = parseInt(searchParams.get("user_id") || "");
-
-  if (!userId) return NextResponse.json({ error: "user_id is required" }, { status: 400 });
-
-  const org = await prisma.tenants.findUnique({
-    where: { id: tenantId },
-    select: { owner_id: true },
-  });
-
-  if (org?.owner_id === userId) {
-    return NextResponse.json({ error: "Cannot remove the organization owner" }, { status: 400 });
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    const response = orgContextErrorResponse(err);
+    return NextResponse.json(response.body, { status: response.status });
   }
-
-  await prisma.tenant_users.deleteMany({
-    where: { tenant_id: tenantId, user_id: userId },
-  });
-
-  return NextResponse.json({ success: true });
 }
