@@ -14,10 +14,6 @@ export class EmailVerificationService {
     return getPlatformConfig().security.tokens.emailVerificationTtlHours;
   }
 
-  /**
-   * Issue a new verification token. Previous unused tokens for this identity are invalidated.
-   * Returns the raw token for delivery (never store raw).
-   */
   async requestVerification(params: {
     identityId: string;
     email?: string;
@@ -44,7 +40,6 @@ export class EmailVerificationService {
       ip: params.ipAddress,
     });
 
-    // Invalidate prior unused tokens
     await prisma.iamEmailVerificationToken.updateMany({
       where: {
         identityId: identity.id,
@@ -86,7 +81,6 @@ export class EmailVerificationService {
       userAgent: params.userAgent,
     });
 
-    // Deliver via Resend when configured; otherwise log (Vercel Function logs)
     const { emailVerificationContent, sendTransactionalEmail } = await import(
       "./mailer"
     );
@@ -94,13 +88,21 @@ export class EmailVerificationService {
       email: identity.email,
       verifyUrl,
     });
-    await sendTransactionalEmail({
+    const delivery = await sendTransactionalEmail({
       to: identity.email,
       subject: content.subject,
       text: content.text,
       html: content.html,
       tags: ["email-verification"],
     });
+
+    if (!delivery.ok) {
+      throw new IdentityError(
+        "Verification email could not be sent",
+        502,
+        "EMAIL_DELIVERY_FAILED"
+      );
+    }
 
     return { token: raw, expiresAt, verifyUrl };
   }
@@ -114,7 +116,6 @@ export class EmailVerificationService {
     const identity = await prisma.iamIdentity.findUnique({
       where: { emailNormalized },
     });
-    // Always return success shape to avoid email enumeration
     if (!identity || identity.emailVerifiedAt) {
       return { sent: true };
     }
@@ -169,7 +170,6 @@ export class EmailVerificationService {
         where: { id: record.identityId },
         data: {
           emailVerifiedAt: new Date(),
-          // Promote from pending_verification when email confirms
           status:
             record.identity.status === "pending_verification"
               ? "active"
