@@ -16,26 +16,40 @@ type Member = {
   isOwner: boolean;
 };
 
+type Role = { id: string; key: string; name: string };
+
 export default function OrgMembersPage() {
   const { isAuthenticated, loading: authLoading } = useAuth();
   const { currentOrg } = useOrg();
   const router = useRouter();
   const [members, setMembers] = useState<Member[]>([]);
+  const [roles, setRoles] = useState<Role[]>([]);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [savingRole, setSavingRole] = useState<string | null>(null);
   const orgId = (currentOrg as { id?: string } | null)?.id;
 
   const load = async () => {
     if (!orgId) return;
-    const res = await fetch(`/api/admin/organizations/${orgId}/members`, {
-      credentials: "include",
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      setError(data.error || "Failed to load members");
+    const [membersRes, rolesRes] = await Promise.all([
+      fetch("/api/organizations/members", { credentials: "include" }),
+      fetch("/api/auth/organizations/roles", { credentials: "include" }),
+    ]);
+
+    const membersData = await membersRes.json().catch(() => ({}));
+    const rolesData = await rolesRes.json().catch(() => ({}));
+
+    if (!membersRes.ok) {
+      setError(membersData.error || "Failed to load members");
       return;
     }
-    setMembers(data.members || []);
+    if (!rolesRes.ok) {
+      setError(rolesData.error || "Failed to load roles");
+      return;
+    }
+
+    setMembers(Array.isArray(membersData) ? membersData : membersData.members || []);
+    setRoles(rolesData.roles || []);
   };
 
   useEffect(() => {
@@ -46,96 +60,89 @@ export default function OrgMembersPage() {
     if (isAuthenticated && orgId) load();
   }, [isAuthenticated, authLoading, orgId, router]);
 
-  const act = async (identityId: string, action: string, roleKey?: string) => {
-    if (!orgId) return;
+  const setRole = async (identityId: string, roleKey: string) => {
+    setSavingRole(identityId);
     setError("");
-    const res = await fetch(
-      `/api/admin/organizations/${orgId}/members/${identityId}`,
-      {
+    setMessage("");
+    try {
+      const res = await fetch("/api/organizations/members", {
         method: "PATCH",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, roleKey }),
+        body: JSON.stringify({ identity_id: identityId, role_key: roleKey }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error || "Unable to change role");
+        return;
       }
-    );
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      setError(data.error || "Action failed");
-      return;
+      setMessage("Role updated.");
+      await load();
+    } finally {
+      setSavingRole(null);
     }
-    setMessage(`Updated ${action}`);
-    await load();
   };
 
   const remove = async (identityId: string) => {
-    if (!orgId || !window.confirm("Remove this member?")) return;
-    await fetch(`/api/admin/organizations/${orgId}/members/${identityId}`, {
+    if (!window.confirm("Remove this member from the organisation?")) return;
+    const res = await fetch(`/api/organizations/members?identity_id=${encodeURIComponent(identityId)}`, {
       method: "DELETE",
       credentials: "include",
     });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(data.error || "Unable to remove member");
+      return;
+    }
     await load();
   };
 
   return (
-    <div className="p-8 max-w-3xl mx-auto space-y-6 text-white">
+    <div className="p-8 max-w-4xl mx-auto space-y-6 text-white">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Members</h1>
-        <Link href="/settings/organization" className="text-sm text-white/50 underline">
-          Organization
+        <div>
+          <h1 className="text-2xl font-bold">Members</h1>
+          <p className="text-sm text-white/50 mt-1">Manage membership and organisation-specific roles.</p>
+        </div>
+        <Link href="/settings/organization/invitations" className="px-4 py-2 rounded-lg bg-accent text-white text-sm font-semibold">
+          Invite user
         </Link>
       </div>
       {error && <p className="text-sm text-danger">{error}</p>}
       {message && <p className="text-sm text-green-400">{message}</p>}
-      <ul className="space-y-2">
+
+      <div className="space-y-2">
         {members.map((m) => (
-          <li
-            key={m.id}
-            className="flex justify-between p-3 rounded-lg bg-white/5 border border-white/10 text-sm"
-          >
-            <div>
-              <div>
+          <div key={m.id} className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-lg bg-white/5 border border-white/10">
+            <div className="min-w-0">
+              <div className="font-medium truncate">
                 {m.displayName || m.email || m.identityId}
                 {m.isOwner ? " · Owner" : ""}
               </div>
-              <div className="text-xs text-white/40">
-                {m.email} · {m.roleKey || "—"} · {m.status}
-              </div>
+              <div className="text-xs text-white/40 mt-1">{m.email} · {m.status}</div>
             </div>
-            <div className="flex gap-2 items-center">
-              {m.status === "active" && !m.isOwner && (
-                <>
-                  <button
-                    className="text-xs underline"
-                    onClick={() => act(m.identityId, "suspend")}
-                  >
-                    Suspend
-                  </button>
-                  <button
-                    className="text-xs underline"
-                    onClick={() => act(m.identityId, "set_role", "viewer")}
-                  >
-                    Set viewer
-                  </button>
-                  <button
-                    className="text-xs text-danger underline"
-                    onClick={() => remove(m.identityId)}
-                  >
-                    Remove
-                  </button>
-                </>
-              )}
-              {m.status === "suspended" && (
-                <button
-                  className="text-xs underline"
-                  onClick={() => act(m.identityId, "reactivate")}
+
+            {!m.isOwner && m.status === "active" && (
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-white/50">Role</label>
+                <select
+                  value={m.roleKey || "member"}
+                  disabled={savingRole === m.identityId}
+                  onChange={(e) => setRole(m.identityId, e.target.value)}
+                  className="px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm"
                 >
-                  Reactivate
+                  {roles.map((role) => (
+                    <option key={role.id} value={role.key}>{role.name}</option>
+                  ))}
+                </select>
+                <button className="text-xs text-danger underline" onClick={() => remove(m.identityId)}>
+                  Remove
                 </button>
-              )}
-            </div>
-          </li>
+              </div>
+            )}
+          </div>
         ))}
-      </ul>
+      </div>
     </div>
   );
 }
