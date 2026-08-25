@@ -179,7 +179,7 @@ export async function PUT(req: Request) {
       if (toAssign.length) {
         const tracksToAssign = await prisma.tracks.findMany({ where: { id: { in: toAssign }, ...(trackOrgScopeWhere(ctx) as object) } });
         if (tracksToAssign.length !== toAssign.length) return NextResponse.json({ error: "One or more tracks are not accessible to this organization" }, { status: 404 });
-        await Promise.all(tracksToAssign.map((t) => prisma.tracks.update({ where: { id: t.id }, data: { release_id: id, tenant_id: ctx.organizationId, credits: !t.credits && responseRelease.credits ? (responseRelease.credits as any) : ((t.credits as any) ?? undefined) } }));
+        await Promise.all(tracksToAssign.map((t) => prisma.tracks.update({ where: { id: t.id }, data: { release_id: id, tenant_id: ctx.organizationId, credits: !t.credits && responseRelease.credits ? (responseRelease.credits as any) : ((t.credits as any) ?? undefined) } })));
       }
     }
     return NextResponse.json(responseRelease);
