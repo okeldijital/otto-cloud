@@ -1,12 +1,11 @@
 "use client";
 import { useState, useEffect } from "react";
-import { User, Key, Users, Shield, Building2, Clock, Save } from "lucide-react";
+import { User, Key, Shield, Building2, Clock, Save } from "lucide-react";
+import Link from "next/link";
 import PageHeader from "@/components/ui/PageHeader";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import api from "@/lib/api";
-import UsersTab from "@/components/settings/UsersTab";
-import RolesTab from "@/components/settings/RolesTab";
 import TeamsTab from "@/components/settings/TeamsTab";
 import PermissionsTab from "@/components/settings/PermissionsTab";
 import ActivityLogTab from "@/components/settings/ActivityLogTab";
@@ -16,7 +15,7 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState("");
-  const [tab, setTab] = useState<"profile" | "api-keys" | "users" | "roles" | "teams" | "permissions" | "activity-log">("profile");
+  const [tab, setTab] = useState<"profile" | "api-keys" | "teams" | "permissions" | "activity-log">("profile");
   const [error, setError] = useState("");
 
   const [keys, setKeys] = useState<any[]>([]);
@@ -81,8 +80,6 @@ export default function SettingsPage() {
   const tabs = [
     { id: "profile" as const, label: "Profile", icon: User },
     { id: "api-keys" as const, label: "API Keys", icon: Key },
-    { id: "users" as const, label: "Users", icon: Users },
-    { id: "roles" as const, label: "Roles", icon: Shield },
     { id: "teams" as const, label: "Teams", icon: Building2 },
     { id: "permissions" as const, label: "Permissions", icon: Shield },
     { id: "activity-log" as const, label: "Activity Log", icon: Clock },
@@ -93,6 +90,18 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Settings" subtitle="Account and application settings" />
+
+      <Card title="Organization" subtitle="Manage organisation membership, roles and invitations">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <p className="text-sm text-white">Organisation administration has its own dedicated settings area.</p>
+            <p className="text-xs text-text-secondary mt-1">Manage members, roles and invitations for the currently selected organisation.</p>
+          </div>
+          <Link href="/settings/organization" className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-accent text-white text-sm font-semibold hover:opacity-90 transition-opacity">
+            Open Organization Settings
+          </Link>
+        </div>
+      </Card>
 
       <div className="flex gap-1 border-b border-white/5 mb-6 overflow-x-auto">
         {tabs.map(t => (
@@ -203,8 +212,8 @@ export default function SettingsPage() {
                             ))}
                           </div>
                         </td>
-                        <td className="p-3 text-sm text-text-secondary">{k.last_used_at ? new Date(k.last_used_at).toLocaleDateString() : "\u2014"}</td>
-                        <td className="p-3 text-sm text-text-secondary">{k.expires_at ? new Date(k.expires_at).toLocaleDateString() : "\u2014"}</td>
+                        <td className="p-3 text-sm text-text-secondary">{k.last_used_at ? new Date(k.last_used_at).toLocaleDateString() : "—"}</td>
+                        <td className="p-3 text-sm text-text-secondary">{k.expires_at ? new Date(k.expires_at).toLocaleDateString() : "—"}</td>
                         <td className="p-3">
                           <span className={`inline-flex items-center font-bold rounded-full transition-all duration-fast px-2 py-0.5 text-[10px] uppercase tracking-wider ${k.is_active ? "bg-success/10 text-success border border-success/30" : "bg-danger/10 text-danger border border-danger/30"}`}>
                             {k.is_active ? "Active" : "Revoked"}
@@ -223,8 +232,6 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {tab === "users" && <UsersTab onError={setError} />}
-      {tab === "roles" && <RolesTab onError={setError} />}
       {tab === "teams" && <TeamsTab onError={setError} />}
       {tab === "permissions" && <PermissionsTab />}
       {tab === "activity-log" && <ActivityLogTab />}
