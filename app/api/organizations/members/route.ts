@@ -1,13 +1,11 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "@/lib/auth/session";
 import {
   identityService,
   membershipService,
-  organizationPolicyService,
   requireAuthentication,
   IdentityError,
 } from "@/lib/platform/identity";
-import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
+import { orgContextErrorResponse } from "@/lib/auth/organization-context";
 
 export async function GET(req: Request) {
   try {
@@ -15,17 +13,14 @@ export async function GET(req: Request) {
     const members = await membershipService.listMembers(ctx.organizationId);
     return NextResponse.json(members);
   } catch (err) {
-    return NextResponse.json(
-      orgContextErrorResponse(err).body,
-      { status: orgContextErrorResponse(err).status }
-    );
+    const response = orgContextErrorResponse(err);
+    return NextResponse.json(response.body, { status: response.status });
   }
 }
 
 export async function POST(req: Request) {
   try {
-    const reqContext = await requireAuthentication(req);
-    const ctx = await requireOrganization();
+    const ctx = await requireAuthentication(req);
     const body = await req.json().catch(() => ({}));
     const email = typeof body.email === "string" ? body.email.trim() : "";
     const roleKey = typeof body.role_key === "string" && body.role_key.trim()
@@ -38,8 +33,6 @@ export async function POST(req: Request) {
 
     const identity = await identityService.findByEmail(email);
 
-    // Existing OTTO identity: create an IAM-native membership. This is the
-    // canonical path for adding an existing user to another organisation.
     if (identity) {
       const membership = await membershipService.createMembership({
         organizationId: ctx.organizationId,
@@ -47,19 +40,19 @@ export async function POST(req: Request) {
         roleKey,
         isDefault: false,
         isOwner: false,
-        actorIdentityId: reqContext.identityId,
+        actorIdentityId: ctx.identityId,
       });
 
-      return NextResponse.json({
-        success: true,
-        message: "Member added",
-        membership,
-      }, { status: 201 });
+      return NextResponse.json(
+        {
+          success: true,
+          message: "Member added",
+          membership,
+        },
+        { status: 201 }
+      );
     }
 
-    // New identities must use the invitation workflow. Do not create a legacy
-    // tenant membership here; invitation delivery/acceptance is handled by
-    // the IAM invitation flow in the next RRM-003 increment.
     throw new IdentityError(
       "No OTTO account exists for this email. Use an invitation to add a new user.",
       404,
