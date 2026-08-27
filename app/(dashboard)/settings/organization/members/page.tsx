@@ -26,6 +26,11 @@ type Role = {
   memberCount: number;
 };
 
+type OrganizationContext = {
+  id?: string;
+  name?: string;
+};
+
 export default function OrgMembersPage() {
   const { isAuthenticated, loading: authLoading } = useAuth();
   const { currentOrg } = useOrg();
@@ -39,7 +44,8 @@ export default function OrgMembersPage() {
   const [message, setMessage] = useState("");
   const [savingRole, setSavingRole] = useState<string | null>(null);
   const [removing, setRemoving] = useState<string | null>(null);
-  const orgId = (currentOrg as { id?: string } | null)?.id;
+  const organization = currentOrg as OrganizationContext | null;
+  const orgId = organization?.id;
 
   const orgHeaders = useMemo<Record<string, string>>(() => {
     const headers: Record<string, string> = {};
@@ -150,7 +156,7 @@ export default function OrgMembersPage() {
         <div>
           <h1 className="text-2xl font-bold">Members</h1>
           <p className="text-sm text-white/50 mt-1">
-            Manage people, membership status, and organisation roles for {currentOrg?.name || "this organisation"}.
+            Manage people, membership status, and organisation roles for {organization?.name || "this organisation"}.
           </p>
         </div>
         <Link href="/settings/organization/invitations" className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-accent text-white text-sm font-semibold">
