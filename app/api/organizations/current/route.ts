@@ -52,18 +52,10 @@ export async function GET(req: Request) {
 
 export async function PUT(req: Request) {
   try {
-    const ctx = await requireAuthentication(req);
-
-    if (!ctx.organizationId) {
-      return NextResponse.json(
-        { error: "No active organisation" },
-        { status: 403 }
-      );
-    }
-
+    const ctx = await requireOrganization(req);
     const body = await req.json();
 
-    const name = typeof body.name === "string" ? body.name.trim() : "";
+    const name = typeof body.name === "string" ? body.name.trim() : undefined;
     const policies = body.policies && typeof body.policies === "object" ? body.policies : undefined;
     const mfaPolicy = typeof body.mfaPolicy === "string" ? body.mfaPolicy : undefined;
 
@@ -73,13 +65,15 @@ export async function PUT(req: Request) {
 
     const organization = await organizationService.update(
       ctx.organizationId,
-      { name: name || undefined, policies, mfaPolicy },
+      { name, policies, mfaPolicy },
       ctx.identityId
     );
 
     return NextResponse.json({
       ...organization,
       display_name: organization.name,
+      organizationId: ctx.organizationId,
+      dataScopeSource: "membership",
     });
   } catch (err) {
     return identityErrorResponse(err);
