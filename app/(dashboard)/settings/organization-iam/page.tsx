@@ -44,7 +44,9 @@ const tabs: { id: Tab; label: string; icon: any }[] = [
 
 export default function OrganizationIamSettingsPage() {
   const { user } = useAuth();
-  const { currentOrg, organizations, loading } = useOrg() as OrgContextValue;
+  const { currentOrg: rawCurrentOrg, organizations: rawOrganizations, loading } = useOrg() as unknown as OrgContextValue;
+  const currentOrg = rawCurrentOrg as Organization | null;
+  const organizations = rawOrganizations as Organization[];
   const [tab, setTab] = useState<Tab>("general");
   const [members, setMembers] = useState<Member[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
@@ -136,7 +138,6 @@ export default function OrganizationIamSettingsPage() {
       )}
 
       {tab === "roles" && <Card title={`Organization Roles (${roles.length})`}><div className="space-y-2">{roles.length === 0 ? <p className="text-sm text-text-secondary">No roles returned by IAM.</p> : roles.map((item) => <div key={item.id} className="flex items-center justify-between p-4 rounded-lg bg-white/5 border border-white/10"><span className="font-medium">{item.name}</span><span className="text-xs text-text-secondary">{item.key}</span></div>)}</div></Card>}
-
       {tab === "permissions" && <Placeholder title="Permissions" text="Permission evaluation is owned by the canonical IAM authorization layer. A dedicated settings editor is not exposed here yet." />}
       {tab === "integrations" && <Placeholder title="Integrations" text="Integration management is not part of the IAM organization boundary yet." />}
       {tab === "notifications" && <Placeholder title="Notifications" text="Organization notification preferences are not part of the IAM organization boundary yet." />}
