@@ -1,73 +1,73 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import {
-  orgContextErrorResponse,
+  organizationService,
   requireOrganization,
-} from "@/lib/auth/organization-context";
+  identityErrorResponse,
+} from "@/lib/platform/identity";
 
-export async function GET() {
+/**
+ * Compatibility adapter for the existing Organization Settings UI.
+ *
+ * Organisation identity and scope come from the canonical IAM context. The
+ * old implementation looked up a legacy tenant row, which could return
+ * "Organization not found" even when the authenticated user had a valid IAM
+ * organisation membership.
+ */
+export async function GET(req: Request) {
   try {
-    const ctx = await requireOrganization();
-    if (!ctx.tenantId) {
-      return NextResponse.json({ error: "No organization context" }, { status: 400 });
-    }
-
-    const org = await prisma.tenants.findUnique({
-      where: { id: ctx.tenantId },
-      include: {
-        _count: { select: { tenant_users: true } },
-        subscriptions: { include: { plans: true } },
-      },
-    });
-
-    if (!org) return NextResponse.json({ error: "Organization not found" }, { status: 404 });
+    const ctx = await requireOrganization(req);
+    const organization = await organizationService.get(ctx.organizationId);
 
     return NextResponse.json({
-      ...org,
+      ...organization,
+      display_name: organization.name,
+      legal_name: null,
+      org_type: null,
+      website: null,
+      email: null,
+      phone: null,
+      physical_address: null,
+      country: null,
+      province_state: null,
+      city: null,
+      currency: "USD",
+      timezone: "UTC",
+      tax_number: null,
+      registration_number: null,
       organizationId: ctx.organizationId,
-      dataScopeSource: ctx.dataScopeSource,
+      dataScopeSource: "membership",
     });
   } catch (err) {
-    const { body, status } = orgContextErrorResponse(err);
-    return NextResponse.json(body, { status });
+    return identityErrorResponse(err);
   }
 }
 
 export async function PUT(req: Request) {
   try {
-    const ctx = await requireOrganization();
-    if (!ctx.tenantId) {
-      return NextResponse.json({ error: "No organization context" }, { status: 400 });
-    }
-
+    const ctx = await requireOrganization(req);
     const body = await req.json();
 
-    const allowedFields = [
-      "name", "display_name", "legal_name", "org_type",
-      "website", "email", "phone", "physical_address",
-      "country", "province_state", "city",
-      "currency", "timezone", "tax_number", "registration_number",
-    ];
+    const name = typeof body.name === "string" ? body.name.trim() : undefined;
+    const policies = body.policies && typeof body.policies === "object" ? body.policies : undefined;
+    const mfaPolicy = typeof body.mfaPolicy === "string" ? body.mfaPolicy : undefined;
 
-    const updateData: any = {};
-    for (const field of allowedFields) {
-      if (body[field] !== undefined) {
-        updateData[field] = body[field];
-      }
+    if (!name && !policies && !mfaPolicy) {
+      return NextResponse.json({ error: "No supported fields to update" }, { status: 400 });
     }
 
-    if (Object.keys(updateData).length === 0) {
-      return NextResponse.json({ error: "No fields to update" }, { status: 400 });
-    }
+    const organization = await organizationService.update(
+      ctx.organizationId,
+      { name, policies, mfaPolicy },
+      ctx.identityId
+    );
 
-    const org = await prisma.tenants.update({
-      where: { id: ctx.tenantId },
-      data: updateData,
+    return NextResponse.json({
+      ...organization,
+      display_name: organization.name,
+      organizationId: ctx.organizationId,
+      dataScopeSource: "membership",
     });
-
-    return NextResponse.json(org);
   } catch (err) {
-    const { body, status } = orgContextErrorResponse(err);
-    return NextResponse.json(body, { status });
+    return identityErrorResponse(err);
   }
 }
