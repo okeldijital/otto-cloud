@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import {
   organizationService,
   requireAuthentication,
+  requireOrganization,
   identityErrorResponse,
 } from "@/lib/platform/identity";
 
