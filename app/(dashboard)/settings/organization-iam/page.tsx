@@ -10,8 +10,26 @@ import Badge from "@/components/ui/Badge";
 import { Building2, Users, Shield, Key, Globe, Bell, CreditCard, Lock } from "lucide-react";
 
 type Tab = "general" | "team" | "roles" | "permissions" | "integrations" | "notifications" | "billing" | "security";
+type Organization = {
+  id: string;
+  name: string;
+  slug?: string | null;
+  status?: string | null;
+  role?: string | null;
+  isDefault?: boolean;
+  isOwner?: boolean;
+  membershipStatus?: string | null;
+  ownerIdentityId?: string | null;
+  mfaPolicy?: string | null;
+  roleVersion?: number | string | null;
+};
 type Member = { id: string; identityId?: string; email?: string; displayName?: string | null; status: string; roleKey?: string | null; isOwner?: boolean };
 type Role = { id: string; key: string; name: string };
+type OrgContextValue = {
+  organizations: Organization[];
+  currentOrg: Organization | null;
+  loading: boolean;
+};
 
 const tabs: { id: Tab; label: string; icon: any }[] = [
   { id: "general", label: "General", icon: Building2 },
@@ -26,7 +44,7 @@ const tabs: { id: Tab; label: string; icon: any }[] = [
 
 export default function OrganizationIamSettingsPage() {
   const { user } = useAuth();
-  const { currentOrg, organizations, loading } = useOrg();
+  const { currentOrg, organizations, loading } = useOrg() as OrgContextValue;
   const [tab, setTab] = useState<Tab>("general");
   const [members, setMembers] = useState<Member[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
@@ -50,11 +68,7 @@ export default function OrganizationIamSettingsPage() {
       .catch((err) => setError(err.message || "Failed to load organization data"));
   }, [currentOrg?.id]);
 
-  const role = useMemo(() => {
-    const fromMembership = (currentOrg as any)?.role;
-    if (fromMembership) return fromMembership;
-    return user?.role || "user";
-  }, [currentOrg, user]);
+  const role = useMemo(() => currentOrg?.role || user?.role || "user", [currentOrg?.role, user]);
 
   if (loading) return <div className="p-12 text-center text-text-secondary">Loading organization...</div>;
   if (!currentOrg) return <div className="p-12 text-center text-text-secondary">No active organization.</div>;
@@ -90,8 +104,8 @@ export default function OrganizationIamSettingsPage() {
             <div className="space-y-3">
               <Row label="User" value={user?.full_name || user?.email || "—"} />
               <Row label="Role" value={role} />
-              <Row label="Membership" value={(currentOrg as any).membershipStatus || "active"} />
-              <Row label="Owner" value={(currentOrg as any).isOwner ? "Yes" : "No"} />
+              <Row label="Membership" value={currentOrg.membershipStatus || "active"} />
+              <Row label="Owner" value={currentOrg.isOwner ? "Yes" : "No"} />
             </div>
           </Card>
           <Card title="Organization Context">
@@ -113,7 +127,7 @@ export default function OrganizationIamSettingsPage() {
           {members.length === 0 ? <p className="text-sm text-text-secondary">No members returned by the canonical IAM membership service.</p> : (
             <div className="space-y-2">{members.map((member) => (
               <div key={member.id} className="flex items-center justify-between gap-4 p-4 rounded-lg bg-white/5 border border-white/10">
-                <div><div className="font-medium">{member.displayName || member.email || member.identityId}</div><div className="text-xs text-text-secondary">{member.email || "—"} · {member.status}</div></div>
+                <div><div className="font-medium">{member.displayName || member.email || member.identityId || "—"}</div><div className="text-xs text-text-secondary">{member.email || "—"} · {member.status}</div></div>
                 <Badge variant="primary" size="sm">{member.isOwner ? "Owner" : member.roleKey || "member"}</Badge>
               </div>
             ))}</div>
@@ -127,7 +141,7 @@ export default function OrganizationIamSettingsPage() {
       {tab === "integrations" && <Placeholder title="Integrations" text="Integration management is not part of the IAM organization boundary yet." />}
       {tab === "notifications" && <Placeholder title="Notifications" text="Organization notification preferences are not part of the IAM organization boundary yet." />}
       {tab === "billing" && <Placeholder title="Billing" text="Subscription and billing data is not provided by the IAM organization service." />}
-      {tab === "security" && <Card title="Organization Security"><div className="space-y-3"><Row label="Owner identity" value={(currentOrg as any).ownerIdentityId || "—"} mono /><Row label="Organization ID" value={currentOrg.id} mono /><Row label="MFA policy" value={(currentOrg as any).mfaPolicy || "—"} /><Row label="Role version" value={String((currentOrg as any).roleVersion ?? "—")} /></div></Card>}
+      {tab === "security" && <Card title="Organization Security"><div className="space-y-3"><Row label="Owner identity" value={currentOrg.ownerIdentityId || "—"} mono /><Row label="Organization ID" value={currentOrg.id} mono /><Row label="MFA policy" value={currentOrg.mfaPolicy || "—"} /><Row label="Role version" value={String(currentOrg.roleVersion ?? "—")} /></div></Card>}
     </div>
   );
 }
