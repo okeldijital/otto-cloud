@@ -1,7 +1,6 @@
 "use client";
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import api from "@/lib/api";
 
 const OrgContext = createContext({
   organizations: [],
@@ -22,29 +21,22 @@ export function OrgProvider({ children }) {
   const refreshOrgs = useCallback(async () => {
     setLoading(true);
     try {
-      const iamRes = await fetch("/api/auth/organizations", { credentials: "include" });
-      if (iamRes.ok) {
-        const data = await iamRes.json();
-        const orgs = (data.organizations || []).map((o) => ({
-          id: o.id,
-          name: o.name,
-          slug: o.slug,
-          status: o.status,
-          role: o.role,
-          isDefault: o.isDefault,
-          isOwner: o.isOwner,
-          membershipStatus: o.membershipStatus,
-        }));
-        const nextActiveId = data.activeOrganizationId || activeOrgId || orgs.find((o) => o.isDefault)?.id || orgs[0]?.id || null;
-        setOrganizations(orgs);
-        setActiveOrgId(nextActiveId);
-        setCurrentOrg(orgs.find((o) => o.id === nextActiveId) || null);
-        return;
-      }
+      const res = await fetch("/api/auth/organizations", { credentials: "include" });
+      if (!res.ok) throw new Error(`Unable to load organizations (${res.status})`);
 
-      const res = await api.get("/organizations");
-      const orgs = Array.isArray(res.data) ? res.data : [];
-      const nextActiveId = activeOrgId || orgs[0]?.id || null;
+      const data = await res.json();
+      const orgs = (data.organizations || []).map((o) => ({
+        id: o.id,
+        name: o.name,
+        slug: o.slug,
+        status: o.status,
+        role: o.role,
+        isDefault: o.isDefault,
+        isOwner: o.isOwner,
+        membershipStatus: o.membershipStatus,
+      }));
+      const nextActiveId = data.activeOrganizationId || activeOrgId || orgs.find((o) => o.isDefault)?.id || orgs[0]?.id || null;
+
       setOrganizations(orgs);
       setActiveOrgId(nextActiveId);
       setCurrentOrg(orgs.find((o) => o.id === nextActiveId) || null);
@@ -77,9 +69,8 @@ export function OrgProvider({ children }) {
         body: JSON.stringify({ organizationId: orgId }),
       });
       if (!res.ok) return false;
-      const org = organizations.find((o) => o.id === orgId) || null;
       setActiveOrgId(orgId);
-      setCurrentOrg(org);
+      setCurrentOrg(organizations.find((o) => o.id === orgId) || null);
       await refreshUser?.();
       await refreshOrgs();
       return true;
