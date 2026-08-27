@@ -6,6 +6,7 @@ const OrgContext = createContext({
   organizations: [],
   currentOrg: null,
   loading: true,
+  error: null,
   switchOrg: async () => false,
   refreshOrgs: async () => {},
   currentOrgId: null,
@@ -17,14 +18,23 @@ export function OrgProvider({ children }) {
   const [currentOrg, setCurrentOrg] = useState(null);
   const [activeOrgId, setActiveOrgId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const refreshOrgs = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
-      const res = await fetch("/api/auth/organizations", { credentials: "include" });
-      if (!res.ok) throw new Error(`Unable to load organizations (${res.status})`);
+      const res = await fetch("/api/auth/organizations", {
+        credentials: "include",
+        cache: "no-store",
+      });
+      const data = await res.json().catch(() => ({}));
 
-      const data = await res.json();
+      if (!res.ok) {
+        const message = data?.error || data?.message || `Unable to load organizations (${res.status})`;
+        throw new Error(`${res.status}: ${message}`);
+      }
+
       const orgs = (data.organizations || []).map((o) => ({
         id: o.id,
         name: o.name,
@@ -40,10 +50,11 @@ export function OrgProvider({ children }) {
       setOrganizations(orgs);
       setActiveOrgId(nextActiveId);
       setCurrentOrg(orgs.find((o) => o.id === nextActiveId) || null);
-    } catch {
+    } catch (err) {
       setOrganizations([]);
       setCurrentOrg(null);
       setActiveOrgId(null);
+      setError(err instanceof Error ? err.message : "Unable to load organizations");
     } finally {
       setLoading(false);
     }
@@ -55,6 +66,7 @@ export function OrgProvider({ children }) {
       setOrganizations([]);
       setCurrentOrg(null);
       setActiveOrgId(null);
+      setError(null);
       setLoading(false);
     }
   }, [isAuthenticated, refreshOrgs]);
@@ -84,6 +96,7 @@ export function OrgProvider({ children }) {
       organizations,
       currentOrg,
       loading,
+      error,
       switchOrg,
       refreshOrgs,
       currentOrgId: activeOrgId,
