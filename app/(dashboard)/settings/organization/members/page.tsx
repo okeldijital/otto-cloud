@@ -20,16 +20,19 @@ export default function OrgMembersPage() {
   const [savingRole, setSavingRole] = useState<string | null>(null);
   const orgId = (currentOrg as { id?: string } | null)?.id;
 
+  const orgHeaders = orgId ? { "x-organization-id": orgId } : {};
+
   const load = async () => {
     if (!orgId) return;
+    setError("");
     const [membersRes, rolesRes] = await Promise.all([
-      fetch("/api/organizations/members", { credentials: "include" }),
-      fetch("/api/auth/organizations/roles", { credentials: "include" }),
+      fetch("/api/organizations/members", { credentials: "include", headers: orgHeaders, cache: "no-store" }),
+      fetch("/api/auth/organizations/roles", { credentials: "include", headers: orgHeaders, cache: "no-store" }),
     ]);
     const membersData = await membersRes.json().catch(() => ({}));
     const rolesData = await rolesRes.json().catch(() => ({}));
-    if (!membersRes.ok) return setError(membersData.error || "Failed to load members");
-    if (!rolesRes.ok) return setError(rolesData.error || "Failed to load roles");
+    if (!membersRes.ok) return setError(`${membersRes.status}: ${membersData.error || "Failed to load members"}`);
+    if (!rolesRes.ok) return setError(`${rolesRes.status}: ${rolesData.error || "Failed to load roles"}`);
     setMembers(Array.isArray(membersData) ? membersData : membersData.members || []);
     setRoles((rolesData.roles || []).filter((r: Role) => r.key !== "owner" && r.key !== "org_admin"));
   };
@@ -43,20 +46,20 @@ export default function OrgMembersPage() {
     setSavingRole(identityId); setError(""); setMessage("");
     try {
       const res = await fetch("/api/organizations/members", {
-        method: "PATCH", credentials: "include", headers: { "Content-Type": "application/json" },
+        method: "PATCH", credentials: "include", headers: { "Content-Type": "application/json", ...orgHeaders },
         body: JSON.stringify({ identity_id: identityId, role_key: roleKey }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) { setError(data.error || "Unable to change role"); return; }
+      if (!res.ok) { setError(`${res.status}: ${data.error || "Unable to change role"}`); return; }
       setMessage("Role updated."); await load();
     } finally { setSavingRole(null); }
   };
 
   const remove = async (identityId: string) => {
     if (!window.confirm("Remove this member from the organisation?")) return;
-    const res = await fetch(`/api/organizations/members?identity_id=${encodeURIComponent(identityId)}`, { method: "DELETE", credentials: "include" });
+    const res = await fetch(`/api/organizations/members?identity_id=${encodeURIComponent(identityId)}`, { method: "DELETE", credentials: "include", headers: orgHeaders });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) { setError(data.error || "Unable to remove member"); return; }
+    if (!res.ok) { setError(`${res.status}: ${data.error || "Unable to remove member"}`); return; }
     await load();
   };
 
@@ -69,6 +72,7 @@ export default function OrgMembersPage() {
       {error && <p className="text-sm text-danger">{error}</p>}
       {message && <p className="text-sm text-green-400">{message}</p>}
       <div className="space-y-2">
+        {members.length === 0 && !error && <div className="p-6 rounded-lg bg-white/5 border border-white/10 text-sm text-white/50">No members found for this organisation.</div>}
         {members.map((m) => (
           <div key={m.id} className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-lg bg-white/5 border border-white/10">
             <div className="min-w-0"><div className="font-medium truncate">{m.displayName || m.email || m.identityId}{m.isOwner ? " · Owner" : ""}</div><div className="text-xs text-white/40 mt-1">{m.email} · {m.status}</div></div>
