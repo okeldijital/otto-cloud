@@ -20,7 +20,7 @@ export default function OrgMembersPage() {
   const [savingRole, setSavingRole] = useState<string | null>(null);
   const orgId = (currentOrg as { id?: string } | null)?.id;
 
-  const orgHeaders = orgId ? { "x-organization-id": orgId } : {};
+  const orgHeaders: Record<string, string> = orgId ? { "x-organization-id": orgId } : {};
 
   const load = async () => {
     if (!orgId) return;
