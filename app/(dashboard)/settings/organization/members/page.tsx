@@ -41,10 +41,11 @@ export default function OrgMembersPage() {
   const [removing, setRemoving] = useState<string | null>(null);
   const orgId = (currentOrg as { id?: string } | null)?.id;
 
-  const orgHeaders = useMemo<Record<string, string>>(
-    () => (orgId ? { "x-organization-id": orgId } : {}),
-    [orgId],
-  );
+  const orgHeaders = useMemo<Record<string, string>>(() => {
+    const headers: Record<string, string> = {};
+    if (orgId) headers["x-organization-id"] = orgId;
+    return headers;
+  }, [orgId]);
 
   const loadMembers = useCallback(async () => {
     if (!orgId) return;
