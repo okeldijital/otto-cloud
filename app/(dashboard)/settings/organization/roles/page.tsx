@@ -23,11 +23,13 @@ export default function OrgRolesPage() {
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const orgId = (currentOrg as { id?: string } | null)?.id;
-  const orgHeaders = useMemo<Record<string, string>>(
-    () => (orgId ? { "x-organization-id": orgId } : {}),
-    [orgId],
-  );
+  const organization = currentOrg as { id?: string; name?: string } | null;
+  const orgId = organization?.id;
+  const orgHeaders = useMemo<Record<string, string>>(() => {
+    const headers: Record<string, string> = {};
+    if (orgId) headers["x-organization-id"] = orgId;
+    return headers;
+  }, [orgId]);
 
   const loadRoles = useCallback(async () => {
     if (!orgId) return;
@@ -63,7 +65,7 @@ export default function OrgRolesPage() {
         <div>
           <h1 className="text-2xl font-bold">Roles & permissions</h1>
           <p className="text-sm text-white/50 mt-1">
-            Review the roles available to {currentOrg?.name || "this organisation"} and the permissions assigned to each role.
+            Review the roles available to {organization?.name || "this organisation"} and the permissions assigned to each role.
           </p>
         </div>
         <div className="flex items-center gap-4">
