@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useOrg } from "@/contexts/OrgContext";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 type Role = {
+  id: string;
   key: string;
   name: string;
   isSystem: boolean;
@@ -16,56 +18,94 @@ type Role = {
 
 export default function OrgRolesPage() {
   const { isAuthenticated, loading: authLoading } = useAuth();
+  const { currentOrg } = useOrg();
   const router = useRouter();
   const [roles, setRoles] = useState<Role[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const orgId = (currentOrg as { id?: string } | null)?.id;
+  const orgHeaders = useMemo<Record<string, string>>(
+    () => (orgId ? { "x-organization-id": orgId } : {}),
+    [orgId],
+  );
+
+  const loadRoles = useCallback(async () => {
+    if (!orgId) return;
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/auth/organizations/roles", {
+        credentials: "include",
+        headers: orgHeaders,
+        cache: "no-store",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(`${res.status}: ${data.error || "Failed to load roles"}`);
+      setRoles(Array.isArray(data.roles) ? data.roles : []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load roles");
+    } finally {
+      setLoading(false);
+    }
+  }, [orgId, orgHeaders]);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       router.push("/auth/login");
       return;
     }
-    if (isAuthenticated) {
-      fetch("/api/auth/organizations/roles", { credentials: "include" })
-        .then(async (res) => {
-          const data = await res.json().catch(() => ({}));
-          if (!res.ok) setError(data.error || "Failed to load roles");
-          else setRoles(data.roles || []);
-        })
-        .catch(() => setError("Failed to load roles"));
-    }
-  }, [isAuthenticated, authLoading, router]);
+    if (isAuthenticated && orgId) void loadRoles();
+  }, [authLoading, isAuthenticated, orgId, router, loadRoles]);
 
   return (
-    <div className="p-8 max-w-3xl mx-auto space-y-6 text-white">
-      <div className="flex justify-between">
-        <h1 className="text-2xl font-bold">Roles & permissions</h1>
-        <Link href="/settings/organization" className="text-sm text-white/50 underline">
-          Organization
-        </Link>
-      </div>
-      {error && <p className="text-sm text-danger">{error}</p>}
-      <ul className="space-y-3">
-        {roles.map((r) => (
-          <li
-            key={r.key}
-            className="p-4 rounded-xl bg-white/5 border border-white/10"
-          >
-            <div className="font-medium">
-              {r.name}{" "}
-              <span className="text-xs text-white/40">({r.key})</span>
-              {r.isSystem ? " · system" : ""}
-            </div>
-            <div className="text-xs text-white/50 mt-1">
-              {r.memberCount} members · {r.permissionCount} permissions
-            </div>
-            <div className="text-xs text-white/30 mt-2 font-mono break-all">
-              {r.permissions.slice(0, 12).join(", ")}
-              {r.permissions.length > 12 ? "…" : ""}
-            </div>
-          </li>
-        ))}
-      </ul>
+    <div className="p-8 max-w-5xl mx-auto space-y-8 text-white">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Roles & permissions</h1>
+          <p className="text-sm text-white/50 mt-1">
+            Review the roles available to {currentOrg?.name || "this organisation"} and the permissions assigned to each role.
+          </p>
+        </div>
+        <div className="flex items-center gap-4">
+          <button onClick={() => void loadRoles()} disabled={loading} className="text-sm text-white/60 underline disabled:opacity-40">Refresh</button>
+          <Link href="/settings/organization/members" className="text-sm text-white/50 underline">Members</Link>
+        </div>
+      </header>
+
+      {error && <div className="p-4 rounded-lg bg-danger/5 border border-danger/20 text-sm text-danger">{error}</div>}
+
+      {loading ? (
+        <div className="p-8 rounded-xl border border-white/10 text-sm text-white/40">Loading roles…</div>
+      ) : roles.length === 0 && !error ? (
+        <div className="p-8 rounded-xl border border-white/10 text-sm text-white/50">No roles are configured for this organisation.</div>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2">
+          {roles.map((role) => (
+            <article key={role.id} className="rounded-xl bg-white/5 border border-white/10 overflow-hidden">
+              <div className="p-5 border-b border-white/10">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h2 className="font-semibold">{role.name}</h2>
+                    <div className="text-xs text-white/40 mt-1 font-mono">{role.key}</div>
+                  </div>
+                  {role.isSystem && <span className="text-[10px] uppercase tracking-wide text-white/40 border border-white/10 rounded-full px-2 py-1">System role</span>}
+                </div>
+                <div className="text-xs text-white/50 mt-4">{role.memberCount} member{role.memberCount === 1 ? "" : "s"} · {role.permissionCount} permissions</div>
+              </div>
+              <div className="p-5">
+                <h3 className="text-xs uppercase tracking-wide text-white/40 mb-3">Permissions</h3>
+                <div className="flex flex-wrap gap-2">
+                  {role.permissions.map((permission) => (
+                    <span key={permission} className="text-[11px] rounded-md bg-white/5 border border-white/10 px-2 py-1 font-mono text-white/60">
+                      {permission}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
