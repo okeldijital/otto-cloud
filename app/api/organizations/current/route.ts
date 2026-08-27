@@ -16,6 +16,14 @@ import {
 export async function GET(req: Request) {
   try {
     const ctx = await requireAuthentication(req);
+
+    if (!ctx.organizationId) {
+      return NextResponse.json(
+        { error: "No active organisation" },
+        { status: 403 }
+      );
+    }
+
     const organization = await organizationService.get(ctx.organizationId);
 
     return NextResponse.json({
@@ -45,6 +53,14 @@ export async function GET(req: Request) {
 export async function PUT(req: Request) {
   try {
     const ctx = await requireAuthentication(req);
+
+    if (!ctx.organizationId) {
+      return NextResponse.json(
+        { error: "No active organisation" },
+        { status: 403 }
+      );
+    }
+
     const body = await req.json();
 
     const name = typeof body.name === "string" ? body.name.trim() : "";
