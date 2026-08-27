@@ -33,16 +33,17 @@ export default function OrganizationIamSettingsPage() {
 
   useEffect(() => {
     if (!currentOrg?.id) return;
+    const headers: Record<string, string> = { "x-organization-id": currentOrg.id };
     setError("");
     Promise.all([
-      fetch("/api/auth/organizations/members", { credentials: "include", cache: "no-store" }),
-      fetch("/api/auth/organizations/roles", { credentials: "include", cache: "no-store" }),
+      fetch("/api/auth/organizations/members", { credentials: "include", cache: "no-store", headers }),
+      fetch("/api/auth/organizations/roles", { credentials: "include", cache: "no-store", headers }),
     ])
       .then(async ([membersRes, rolesRes]) => {
         const membersData = await membersRes.json().catch(() => ({}));
         const rolesData = await rolesRes.json().catch(() => ({}));
-        if (!membersRes.ok) throw new Error(membersData.error || "Failed to load members");
-        if (!rolesRes.ok) throw new Error(rolesData.error || "Failed to load roles");
+        if (!membersRes.ok) throw new Error(membersData.error || `Failed to load members (${membersRes.status})`);
+        if (!rolesRes.ok) throw new Error(rolesData.error || `Failed to load roles (${rolesRes.status})`);
         setMembers(Array.isArray(membersData) ? membersData : membersData.members || []);
         setRoles(Array.isArray(rolesData) ? rolesData : rolesData.roles || []);
       })
@@ -50,7 +51,6 @@ export default function OrganizationIamSettingsPage() {
   }, [currentOrg?.id]);
 
   const role = user?.role || currentOrg?.role || "user";
-
   if (loading) return <div className="p-12 text-center text-text-secondary">Loading organization...</div>;
   if (!currentOrg) return <div className="p-12 text-center text-text-secondary">No active organization.</div>;
 
