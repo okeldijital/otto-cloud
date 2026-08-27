@@ -11,10 +11,9 @@ import { Building2, Users, Shield, Key, Globe, Bell, CreditCard, Lock } from "lu
 
 type Tab = "general" | "team" | "roles" | "permissions" | "integrations" | "notifications" | "billing" | "security";
 type Organization = { id: string; name: string; slug?: string | null; status?: string | null; role?: string | null; isDefault?: boolean; isOwner?: boolean; membershipStatus?: string | null; ownerIdentityId?: string | null; mfaPolicy?: string | null; roleVersion?: number | string | null };
-type Member = { id: string; identityId?: string; email?: string; displayName?: string | null; status: string; roleKey?: string | null; isOwner?: boolean };
-type Role = { id: string; key: string; name: string };
+type Member = { identityId: string; email?: string; displayName?: string | null; membershipStatus: string; role?: string | null; roleName?: string | null; isDefault?: boolean; isOwner?: boolean };
+type Role = { id: string; key: string; name: string; isSystem?: boolean; permissionCount?: number; memberCount?: number };
 type OrgContextValue = { organizations: Organization[]; currentOrg: Organization | null; loading: boolean };
-
 type AuthUser = { full_name?: string | null; email?: string | null; role?: string | null };
 
 const tabs: { id: Tab; label: string; icon: any }[] = [
@@ -36,8 +35,8 @@ export default function OrganizationIamSettingsPage() {
     if (!currentOrg?.id) return;
     setError("");
     Promise.all([
-      fetch("/api/organizations/members", { credentials: "include" }),
-      fetch("/api/auth/organizations/roles", { credentials: "include" }),
+      fetch("/api/auth/organizations/members", { credentials: "include", cache: "no-store" }),
+      fetch("/api/auth/organizations/roles", { credentials: "include", cache: "no-store" }),
     ])
       .then(async ([membersRes, rolesRes]) => {
         const membersData = await membersRes.json().catch(() => ({}));
@@ -45,7 +44,7 @@ export default function OrganizationIamSettingsPage() {
         if (!membersRes.ok) throw new Error(membersData.error || "Failed to load members");
         if (!rolesRes.ok) throw new Error(rolesData.error || "Failed to load roles");
         setMembers(Array.isArray(membersData) ? membersData : membersData.members || []);
-        setRoles(rolesData.roles || []);
+        setRoles(Array.isArray(rolesData) ? rolesData : rolesData.roles || []);
       })
       .catch((err) => setError(err.message || "Failed to load organization data"));
   }, [currentOrg?.id]);
@@ -67,8 +66,8 @@ export default function OrganizationIamSettingsPage() {
         <Card title="Your Membership"><div className="space-y-3"><Row label="User" value={user?.full_name || user?.email || "—"} /><Row label="Role" value={role} /><Row label="Membership" value={currentOrg.membershipStatus || "active"} /><Row label="Owner" value={currentOrg.isOwner ? "Yes" : "No"} /></div></Card>
         <Card title="Organization Context"><div className="space-y-3"><Row label="Available organizations" value={String(organizations.length)} /><Row label="Members" value={String(members.length)} /><Row label="Active organization" value={currentOrg.name} /><p className="text-xs text-text-secondary pt-2">This surface is sourced from the canonical IAM organisation and membership context.</p></div></Card>
       </div>}
-      {tab === "team" && <Card title={`Team Members (${members.length})`}><div className="flex justify-end mb-4"><Link href="/settings/organization/invitations" className="px-4 py-2 rounded-lg bg-accent text-white text-sm font-semibold">Manage invitations</Link></div>{members.length === 0 ? <p className="text-sm text-text-secondary">No members returned by the canonical IAM membership service.</p> : <div className="space-y-2">{members.map((member) => <div key={member.id} className="flex items-center justify-between gap-4 p-4 rounded-lg bg-white/5 border border-white/10"><div><div className="font-medium">{member.displayName || member.email || member.identityId || "—"}</div><div className="text-xs text-text-secondary">{member.email || "—"} · {member.status}</div></div><Badge variant="primary" size="sm">{member.isOwner ? "Owner" : member.roleKey || "member"}</Badge></div>)}</div>}</Card>}
-      {tab === "roles" && <Card title={`Organization Roles (${roles.length})`}><div className="space-y-2">{roles.length === 0 ? <p className="text-sm text-text-secondary">No roles returned by IAM.</p> : roles.map((item) => <div key={item.id} className="flex items-center justify-between p-4 rounded-lg bg-white/5 border border-white/10"><span className="font-medium">{item.name}</span><span className="text-xs text-text-secondary">{item.key}</span></div>)}</div></Card>}
+      {tab === "team" && <Card title={`Team Members (${members.length})`}><div className="flex justify-end mb-4"><Link href="/settings/organization/invitations" className="px-4 py-2 rounded-lg bg-accent text-white text-sm font-semibold">Manage invitations</Link></div>{members.length === 0 ? <p className="text-sm text-text-secondary">No members returned by the canonical IAM membership service.</p> : <div className="space-y-2">{members.map((member) => <div key={member.identityId} className="flex items-center justify-between gap-4 p-4 rounded-lg bg-white/5 border border-white/10"><div><div className="font-medium">{member.displayName || member.email || member.identityId}</div><div className="text-xs text-text-secondary">{member.email || "—"} · {member.membershipStatus}</div></div><Badge variant="primary" size="sm">{member.isOwner ? "Owner" : member.roleName || member.role || "member"}</Badge></div>)}</div>}</Card>}
+      {tab === "roles" && <Card title={`Organization Roles (${roles.length})`}><div className="space-y-2">{roles.length === 0 ? <p className="text-sm text-text-secondary">No roles returned by IAM.</p> : roles.map((item) => <div key={item.id} className="flex items-center justify-between p-4 rounded-lg bg-white/5 border border-white/10"><div><span className="font-medium">{item.name}</span><span className="ml-2 text-xs text-text-secondary">{item.key}</span></div><span className="text-xs text-text-secondary">{item.isSystem ? "System" : "Custom"} · {item.memberCount ?? 0} members</span></div>)}</div></Card>}
       {tab === "permissions" && <Placeholder title="Permissions" text="Permission evaluation is owned by the canonical IAM authorization layer. A dedicated settings editor is not exposed here yet." />}
       {tab === "integrations" && <Placeholder title="Integrations" text="Integration management is not part of the IAM organization boundary yet." />}
       {tab === "notifications" && <Placeholder title="Notifications" text="Organization notification preferences are not part of the IAM organization boundary yet." />}
