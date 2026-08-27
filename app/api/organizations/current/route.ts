@@ -1,21 +1,29 @@
 import { NextResponse } from "next/server";
 import {
   organizationService,
-  requireOrganization,
+  requireAuthentication,
   identityErrorResponse,
 } from "@/lib/platform/identity";
 
 /**
  * Compatibility adapter for the existing Organization Settings UI.
  *
- * Organisation identity and scope come from the canonical IAM context. The
- * old implementation looked up a legacy tenant row, which could return
- * "Organization not found" even when the authenticated user had a valid IAM
- * organisation membership.
+ * The UI route remains /api/organizations/current, but organisation identity
+ * and scope are now resolved exclusively through the canonical IAM service.
+ * This prevents the settings surface from falling back to the legacy tenants
+ * table when the active IAM organisation has no legacy tenant row.
  */
 export async function GET(req: Request) {
   try {
-    const ctx = await requireOrganization(req);
+    const ctx = await requireAuthentication(req);
+
+    if (!ctx.organizationId) {
+      return NextResponse.json(
+        { error: "No active organisation" },
+        { status: 403 }
+      );
+    }
+
     const organization = await organizationService.get(ctx.organizationId);
 
     return NextResponse.json({
