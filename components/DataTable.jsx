@@ -14,29 +14,21 @@ const DataTable = ({ columns, data, onEdit, onDelete, isLoading, onRowClick }) =
     };
 
     const sortedData = useMemo(() => {
-        let sortableItems = [...(data || [])];
+        const sortableItems = [...(data || [])];
         if (sortConfig !== null) {
             sortableItems.sort((a, b) => {
                 const aValue = a[sortConfig.key];
                 const bValue = b[sortConfig.key];
-
                 if (aValue === bValue) return 0;
                 if (aValue === null || aValue === undefined) return 1;
                 if (bValue === null || bValue === undefined) return -1;
-
                 if (typeof aValue === 'number' && typeof bValue === 'number') {
                     return sortConfig.direction === 'ascending' ? aValue - bValue : bValue - aValue;
                 }
-
                 const aStr = String(aValue).toLowerCase();
                 const bStr = String(bValue).toLowerCase();
-
-                if (aStr < bStr) {
-                    return sortConfig.direction === 'ascending' ? -1 : 1;
-                }
-                if (aStr > bStr) {
-                    return sortConfig.direction === 'ascending' ? 1 : -1;
-                }
+                if (aStr < bStr) return sortConfig.direction === 'ascending' ? -1 : 1;
+                if (aStr > bStr) return sortConfig.direction === 'ascending' ? 1 : -1;
                 return 0;
             });
         }
@@ -45,27 +37,23 @@ const DataTable = ({ columns, data, onEdit, onDelete, isLoading, onRowClick }) =
 
     if (isLoading) {
         return (
-            <div className="bg-premium-glass border border-border rounded-xl shadow-glass overflow-hidden backdrop-blur-xl">
+            <div className="overflow-hidden rounded-lg border border-border bg-surface">
                 <table className="w-full border-collapse">
-                    <thead className="bg-surface">
+                    <thead className="bg-surface-elevated">
                         <tr>
                             {columns.map((col, index) => (
-                                <th key={index} className="px-lg py-5 text-left text-2xs font-bold text-text-secondary uppercase tracking-widest border-b border-border">{col.label}</th>
+                                <th key={index} className="border-b border-border px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-text-secondary">{col.label}</th>
                             ))}
-                            <th className="px-lg py-5 text-left text-2xs font-bold text-text-secondary uppercase tracking-widest border-b border-border">Actions</th>
+                            <th className="border-b border-border px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-text-secondary">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {[...Array(5)].map((_, index) => (
                             <tr key={index} className="border-b border-border last:border-0">
                                 {columns.map((col, cIndex) => (
-                                    <td key={cIndex} className="px-lg py-5">
-                                        <Skeleton />
-                                    </td>
+                                    <td key={cIndex} className="px-4 py-4"><Skeleton /></td>
                                 ))}
-                                <td className="px-lg py-5">
-                                    <Skeleton width="60px" />
-                                </td>
+                                <td className="px-4 py-4"><Skeleton width="60px" /></td>
                             </tr>
                         ))}
                     </tbody>
@@ -76,7 +64,7 @@ const DataTable = ({ columns, data, onEdit, onDelete, isLoading, onRowClick }) =
 
     if (!data || data.length === 0) {
         return (
-            <div className="bg-premium-glass border border-border rounded-xl py-16 text-center text-text-secondary text-small backdrop-blur-xl">
+            <div className="rounded-lg border border-border bg-surface px-6 py-16 text-center text-sm text-text-secondary">
                 No records found.
             </div>
         );
@@ -85,63 +73,50 @@ const DataTable = ({ columns, data, onEdit, onDelete, isLoading, onRowClick }) =
     const renderSortIcon = (col) => {
         if (!col.sortable) return null;
         if (!sortConfig || sortConfig.key !== col.key) {
-            return <ArrowUpDown size={12} className="ml-2 text-text-secondary opacity-30" />;
+            return <ArrowUpDown size={12} className="ml-2 text-text-secondary/60" />;
         }
-        return sortConfig.direction === 'ascending' ?
-            <ArrowUp size={12} className="ml-2 text-accent" /> :
-            <ArrowDown size={12} className="ml-2 text-accent" />;
+        return sortConfig.direction === 'ascending'
+            ? <ArrowUp size={12} className="ml-2 text-accent" />
+            : <ArrowDown size={12} className="ml-2 text-accent" />;
     };
 
     return (
-        <div className="bg-premium-glass border border-border rounded-xl shadow-glass overflow-hidden backdrop-blur-xl">
+        <div className="overflow-hidden rounded-lg border border-border bg-surface">
             <div className="overflow-x-auto">
                 <table className="w-full border-collapse">
-                    <thead className="bg-surface">
+                    <thead className="bg-surface-elevated">
                         <tr>
                             {columns.map((col, index) => (
                                 <th
                                     key={col.key || index}
                                     onClick={() => col.sortable && handleSort(col.key)}
-                                    className={`px-lg py-5 text-left text-2xs font-bold text-text-secondary uppercase tracking-widest border-b border-border transition-colors ${col.sortable ? 'cursor-pointer hover:text-text-primary select-none' : 'cursor-default'}`}
+                                    className={`border-b border-border px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-text-secondary ${col.sortable ? 'cursor-pointer select-none hover:text-text-primary' : ''}`}
                                 >
-                                    <div className="flex items-center">
-                                        {col.label}
-                                        {renderSortIcon(col)}
-                                    </div>
+                                    <div className="flex items-center">{col.label}{renderSortIcon(col)}</div>
                                 </th>
                             ))}
-                            <th className="px-lg py-5 text-left text-2xs font-bold text-text-secondary uppercase tracking-widest border-b border-border w-[100px]">Actions</th>
+                            <th className="w-[100px] border-b border-border px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-text-secondary">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {sortedData.map((row, index) => (
                             <tr
                                 key={row.id || index}
-                                className={`border-b border-border last:border-0 hover:bg-surface-elevated transition-colors group ${onRowClick ? 'cursor-pointer' : ''}`}
+                                className={`border-b border-border last:border-0 transition-colors hover:bg-surface-elevated/70 ${onRowClick ? 'cursor-pointer' : ''}`}
                                 onClick={() => onRowClick?.(row)}
                             >
                                 {columns.map((col, cIndex) => (
-                                    <td key={`${row.id}-${cIndex}`} className="px-lg py-5 text-small text-text-primary font-medium">
+                                    <td key={`${row.id}-${cIndex}`} className="px-4 py-4 text-sm font-medium text-text-primary">
                                         {col.render ? col.render(row) : row[col.key]}
                                     </td>
                                 ))}
-                                <td className="px-lg py-5">
-                                    <div className="flex items-center gap-sm opacity-50 group-hover:opacity-100 transition-opacity">
-                                        <button
-                                            type="button"
-                                            className="p-sm text-text-secondary hover:text-accent hover:bg-accent/10 rounded-lg transition-all focus:outline-none"
-                                            onClick={(e) => { e.stopPropagation(); onEdit(row); }}
-                                            title="Edit"
-                                        >
-                                            <Edit2 size={16} />
+                                <td className="px-4 py-4">
+                                    <div className="flex items-center gap-1">
+                                        <button type="button" className="rounded-md p-2 text-text-secondary transition-colors hover:bg-accent/10 hover:text-accent focus:outline-none" onClick={(e) => { e.stopPropagation(); onEdit?.(row); }} title="Edit">
+                                            <Edit2 size={15} />
                                         </button>
-                                        <button
-                                            type="button"
-                                            className="p-sm text-text-secondary hover:text-danger hover:bg-danger/10 rounded-lg transition-all focus:outline-none"
-                                            onClick={(e) => { e.stopPropagation(); onDelete(row); }}
-                                            title="Delete"
-                                        >
-                                            <Trash2 size={16} />
+                                        <button type="button" className="rounded-md p-2 text-text-secondary transition-colors hover:bg-danger/10 hover:text-danger focus:outline-none" onClick={(e) => { e.stopPropagation(); onDelete?.(row); }} title="Delete">
+                                            <Trash2 size={15} />
                                         </button>
                                     </div>
                                 </td>
