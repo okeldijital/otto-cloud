@@ -1,0 +1,57 @@
+name: Database Backup
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 1 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    name: PostgreSQL Database Backup
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.OTTO_DATABASE_URL }}
+    steps:
+      - name: Validate database secret
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "OTTO_DATABASE_URL GitHub Actions secret is not configured."
+            exit 1
+          fi
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Create PostgreSQL custom-format backup
+        run: |
+          set -euo pipefail
+          mkdir -p backup
+          timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
+          file="backup/otto-cloud-${timestamp}.dump"
+          pg_dump "$DATABASE_URL" \
+            --format=custom \
+            --compress=9 \
+            --no-owner \
+            --file="$file"
+          sha256sum "$file" | tee "${file}.sha256"
+          echo "BACKUP_FILE=$file" >> "$GITHUB_ENV"
+
+      - name: Validate backup archive
+        run: |
+          set -euo pipefail
+          pg_restore --list "$BACKUP_FILE" > backup/restore-manifest.txt
+          test -s backup/restore-manifest.txt
+          echo "Backup archive validated successfully."
+
+      - name: Upload backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: otto-cloud-database-backup-${{ github.run_id }}
+          path: backup/
+          retention-days: 90
+          if-no-files-found: error
