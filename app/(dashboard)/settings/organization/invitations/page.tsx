@@ -63,7 +63,7 @@ export default function OrgInvitationsPage() {
 
   return (
     <div className="p-8 max-w-3xl mx-auto space-y-6 text-white">
-      <div className="flex justify-between items-center"><div><h1 className="text-2xl font-bold">Invitations</h1><p className="text-sm text-white/50 mt-1">Invite people to this organisation.</p></div><Link href="/settings/organization/members" className="text-sm text-white/50 underline">Members</Link></div>
+      <div className="flex justify-between items-center"><div><h1 className="text-2xl font-bold">Invitations</h1><p className="text-sm text-white/50 mt-1">Invite people to this organisation.</p></div><Link href="/settings/organization" className="text-sm text-white/50 underline">Members</Link></div>
       <form onSubmit={invite} className="flex gap-2 flex-wrap p-4 rounded-xl bg-white/5 border border-white/10">
         <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@company.com" className="flex-1 min-w-[220px] px-3 py-2 rounded-lg bg-white/5 border border-white/10" required />
         <select value={roleKey} onChange={(e) => setRoleKey(e.target.value)} className="px-3 py-2 rounded-lg bg-white/5 border border-white/10">{roles.map((role) => <option key={role.id} value={role.key}>{role.name}</option>)}</select>
