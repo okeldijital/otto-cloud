@@ -15,17 +15,17 @@ const Button = ({
     ...props
 }) => {
     const variants = {
-        primary: 'bg-gradient-to-r from-accent to-accent/80 text-text-primary shadow-glow hover:brightness-110 hover:shadow-accent',
-        secondary: 'bg-surface-elevated backdrop-blur-md text-text-primary border border-border hover:bg-white/10',
+        primary: 'bg-accent text-[#0A0A0C] hover:brightness-110',
+        secondary: 'bg-surface-elevated text-text-primary border border-border hover:bg-surface',
         ghost: 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated',
-        danger: 'bg-danger/80 text-text-primary hover:bg-danger shadow-danger hover:shadow-[0_0_25px_rgba(239,68,68,0.4)]',
-        orange: 'bg-warning/80 text-text-primary hover:bg-warning shadow-warning'
+        danger: 'bg-danger text-text-primary hover:brightness-110',
+        orange: 'bg-warning text-[#0A0A0C] hover:brightness-110'
     };
 
     const sizes = {
-        sm: 'px-md py-1.5 text-xs',
-        md: 'px-lg py-2.5 text-small',
-        lg: 'px-xl py-3.5 text-body'
+        sm: 'px-3 py-2 text-xs',
+        md: 'px-4 py-2.5 text-sm',
+        lg: 'px-5 py-3 text-base'
     };
 
     return (
@@ -33,11 +33,11 @@ const Button = ({
             type={type}
             onClick={onClick}
             disabled={disabled || loading}
-            className={`inline-flex items-center justify-center gap-2 font-bold transition-all duration-normal active:scale-95 disabled:opacity-50 disabled:pointer-events-none rounded-full focus:outline-none ${variants[variant]} ${sizes[size]} ${fullWidth ? 'w-full' : ''} ${className}`}
+            className={`inline-flex items-center justify-center gap-2 rounded-md font-semibold transition-colors duration-150 active:translate-y-px disabled:pointer-events-none disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 ${variants[variant]} ${sizes[size]} ${fullWidth ? 'w-full' : ''} ${className}`}
             {...props}
         >
             {loading ? (
-                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
             ) : (
                 Icon && <Icon size={size === 'sm' ? 14 : 18} />
             )}
