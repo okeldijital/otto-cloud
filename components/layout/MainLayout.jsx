@@ -9,7 +9,7 @@ const MainContent = ({ children }) => {
     const { isHealthy, isChecking } = useBackendHealth(30000);
 
     return (
-        <div className="flex-1 flex flex-col min-w-0 overflow-hidden lg:ml-[280px] bg-background">
+        <div className="otto-main flex-1 flex flex-col min-w-0 overflow-hidden lg:ml-[280px] bg-background">
             <TopBar />
             {isHealthy === false && !isChecking && (
                 <div className="bg-danger/10 border-b border-danger px-xl py-3 flex items-center gap-md">
@@ -32,7 +32,7 @@ const MainContent = ({ children }) => {
 const MainLayout = ({ children }) => {
     return (
         <SidebarProvider>
-            <div className="flex h-screen overflow-hidden bg-background">
+            <div className="otto-shell flex h-screen overflow-hidden bg-background">
                 <Sidebar />
                 <MainContent>{children}</MainContent>
             </div>
