@@ -41,8 +41,24 @@ export class InvitationService {
       organizationId: params.organizationId, email, emailNormalized: normalizeEmail(email),
       roleId: role.id, tokenHash: hashToken(raw), invitedById: params.invitedById, expiresAt,
     });
-    const configuredBase = process.env.APP_URL || process.env.NEXT_PUBLIC_URL || process.env.NEXTAUTH_URL;
-    const base = (configuredBase || (process.env.NODE_ENV === "production" ? "https://otto.okeldijital.africa" : "http://localhost:3000")).replace(/\/$/, "");
+
+    // Invitation links must never point at localhost in a deployed environment.
+    // Vercel previews may use the deployment URL; production uses the canonical OTTO URL.
+    const isLocalhost = (value: string) => /^(https?:\/\/)?(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?(?:\/|$)/i.test(value.trim());
+    const normalizeBase = (value: string) => {
+      const trimmed = value.trim();
+      return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+    };
+    const isProduction = process.env.VERCEL_ENV === "production" || (!process.env.VERCEL_ENV && process.env.NODE_ENV === "production");
+    const configuredCandidates = [
+      process.env.APP_URL,
+      process.env.NEXT_PUBLIC_URL,
+      process.env.VERCEL_URL,
+      process.env.NEXTAUTH_URL,
+    ].filter((value): value is string => Boolean(value && value.trim()));
+    const usableConfigured = configuredCandidates.find((value) => !isLocalhost(value));
+    const fallback = isProduction ? "https://otto.okeldijital.africa" : "http://localhost:3000";
+    const base = normalizeBase(usableConfigured || fallback).replace(/\/$/, "");
     const inviteUrl = `${base}/auth/invite?token=${encodeURIComponent(raw)}`;
     if (process.env.NODE_ENV !== "production") console.info(`[iam] invitation for ${email}: ${inviteUrl}`);
 
