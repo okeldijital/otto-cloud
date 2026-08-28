@@ -41,7 +41,8 @@ export class InvitationService {
       organizationId: params.organizationId, email, emailNormalized: normalizeEmail(email),
       roleId: role.id, tokenHash: hashToken(raw), invitedById: params.invitedById, expiresAt,
     });
-    const base = process.env.APP_URL || process.env.NEXT_PUBLIC_URL || process.env.NEXTAUTH_URL || "http://localhost:3000";
+    const configuredBase = process.env.APP_URL || process.env.NEXT_PUBLIC_URL || process.env.NEXTAUTH_URL;
+    const base = (configuredBase || (process.env.NODE_ENV === "production" ? "https://otto.okeldijital.africa" : "http://localhost:3000")).replace(/\/$/, "");
     const inviteUrl = `${base}/auth/invite?token=${encodeURIComponent(raw)}`;
     if (process.env.NODE_ENV !== "production") console.info(`[iam] invitation for ${email}: ${inviteUrl}`);
 
