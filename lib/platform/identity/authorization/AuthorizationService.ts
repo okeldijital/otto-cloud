@@ -37,6 +37,44 @@ export class AuthorizationService {
     }
   }
 
+  /**
+   * Authorize an organization-scoped operation. The resource organization
+   * must match the organization resolved from the authenticated context.
+   * Platform super-admin operations may explicitly span organizations.
+   */
+  authorizeForOrganization(
+    context: AuthzContext | CurrentIdentityContext,
+    organizationId: string,
+    permission: string | string[]
+  ): void {
+    if (!organizationId || typeof organizationId !== "string") {
+      throw new IdentityError(
+        "Organization context required",
+        403,
+        "ORGANIZATION_REQUIRED"
+      );
+    }
+
+    if (context.isSuperAdmin) {
+      this.authorize(context, permission);
+      return;
+    }
+
+    if (!context.organizationId) {
+      throw new IdentityError(
+        "Active organization membership required",
+        403,
+        "MEMBERSHIP_REQUIRED"
+      );
+    }
+
+    if (context.organizationId !== organizationId) {
+      throw new IdentityError("Permission denied", 403, "PERMISSION_DENIED");
+    }
+
+    this.authorize(context, permission);
+  }
+
   check(
     context: AuthzContext | CurrentIdentityContext,
     permission: string | string[]
