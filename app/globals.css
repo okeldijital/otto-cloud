@@ -5,17 +5,14 @@
 @tailwind utilities;
 
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: Inter, system-ui, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-
-  /* Theme Transitions */
-  --theme-transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+  --theme-transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 * {
@@ -24,17 +21,63 @@
   box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
   min-height: 100vh;
-  background-color: var(--color-background) !important;
+  background: var(--color-background) !important;
   color: var(--color-text-primary);
   overflow-x: hidden;
 }
 
+body {
+  font-family: Inter, system-ui, sans-serif;
+}
+
+::selection {
+  background: rgba(0, 229, 255, 0.22);
+  color: var(--color-text-primary);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-accent);
+}
+
+/* OTTO dark-first application surface. No decorative background gradient. */
 .bg-app-default {
   background-color: var(--color-background);
-  background-image: radial-gradient(circle at top, rgba(14, 165, 233, 0.1) 0%, transparent 50%);
-  background-attachment: fixed;
+}
+
+@layer base {
+  h1 {
+    font-size: var(--font-h1);
+    line-height: 1.2;
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+
+  h2 {
+    font-size: var(--font-h2);
+    line-height: 1.25;
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+
+  p {
+    color: var(--color-text-primary);
+  }
 }
