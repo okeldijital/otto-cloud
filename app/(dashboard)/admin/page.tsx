@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ShieldCheck, Users, Building2, RefreshCw, AlertCircle } from "lucide-react";
+import { Users, Building2, RefreshCw, AlertCircle } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
@@ -9,7 +9,7 @@ import Button from "@/components/ui/Button";
 import api from "@/lib/api";
 
 function formatDate(d: string | null) {
-  if (!d) return "\u2014";
+  if (!d) return "—";
   return new Date(d).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 }
 
@@ -75,15 +75,15 @@ export default function AdminPage() {
         </div>
       )}
 
-      <div className="flex gap-1 border-b border-white/5 mb-4">
+      <div className="flex gap-1 border-b border-border mb-4">
         <button
-          className={`px-4 py-2 text-sm font-bold transition-colors ${tab === "orgs" ? "text-white border-b-2 border-accent" : "text-text-secondary hover:text-white"}`}
+          className={`px-4 py-2 text-sm font-bold transition-colors ${tab === "orgs" ? "text-text-primary border-b-2 border-accent" : "text-text-secondary hover:text-text-primary"}`}
           onClick={() => setTab("orgs")}
         >
           <Building2 size={14} className="inline mr-1" /> Organizations ({orgs.length})
         </button>
         <button
-          className={`px-4 py-2 text-sm font-bold transition-colors ${tab === "users" ? "text-white border-b-2 border-accent" : "text-text-secondary hover:text-white"}`}
+          className={`px-4 py-2 text-sm font-bold transition-colors ${tab === "users" ? "text-text-primary border-b-2 border-accent" : "text-text-secondary hover:text-text-primary"}`}
           onClick={() => setTab("users")}
         >
           <Users size={14} className="inline mr-1" /> Users ({totalUsers})
@@ -100,7 +100,7 @@ export default function AdminPage() {
             <div className="overflow-x-auto -mx-6 -mb-6">
               <table className="w-full" style={{ borderCollapse: "collapse" }}>
                 <thead>
-                  <tr className="text-left text-xs uppercase tracking-wider text-text-secondary border-b border-white/5">
+                  <tr className="text-left text-xs uppercase tracking-wider text-text-secondary border-b border-border">
                     <th className="p-4 font-bold">Name</th>
                     <th className="p-4 font-bold">Display Name</th>
                     <th className="p-4 font-bold">Type</th>
@@ -111,15 +111,15 @@ export default function AdminPage() {
                 </thead>
                 <tbody>
                   {orgs.map((org) => (
-                    <tr key={org.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                      <td className="p-4 text-sm text-white font-medium">{org.name}</td>
-                      <td className="p-4 text-sm text-text-secondary">{org.display_name || "\u2014"}</td>
+                    <tr key={org.id} className="border-b border-border hover:bg-surface-elevated transition-colors">
+                      <td className="p-4 text-sm text-text-primary font-medium">{org.name}</td>
+                      <td className="p-4 text-sm text-text-secondary">{org.display_name || "—"}</td>
                       <td className="p-4 text-sm capitalize"><Badge variant="neutral" size="sm">{org.org_type || "standard"}</Badge></td>
                       <td className="p-4 text-sm font-mono text-text-secondary">{org.organization_id}</td>
                       <td className="p-4">
                         {org.brand_color && (
                           <div className="flex items-center gap-2">
-                            <div className="w-4 h-4 rounded-full border border-white/10" style={{ backgroundColor: org.brand_color }} />
+                            <div className="w-4 h-4 rounded-full border border-border" style={{ backgroundColor: org.brand_color }} />
                             <span className="text-xs font-mono text-text-secondary">{org.brand_color}</span>
                           </div>
                         )}
@@ -140,7 +140,7 @@ export default function AdminPage() {
             <div className="overflow-x-auto -mx-6 -mb-6">
               <table className="w-full" style={{ borderCollapse: "collapse" }}>
                 <thead>
-                  <tr className="text-left text-xs uppercase tracking-wider text-text-secondary border-b border-white/5">
+                  <tr className="text-left text-xs uppercase tracking-wider text-text-secondary border-b border-border">
                     <th className="p-4 font-bold">Name</th>
                     <th className="p-4 font-bold">Email</th>
                     <th className="p-4 font-bold">Role</th>
@@ -152,8 +152,8 @@ export default function AdminPage() {
                 </thead>
                 <tbody>
                   {users.map((u) => (
-                    <tr key={u.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                      <td className="p-4 text-sm text-white font-medium">{u.name || "\u2014"}</td>
+                    <tr key={u.id} className="border-b border-border hover:bg-surface-elevated transition-colors">
+                      <td className="p-4 text-sm text-text-primary font-medium">{u.name || "—"}</td>
                       <td className="p-4 text-sm text-text-secondary">{u.email}</td>
                       <td className="p-4">
                         <Badge variant={u.role === "admin" ? "primary" : "neutral"} size="sm">{u.role || "user"}</Badge>
@@ -172,7 +172,7 @@ export default function AdminPage() {
                       <td className="p-4">
                         <button
                           className={`text-xs px-2 py-1 rounded-full transition-colors ${
-                            u.is_superuser ? "bg-accent/20 text-accent" : "bg-white/10 text-text-secondary"
+                            u.is_superuser ? "bg-accent/20 text-accent" : "bg-surface-elevated text-text-secondary"
                           }`}
                           onClick={() => handleToggleUser(u.id, "is_superuser", !u.is_superuser)}
                         >
