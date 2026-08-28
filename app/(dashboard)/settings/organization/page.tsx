@@ -215,6 +215,9 @@ function TeamPanel() {
           <Button type="submit" variant="primary" size="sm" disabled={adding || !email.trim()}><Plus size={15} /> {adding ? "Adding..." : "Add member"}</Button>
         </form>
         <p className="mt-3 text-xs text-text-secondary">This IAM endpoint adds an existing OTTO account. New-account invitations are a separate workflow.</p>
+        <div className="mt-4 border-t border-white/5 pt-4">
+          <button type="button" onClick={() => window.location.assign("/settings/organization/invitations")} className="text-xs font-semibold text-accent hover:underline">Invite a new account →</button>
+        </div>
       </Card>
       <Card title={`Members · ${members.length}`}>
         <div className="mb-4 flex items-center gap-2 rounded-lg border border-white/5 bg-surface-elevated px-3">
@@ -276,15 +279,12 @@ function RolesPanel() {
                 <div className="min-w-0 flex-1"><div className="flex items-center gap-2"><p className="text-sm font-medium text-white">{role.name}</p>{role.isSystem && <Badge variant="neutral" size="sm">System</Badge>}</div><p className="mt-1 text-xs text-text-secondary">{role.key}</p></div>
                 <div className="hidden sm:block text-right"><p className="text-sm font-semibold text-white">{role.memberCount}</p><p className="text-[10px] uppercase tracking-wider text-text-secondary">members</p></div>
                 <div className="hidden sm:block text-right"><p className="text-sm font-semibold text-white">{role.permissionCount}</p><p className="text-[10px] uppercase tracking-wider text-text-secondary">permissions</p></div>
-                <ChevronRight size={15} className="text-text-secondary" />
+                <ChevronRight size={16} className="text-text-secondary" />
               </button>
             ))}</div>
           </Card>
-          <Card title={selectedRole?.name || "Role details"}>
-            {!selectedRole ? <EmptyState label="Select a role to inspect its permissions." /> : <>
-              <div className="flex items-center gap-2 mb-4">{selectedRole.isSystem && <Badge variant="neutral" size="sm">System role</Badge>}<span className="text-xs text-text-secondary">{selectedRole.memberCount} member{selectedRole.memberCount === 1 ? "" : "s"}</span></div>
-              <div className="space-y-2 max-h-[520px] overflow-y-auto pr-1">{selectedRole.permissions.map((permission) => <div key={permission} className="flex items-center gap-2 rounded-md bg-surface-elevated px-3 py-2"><CheckCircle2 size={13} className="text-success shrink-0" /><code className="text-xs text-text-secondary">{permission}</code></div>)}</div>
-            </>}
+          <Card title={selectedRole ? selectedRole.name : "Role details"}>
+            {selectedRole ? <div className="space-y-4"><div><p className="text-xs uppercase tracking-wider text-text-secondary">Key</p><p className="mt-1 text-sm text-white">{selectedRole.key}</p></div><div><p className="text-xs uppercase tracking-wider text-text-secondary">Permissions</p><div className="mt-2 flex flex-wrap gap-2">{selectedRole.permissions.map((permission) => <Badge key={permission} variant="neutral" size="sm">{permission}</Badge>)}</div></div></div> : <EmptyState label="Select a role." />}
           </Card>
         </div>
       )}
@@ -293,18 +293,31 @@ function RolesPanel() {
 }
 
 function PermissionsPanel() {
-  return <div className="space-y-6"><SectionHeader title="Permissions" description="The permission model is defined centrally by OTTO IAM." /><Card title="Permission management"><div className="flex gap-3 rounded-lg border border-white/5 bg-surface-elevated p-4"><Settings2 size={18} className="text-accent shrink-0" /><div><p className="text-sm font-medium text-white">Role-based permissions</p><p className="mt-1 text-xs leading-5 text-text-secondary">Permissions are assigned through roles. Select a role under Roles to inspect its current permission set.</p></div></div></Card></div>;
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const permissions = useMemo(() => Array.from(new Set(roles.flatMap((role) => role.permissions))).sort(), [roles]);
+
+  const load = async () => {
+    setLoading(true); setError("");
+    try { const response = await api.get("/auth/organizations/roles"); setRoles(normalizeRoles(response.data)); }
+    catch (err: any) { setError(err?.response?.data?.error || "Unable to load permissions."); }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => { void load(); }, []);
+  return <div className="space-y-6"><SectionHeader title="Permissions" description="Permissions exposed by the active organization role catalog." onRefresh={load} loading={loading} />{error && <ErrorNotice message={error} />}{loading ? <LoadingState label="Loading permissions..." /> : <Card title={`Permissions · ${permissions.length}`}><div className="flex flex-wrap gap-2">{permissions.map((permission) => <Badge key={permission} variant="neutral" size="sm">{permission}</Badge>)}</div></Card>}</div>;
 }
 
 function SecurityPanel() {
-  return <div className="space-y-6"><SectionHeader title="Security" description="Organization-level access is governed by OTTO IAM." /><Card title="IAM status"><div className="flex items-center gap-3 rounded-lg border border-success/20 bg-success/5 p-4"><CheckCircle2 size={18} className="text-success" /><div><p className="text-sm font-medium text-white">Identity and organization access are active</p><p className="mt-1 text-xs text-text-secondary">Memberships and roles are resolved from the active IAM organization context.</p></div></div></Card></div>;
+  return <div className="space-y-6"><SectionHeader title="Security" description="Organization security controls and governance posture." /><Card title="IAM security"><div className="space-y-3 text-sm text-text-secondary"><div className="flex items-center justify-between rounded-lg border border-white/5 bg-surface-elevated px-4 py-3"><span>Organization-scoped access</span><Badge variant="primary" size="sm">Enforced</Badge></div><div className="flex items-center justify-between rounded-lg border border-white/5 bg-surface-elevated px-4 py-3"><span>Owner protection</span><Badge variant="primary" size="sm">Enforced</Badge></div><div className="flex items-center justify-between rounded-lg border border-white/5 bg-surface-elevated px-4 py-3"><span>Role-based authorization</span><Badge variant="primary" size="sm">Enforced</Badge></div></div></Card></div>;
 }
 
-function SectionHeader({ title, description, onRefresh, loading = false }: { title: string; description: string; onRefresh?: () => void; loading?: boolean }) {
-  return <div className="flex items-start justify-between gap-4"><div><h2 className="text-lg font-semibold text-white">{title}</h2><p className="mt-1 text-sm text-text-secondary">{description}</p></div>{onRefresh && <Button type="button" variant="secondary" size="sm" onClick={() => void onRefresh()} disabled={loading}><RefreshCw size={14} className={loading ? "animate-spin" : ""} /> Refresh</Button>}</div>;
+function SectionHeader({ title, description, onRefresh, loading }: { title: string; description: string; onRefresh?: () => void; loading?: boolean }) {
+  return <div className="flex items-start justify-between gap-4"><div><h2 className="text-lg font-semibold text-white">{title}</h2><p className="mt-1 text-sm text-text-secondary">{description}</p></div>{onRefresh && <button type="button" onClick={onRefresh} disabled={loading} className="rounded-lg border border-white/10 p-2 text-text-secondary hover:text-white disabled:opacity-50" title="Refresh"><RefreshCw size={15} className={loading ? "animate-spin" : ""} /></button>}</div>;
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) { return <div><label className="mb-1 block text-xs font-semibold text-text-secondary">{label}</label>{children}</div>; }
-function LoadingState({ label }: { label: string }) { return <Card><div className="p-10 text-center text-sm text-text-secondary">{label}</div></Card>; }
-function EmptyState({ label }: { label: string }) { return <div className="rounded-lg border border-dashed border-white/10 p-8 text-center text-sm text-text-secondary">{label}</div>; }
-function ErrorNotice({ message }: { message: string }) { return <div className="flex items-start gap-3 rounded-lg border border-danger/20 bg-danger/10 p-4"><AlertCircle size={17} className="mt-0.5 shrink-0 text-danger" /><p className="text-sm text-text-secondary">{message}</p></div>; }
+function Field({ label, children }: { label: string; children: ReactNode }) { return <label className="block"><span className="mb-1.5 block text-xs font-medium text-text-secondary">{label}</span>{children}</label>; }
+function ErrorNotice({ message }: { message: string }) { return <div className="flex items-center gap-2 rounded-lg border border-danger/20 bg-danger/5 px-4 py-3 text-sm text-danger"><AlertCircle size={16} />{message}</div>; }
+function LoadingState({ label }: { label: string }) { return <div className="flex items-center justify-center py-12 text-sm text-text-secondary"><RefreshCw size={16} className="mr-2 animate-spin" />{label}</div>; }
+function EmptyState({ label }: { label: string }) { return <div className="py-12 text-center text-sm text-text-secondary">{label}</div>; }
