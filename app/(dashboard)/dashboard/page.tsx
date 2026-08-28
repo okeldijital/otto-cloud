@@ -8,18 +8,18 @@ import LifecycleDashboardWidgets from "@/components/contracts/lifecycle/Lifecycl
 import PlatformEventsDashboard from "@/components/platform/PlatformEventsDashboard";
 import ReleaseContractDashboardWidgets from "@/components/release-workspace/ReleaseContractDashboardWidgets";
 
-const PIE_COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4"];
+const PIE_COLORS = ["#00E5FF", "#00B8D4", "#22C55E", "#F59E0B", "#EF4444", "#8E8E9A"];
 
 function StatsCard({ title, value, icon, subtitle }: { title: string; value: string; icon: React.ReactNode; subtitle?: string }) {
   return (
-    <div className="bg-premium-glass border border-white/5 rounded-2xl p-6 backdrop-blur-xl">
+    <div className="bg-surface border border-border rounded-xl p-6">
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm text-text-secondary mb-1">{title}</p>
-          <p className="text-3xl font-bold text-white">{value}</p>
+          <p className="text-3xl font-bold text-text-primary">{value}</p>
           {subtitle && <p className="text-xs mt-1 text-text-secondary">{subtitle}</p>}
         </div>
-        <div className="p-3 bg-white/5 rounded-xl text-accent">{icon}</div>
+        <div className="p-3 bg-surface-elevated rounded-lg text-accent border border-border">{icon}</div>
       </div>
     </div>
   );
@@ -27,8 +27,8 @@ function StatsCard({ title, value, icon, subtitle }: { title: string; value: str
 
 function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-premium-glass border border-white/5 rounded-2xl p-6 backdrop-blur-xl">
-      <h3 className="text-sm font-semibold text-white mb-4">{title}</h3>
+    <div className="bg-surface border border-border rounded-xl p-6">
+      <h3 className="text-sm font-semibold text-text-primary mb-4">{title}</h3>
       <div className="h-64">{children}</div>
     </div>
   );
@@ -77,7 +77,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-white">Dashboard</h1>
+        <h1 className="text-2xl font-bold text-text-primary">Dashboard</h1>
         <p className="text-text-secondary text-sm mt-1">Welcome to OTTO Cloud</p>
       </div>
 
@@ -99,14 +99,14 @@ export default function DashboardPage() {
           {entityData.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={entityData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                <XAxis dataKey="name" tick={{ fill: "#9ca3af", fontSize: 12 }} />
-                <YAxis tick={{ fill: "#9ca3af", fontSize: 12 }} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#2A2A32" />
+                <XAxis dataKey="name" tick={{ fill: "#8E8E9A", fontSize: 12 }} />
+                <YAxis tick={{ fill: "#8E8E9A", fontSize: 12 }} />
                 <Tooltip
-                  contentStyle={{ background: "#1a1a2e", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "12px" }}
-                  labelStyle={{ color: "#fff" }}
+                  contentStyle={{ background: "#1A1A20", border: "1px solid #2A2A32", borderRadius: "8px" }}
+                  labelStyle={{ color: "#F5F5F7" }}
                 />
-                <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="value" fill="#00E5FF" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
@@ -123,11 +123,11 @@ export default function DashboardPage() {
                   ))}
                 </Pie>
                 <Tooltip
-                  contentStyle={{ background: "#1a1a2e", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "12px" }}
-                  labelStyle={{ color: "#fff" }}
+                  contentStyle={{ background: "#1A1A20", border: "1px solid #2A2A32", borderRadius: "8px" }}
+                  labelStyle={{ color: "#F5F5F7" }}
                   formatter={(value: any) => `$${(Number(value) || 0).toLocaleString()}`}
                 />
-                <Legend wrapperStyle={{ fontSize: "12px", color: "#9ca3af" }} />
+                <Legend wrapperStyle={{ fontSize: "12px", color: "#8E8E9A" }} />
               </PieChart>
             </ResponsiveContainer>
           ) : (
