@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Plus } from "lucide-react";
+import { Plus, Search, SlidersHorizontal } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import Button from "@/components/ui/Button";
 import DataTable from "@/components/DataTable";
@@ -11,19 +11,16 @@ import api from "@/lib/api";
 
 const columns = [
   { key: "title", label: "Title", sortable: true },
-  {
-    key: "work_type",
-    label: "Type",
-    sortable: true,
-    render: (row: any) => row.work_type || "—",
-  },
-  { key: "iswc", label: "ISWC", render: (row: any) => row.iswc || "—" },
+  { key: "work_type", label: "Type", sortable: true, render: (row: any) => row.work_type || "—" },
+  { key: "iswc", label: "ISWC", sortable: true, render: (row: any) => row.iswc || "—" },
 ];
 
 export default function WorksPage() {
   const router = useRouter();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
   const [showAddModal, setShowAddModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [newWork, setNewWork] = useState<any>({ title: "", work_type: "Original", iswc: "" });
@@ -43,6 +40,22 @@ export default function WorksPage() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  const workTypes = useMemo(
+    () => Array.from(new Set(data.map((work) => String(work.work_type || "").trim()).filter(Boolean))).sort(),
+    [data]
+  );
+
+  const filteredData = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return data.filter((work) => {
+      const matchesType = typeFilter === "all" || String(work.work_type || "").toLowerCase() === typeFilter;
+      const matchesSearch = !query || [work.title, work.work_type, work.iswc]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query));
+      return matchesType && matchesSearch;
+    });
+  }, [data, search, typeFilter]);
 
   const handleDelete = async (row: any) => {
     if (!window.confirm(`Delete work "${row.title}"? This cannot be undone.`)) return;
@@ -81,14 +94,50 @@ export default function WorksPage() {
           </Button>
         }
       />
+
+      <section className="flex flex-col gap-3 border-b border-border pb-4 md:flex-row md:items-center md:justify-between" aria-label="Work catalogue controls">
+        <div className="flex w-full flex-col gap-3 sm:flex-row">
+          <div className="relative w-full sm:max-w-md">
+            <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search works..."
+              aria-label="Search works"
+              className="h-10 w-full rounded-md border border-border bg-surface pl-9 pr-3 text-sm text-text-primary placeholder:text-text-secondary/70 outline-none transition-colors focus:border-accent focus:ring-1 focus:ring-accent/50"
+            />
+          </div>
+          <label className="relative flex h-10 items-center rounded-md border border-border bg-surface px-3 text-sm text-text-secondary">
+            <SlidersHorizontal size={16} className="mr-2" />
+            <span className="sr-only">Filter by work type</span>
+            <select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              aria-label="Filter works by type"
+              className="appearance-none bg-transparent pr-5 text-sm text-text-primary outline-none"
+            >
+              <option value="all">All types</option>
+              {workTypes.map((type) => (
+                <option key={type} value={type.toLowerCase()}>{type}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </section>
+
       <DataTable
         columns={columns}
-        data={data}
+        data={filteredData}
         isLoading={loading}
         onRowClick={(row: any) => router.push(`/catalog/works/${row.id}`)}
         onEdit={(row: any) => router.push(`/catalog/works/${row.id}`)}
         onDelete={handleDelete}
       />
+
+      {!loading && (search || typeFilter !== "all") && filteredData.length === 0 && data.length > 0 && (
+        <p className="-mt-3 text-xs text-text-secondary">No works match the current catalogue filters.</p>
+      )}
 
       <EntityForm title="New Work" isOpen={showAddModal} onClose={() => setShowAddModal(false)} onSubmit={handleCreate} isSubmitting={isSubmitting} error={undefined}>
         <div className="space-y-4">
