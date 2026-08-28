@@ -1,27 +1,32 @@
 :root {
-  /* Premium Dark theme defaults */
-  --color-background: #0A0F1C; /* deep navy */
-  --color-surface: rgba(255, 255, 255, 0.02); /* glassmorphic surface */
-  --color-surface-elevated: rgba(255, 255, 255, 0.05);
-  --color-border: rgba(255, 255, 255, 0.08); /* soft, transparent borders */
-  --color-text-primary: #ffffff;
-  --color-text-secondary: #94a3b8; /* slate-400 */
-  --color-accent: #0ea5e9; /* vibrant sky blue */
-  --color-success: #10b981;
-  --color-warning: #f59e0b;
-  --color-danger: #ef4444;
+  /* OTTO Brand System — Direction A / Signal — Locked */
+  --color-background: #0A0A0C;
+  --color-surface: #121216;
+  --color-surface-elevated: #1A1A20;
+  --color-border: #2A2A32;
+  --border-strong: #333338;
 
-  /* Glows & Glass */
-  --color-glow: rgba(14, 165, 233, 0.5);
-  --border-glow: 1px solid rgba(14, 165, 233, 0.3);
+  --color-text-primary: #F5F5F7;
+  --color-text-secondary: #8E8E9A;
+
+  --color-accent: #00E5FF;
+  --color-accent-soft: #00B8D4;
+  --color-success: #22C55E;
+  --color-warning: #F59E0B;
+  --color-danger: #EF4444;
+  --color-info: #00B8D4;
+
+  /* Brand system is dark-first. Glow is restrained and secondary to signal clarity. */
+  --color-glow: rgba(0, 229, 255, 0.18);
+  --border-glow: 1px solid rgba(0, 229, 255, 0.35);
 
   /* SPACING */
-  --spacing-xs: 0.25rem; /* 4px */
-  --spacing-sm: 0.5rem;  /* 8px */
-  --spacing-md: 1rem;    /* 16px */
-  --spacing-lg: 1.5rem;  /* 24px */
-  --spacing-xl: 2rem;    /* 32px */
-  --spacing-2xl: 3rem;   /* 48px */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-2xl: 3rem;
 
   /* RADIUS */
   --radius-sm: 0.5rem;
@@ -30,22 +35,21 @@
   --radius-xl: 1.5rem;
 
   /* SHADOWS */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
-  --shadow-glow: 0 0 20px rgba(14, 165, 233, 0.15);
-  --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 10px 24px rgba(0, 0, 0, 0.4);
+  --shadow-glow: 0 0 20px rgba(0, 229, 255, 0.12);
+  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.35);
 
   /* MOTION */
   --motion-fast: 150ms;
   --motion-normal: 200ms;
   --motion-slow: 300ms;
 
-  /* TYPOGRAPHY */
-  --font-display: 3rem;
-  --font-h1: 2.25rem;
-  --font-h2: 1.5rem;
-  --font-h3: 1.25rem;
+  /* TYPOGRAPHY — values explicitly defined by the locked brand board */
+  --font-display: 2.5rem;
+  --font-h1: 1.75rem;
+  --font-h2: 1.375rem;
   --font-body: 1rem;
   --font-small: 0.875rem;
   --font-xs: 0.75rem;
@@ -57,47 +61,16 @@
   --z-overlay: 9999;
   --z-toast: 10000;
 
-  /* BORDER VARIANTS */
-  --border-strong: rgba(255, 255, 255, 0.12);
-
-  /* VARIANT SHADOWS */
-  --shadow-success: 0 0 10px rgba(16, 185, 129, 0.15);
-  --shadow-warning: 0 0 10px rgba(245, 158, 11, 0.15);
-  --shadow-danger: 0 0 10px rgba(239, 68, 68, 0.15);
-
-  /* INFO COLOR */
-  --color-info: #3b82f6;
-
-  /* FOCUS RING */
-  --ring-accent: 0 0 0 4px rgba(14, 165, 233, 0.15);
+  /* FOCUS */
+  --ring-accent: 0 0 0 3px rgba(0, 229, 255, 0.18);
 }
 
-[data-theme="light"] {
-  --color-background: #f8fafc;
-  --color-surface: rgba(255, 255, 255, 0.8);
-  --color-surface-elevated: rgba(0, 0, 0, 0.03);
-  --color-border: rgba(0, 0, 0, 0.08);
-  --border-strong: rgba(0, 0, 0, 0.12);
-  --color-text-primary: #0f172a;
-  --color-text-secondary: #64748b;
-  --color-accent: #0ea5e9;
-  --color-success: #10b981;
-  --color-warning: #f59e0b;
-  --color-danger: #ef4444;
-  --color-info: #3b82f6;
-  --color-glow: rgba(14, 165, 233, 0.3);
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
-  --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.08);
-  --shadow-glow: 0 0 20px rgba(14, 165, 233, 0.2);
-  --shadow-success: 0 0 10px rgba(16, 185, 129, 0.2);
-  --shadow-warning: 0 0 10px rgba(245, 158, 11, 0.2);
-  --shadow-danger: 0 0 10px rgba(239, 68, 68, 0.2);
-  --ring-accent: 0 0 0 4px rgba(14, 165, 233, 0.2);
+/* Compatibility aliases for existing components. */
+:root {
+  --color-accent-hover: var(--color-accent-soft);
 }
 
-/* Surfaces */
+/* OTTO surfaces */
 .panel {
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -127,35 +100,28 @@
   border-radius: var(--radius-lg);
   padding: var(--spacing-lg);
   box-shadow: var(--shadow-sm);
-  transition: all var(--motion-normal) ease;
+  transition: background-color var(--motion-normal) ease, border-color var(--motion-normal) ease, box-shadow var(--motion-normal) ease;
   cursor: pointer;
 }
 
 .interactive-card:hover {
   background-color: var(--color-surface-elevated);
-  box-shadow: var(--shadow-md);
-  transform: translateY(-2px);
+  border-color: var(--color-accent-soft);
+  box-shadow: var(--shadow-glow);
 }
 
-/* Motion Utilities */
-.fade {
-  transition: opacity var(--motion-normal) ease-in-out;
-}
-
-.hover-lift {
-  transition: transform var(--motion-normal) ease, box-shadow var(--motion-normal) ease;
+.fade,
+.hover-lift,
+.smooth-transition {
+  transition-duration: var(--motion-normal);
+  transition-timing-function: ease-in-out;
 }
 
 .hover-lift:hover {
-  transform: translateY(-2px);
+  transform: translateY(-1px);
   box-shadow: var(--shadow-md);
 }
 
-.smooth-transition {
-  transition: all var(--motion-normal) ease-in-out;
-}
-
-/* Skeleton Loading */
 .skeleton {
   background: linear-gradient(90deg, var(--color-surface-elevated) 25%, var(--color-surface) 50%, var(--color-surface-elevated) 75%);
   background-size: 200% 100%;
