@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import {
   identityService,
   membershipService,
+  requireOrganization,
   requirePermission,
   IdentityError,
   identityErrorResponse,
@@ -9,7 +10,7 @@ import {
 
 export async function GET(req: Request) {
   try {
-    const ctx = await requirePermission(req, "users.manage");
+    const ctx = await requireOrganization(req);
     if (!ctx.organizationId) throw new IdentityError("Organization context required", 403, "ORGANIZATION_REQUIRED");
     const members = await membershipService.listMembers(ctx.organizationId);
     return NextResponse.json({ members });
