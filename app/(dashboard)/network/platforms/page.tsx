@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Globe, Plus, ExternalLink, Key, MapPin, Database, Trash2 } from "lucide-react";
+import { Globe, Plus, ExternalLink, Key, MapPin, Database, Trash2, Search } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
@@ -16,6 +16,7 @@ export default function PlatformsPage() {
   const router = useRouter();
   const [platforms, setPlatforms] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [newPlatform, setNewPlatform] = useState({
@@ -36,6 +37,15 @@ export default function PlatformsPage() {
   };
 
   useEffect(() => { fetchPlatforms(); }, []);
+
+  const filteredPlatforms = useMemo(() => {
+    const q = searchTerm.toLowerCase();
+    return platforms.filter((platform) =>
+      (platform.name || "").toLowerCase().includes(q) ||
+      (platform.platform_type || "").toLowerCase().includes(q) ||
+      (platform.territory_coverage || "").toLowerCase().includes(q)
+    );
+  }, [platforms, searchTerm]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,71 +73,77 @@ export default function PlatformsPage() {
         title="Platforms"
         subtitle="Non-human but critical actors in the label ecosystem."
         actions={
-          <Button variant="orange" size="sm" onClick={() => setShowAddModal(true)}>
-            <Plus size={14} /> Add Platform
-          </Button>
+          <div className="flex gap-3 items-center">
+            <div className="relative">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
+              <input className="input pl-9" placeholder="Search platforms..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+            </div>
+            <Button variant="primary" size="sm" onClick={() => setShowAddModal(true)}>
+              <Plus size={14} /> Add Platform
+            </Button>
+          </div>
         }
       />
 
       {loading ? (
         <div className="p-12 text-center text-text-secondary">Loading...</div>
-      ) : platforms.length === 0 ? (
+      ) : filteredPlatforms.length === 0 ? (
         <Card>
           <div className="py-12 text-center">
             <Database size={48} className="mx-auto text-text-secondary mb-4 opacity-40" />
-            <p className="text-text-secondary">No platforms yet. Add your first platform resource.</p>
+            <p className="text-text-secondary">
+              {platforms.length === 0 ? "No platforms yet. Add your first platform resource." : "No platforms match your search."}
+            </p>
           </div>
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {platforms.map((platform) => (
-            <div key={platform.id}
-              className="bg-premium-glass border border-white/5 rounded-2xl p-6 backdrop-blur-xl hover:border-white/20 transition-all cursor-pointer group"
-              onClick={() => router.push(`/network/platforms/${platform.id}`)}
-            >
-              <div className="flex justify-between items-start mb-6">
-                <div className="p-3 bg-white/5 rounded-xl text-blue-400">
-                  <Database size={24} />
-                </div>
-                <div className="flex gap-2">
-                  <Badge variant="primary" size="sm">{platform.platform_type || "Other"}</Badge>
-                  <button className="ghost-btn p-1.5 hover:bg-danger/20 rounded-lg text-danger opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={(e) => { e.stopPropagation(); handleDelete(platform); }}>
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              </div>
-
-              <h3 className="text-xl font-bold text-white mb-2">{platform.name}</h3>
-
-              <div className="space-y-3 pt-4 border-t border-white/5">
-                <div className="flex items-start gap-3 text-sm">
-                  <Globe size={16} className="text-text-secondary mt-0.5" />
-                  <div>
-                    <div className="text-text-secondary text-xs">Portal URL</div>
-                    {platform.portal_url ? (
-                      <a href={platform.portal_url} target="_blank" rel="noreferrer" className="text-primary flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                        {platform.portal_url} <ExternalLink size={12} />
-                      </a>
-                    ) : <span className="text-text-secondary">Not specified</span>}
+          {filteredPlatforms.map((platform) => (
+            <Card key={platform.id} noPadding className="group hover:border-border transition-colors cursor-pointer" onClick={() => router.push(`/network/platforms/${platform.id}`)}>
+              <div className="p-6">
+                <div className="flex justify-between items-start mb-6">
+                  <div className="p-3 bg-surface-elevated rounded-xl text-accent border border-border">
+                    <Database size={24} />
+                  </div>
+                  <div className="flex gap-2 items-center">
+                    <Badge variant="primary" size="sm">{platform.platform_type || "Other"}</Badge>
+                    <button className="ghost-btn p-1.5 hover:bg-danger/20 rounded-md text-danger opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => { e.stopPropagation(); handleDelete(platform); }} aria-label={`Delete ${platform.name}`}>
+                      <Trash2 size={14} />
+                    </button>
                   </div>
                 </div>
-                <div className="flex items-start gap-3 text-sm">
-                  <Key size={16} className="text-text-secondary mt-0.5" />
-                  <div>
-                    <div className="text-text-secondary text-xs">Account Ref</div>
-                    <span className="font-mono text-white">{platform.account_reference || "N/A"}</span>
+
+                <h3 className="text-xl font-bold text-text-primary mb-2">{platform.name}</h3>
+
+                <div className="space-y-3 pt-4 border-t border-border">
+                  <div className="flex items-start gap-3 text-sm">
+                    <Globe size={16} className="text-text-secondary mt-0.5" />
+                    <div className="min-w-0">
+                      <div className="text-text-secondary text-xs">Portal URL</div>
+                      {platform.portal_url ? (
+                        <a href={platform.portal_url} target="_blank" rel="noreferrer" className="text-accent hover:underline flex items-center gap-1 truncate" onClick={(e) => e.stopPropagation()}>
+                          {platform.portal_url} <ExternalLink size={12} />
+                        </a>
+                      ) : <span className="text-text-secondary">Not specified</span>}
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-start gap-3 text-sm">
-                  <MapPin size={16} className="text-text-secondary mt-0.5" />
-                  <div>
-                    <div className="text-text-secondary text-xs">Territory Coverage</div>
-                    <span className="text-white">{platform.territory_coverage || "Worldwide"}</span>
+                  <div className="flex items-start gap-3 text-sm">
+                    <Key size={16} className="text-text-secondary mt-0.5" />
+                    <div>
+                      <div className="text-text-secondary text-xs">Account Ref</div>
+                      <span className="font-mono text-text-primary">{platform.account_reference || "N/A"}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 text-sm">
+                    <MapPin size={16} className="text-text-secondary mt-0.5" />
+                    <div>
+                      <div className="text-text-secondary text-xs">Territory Coverage</div>
+                      <span className="text-text-primary">{platform.territory_coverage || "Worldwide"}</span>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            </Card>
           ))}
         </div>
       )}
