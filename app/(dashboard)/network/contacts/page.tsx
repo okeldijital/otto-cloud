@@ -94,7 +94,7 @@ export default function AllContactsPage() {
           <div className="overflow-x-auto">
             <table className="w-full" style={{ borderCollapse: "collapse" }}>
               <thead>
-                <tr className="text-left text-xs uppercase tracking-wider text-text-secondary border-b border-white/5">
+                <tr className="text-left text-xs uppercase tracking-wider text-text-secondary border-b border-border">
                   <th className="p-4 font-bold">Name</th>
                   <th className="p-4 font-bold">Type</th>
                   <th className="p-4 font-bold">Role / Category</th>
@@ -110,10 +110,10 @@ export default function AllContactsPage() {
                   const role = contact.role || contact.org_type || contact.platform_type || "—";
                   return (
                     <tr key={`${contact.item_type}-${contact.id}`}
-                      className="border-b border-white/5 hover:bg-white/5 cursor-pointer transition-colors"
+                      className="border-b border-border hover:bg-surface-elevated cursor-pointer transition-colors"
                       onClick={() => router.push(`/network/${contact.item_type.toLowerCase()}s/${contact.id}`)}
                     >
-                      <td className="p-4 font-medium text-white">{name}</td>
+                      <td className="p-4 font-medium text-text-primary">{name}</td>
                       <td className="p-4">
                         <Badge variant={getTypeBadgeVariant(contact.item_type)} size="sm">
                           <span className="flex items-center gap-1">{getTypeIcon(contact.item_type)} {contact.item_type}</span>
@@ -124,7 +124,7 @@ export default function AllContactsPage() {
                         <Badge variant="success" size="sm">Active</Badge>
                       </td>
                       <td className="p-4">
-                        <button className="ghost-btn p-1.5 hover:bg-danger/20 rounded-lg text-danger"
+                        <button className="ghost-btn p-1.5 hover:bg-danger/20 rounded-md text-danger"
                           onClick={(e) => { e.stopPropagation(); handleDelete(contact); }}>
                           <Trash2 size={14} />
                         </button>
