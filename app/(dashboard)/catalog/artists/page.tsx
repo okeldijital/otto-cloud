@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Plus } from "lucide-react";
+import { Plus, Search, SlidersHorizontal } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import Button from "@/components/ui/Button";
 import DataTable from "@/components/DataTable";
@@ -15,12 +15,23 @@ export default function ArtistsPage() {
   const router = useRouter();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [newArtist, setNewArtist] = useState<any>({ name: "", stage_name: "", email: "", ipi_number: "" });
 
   const ids = useMemo(() => data.map((a) => a.id), [data]);
   const { urls: photoUrls } = useAttachmentMap("artist", ids);
+
+  const filteredData = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return data;
+    return data.filter((artist) =>
+      [artist.name, artist.stage_name, artist.email, artist.ipi_number]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query))
+    );
+  }, [data, search]);
 
   const columns = useMemo(
     () => [
@@ -106,31 +117,53 @@ export default function ArtistsPage() {
           </Button>
         }
       />
+
+      <section className="flex flex-col gap-3 border-b border-border pb-4 md:flex-row md:items-center md:justify-between" aria-label="Artist catalogue controls">
+        <div className="relative w-full md:max-w-md">
+          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search artists..."
+            aria-label="Search artists"
+            className="h-10 w-full rounded-md border border-border bg-surface pl-9 pr-3 text-sm text-text-primary placeholder:text-text-secondary/70 outline-none transition-colors focus:border-accent focus:ring-1 focus:ring-accent/50"
+          />
+        </div>
+        <Button variant="secondary" size="sm" icon={SlidersHorizontal} aria-label="Filter artists">
+          Filter
+        </Button>
+      </section>
+
       <DataTable
         columns={columns}
-        data={data}
+        data={filteredData}
         isLoading={loading}
         onRowClick={(row: any) => router.push(`/catalog/artists/${row.id}`)}
         onEdit={(row: any) => router.push(`/catalog/artists/${row.id}`)}
         onDelete={handleDelete}
       />
 
+      {!loading && search && filteredData.length === 0 && data.length > 0 && (
+        <p className="-mt-3 text-xs text-text-secondary">No artists match “{search}”.</p>
+      )}
+
       <EntityForm title="New Artist" isOpen={showAddModal} onClose={() => setShowAddModal(false)} onSubmit={handleCreate} isSubmitting={isSubmitting} error={undefined}>
         <div className="space-y-4">
           <div>
-            <label className="text-xs text-text-secondary font-bold">Name *</label>
+            <label className="text-xs font-bold text-text-secondary">Name *</label>
             <input className="input w-full" value={newArtist.name} onChange={(e) => setNewArtist({ ...newArtist, name: e.target.value })} required />
           </div>
           <div>
-            <label className="text-xs text-text-secondary font-bold">Stage Name</label>
+            <label className="text-xs font-bold text-text-secondary">Stage Name</label>
             <input className="input w-full" value={newArtist.stage_name} onChange={(e) => setNewArtist({ ...newArtist, stage_name: e.target.value })} />
           </div>
           <div>
-            <label className="text-xs text-text-secondary font-bold">Email</label>
+            <label className="text-xs font-bold text-text-secondary">Email</label>
             <input className="input w-full" type="email" value={newArtist.email} onChange={(e) => setNewArtist({ ...newArtist, email: e.target.value })} />
           </div>
           <div>
-            <label className="text-xs text-text-secondary font-bold">IPI Number</label>
+            <label className="text-xs font-bold text-text-secondary">IPI Number</label>
             <input className="input w-full" value={newArtist.ipi_number} onChange={(e) => setNewArtist({ ...newArtist, ipi_number: e.target.value })} />
           </div>
         </div>
