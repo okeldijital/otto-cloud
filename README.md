@@ -17,8 +17,8 @@ OTTO Cloud is the governed cloud implementation of OTTO for record-label operati
 
 ## Development model
 
-1. Work is performed on an explicit feature branch.
-2. Changes are integrated through a GitHub pull request into the governed base branch.
+1. **`main` is the exclusive implementation source of truth.**
+2. Changes are made against the current `main` state; stale feature branches are not treated as authoritative.
 3. Vercel deployment is the project acceptance gate.
 4. **Vercel READY = green.** GitHub Actions is not the acceptance gate for OTTO Cloud.
 5. Notion under `Okel Dijital HQ/Projects/Otto-Cloud` records governance decisions, implementation state, and acceptance evidence.
@@ -35,7 +35,7 @@ The current delivery stream is **Release & Rights Management (RRM)**, with organ
 
 ## Source of truth
 
-For implementation truth, use the governed Git branch and its reviewed pull request. For deployment acceptance, use Vercel. For project governance and operational decisions, use the OTTO Cloud Notion project record.
+For implementation truth, use **`main`**. For deployment acceptance, use Vercel. For project governance and operational decisions, use the OTTO Cloud Notion project record.
 
 ## License
 
