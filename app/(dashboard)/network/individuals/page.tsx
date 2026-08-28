@@ -75,7 +75,7 @@ export default function IndividualsPage() {
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
               <input className="input pl-9" placeholder="Search individuals..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
             </div>
-            <Button variant="orange" size="sm" onClick={() => setShowAddModal(true)}>
+            <Button variant="primary" size="sm" onClick={() => setShowAddModal(true)}>
               <Plus size={14} /> Add Individual
             </Button>
           </div>
@@ -93,7 +93,7 @@ export default function IndividualsPage() {
           <div className="overflow-x-auto">
             <table className="w-full" style={{ borderCollapse: "collapse" }}>
               <thead>
-                <tr className="text-left text-xs uppercase tracking-wider text-text-secondary border-b border-white/5">
+                <tr className="text-left text-xs uppercase tracking-wider text-text-secondary border-b border-border">
                   <th className="p-4 font-bold"></th>
                   <th className="p-4 font-bold">Name</th>
                   <th className="p-4 font-bold">Role</th>
@@ -107,13 +107,13 @@ export default function IndividualsPage() {
                 {filtered.map((ind) => {
                   const orgName = ind.individual_organizations?.[0]?.organizations?.name;
                   return (
-                    <tr key={ind.id} className="border-b border-white/5 hover:bg-white/5 cursor-pointer transition-colors" onClick={() => router.push(`/network/individuals/${ind.id}`)}>
+                    <tr key={ind.id} className="border-b border-border hover:bg-surface-elevated cursor-pointer transition-colors" onClick={() => router.push(`/network/individuals/${ind.id}`)}>
                       <td className="p-4">
-                        <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center overflow-hidden">
+                        <div className="w-10 h-10 rounded-full bg-surface-elevated border border-border flex items-center justify-center overflow-hidden">
                           {ind.image_url ? <img src={ind.image_url} alt="" className="w-full h-full object-cover" /> : <UserCircle size={24} className="text-text-secondary" />}
                         </div>
                       </td>
-                      <td className="p-4 font-medium text-white">{ind.first_name} {ind.last_name}</td>
+                      <td className="p-4 font-medium text-text-primary">{ind.first_name} {ind.last_name}</td>
                       <td className="p-4 text-sm text-text-secondary">{ind.role || "Professional"}</td>
                       <td className="p-4 text-sm text-text-secondary">
                         {ind.email ? <span className="flex items-center gap-1"><Mail size={14} />{ind.email}</span> : "—"}
@@ -126,7 +126,7 @@ export default function IndividualsPage() {
                         </Badge>
                       </td>
                       <td className="p-4">
-                        <button className="ghost-btn p-1.5 hover:bg-danger/20 rounded-lg text-danger" onClick={(e) => { e.stopPropagation(); handleDelete(ind); }}>
+                        <button className="ghost-btn p-1.5 hover:bg-danger/20 rounded-md text-danger" onClick={(e) => { e.stopPropagation(); handleDelete(ind); }}>
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
                         </button>
                       </td>
