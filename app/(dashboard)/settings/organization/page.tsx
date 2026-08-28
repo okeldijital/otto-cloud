@@ -111,7 +111,15 @@ function OverviewPanel({ orgName, onNavigate }: { orgName: string; onNavigate: (
     <div className="space-y-6">
       <Card title="Organization access">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <SummaryCard icon={Users} title="Team" description="Manage members and role assignments." action="Open Team" onClick={() => onNavigate("team")} />
+          <SummaryCard
+            icon={Users}
+            title="Team"
+            description="Manage members and role assignments."
+            action="Open Team"
+            onClick={() => onNavigate("team")}
+            secondaryAction="Invite a new account"
+            onSecondaryClick={() => window.location.assign("/settings/organization/invitations")}
+          />
           <SummaryCard icon={Shield} title="Roles" description="Review system roles and their permissions." action="Open Roles" onClick={() => onNavigate("roles")} />
           <SummaryCard icon={KeyRound} title="Permissions" description="Review the available permission framework." action="Open Permissions" onClick={() => onNavigate("permissions")} />
         </div>
@@ -126,13 +134,16 @@ function OverviewPanel({ orgName, onNavigate }: { orgName: string; onNavigate: (
   );
 }
 
-function SummaryCard({ icon: Icon, title, description, action, onClick }: { icon: typeof Users; title: string; description: string; action: string; onClick: () => void }) {
+function SummaryCard({ icon: Icon, title, description, action, onClick, secondaryAction, onSecondaryClick }: { icon: typeof Users; title: string; description: string; action: string; onClick: () => void; secondaryAction?: string; onSecondaryClick?: () => void }) {
   return (
     <div className="rounded-xl border border-white/5 bg-surface-elevated p-4">
       <Icon size={18} className="text-accent mb-3" />
       <h3 className="text-sm font-semibold text-white">{title}</h3>
       <p className="mt-1 text-xs leading-5 text-text-secondary">{description}</p>
-      <button type="button" onClick={onClick} className="mt-4 text-xs font-semibold text-accent hover:underline">{action} →</button>
+      <div className="mt-4 flex flex-col items-start gap-2">
+        <button type="button" onClick={onClick} className="text-xs font-semibold text-accent hover:underline">{action} →</button>
+        {secondaryAction && onSecondaryClick && <button type="button" onClick={onSecondaryClick} className="text-xs font-medium text-text-secondary hover:text-white hover:underline">{secondaryAction} →</button>}
+      </div>
     </div>
   );
 }
