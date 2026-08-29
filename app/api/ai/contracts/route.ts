@@ -8,6 +8,7 @@ import {
   requirePositiveIntId,
   resourceAuthErrorResponse,
 } from "@/lib/auth/resource-authorization";
+import { documentIntelligenceService } from "@/lib/document-intelligence";
 
 export async function GET(req: Request) {
   try {
@@ -50,41 +51,45 @@ export async function POST(req: Request) {
     const action = searchParams.get("action");
     const ctx = await requireOrganization();
     const orgId = ctx.organizationId;
-    // R5: actor identity is server-derived; the old parseInt(session.user.id)||1
-    // fallback (R6 family) is removed — never invent user id 1.
     const userId = requireActorUserId(ctx);
 
     if (action === "extract") {
       const body = await req.json();
-      const { contract_hash, extractor_version, linker_version } = body;
+      const documentId = body.document_id ?? body.documentId;
+      const contractIdValue = body.contract_id ?? body.contractId;
 
-      const run = await prisma.ai_contract_resolution_runs.create({
-        data: {
-          organization_id: orgId,
-          user_id: userId,
-          contract_hash,
-          extractor_version: extractor_version || "v1",
-          linker_version: linker_version || "v1",
-        },
+      if (!documentId || typeof documentId !== "string") {
+        return NextResponse.json({ error: "Missing document_id" }, { status: 400 });
+      }
+
+      const contractId = contractIdValue == null
+        ? null
+        : requirePositiveIntId(contractIdValue, "contract_id");
+
+      // The Document Intelligence layer is the canonical extraction pipeline:
+      // document bytes → OCR/text extraction → AI extraction → persisted result.
+      // Keep the legacy resolution run separate; entity resolution happens after
+      // extraction and verification.
+      const job = await documentIntelligenceService.startExtraction({
+        organizationId: orgId,
+        documentId,
+        contractId,
+        userId,
       });
-      return NextResponse.json(run, { status: 201 });
+
+      return NextResponse.json(job, { status: 202 });
     }
 
     if (action === "resolve") {
       const body = await req.json();
       const { run_id, links } = body;
 
-      // R5: run_id is validated (malformed → 400, never id-coerced) and the run
-      // must belong to the caller's organization (foreign → 404).
       const runId = requirePositiveIntId(run_id, "run_id");
       const existingRun = await prisma.ai_contract_resolution_runs.findFirst({
         where: { id: runId, organization_id: orgId },
       });
       if (!existingRun) return NextResponse.json({ error: "Run not found" }, { status: 404 });
 
-      // R5: each client-supplied entity reference must resolve to a positive
-      // integer owned by the caller's organization (404 foreign/non-existent;
-      // null references remain valid; unknown entity types fail closed 400).
       const created = await Promise.all(
         (links || []).map(async (link: any) => {
           const entityId = await requireEntityReferenceInOrg(
