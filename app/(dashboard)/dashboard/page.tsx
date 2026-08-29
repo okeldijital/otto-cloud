@@ -8,7 +8,7 @@ import LifecycleDashboardWidgets from "@/components/contracts/lifecycle/Lifecycl
 import PlatformEventsDashboard from "@/components/platform/PlatformEventsDashboard";
 import ReleaseContractDashboardWidgets from "@/components/release-workspace/ReleaseContractDashboardWidgets";
 
-const PIE_COLORS = ["#00E5FF", "#00B8D4", "#22C55E", "#F59E0B", "#EF4444", "#8E8E9A"];
+const PIE_COLORS = ["var(--color-accent)", "var(--color-accent-secondary)", "var(--color-success)", "var(--color-warning)", "var(--color-danger)", "var(--color-text-secondary)"];
 
 function StatsCard({ title, value, icon, subtitle }: { title: string; value: string; icon: React.ReactNode; subtitle?: string }) {
   return (
@@ -99,14 +99,14 @@ export default function DashboardPage() {
           {entityData.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={entityData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#2A2A32" />
-                <XAxis dataKey="name" tick={{ fill: "#8E8E9A", fontSize: 12 }} />
-                <YAxis tick={{ fill: "#8E8E9A", fontSize: 12 }} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                <XAxis dataKey="name" tick={{ fill: "var(--color-text-secondary)", fontSize: 12 }} />
+                <YAxis tick={{ fill: "var(--color-text-secondary)", fontSize: 12 }} />
                 <Tooltip
-                  contentStyle={{ background: "#1A1A20", border: "1px solid #2A2A32", borderRadius: "8px" }}
-                  labelStyle={{ color: "#F5F5F7" }}
+                  contentStyle={{ background: "var(--color-surface-elevated)", border: "1px solid var(--color-border)", borderRadius: "8px" }}
+                  labelStyle={{ color: "var(--color-text-primary)" }}
                 />
-                <Bar dataKey="value" fill="#00E5FF" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="value" fill="var(--color-accent)" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
@@ -123,11 +123,11 @@ export default function DashboardPage() {
                   ))}
                 </Pie>
                 <Tooltip
-                  contentStyle={{ background: "#1A1A20", border: "1px solid #2A2A32", borderRadius: "8px" }}
-                  labelStyle={{ color: "#F5F5F7" }}
+                  contentStyle={{ background: "var(--color-surface-elevated)", border: "1px solid var(--color-border)", borderRadius: "8px" }}
+                  labelStyle={{ color: "var(--color-text-primary)" }}
                   formatter={(value: any) => `$${(Number(value) || 0).toLocaleString()}`}
                 />
-                <Legend wrapperStyle={{ fontSize: "12px", color: "#8E8E9A" }} />
+                <Legend wrapperStyle={{ fontSize: "12px", color: "var(--color-text-secondary)" }} />
               </PieChart>
             </ResponsiveContainer>
           ) : (
