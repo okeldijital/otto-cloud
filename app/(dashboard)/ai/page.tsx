@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Brain, MessageSquare, Send, Cpu, BarChart3, DollarSign,
+  Brain, Send, Cpu, BarChart3, DollarSign,
   FileText, PenTool, RefreshCw, AlertCircle, Loader2, Shield
 } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
@@ -13,275 +13,24 @@ import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import api from "@/lib/api";
 
-const TOOL_LINKS = {
-  analytics: "/ai/analytics",
-  royalties: "/ai/royalties",
-  contracts: "/ai/contracts",
-  "ai_audit": "/ai/audit",
-  "ai_draft": "/ai/draft",
-  "core-write": "/ai/core-write",
-  "release-integration": "/ai/release-integration",
-};
-
-const TOOL_ICONS = {
-  analytics: BarChart3,
-  royalties: DollarSign,
-  contracts: FileText,
-  "core-write": PenTool,
-  "release-integration": Cpu,
-};
+const TOOL_LINKS = { analytics: "/ai/analytics", royalties: "/ai/royalties", contracts: "/ai/contracts", "ai_audit": "/ai/audit", "ai_draft": "/ai/draft", "core-write": "/ai/core-write", "release-integration": "/ai/release-integration" };
+const TOOL_ICONS = { analytics: BarChart3, royalties: DollarSign, contracts: FileText, "core-write": PenTool, "release-integration": Cpu };
 
 export default function AIDashboardPage() {
-  const router = useRouter();
-  const chatEndRef = useRef(null);
-
-  const [health, setHealth] = useState(null);
-  const [tools, setTools] = useState([]);
-  const [sessions, setSessions] = useState([]);
-  const [activeSession, setActiveSession] = useState(null);
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState("");
-  const [sending, setSending] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  const fetchAll = async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const [healthRes, toolsRes, sessionsRes] = await Promise.all([
-        api.get("/ai", { params: { action: "health" } }).catch(() => null),
-        api.get("/ai", { params: { action: "tools" } }).catch(() => null),
-        api.get("/ai", { params: { action: "sessions" } }).catch(() => null),
-      ]);
-      if (healthRes) setHealth(healthRes.data);
-      if (toolsRes) setTools(Array.isArray(toolsRes.data) ? toolsRes.data : toolsRes.data?.tools || []);
-      if (sessionsRes) {
-        const s = Array.isArray(sessionsRes.data) ? sessionsRes.data : sessionsRes.data?.sessions || [];
-        setSessions(s);
-        if (s.length > 0 && !activeSession) {
-          setActiveSession(s[0]);
-        }
-      }
-    } catch (err) {
-      setError("Failed to load AI dashboard data");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => { fetchAll(); }, []);
-
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  const handleSend = async () => {
-    const text = input.trim();
-    if (!text || sending) return;
-    setInput("");
-    const userMsg = { role: "user", content: text };
-    setMessages((prev) => [...prev, userMsg]);
-    setSending(true);
-    try {
-      const res = await api.post("/ai", null, {
-        params: { action: "chat" },
-        data: {
-          session_id: activeSession?.session_id || activeSession?.id,
-          message: text,
-        },
-      });
-      const assistantMsg = {
-        role: "assistant",
-        content: res.data?.response || res.data?.message || JSON.stringify(res.data),
-      };
-      setMessages((prev) => [...prev, assistantMsg]);
-    } catch (err) {
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: "Error: " + (err?.response?.data?.error || "Failed to send message") },
-      ]);
-    } finally {
-      setSending(false);
-    }
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
-
+  const router = useRouter(); const chatEndRef = useRef(null);
+  const [health, setHealth] = useState(null); const [tools, setTools] = useState([]); const [sessions, setSessions] = useState([]); const [activeSession, setActiveSession] = useState(null); const [messages, setMessages] = useState([]); const [input, setInput] = useState(""); const [sending, setSending] = useState(false); const [loading, setLoading] = useState(true); const [error, setError] = useState("");
+  const fetchAll = async () => { setLoading(true); setError(""); try { const [healthRes, toolsRes, sessionsRes] = await Promise.all([api.get("/ai", { params: { action: "health" } }).catch(() => null), api.get("/ai", { params: { action: "tools" } }).catch(() => null), api.get("/ai", { params: { action: "sessions" } }).catch(() => null)]); if (healthRes) setHealth(healthRes.data); if (toolsRes) setTools(Array.isArray(toolsRes.data) ? toolsRes.data : toolsRes.data?.tools || []); if (sessionsRes) { const s = Array.isArray(sessionsRes.data) ? sessionsRes.data : sessionsRes.data?.sessions || []; setSessions(s); if (s.length > 0 && !activeSession) setActiveSession(s[0]); } } catch (err) { setError("Failed to load AI dashboard data"); } finally { setLoading(false); } };
+  useEffect(() => { fetchAll(); }, []); useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+  const handleSend = async () => { const text = input.trim(); if (!text || sending) return; setInput(""); setMessages((prev) => [...prev, { role: "user", content: text }]); setSending(true); try { const res = await api.post("/ai", null, { params: { action: "chat" }, data: { session_id: activeSession?.session_id || activeSession?.id, message: text } }); setMessages((prev) => [...prev, { role: "assistant", content: res.data?.response || res.data?.message || JSON.stringify(res.data) }]); } catch (err) { setMessages((prev) => [...prev, { role: "assistant", content: "Error: " + (err?.response?.data?.error || "Failed to send message") }]); } finally { setSending(false); } };
+  const handleKeyDown = (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } };
   const enabledTools = health?.tools || health?.enabled_tools || [];
-
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <PageHeader title="AI Assistant" subtitle="AI-powered insights and tools" />
-        <div className="flex items-center justify-center p-12">
-          <Loader2 size={32} className="text-accent animate-spin" />
-        </div>
-      </div>
-    );
-  }
-
-  if (error && !health) {
-    return (
-      <div className="space-y-6">
-        <PageHeader title="AI Assistant" subtitle="AI-powered insights and tools" />
-        <Card>
-          <div className="flex items-start gap-3 bg-danger/10 border border-danger/20 rounded-xl p-4">
-            <AlertCircle size={18} className="text-danger shrink-0 mt-0.5" />
-            <p className="text-sm text-text-secondary">{error}</p>
-          </div>
-          <div className="mt-4">
-            <Button variant="secondary" size="sm" onClick={fetchAll}>
-              <RefreshCw size={14} /> Retry
-            </Button>
-          </div>
-        </Card>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        title="AI Assistant"
-        subtitle="AI-powered insights and tools"
-        actions={
-          <Button variant="secondary" size="sm" onClick={fetchAll}>
-            <RefreshCw size={14} /> Refresh
-          </Button>
-        }
-      />
-
-      {/* Health / Status Bar */}
-      <Card>
-        <div className="flex items-start gap-4">
-          <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center shrink-0">
-            <Brain size={20} className="text-accent" />
-          </div>
-          <div className="flex-1">
-            <h3 className="text-sm font-bold text-white">
-              AI System {health?.status === "ok" ? "Online" : "Degraded"}
-            </h3>
-            {health?.version && (
-              <p className="text-xs text-text-secondary mt-0.5">Version {health.version}</p>
-            )}
-            {enabledTools.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-3">
-                {enabledTools.map((tool) => (
-                  <Badge key={tool} variant="primary" size="sm">
-                    {tool}
-                  </Badge>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </Card>
-
-      {/* Chat Interface */}
-      <Card title="Chat" subtitle={activeSession ? `Session: ${activeSession.session_id || activeSession.id}` : "Start a conversation"}>
-        <div className="flex flex-col h-[400px]">
-          <div className="flex-1 overflow-y-auto space-y-3 p-1">
-            {messages.length === 0 && (
-              <div className="flex items-center justify-center h-full text-text-secondary text-sm">
-                Send a message to start chatting with the AI assistant.
-              </div>
-            )}
-            {messages.map((msg, idx) => (
-              <div key={idx} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                <div
-                  className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm ${
-                    msg.role === "user"
-                      ? "bg-accent/20 text-white"
-                      : "bg-white/5 text-text-primary"
-                  }`}
-                >
-                  {msg.content}
-                </div>
-              </div>
-            ))}
-            <div ref={chatEndRef} />
-          </div>
-          <div className="flex items-center gap-2 border-t border-white/5 pt-3 mt-3">
-            <input
-              className="input flex-1"
-              placeholder="Type a message..."
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              disabled={sending}
-            />
-            <Button variant="primary" size="sm" onClick={handleSend} disabled={sending || !input.trim()}>
-              {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-              Send
-            </Button>
-          </div>
-        </div>
-      </Card>
-
-      {/* Tool Cards */}
-      <div>
-        <h3 className="text-sm font-bold text-white uppercase tracking-widest mb-4">AI Tools</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {tools.length === 0 ? (
-            <Card>
-              <p className="text-sm text-text-secondary">No tools available.</p>
-            </Card>
-          ) : (
-            tools.map((tool) => {
-              const toolName = tool.name || tool.id || tool;
-              const slug = String(toolName).toLowerCase().replace(/\s+/g, "-");
-              const link = TOOL_LINKS[slug] || `/${slug}`;
-              const Icon = TOOL_ICONS[slug] || Cpu;
-              const status = tool.status || tool.enabled ? "enabled" : "disabled";
-              return (
-                <div
-                  key={toolName}
-                  className="bg-premium-glass border border-white/5 rounded-[24px] p-5 hover:border-white/20 transition-all duration-300 backdrop-blur-xl cursor-pointer group"
-                  onClick={() => router.push(link)}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center shrink-0 group-hover:bg-accent/20 transition-colors">
-                      <Icon size={20} className="text-accent" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-sm font-bold text-white truncate">{toolName}</h4>
-                      <p className="text-xs text-text-secondary mt-1 line-clamp-2">
-                        {tool.description || tool.summary || "AI-powered tool"}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-3 flex items-center gap-2">
-                    <Badge variant={status === "enabled" ? "success" : "neutral"} size="sm">
-                      {status === "enabled" ? "Active" : "Inactive"}
-                    </Badge>
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-      </div>
-
-      {/* Quick Actions */}
-      <Card title="Quick Actions">
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          <Button variant="secondary" size="sm" fullWidth onClick={() => router.push("/ai/audit")}>
-            <Shield size={14} /> Run Audit
-          </Button>
-          <Button variant="secondary" size="sm" fullWidth onClick={() => router.push("/ai/draft")}>
-            <FileText size={14} /> Draft Contract
-          </Button>
-          <Button variant="secondary" size="sm" fullWidth onClick={() => router.push("/ai/analytics")}>
-            <BarChart3 size={14} /> Analytics
-          </Button>
-        </div>
-      </Card>
-    </div>
-  );
+  if (loading) return <div className="space-y-6"><PageHeader title="AI Assistant" subtitle="AI-powered insights and tools" /><div className="flex items-center justify-center p-12"><Loader2 size={32} className="text-accent animate-spin" /></div></div>;
+  if (error && !health) return <div className="space-y-6"><PageHeader title="AI Assistant" subtitle="AI-powered insights and tools" /><Card><div className="flex items-start gap-3 bg-danger/10 border border-danger/20 rounded-xl p-4"><AlertCircle size={18} className="text-danger shrink-0 mt-0.5" /><p className="text-sm text-text-secondary">{error}</p></div><div className="mt-4"><Button variant="secondary" size="sm" onClick={fetchAll}><RefreshCw size={14} /> Retry</Button></div></Card></div>;
+  return <div className="space-y-6">
+    <PageHeader title="AI Assistant" subtitle="AI-powered insights and tools" actions={<Button variant="secondary" size="sm" onClick={fetchAll}><RefreshCw size={14} /> Refresh</Button>} />
+    <Card><div className="flex items-start gap-4"><div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center shrink-0"><Brain size={20} className="text-accent" /></div><div className="flex-1"><h3 className="text-sm font-bold text-text-primary">AI System {health?.status === "ok" ? "Online" : "Degraded"}</h3>{health?.version && <p className="text-xs text-text-secondary mt-0.5">Version {health.version}</p>}{enabledTools.length > 0 && <div className="flex flex-wrap gap-2 mt-3">{enabledTools.map((tool) => <Badge key={tool} variant="primary" size="sm">{tool}</Badge>)}</div>}</div></div></Card>
+    <Card title="Chat" subtitle={activeSession ? `Session: ${activeSession.session_id || activeSession.id}` : "Start a conversation"}><div className="flex flex-col h-[400px]"><div className="flex-1 overflow-y-auto space-y-3 p-1">{messages.length === 0 && <div className="flex items-center justify-center h-full text-text-secondary text-sm">Send a message to start chatting with the AI assistant.</div>}{messages.map((msg, idx) => <div key={idx} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}><div className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm ${msg.role === "user" ? "bg-accent/20 text-text-primary" : "bg-surface-elevated text-text-primary"}`}>{msg.content}</div></div>)}<div ref={chatEndRef} /></div><div className="flex items-center gap-2 border-t border-border pt-3 mt-3"><input className="input flex-1" placeholder="Type a message..." value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown} disabled={sending} /><Button variant="primary" size="sm" onClick={handleSend} disabled={sending || !input.trim()}>{sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />} Send</Button></div></div></Card>
+    <div><h3 className="text-sm font-bold text-text-primary uppercase tracking-widest mb-4">AI Tools</h3><div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">{tools.length === 0 ? <Card><p className="text-sm text-text-secondary">No tools available.</p></Card> : tools.map((tool) => { const toolName = tool.name || tool.id || tool; const slug = String(toolName).toLowerCase().replace(/\s+/g, "-"); const link = TOOL_LINKS[slug] || `/${slug}`; const Icon = TOOL_ICONS[slug] || Cpu; const status = tool.status || tool.enabled ? "enabled" : "disabled"; return <div key={toolName} className="bg-surface border border-border rounded-xl p-5 hover:bg-surface-elevated hover:border-accent/40 transition-colors cursor-pointer group" onClick={() => router.push(link)}><div className="flex items-start gap-3"><div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center shrink-0 group-hover:bg-accent/20 transition-colors"><Icon size={20} className="text-accent" /></div><div className="flex-1 min-w-0"><h4 className="text-sm font-bold text-text-primary truncate">{toolName}</h4><p className="text-xs text-text-secondary mt-1 line-clamp-2">{tool.description || tool.summary || "AI-powered tool"}</p></div></div><div className="mt-3 flex items-center gap-2"><Badge variant={status === "enabled" ? "success" : "neutral"} size="sm">{status === "enabled" ? "Active" : "Inactive"}</Badge></div></div>; })}</div></div>
+    <Card title="Quick Actions"><div className="grid grid-cols-2 sm:grid-cols-3 gap-3"><Button variant="secondary" size="sm" fullWidth onClick={() => router.push("/ai/audit")}><Shield size={14} /> Run Audit</Button><Button variant="secondary" size="sm" fullWidth onClick={() => router.push("/ai/draft")}><FileText size={14} /> Draft Contract</Button><Button variant="secondary" size="sm" fullWidth onClick={() => router.push("/ai/analytics")}><BarChart3 size={14} /> Analytics</Button></div></Card>
+  </div>;
 }
