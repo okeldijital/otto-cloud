@@ -112,14 +112,14 @@ export default function OfficeDocumentsPage() {
         title="Documents"
         subtitle="Upload and manage office documents, files, and assets."
         actions={
-          <Button variant="orange" size="sm" onClick={() => setShowUpload(true)}>
+          <Button variant="primary" size="sm" onClick={() => setShowUpload(true)}>
             <Plus size={16} /> Upload Document
           </Button>
         }
       />
 
       <Card noPadding>
-        <div className="p-4 border-b border-white/5 flex flex-wrap items-center gap-3">
+        <div className="p-4 border-b border-border flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2 flex-wrap">
             <select className="input w-auto" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
               <option value="All">Type: All</option>
@@ -140,9 +140,9 @@ export default function OfficeDocumentsPage() {
           <div className="p-12 text-center text-text-secondary">
             {documents.length === 0 ? (
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-white">No documents yet</h3>
+                <h3 className="text-lg font-semibold text-text-primary">No documents yet</h3>
                 <p className="text-sm">Upload your first document to get started.</p>
-                <Button variant="orange" size="sm" onClick={() => setShowUpload(true)}>
+                <Button variant="primary" size="sm" onClick={() => setShowUpload(true)}>
                   <Plus size={16} /> Upload Document
                 </Button>
               </div>
@@ -154,7 +154,7 @@ export default function OfficeDocumentsPage() {
           <div className="overflow-x-auto">
             <table className="w-full" style={{ borderCollapse: "collapse" }}>
               <thead>
-                <tr className="text-left text-xs uppercase tracking-wider text-text-secondary border-b border-white/5">
+                <tr className="text-left text-xs uppercase tracking-wider text-text-secondary border-b border-border">
                   <th className="p-4 font-bold">Title</th>
                   <th className="p-4 font-bold">Type</th>
                   <th className="p-4 font-bold">Size</th>
@@ -164,9 +164,9 @@ export default function OfficeDocumentsPage() {
               </thead>
               <tbody>
                 {filtered.map((doc) => (
-                  <tr key={doc.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                  <tr key={doc.id} className="border-b border-border hover:bg-surface-elevated transition-colors">
                     <td className="p-4">
-                      <div className="font-medium text-white">{doc.title || doc.original_filename || "Untitled"}</div>
+                      <div className="font-medium text-text-primary">{doc.title || doc.original_filename || "Untitled"}</div>
                       {doc.original_filename && doc.title && (
                         <div className="text-xs text-text-secondary font-mono mt-0.5">{doc.original_filename}</div>
                       )}
@@ -198,11 +198,11 @@ export default function OfficeDocumentsPage() {
       </Card>
 
       {showUpload && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0f1115]/80 backdrop-blur-md p-4 sm:p-6">
-          <div className="bg-premium-glass border border-white/10 rounded-3xl shadow-glass w-full max-w-lg overflow-hidden" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-6 border-b border-white/5 bg-white/[0.02]">
-              <h2 className="text-xl font-black text-white tracking-tight">Upload Document</h2>
-              <button className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-text-secondary hover:text-white" onClick={() => setShowUpload(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/90 backdrop-blur-md p-4 sm:p-6">
+          <div className="bg-surface border border-border rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-border bg-surface-elevated">
+              <h2 className="text-xl font-black text-text-primary tracking-tight">Upload Document</h2>
+              <button className="w-8 h-8 rounded-full bg-surface hover:bg-surface-elevated flex items-center justify-center text-text-secondary hover:text-text-primary" onClick={() => setShowUpload(false)}>
                 <X size={16} />
               </button>
             </div>
@@ -240,11 +240,11 @@ export default function OfficeDocumentsPage() {
       )}
 
       {selectedDoc && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-[#0f1115]/60 backdrop-blur-sm" onClick={() => setSelectedDoc(null)}>
-          <div className="w-full max-w-xl bg-premium-glass border-l border-white/10 shadow-glass overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-6 border-b border-white/5 bg-white/[0.02] sticky top-0 z-10">
-              <h2 className="text-xl font-black text-white tracking-tight truncate">{selectedDoc.title || selectedDoc.original_filename}</h2>
-              <button className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-text-secondary hover:text-white" onClick={() => setSelectedDoc(null)}>
+        <div className="fixed inset-0 z-50 flex justify-end bg-background/80 backdrop-blur-sm" onClick={() => setSelectedDoc(null)}>
+          <div className="w-full max-w-xl bg-surface border-l border-border shadow-2xl overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-border bg-surface-elevated sticky top-0 z-10">
+              <h2 className="text-xl font-black text-text-primary tracking-tight truncate">{selectedDoc.title || selectedDoc.original_filename}</h2>
+              <button className="w-8 h-8 rounded-full bg-surface hover:bg-surface-elevated flex items-center justify-center text-text-secondary hover:text-text-primary" onClick={() => setSelectedDoc(null)}>
                 <X size={16} />
               </button>
             </div>
@@ -252,39 +252,39 @@ export default function OfficeDocumentsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-xs font-bold text-text-secondary uppercase tracking-widest mb-1">Title</p>
-                  <p className="text-sm text-white">{selectedDoc.title || "—"}</p>
+                  <p className="text-sm text-text-primary">{selectedDoc.title || "—"}</p>
                 </div>
                 <div>
                   <p className="text-xs font-bold text-text-secondary uppercase tracking-widest mb-1">Filename</p>
-                  <p className="text-sm text-white font-mono">{selectedDoc.original_filename || "—"}</p>
+                  <p className="text-sm text-text-primary font-mono">{selectedDoc.original_filename || "—"}</p>
                 </div>
                 <div>
                   <p className="text-xs font-bold text-text-secondary uppercase tracking-widest mb-1">Type</p>
-                  <p className="text-sm text-white">{selectedDoc.file_type || "—"}</p>
+                  <p className="text-sm text-text-primary">{selectedDoc.file_type || "—"}</p>
                 </div>
                 <div>
                   <p className="text-xs font-bold text-text-secondary uppercase tracking-widest mb-1">Size</p>
-                  <p className="text-sm text-white">{formatSize(selectedDoc.file_size)}</p>
+                  <p className="text-sm text-text-primary">{formatSize(selectedDoc.file_size)}</p>
                 </div>
                 <div>
                   <p className="text-xs font-bold text-text-secondary uppercase tracking-widest mb-1">Category</p>
-                  <p className="text-sm text-white">{selectedDoc.category || "—"}</p>
+                  <p className="text-sm text-text-primary">{selectedDoc.category || "—"}</p>
                 </div>
                 <div>
                   <p className="text-xs font-bold text-text-secondary uppercase tracking-widest mb-1">Uploaded</p>
-                  <p className="text-sm text-white">{formatDate(selectedDoc.created_at)}</p>
+                  <p className="text-sm text-text-primary">{formatDate(selectedDoc.created_at)}</p>
                 </div>
               </div>
               {selectedDoc.description && (
                 <div>
                   <p className="text-xs font-bold text-text-secondary uppercase tracking-widest mb-1">Description</p>
-                  <p className="text-sm text-white">{selectedDoc.description}</p>
+                  <p className="text-sm text-text-primary">{selectedDoc.description}</p>
                 </div>
               )}
               {selectedDoc.file_url && (
                 <div>
                   <p className="text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">Preview</p>
-                  <div className="bg-white/5 rounded-xl overflow-hidden border border-white/5">
+                  <div className="bg-surface-elevated rounded-xl overflow-hidden border border-border">
                     {isPdf(selectedDoc.file_type) || isPdf(selectedDoc.mime_type) ? (
                       <iframe src={selectedDoc.file_url} className="w-full h-[400px]" title="Document preview" />
                     ) : isImage(selectedDoc.file_type) || isImage(selectedDoc.mime_type) ? (
