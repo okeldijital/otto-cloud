@@ -74,14 +74,14 @@ export default function PlaylistsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {data.map((p) => (
-            <div key={p.id} className="bg-premium-glass border border-white/5 rounded-2xl p-6 backdrop-blur-xl hover:border-accent/30 transition-all group">
+            <div key={p.id} className="bg-surface border border-border rounded-2xl p-6 hover:border-accent/30 transition-all group">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
                     <ListMusic size={20} className="text-accent" />
                   </div>
                   <div>
-                    <p className="text-white font-semibold text-sm">{p.name}</p>
+                    <p className="text-text-primary font-semibold text-sm">{p.name}</p>
                     <div className="flex items-center gap-2 mt-1">
                       {p.is_public ? (
                         <Badge variant="primary" size="sm"><Globe size={10} /> Public</Badge>
