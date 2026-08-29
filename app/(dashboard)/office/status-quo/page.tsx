@@ -96,7 +96,7 @@ export default function OfficeStatusQuoPage() {
         title="Status Quo"
         subtitle="Governance dashboard showing open issues and their resolution status."
         actions={
-          <Button variant="orange" size="sm" onClick={fetchData} disabled={loading}>
+          <Button variant="primary" size="sm" onClick={fetchData} disabled={loading}>
             Refresh
           </Button>
         }
@@ -107,7 +107,7 @@ export default function OfficeStatusQuoPage() {
           <div className="flex items-center gap-3">
             <div className="p-3 bg-danger/10 rounded-xl"><AlertTriangle size={20} className="text-danger" /></div>
             <div>
-              <p className="text-2xl font-extrabold text-white">{redCount}</p>
+              <p className="text-2xl font-extrabold text-text-primary">{redCount}</p>
               <p className="text-xs text-text-secondary">Red</p>
             </div>
           </div>
@@ -116,7 +116,7 @@ export default function OfficeStatusQuoPage() {
           <div className="flex items-center gap-3">
             <div className="p-3 bg-warning/10 rounded-xl"><AlertTriangle size={20} className="text-warning" /></div>
             <div>
-              <p className="text-2xl font-extrabold text-white">{amberCount}</p>
+              <p className="text-2xl font-extrabold text-text-primary">{amberCount}</p>
               <p className="text-xs text-text-secondary">Amber</p>
             </div>
           </div>
@@ -125,16 +125,16 @@ export default function OfficeStatusQuoPage() {
           <div className="flex items-center gap-3">
             <div className="p-3 bg-success/10 rounded-xl"><ShieldCheck size={20} className="text-success" /></div>
             <div>
-              <p className="text-2xl font-extrabold text-white">{greenCount}</p>
+              <p className="text-2xl font-extrabold text-text-primary">{greenCount}</p>
               <p className="text-xs text-text-secondary">Green</p>
             </div>
           </div>
         </Card>
         <Card>
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-white/5 rounded-xl"><AlertTriangle size={20} className="text-text-secondary" /></div>
+            <div className="p-3 bg-surface-raised rounded-xl"><AlertTriangle size={20} className="text-text-secondary" /></div>
             <div>
-              <p className="text-2xl font-extrabold text-white">{totalCount}</p>
+              <p className="text-2xl font-extrabold text-text-primary">{totalCount}</p>
               <p className="text-xs text-text-secondary">Total</p>
             </div>
           </div>
@@ -142,7 +142,7 @@ export default function OfficeStatusQuoPage() {
       </div>
 
       <Card noPadding>
-        <div className="p-4 border-b border-white/5 flex flex-wrap items-center gap-3">
+        <div className="p-4 border-b border-border flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2 flex-wrap">
             <Filter size={16} className="text-text-secondary" />
             <select className="input w-auto" value={severityFilter} onChange={(e) => setSeverityFilter(e.target.value)}>
@@ -167,7 +167,7 @@ export default function OfficeStatusQuoPage() {
           <div className="p-12 text-center text-text-secondary">
             {items.length === 0 ? (
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-white">No status quo items</h3>
+                <h3 className="text-lg font-semibold text-text-primary">No status quo items</h3>
                 <p className="text-sm">All governance issues appear resolved.</p>
               </div>
             ) : (
@@ -178,7 +178,7 @@ export default function OfficeStatusQuoPage() {
           <div className="overflow-x-auto">
             <table className="w-full" style={{ borderCollapse: "collapse" }}>
               <thead>
-                <tr className="text-left text-xs uppercase tracking-wider text-text-secondary border-b border-white/5">
+                <tr className="text-left text-xs uppercase tracking-wider text-text-secondary border-b border-border">
                   <th className="p-4 font-bold">Issue</th>
                   <th className="p-4 font-bold">Entity Type</th>
                   <th className="p-4 font-bold">Entity ID</th>
@@ -190,9 +190,9 @@ export default function OfficeStatusQuoPage() {
               </thead>
               <tbody>
                 {filtered.map((item) => (
-                  <tr key={item.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                  <tr key={item.id} className="border-b border-border hover:bg-surface-raised transition-colors">
                     <td className="p-4">
-                      <div className="font-medium text-white truncate max-w-[250px]">{item.summary || "Untitled"}</div>
+                      <div className="font-medium text-text-primary truncate max-w-[250px]">{item.summary || "Untitled"}</div>
                       {item.issue_type && <div className="text-xs text-text-secondary mt-0.5">{item.issue_type}</div>}
                     </td>
                     <td className="p-4">
@@ -227,17 +227,17 @@ export default function OfficeStatusQuoPage() {
 
       {selectedItem && (
         <div className="fixed inset-0 z-50 flex justify-end bg-[#0f1115]/60 backdrop-blur-sm" onClick={() => setSelectedItem(null)}>
-          <div className="w-full max-w-xl bg-premium-glass border-l border-white/10 shadow-glass overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-6 border-b border-white/5 bg-white/[0.02] sticky top-0 z-10">
-              <h2 className="text-xl font-black text-white tracking-tight truncate">Issue Detail</h2>
-              <button className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-text-secondary hover:text-white" onClick={() => setSelectedItem(null)}>
+          <div className="w-full max-w-xl bg-surface border-l border-border shadow-glass overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-border bg-surface-raised sticky top-0 z-10">
+              <h2 className="text-xl font-black text-text-primary tracking-tight truncate">Issue Detail</h2>
+              <button className="w-8 h-8 rounded-full bg-surface-raised hover:bg-border flex items-center justify-center text-text-secondary hover:text-text-primary" onClick={() => setSelectedItem(null)}>
                 <X size={16} />
               </button>
             </div>
             <div className="p-6 space-y-6">
               <div>
                 <p className="text-xs font-bold text-text-secondary uppercase tracking-widest mb-1">Summary</p>
-                <p className="text-sm text-white">{selectedItem.summary || "—"}</p>
+                <p className="text-sm text-text-primary">{selectedItem.summary || "—"}</p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -246,29 +246,29 @@ export default function OfficeStatusQuoPage() {
                 </div>
                 <div>
                   <p className="text-xs font-bold text-text-secondary uppercase tracking-widest mb-1">Issue Type</p>
-                  <p className="text-sm text-white">{selectedItem.issue_type || "—"}</p>
+                  <p className="text-sm text-text-primary">{selectedItem.issue_type || "—"}</p>
                 </div>
                 <div>
                   <p className="text-xs font-bold text-text-secondary uppercase tracking-widest mb-1">Entity Type</p>
-                  <p className="text-sm text-white">{selectedItem.entity_type || "—"}</p>
+                  <p className="text-sm text-text-primary">{selectedItem.entity_type || "—"}</p>
                 </div>
                 <div>
                   <p className="text-xs font-bold text-text-secondary uppercase tracking-widest mb-1">Entity ID</p>
-                  <p className="text-sm text-white font-mono">{selectedItem.entity_id || "—"}</p>
+                  <p className="text-sm text-text-primary font-mono">{selectedItem.entity_id || "—"}</p>
                 </div>
                 <div>
                   <p className="text-xs font-bold text-text-secondary uppercase tracking-widest mb-1">Created</p>
-                  <p className="text-sm text-white">{formatDate(selectedItem.created_at)}</p>
+                  <p className="text-sm text-text-primary">{formatDate(selectedItem.created_at)}</p>
                 </div>
                 <div>
                   <p className="text-xs font-bold text-text-secondary uppercase tracking-widest mb-1">Resolved</p>
-                  <p className="text-sm text-white">{selectedItem.resolved_at ? formatDate(selectedItem.resolved_at) : "Open"}</p>
+                  <p className="text-sm text-text-primary">{selectedItem.resolved_at ? formatDate(selectedItem.resolved_at) : "Open"}</p>
                 </div>
               </div>
               {selectedItem.details_json && (
                 <div>
                   <p className="text-xs font-bold text-text-secondary uppercase tracking-widest mb-1">Details</p>
-                  <pre className="text-xs text-text-secondary bg-white/5 rounded-xl p-4 overflow-x-auto whitespace-pre-wrap font-mono">
+                  <pre className="text-xs text-text-secondary bg-surface-raised rounded-xl p-4 overflow-x-auto whitespace-pre-wrap font-mono">
                     {typeof selectedItem.details_json === "string"
                       ? selectedItem.details_json
                       : JSON.stringify(selectedItem.details_json, null, 2)}
