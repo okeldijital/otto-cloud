@@ -7,7 +7,7 @@ Self-hosted PDF OCR service for Contract Intelligence. It uses Poppler to render
 - Node.js 22
 - Poppler (`pdftoppm`)
 - Tesseract OCR
-- English language data by default
+- English and isiZulu language data are included in the Vercel container
 
 ## API
 
@@ -30,16 +30,16 @@ The response follows the application `OcrResult` shape and preserves page bounda
 ## Environment
 
 - `PORT` — HTTP port, default `8080`
-- `OCR_WORKER_TOKEN` — shared bearer token; set this in deployed environments
-- `OCR_LANG` — Tesseract language, default `eng`
+- `OCR_WORKER_TOKEN` — shared bearer token; set this when the worker is exposed directly
+- `OCR_LANG` — Tesseract language, default `eng`; use `eng+zul` for English/isiZulu documents
 - `OCR_MAX_BYTES` — request/PDF limit, default `26214400`
 
-## Deployment
+## Vercel deployment
 
-Build and run the container from this directory. The worker is intended to run on infrastructure that supports long-running containers (for example an OTTO-managed VPS), not as a Vercel serverless function.
+The worker can run as a Vercel container service using `Dockerfile.vercel`. Vercel builds the OCI image with Poppler and Tesseract and runs it as an autoscaling Vercel Function. The main OTTO service receives the worker URL through a Vercel service binding as `OCR_WORKER_URL`.
 
-The Next.js application connects to it using `OCR_WORKER_URL`, `OCR_WORKER_TOKEN`, and `OCR_WORKER_TIMEOUT_MS`.
+This keeps OCR self-hosted without requiring a VPS or hosted OCR API during OTTO's internal-use phase.
 
 ## Security boundary
 
-The worker accepts only PDF bytes and does not accept shell commands, executable paths, or arbitrary URLs. Temporary files are deleted after every request. Configure the worker behind HTTPS and require a token in deployed environments.
+The worker accepts only PDF bytes and does not accept shell commands, executable paths, or arbitrary URLs. Temporary files are deleted after every request. When the worker is exposed directly, configure HTTPS and require a token. When used as an internal Vercel service, keep the service private and use the service binding from the frontend service.
