@@ -69,7 +69,7 @@ export default function AddContractWizard({ isOpen, onClose, onCreated }: AddCon
       const fd = new FormData(); fd.append("file", file);
       const documentRes = await api.post(`/contracts?action=upload_document&id=${created.id}`, fd);
       const document = documentRes.data;
-      const extractionRes = await api.post("/ai/contracts?action=extract", { document_id: document.id, contract_id: created.id });
+      const extractionRes = await api.post("/ai/contracts/intake", { document_id: document.id, contract_id: created.id });
       setJob(extractionRes.data); setStage("extracting");
     } catch (err: any) {
       setError(err?.response?.data?.error || "Unable to start contract intake."); setStage("error");
