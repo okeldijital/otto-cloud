@@ -5,9 +5,6 @@
  * tenant membership records are not consulted for identity or authorization.
  * Legacy catalog-scope mapping remains isolated in migration-compat.ts until
  * the imported catalog has been fully re-keyed.
- *
- * @see docs/architecture/decisions/ADR-001-isolation-boundary.md
- * @see docs/architecture/multi-tenant-model.md
  */
 
 import { getServerSession } from "@/lib/auth/session";
@@ -81,6 +78,22 @@ function parseIdentityId(session: SessionLike): string | null {
   return session?.user?.identityId ?? session?.user?.id ?? null;
 }
 
+/** Resolve the legacy INT actor only for compatibility fields that require users.id. */
+async function resolveLegacyActorUserId(
+  email: string | null | undefined,
+  organizationId: string | null | undefined
+): Promise<number> {
+  if (!email) return 0;
+  const user = await prisma.User.findFirst({
+    where: {
+      email: email.trim().toLowerCase(),
+      ...(organizationId ? { organization_id: organizationId } : {}),
+    },
+    select: { id: true },
+  });
+  return user?.id ?? 0;
+}
+
 export async function getOrganizationContext(
   session?: SessionLike | null
 ): Promise<OrganizationContext> {
@@ -124,6 +137,7 @@ export async function getOrganizationContext(
     const organizationId = requestedOrg
       ? resolveCatalogOrganizationId(requestedOrg)
       : getLegacyCatalogScopeId();
+    const legacyUserId = await resolveLegacyActorUserId(sess.user.email, requestedOrg);
 
     return {
       organizationId,
@@ -133,7 +147,7 @@ export async function getOrganizationContext(
       role: sess.user.role ?? null,
       permissions: sess.user.permissions ?? [],
       isSuperAdmin: true,
-      userId: 0,
+      userId: legacyUserId,
       userEmail: sess.user.email ?? null,
       legacyIntOrgId: getLegacyIntOrgId(),
       dataScopeSource: "superadmin",
@@ -159,6 +173,7 @@ export async function getOrganizationContext(
     org.legacyTenantId && orgOwnsLegacyCatalog(org.legacyTenantId)
       ? catalogOrganizationId
       : org.id;
+  const legacyUserId = await resolveLegacyActorUserId(sess.user.email, organizationId);
 
   return {
     organizationId,
@@ -177,7 +192,7 @@ export async function getOrganizationContext(
     role: active.role?.key ?? sess.user.role ?? null,
     permissions,
     isSuperAdmin: !!sess.user.is_superuser,
-    userId: 0,
+    userId: legacyUserId,
     userEmail: sess.user.email ?? null,
     legacyIntOrgId: getLegacyIntOrgId(),
     dataScopeSource: "membership",
