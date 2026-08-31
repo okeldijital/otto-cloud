@@ -81,20 +81,25 @@ function parseIdentityId(session: SessionLike): string | null {
   return session?.user?.identityId ?? session?.user?.id ?? null;
 }
 
-/** Resolve the legacy INT actor solely for compatibility fields that require users.id. */
+/**
+ * Resolve the legacy INT actor solely for compatibility fields that require users.id.
+ * IAM organization membership is the authorization boundary. The legacy users
+ * row is an actor-compatibility record, and users.email is globally unique, so
+ * this mapping must not be constrained by the catalog organization UUID.
+ */
 async function resolveLegacyActorUserId(
   email: string | null | undefined,
-  organizationId: string | null | undefined
 ): Promise<number> {
-  if (!email) return 0;
-  const user = await prisma.user.findFirst({
-    where: {
-      email: email.trim().toLowerCase(),
-      ...(organizationId ? { organization_id: organizationId } : {}),
-    },
-    select: { id: true },
+  const normalizedEmail = email?.trim().toLowerCase();
+  if (!normalizedEmail) return 0;
+
+  const user = await prisma.user.findUnique({
+    where: { email: normalizedEmail },
+    select: { id: true, is_active: true },
   });
-  return user?.id ?? 0;
+
+  if (!user || user.is_active === false) return 0;
+  return user.id;
 }
 
 export async function getOrganizationContext(
@@ -140,7 +145,7 @@ export async function getOrganizationContext(
     const organizationId = requestedOrg
       ? resolveCatalogOrganizationId(requestedOrg)
       : getLegacyCatalogScopeId();
-    const legacyUserId = await resolveLegacyActorUserId(sess.user.email, requestedOrg);
+    const legacyUserId = await resolveLegacyActorUserId(sess.user.email);
 
     return {
       organizationId,
@@ -176,7 +181,7 @@ export async function getOrganizationContext(
     org.legacyTenantId && orgOwnsLegacyCatalog(org.legacyTenantId)
       ? catalogOrganizationId
       : org.id;
-  const legacyUserId = await resolveLegacyActorUserId(sess.user.email, organizationId);
+  const legacyUserId = await resolveLegacyActorUserId(sess.user.email);
 
   return {
     organizationId,
