@@ -12,7 +12,7 @@
 
 import { getServerSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
-import { ensureLegacyActorForIdentity } from "@/lib/platform/identity";
+import { ensureLegacyActorForIdentity } from "@/lib/platform/identity/services/legacy-migration";
 import { getLegacyCatalogScopeId, getLegacyIntOrgId, orgOwnsLegacyCatalog, resolveCatalogOrganizationId } from "@/lib/auth/migration-compat";
 
 export type OrgContextSource = "membership" | "superadmin";
@@ -103,7 +103,13 @@ export async function getOrganizationContext(
     where: { id: identityId },
     select: { legacyUserId: true },
   });
-  const legacyUserId = identity?.legacyUserId ?? await ensureLegacyActorForIdentity(identityId);
+
+  if (!identity) {
+    throw new OrganizationContextError("Unauthorized", 401, "UNAUTHORIZED");
+  }
+
+  const legacyUserId =
+    identity.legacyUserId ?? await ensureLegacyActorForIdentity(identityId);
 
   const memberships = await prisma.iamOrganizationMembership.findMany({
     where: { identityId, status: "active" },
