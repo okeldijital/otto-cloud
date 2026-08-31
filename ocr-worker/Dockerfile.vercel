@@ -7,11 +7,9 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-
-COPY ocr-worker/package.json ocr-worker/package-lock.json* ./
+COPY package.json ./package.json
 RUN npm install --omit=dev
-
-COPY ocr-worker/server.mjs ./server.mjs
+COPY server.mjs ./server.mjs
 
 ENV PORT=80
 EXPOSE 80
