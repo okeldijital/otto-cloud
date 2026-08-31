@@ -1,5 +1,5 @@
 import { createServer } from "node:http";
-import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
@@ -34,8 +34,7 @@ const server = createServer(async (req, res) => {
       return json(res, 413, { error: "PDF exceeds OCR worker size limit" });
     }
 
-    const result = await ocrPdf(buffer);
-    return json(res, 200, result);
+    return json(res, 200, await ocrPdf(buffer));
   } catch (error) {
     const message = error instanceof Error ? error.message : "OCR failed";
     const status = message === "Request body too large" ? 413 : 422;
