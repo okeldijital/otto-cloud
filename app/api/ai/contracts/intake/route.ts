@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth/session";
-import { prisma } from "@/lib/prisma";
 import { requireOrganization } from "@/lib/auth/organization-context";
 import { documentIntelligenceService } from "@/lib/document-intelligence";
 
@@ -13,10 +12,10 @@ function positiveInt(raw: unknown, label: string): number {
 /**
  * Contract Intelligence intake actor bridge.
  *
- * IAM remains authoritative for authentication. Legacy contract/audit tables
- * still require users.id (INT), so this route resolves that actor server-side
- * from the authenticated IAM email + the current organization scope.
- * No client-supplied actor id is accepted and no fallback actor is used.
+ * IAM remains authoritative for authentication and organization membership.
+ * requireOrganization() also resolves the legacy users.id compatibility
+ * actor server-side from the authenticated IAM email. No client-supplied
+ * actor id is accepted and no fallback actor is used.
  */
 export async function POST(req: Request) {
   try {
@@ -24,24 +23,9 @@ export async function POST(req: Request) {
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const ctx = await requireOrganization();
-    if (!ctx.userEmail) {
+    if (!ctx.userEmail || !ctx.userId) {
       return NextResponse.json(
-        { error: "Authenticated user email is not available", code: "USER_SCOPE_UNAVAILABLE" },
-        { status: 403 }
-      );
-    }
-
-    const legacyUser = await prisma.user.findFirst({
-      where: {
-        email: ctx.userEmail,
-        organization_id: ctx.organizationId,
-      },
-      select: { id: true, is_active: true },
-    });
-
-    if (!legacyUser || legacyUser.is_active === false) {
-      return NextResponse.json(
-        { error: "No active legacy contract actor is mapped to the authenticated user", code: "USER_SCOPE_UNAVAILABLE" },
+        { error: "Authenticated user actor is unavailable", code: "USER_SCOPE_UNAVAILABLE" },
         { status: 403 }
       );
     }
@@ -57,7 +41,7 @@ export async function POST(req: Request) {
       organizationId: ctx.organizationId,
       documentId: body.document_id,
       contractId,
-      userId: legacyUser.id,
+      userId: ctx.userId,
     });
 
     return NextResponse.json(job, { status: 202 });
