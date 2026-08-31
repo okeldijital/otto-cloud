@@ -45,6 +45,7 @@ export {
 export {
   migrateLegacyUser,
   migrateAllLegacyUsers,
+  ensureLegacyActorForIdentity,
 } from "./services/legacy-migration";
 
 // Organizations / membership (A.5)
