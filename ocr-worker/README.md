@@ -30,7 +30,7 @@ The response follows the application `OcrResult` shape and preserves page bounda
 ## Environment
 
 - `PORT` — HTTP port, default `8080`
-- `OCR_WORKER_TOKEN` — optional shared bearer token
+- `OCR_WORKER_TOKEN` — shared bearer token; set this in deployed environments
 - `OCR_LANG` — Tesseract language, default `eng`
 - `OCR_MAX_BYTES` — request/PDF limit, default `26214400`
 
@@ -42,4 +42,4 @@ The Next.js application connects to it using `OCR_WORKER_URL`, `OCR_WORKER_TOKEN
 
 ## Security boundary
 
-The worker accepts only PDF bytes and does not accept shell commands, executable paths, or arbitrary URLs. Temporary files are deleted after every request.
+The worker accepts only PDF bytes and does not accept shell commands, executable paths, or arbitrary URLs. Temporary files are deleted after every request. Configure the worker behind HTTPS and require a token in deployed environments.
