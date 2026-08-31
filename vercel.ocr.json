@@ -1,0 +1,9 @@
+{
+  "services": {
+    "ocr": {
+      "root": "ocr-worker/",
+      "runtime": "container",
+      "entrypoint": "Dockerfile.vercel"
+    }
+  }
+}
