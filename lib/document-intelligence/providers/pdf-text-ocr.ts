@@ -1,11 +1,11 @@
 import type { OcrPageResult, OcrProvider, OcrResult } from "./ocr-provider";
 import { NATIVE_TEXT_THRESHOLD_PER_PAGE } from "../constants";
+import { openAiPdfOcrProvider } from "./openai-pdf-ocr";
 
 /**
- * Deterministic text/OCR provider using PDF.js text layer.
- * Native PDFs: extract embedded text (OCR skipped when density is high).
- * Scanned/image PDFs: low density → ocrApplied=true with best-effort extract
- * (placeholder for Google Vision / Textract / Tesseract).
+ * Native PDF text extraction with an OCR fallback for scanned/image PDFs.
+ * The native path remains deterministic; OpenAI is invoked only when the
+ * embedded text layer is insufficient and OCR is explicitly configured.
  */
 export class PdfTextOcrProvider implements OcrProvider {
   readonly name = "pdfjs-text";
@@ -16,16 +16,28 @@ export class PdfTextOcrProvider implements OcrProvider {
     filename?: string;
   }): Promise<OcrResult> {
     const pages = await extractPdfPages(params.buffer);
-    const fullText = pages.map((p) => p.text).join("\n\n");
+    const fullText = pages.map((p) => p.text).join("\n\n").trim();
     const pageCount = Math.max(1, pages.length);
     const density = fullText.replace(/\s+/g, "").length / pageCount;
-    const ocrApplied = density < NATIVE_TEXT_THRESHOLD_PER_PAGE;
+
+    if (density >= NATIVE_TEXT_THRESHOLD_PER_PAGE) {
+      return {
+        provider: this.name,
+        pages,
+        fullText,
+        ocrApplied: false,
+      };
+    }
+
+    if (process.env.OPENAI_API_KEY) {
+      return openAiPdfOcrProvider.extractText(params);
+    }
 
     return {
       provider: this.name,
       pages,
-      fullText: fullText.trim(),
-      ocrApplied,
+      fullText,
+      ocrApplied: false,
     };
   }
 }
