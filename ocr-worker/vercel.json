@@ -1,0 +1,8 @@
+{
+  "services": {
+    "ocr": {
+      "runtime": "container",
+      "entrypoint": "Dockerfile.vercel"
+    }
+  }
+}
