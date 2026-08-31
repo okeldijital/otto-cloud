@@ -74,7 +74,7 @@ export class OpenAiPdfOcrProvider implements OcrProvider {
   }
 }
 
-function parsePageMarkers(text: string): OcrPageResult[] {
+export function parsePageMarkers(text: string): OcrPageResult[] {
   const marker = /\[PAGE\s+(\d+)\]/gi;
   const matches = [...text.matchAll(marker)];
 
