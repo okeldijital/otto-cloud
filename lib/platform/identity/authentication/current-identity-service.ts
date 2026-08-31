@@ -15,6 +15,7 @@ export type CurrentIdentityContext = {
   identityId: string;
   email: string;
   displayName: string | null;
+  legacyUserId: number | null;
   emailVerified: boolean;
   emailVerifiedAt: Date | null;
   status: string;
@@ -135,6 +136,7 @@ export class CurrentIdentityService {
       id: string;
       email: string;
       displayName: string | null;
+      legacyUserId: number | null;
       emailVerifiedAt: Date | null;
       status: string;
       sessionVersion: number;
@@ -165,6 +167,7 @@ export class CurrentIdentityService {
       identityId: identity.id,
       email: identity.email,
       displayName: identity.displayName,
+      legacyUserId: identity.legacyUserId ?? null,
       emailVerified: !!identity.emailVerifiedAt,
       emailVerifiedAt: identity.emailVerifiedAt,
       status: identity.status,
