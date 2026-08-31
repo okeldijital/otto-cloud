@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { documentService } from "@/lib/documents";
-import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
+import { requireOrganization } from "@/lib/auth/organization-context";
 import {
   requireContractInOrg,
   requireOrgAuth,
@@ -20,7 +20,6 @@ function computeCompleteness(contract: any) {
   const hasTitle = !!contract.title;
   const hasType = !!contract.type;
   const hasTerritory = !!contract.territory;
-
   if (!hasParties) reasons.push("missing_parties");
   if (!hasDocuments) reasons.push("missing_documents");
   if (!hasAssets) reasons.push("missing_assets");
@@ -30,21 +29,17 @@ function computeCompleteness(contract: any) {
   if (!hasTitle) reasons.push("missing_title");
   if (!hasType) reasons.push("missing_type");
   if (!hasTerritory) reasons.push("missing_territory");
-
   const total = 9;
   const present = total - reasons.length;
   const score = Math.round((present / total) * 100);
-
   let status: "GREEN" | "AMBER" | "RED";
   if (score >= 80) status = "GREEN";
   else if (score >= 50) status = "AMBER";
   else status = "RED";
-
   if (contract.status_quo_override) {
     const override = contract.status_quo_override.toUpperCase();
     if (["GREEN", "AMBER", "RED"].includes(override)) status = override as any;
   }
-
   return { score, status, missing: reasons };
 }
 
@@ -55,40 +50,26 @@ function computeCompletenessFromRelations(contract: any) {
 const contractIncludes = {
   contract_parties: true,
   contract_assets: true,
-  contract_split_groups: {
-    include: { contract_splits: true },
-  },
+  contract_split_groups: { include: { contract_splits: true } },
   contract_documents: true,
-  contract_track_links: {
-    include: { tracks: true },
-  },
+  contract_track_links: { include: { tracks: true } },
 };
 
 export async function GET(req: Request) {
   try {
     const session = await getServerSession();
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
     const { searchParams } = new URL(req.url);
     const ctx = await requireOrganization();
     const orgId = ctx.legacyIntOrgId;
     const orgUuid = ctx.organizationId;
-
     const action = searchParams.get("action");
 
     if (action === "completeness") {
       const idStr = searchParams.get("id");
       if (!idStr) return NextResponse.json({ error: "Missing id" }, { status: 400 });
       const id = parseInt(idStr);
-      const contract = await prisma.contracts.findFirst({
-        where: { id, organization_id: orgId },
-        include: {
-          contract_parties: true,
-          contract_documents: true,
-          contract_assets: true,
-          contract_track_links: true,
-        },
-      });
+      const contract = await prisma.contracts.findFirst({ where: { id, organization_id: orgId }, include: { contract_parties: true, contract_documents: true, contract_assets: true, contract_track_links: true } });
       if (!contract) return NextResponse.json({ error: "Contract not found" }, { status: 404 });
       return NextResponse.json(computeCompletenessFromRelations(contract));
     }
@@ -96,14 +77,12 @@ export async function GET(req: Request) {
     if (action === "party_lookup") {
       const q = searchParams.get("q") || "";
       const limit = parseInt(searchParams.get("limit") || "10");
-
       const [artists, labels, publishers, pros] = await Promise.all([
         prisma.artists.findMany({ where: { name: { contains: q, mode: "insensitive" } }, take: limit }),
         prisma.labels.findMany({ where: { name: { contains: q, mode: "insensitive" } }, take: limit }),
         prisma.publishers.findMany({ where: { name: { contains: q, mode: "insensitive" } }, take: limit }),
         prisma.pros.findMany({ where: { name: { contains: q, mode: "insensitive" } }, take: limit }),
       ]);
-
       return NextResponse.json({
         artists: artists.map((a) => ({ id: a.id, name: a.name, entity_type: "artist" })),
         labels: labels.map((l) => ({ id: l.id, name: l.name, entity_type: "label" })),
@@ -115,47 +94,22 @@ export async function GET(req: Request) {
     const idStr = searchParams.get("id");
     if (idStr) {
       const id = parseInt(idStr);
-      const contract = await prisma.contracts.findFirst({
-        where: { id, organization_id: orgId },
-        include: contractIncludes,
-      });
+      const contract = await prisma.contracts.findFirst({ where: { id, organization_id: orgId }, include: contractIncludes });
       if (!contract) return NextResponse.json({ error: "Contract not found" }, { status: 404 });
-      return NextResponse.json({
-        ...contract,
-        completeness: computeCompletenessFromRelations(contract),
-      });
+      return NextResponse.json({ ...contract, completeness: computeCompletenessFromRelations(contract) });
     }
 
     const limit = parseInt(searchParams.get("limit") || "100");
     const skip = parseInt(searchParams.get("skip") || "0");
-
     const [contracts, total] = await Promise.all([
-      prisma.contracts.findMany({
-        where: { organization_id: orgId },
-        skip,
-        take: limit,
-        orderBy: { created_at: "desc" },
-        include: {
-          contract_parties: true,
-          contract_documents: true,
-        },
-      }),
+      prisma.contracts.findMany({ where: { organization_id: orgId }, skip, take: limit, orderBy: { created_at: "desc" }, include: { contract_parties: true, contract_documents: true } }),
       prisma.contracts.count({ where: { organization_id: orgId } }),
     ]);
-
     const withCounts = contracts.map((c) => ({
       ...c,
-      _count: {
-        parties: c.contract_parties?.length ?? 0,
-        documents: c.contract_documents?.length ?? 0,
-      },
-      completeness: computeCompleteness({
-        ...c,
-        contract_assets: [],
-        contract_track_links: [],
-      }),
+      _count: { parties: c.contract_parties?.length ?? 0, documents: c.contract_documents?.length ?? 0 },
+      completeness: computeCompleteness({ ...c, contract_assets: [], contract_track_links: [] }),
     }));
-
     return NextResponse.json({ total, items: withCounts });
   } catch (err: any) {
     console.error("[GET /api/contracts]", err);
@@ -167,7 +121,6 @@ export async function POST(req: Request) {
   try {
     const session = await getServerSession();
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
     const { searchParams } = new URL(req.url);
     const action = searchParams.get("action");
     const ctx = await requireOrganization();
@@ -178,111 +131,50 @@ export async function POST(req: Request) {
     if (action === "link_track") {
       const body = await req.json();
       const { id, track_id } = body;
-      const existing = await prisma.contract_track_links.findFirst({
-        where: { contract_id: parseInt(id), track_id: parseInt(track_id), organization_id: String(orgId) },
-      });
+      const existing = await prisma.contract_track_links.findFirst({ where: { contract_id: parseInt(id), track_id: parseInt(track_id), organization_id: String(orgId) } });
       if (existing) return NextResponse.json({ error: "Track already linked" }, { status: 409 });
-      const link = await prisma.contract_track_links.create({
-        data: {
-          contract_id: parseInt(id),
-          track_id: parseInt(track_id),
-          organization_id: String(orgId),
-        },
-        include: { tracks: true },
-      });
+      const link = await prisma.contract_track_links.create({ data: { contract_id: parseInt(id), track_id: parseInt(track_id), organization_id: String(orgId) }, include: { tracks: true } });
       return NextResponse.json(link, { status: 201 });
     }
 
     if (action === "add_party") {
       const body = await req.json();
       const { id } = body;
-      const party = await prisma.contract_parties.create({
-        data: {
-          contract_id: parseInt(id),
-          organization_id: orgId,
-          entity_type: body.entity_type,
-          entity_id: body.entity_id ? parseInt(body.entity_id) : null,
-          external_name: body.external_name || null,
-          role: body.role || "Licensor",
-          split_percent: body.split_percent || 0.0,
-          notes: body.notes || "",
-        },
-      });
+      const party = await prisma.contract_parties.create({ data: { contract_id: parseInt(id), organization_id: orgId, entity_type: body.entity_type, entity_id: body.entity_id ? parseInt(body.entity_id) : null, external_name: body.external_name || null, role: body.role || "Licensor", split_percent: body.split_percent || 0.0, notes: body.notes || "" } });
       return NextResponse.json(party, { status: 201 });
     }
 
     if (action === "update_party") {
       const body = await req.json();
       const { id, party_id } = body;
-      const updated = await prisma.contract_parties.updateMany({
-        where: { contract_id: parseInt(id), id: parseInt(party_id) },
-        data: {
-          role: body.role !== undefined ? body.role : undefined,
-          split_percent: body.split_percent !== undefined ? body.split_percent : undefined,
-          notes: body.notes !== undefined ? body.notes : undefined,
-          external_name: body.external_name !== undefined ? body.external_name : undefined,
-          entity_type: body.entity_type !== undefined ? body.entity_type : undefined,
-          entity_id: body.entity_id !== undefined ? (body.entity_id ? parseInt(body.entity_id) : null) : undefined,
-        },
-      });
+      const updated = await prisma.contract_parties.updateMany({ where: { contract_id: parseInt(id), id: parseInt(party_id) }, data: { role: body.role !== undefined ? body.role : undefined, split_percent: body.split_percent !== undefined ? body.split_percent : undefined, notes: body.notes !== undefined ? body.notes : undefined, external_name: body.external_name !== undefined ? body.external_name : undefined, entity_type: body.entity_type !== undefined ? body.entity_type : undefined, entity_id: body.entity_id !== undefined ? (body.entity_id ? parseInt(body.entity_id) : null) : undefined } });
       return NextResponse.json(updated);
     }
 
     if (action === "add_asset") {
       const body = await req.json();
       const { id } = body;
-      const asset = await prisma.contract_assets.create({
-        data: {
-          contract_id: parseInt(id),
-          organization_id: orgId,
-          asset_type: body.asset_type,
-          asset_id: parseInt(body.asset_id),
-          scope_type: body.scope_type || null,
-          notes: body.notes || "",
-        },
-      });
+      const asset = await prisma.contract_assets.create({ data: { contract_id: parseInt(id), organization_id: orgId, asset_type: body.asset_type, asset_id: parseInt(body.asset_id), scope_type: body.scope_type || null, notes: body.notes || "" } });
       return NextResponse.json(asset, { status: 201 });
     }
 
     if (action === "add_split_group") {
       const body = await req.json();
       const { id } = body;
-      const group = await prisma.contract_split_groups.create({
-        data: {
-          contract_id: parseInt(id),
-          organization_id: orgId,
-          group_name: body.group_name || "Primary Splits",
-          group_type: body.group_type || "Mechanical",
-          notes: body.notes || "",
-        },
-      });
+      const group = await prisma.contract_split_groups.create({ data: { contract_id: parseInt(id), organization_id: orgId, group_name: body.group_name || "Primary Splits", group_type: body.group_type || "Mechanical", notes: body.notes || "" } });
       return NextResponse.json(group, { status: 201 });
     }
 
     if (action === "add_split") {
       const body = await req.json();
-      const { id, group_id } = body;
-      const split = await prisma.contract_splits.create({
-        data: {
-          group_id: parseInt(group_id),
-          organization_id: orgId,
-          party_id: body.party_id ? parseInt(body.party_id) : null,
-          external_party_name: body.external_party_name || null,
-          percent: body.percent || 0.0,
-          notes: body.notes || "",
-        },
-      });
+      const { group_id } = body;
+      const split = await prisma.contract_splits.create({ data: { group_id: parseInt(group_id), organization_id: orgId, party_id: body.party_id ? parseInt(body.party_id) : null, external_party_name: body.external_party_name || null, percent: body.percent || 0.0, notes: body.notes || "" } });
       return NextResponse.json(split, { status: 201 });
     }
 
     if (action === "create_artist_inline") {
       const body = await req.json();
-      const artist = await prisma.artists.create({
-        data: {
-          name: body.name,
-          organization_id: orgUuid,
-        },
-      });
+      const artist = await prisma.artists.create({ data: { name: body.name, organization_id: orgUuid } });
       return NextResponse.json(artist, { status: 201 });
     }
 
@@ -290,26 +182,15 @@ export async function POST(req: Request) {
       const formData = await req.formData();
       const id = parseInt(searchParams.get("id") || "0");
       if (!id) return NextResponse.json({ error: "Missing contract id" }, { status: 400 });
-
       const file = formData.get("file") as File | null;
       if (!file) return NextResponse.json({ error: "No file provided" }, { status: 400 });
-      if (file.type !== "application/pdf") {
-        return NextResponse.json({ error: "Only PDF contracts are supported" }, { status: 400 });
-      }
-
+      if (file.type !== "application/pdf") return NextResponse.json({ error: "Only PDF contracts are supported" }, { status: 400 });
       await requireContractInOrg(id, ctx);
 
-      const existingDocs = await prisma.contract_documents.findMany({
-        where: { contract_id: id },
-        orderBy: { version: "desc" },
-        take: 1,
-      });
+      const existingDocs = await prisma.contract_documents.findMany({ where: { contract_id: id }, orderBy: { version: "desc" }, take: 1 });
       const nextVersion = (existingDocs[0]?.version ?? 0) + 1;
       const body = Buffer.from(await file.arrayBuffer());
 
-      // Document Platform is the source of truth for the uploaded bytes.
-      // ContractDocumentRelation provides the explicit Contract → Document link
-      // consumed by Contract Intelligence.
       const platformUpload = await documentService.uploadDocument({
         organizationId: orgUuid,
         userId,
@@ -322,15 +203,9 @@ export async function POST(req: Request) {
       });
 
       await prisma.contractDocumentRelation.create({
-        data: {
-          contractId: id,
-          documentId: platformUpload.document.id,
-          createdBy: userId,
-        },
+        data: { contractId: id, documentId: platformUpload.document.id, createdBy: userId },
       });
 
-      // Keep the legacy contract_documents row for existing Contract UI/counts.
-      // The canonical document identity is document_id below, not this row id.
       const doc = await prisma.contract_documents.create({
         data: {
           contract_id: id,
@@ -345,14 +220,7 @@ export async function POST(req: Request) {
         },
       });
 
-      return NextResponse.json(
-        {
-          ...doc,
-          document_id: platformUpload.document.id,
-          document: platformUpload.document,
-        },
-        { status: 201 }
-      );
+      return NextResponse.json({ ...doc, document_id: platformUpload.document.id, document: platformUpload.document }, { status: 201 });
     }
 
     const body = await req.json();
@@ -376,7 +244,6 @@ export async function POST(req: Request) {
         notes: body.notes || "",
       },
     });
-
     return NextResponse.json(contract, { status: 201 });
   } catch (err: any) {
     console.error("[POST /api/contracts]", err);
@@ -392,10 +259,8 @@ export async function PUT(req: Request) {
     if (!idStr) return NextResponse.json({ error: "Missing contract ID" }, { status: 400 });
     const id = parseInt(idStr);
     if (!Number.isFinite(id)) return NextResponse.json({ error: "Invalid contract ID" }, { status: 400 });
-
     const body = await req.json();
     await requireContractInOrg(id, ctx);
-
     const updated = await prisma.contracts.update({
       where: { id },
       data: {
@@ -413,12 +278,71 @@ export async function PUT(req: Request) {
         signed_date: body.signed_date !== undefined ? (body.signed_date ? new Date(body.signed_date) : null) : undefined,
         notes: body.notes !== undefined ? body.notes : undefined,
         status_quo_override: body.status_quo_override !== undefined ? body.status_quo_override : undefined,
+        contract_number: body.contract_number !== undefined ? body.contract_number : undefined,
       },
     });
-
     return NextResponse.json(updated);
   } catch (err: any) {
+    const mapped = resourceAuthErrorResponse(err);
+    if (mapped.status === 401 || mapped.status === 403 || mapped.status === 404) return NextResponse.json(mapped.body, { status: mapped.status });
     console.error("[PUT /api/contracts]", err);
-    return resourceAuthErrorResponse(err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: Request) {
+  try {
+    const ctx = await requireOrgAuth();
+    const { searchParams } = new URL(req.url);
+    const idStr = searchParams.get("id");
+    if (!idStr) return NextResponse.json({ error: "Missing contract ID" }, { status: 400 });
+    const id = parseInt(idStr);
+    if (!Number.isFinite(id)) return NextResponse.json({ error: "Invalid contract ID" }, { status: 400 });
+    await requireContractInOrg(id, ctx);
+
+    const trackIdStr = searchParams.get("trackId");
+    if (trackIdStr) {
+      await prisma.contract_track_links.deleteMany({ where: { contract_id: id, track_id: parseInt(trackIdStr) } });
+      return new NextResponse(null, { status: 204 });
+    }
+    const partyIdStr = searchParams.get("partyId");
+    if (partyIdStr) {
+      await prisma.contract_parties.deleteMany({ where: { contract_id: id, id: parseInt(partyIdStr) } });
+      return new NextResponse(null, { status: 204 });
+    }
+    const assetIdStr = searchParams.get("assetId");
+    if (assetIdStr) {
+      await prisma.contract_assets.deleteMany({ where: { contract_id: id, id: parseInt(assetIdStr) } });
+      return new NextResponse(null, { status: 204 });
+    }
+    const splitGroupIdStr = searchParams.get("splitGroupId");
+    const splitIdStr = searchParams.get("splitId");
+    if (splitGroupIdStr) {
+      const groupId = parseInt(splitGroupIdStr);
+      if (splitIdStr) await prisma.contract_splits.deleteMany({ where: { group_id: groupId, id: parseInt(splitIdStr) } });
+      else await prisma.contract_split_groups.deleteMany({ where: { contract_id: id, id: groupId } });
+      return new NextResponse(null, { status: 204 });
+    }
+    const docIdStr = searchParams.get("docId");
+    if (docIdStr) {
+      await prisma.contract_documents.deleteMany({ where: { contract_id: id, id: parseInt(docIdStr) } });
+      return new NextResponse(null, { status: 204 });
+    }
+
+    await prisma.contract_track_links.deleteMany({ where: { contract_id: id } });
+    await prisma.contract_parties.deleteMany({ where: { contract_id: id } });
+    await prisma.contract_assets.deleteMany({ where: { contract_id: id } });
+    const splitGroups = await prisma.contract_split_groups.findMany({ where: { contract_id: id } });
+    const groupIds = splitGroups.map((g) => g.id);
+    await prisma.contract_splits.deleteMany({ where: { group_id: { in: groupIds } } });
+    await prisma.contract_split_groups.deleteMany({ where: { contract_id: id } });
+    await prisma.contract_documents.deleteMany({ where: { contract_id: id } });
+    await prisma.contracts.delete({ where: { id } });
+    return new NextResponse(null, { status: 204 });
+  } catch (err: any) {
+    const mapped = resourceAuthErrorResponse(err);
+    if (mapped.status === 401 || mapped.status === 403 || mapped.status === 404) return NextResponse.json(mapped.body, { status: mapped.status });
+    console.error("[DELETE /api/contracts]", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
