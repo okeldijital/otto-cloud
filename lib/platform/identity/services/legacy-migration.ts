@@ -19,6 +19,68 @@ export type MigrateUserResult = {
   orgLinked: number;
 };
 
+/**
+ * Ensure an IAM identity has a legacy users.id compatibility actor.
+ *
+ * This actor is NOT an authentication authority. It exists only because a
+ * number of legacy domain tables still require users.id as their actor key.
+ * The mapping is persisted on iamIdentity.legacyUserId so callers never need
+ * to resolve the actor by email at request time.
+ */
+export async function ensureLegacyActorForIdentity(identityId: string): Promise<number> {
+  const identity = await prisma.iamIdentity.findUnique({
+    where: { id: identityId },
+    select: {
+      id: true,
+      email: true,
+      displayName: true,
+      legacyUserId: true,
+    },
+  });
+
+  if (!identity) {
+    throw new Error(`IAM identity ${identityId} not found`);
+  }
+
+  if (identity.legacyUserId !== null) {
+    return identity.legacyUserId;
+  }
+
+  const passwordHash = await hashPassword(
+    `compatibility-${identity.id}-${Date.now()}-${Math.random()}`
+  );
+
+  return prisma.$transaction(async (tx) => {
+    // Re-check inside the transaction to make concurrent requests converge.
+    const current = await tx.iamIdentity.findUnique({
+      where: { id: identity.id },
+      select: { legacyUserId: true },
+    });
+
+    if (current?.legacyUserId !== null && current?.legacyUserId !== undefined) {
+      return current.legacyUserId;
+    }
+
+    const actor = await tx.user.create({
+      data: {
+        email: identity.email,
+        hashed_password: passwordHash,
+        name: identity.displayName,
+        is_active: true,
+        is_superuser: false,
+      },
+      select: { id: true },
+    });
+
+    await tx.iamIdentity.update({
+      where: { id: identity.id },
+      data: { legacyUserId: actor.id },
+    });
+
+    return actor.id;
+  });
+}
+
 export async function migrateLegacyUser(
   legacyUserId: number,
   options?: { plainPassword?: string }
