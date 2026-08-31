@@ -19,6 +19,31 @@ export async function GET(req: Request) {
     const action = searchParams.get("action");
     const ctx = await requireOrganization();
     const orgId = ctx.organizationId;
+
+    if (action === "extraction_status") {
+      const documentId = searchParams.get("document_id");
+      const jobId = searchParams.get("job_id") || undefined;
+      if (!documentId) return NextResponse.json({ error: "Missing document_id" }, { status: 400 });
+      const status = await documentIntelligenceService.getJobStatus({
+        organizationId: orgId,
+        documentId,
+        jobId,
+      });
+      return NextResponse.json(status);
+    }
+
+    if (action === "extraction_result") {
+      const documentId = searchParams.get("document_id");
+      const extractionId = searchParams.get("extraction_id") || undefined;
+      if (!documentId) return NextResponse.json({ error: "Missing document_id" }, { status: 400 });
+      const result = await documentIntelligenceService.getExtractionResult({
+        organizationId: orgId,
+        documentId,
+        extractionId,
+      });
+      return NextResponse.json(result);
+    }
+
     if (action === "extract") {
       const id = searchParams.get("id");
       if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
@@ -66,10 +91,6 @@ export async function POST(req: Request) {
         ? null
         : requirePositiveIntId(contractIdValue, "contract_id");
 
-      // The Document Intelligence layer is the canonical extraction pipeline:
-      // document bytes → OCR/text extraction → AI extraction → persisted result.
-      // Keep the legacy resolution run separate; entity resolution happens after
-      // extraction and verification.
       const job = await documentIntelligenceService.startExtraction({
         organizationId: orgId,
         documentId,
@@ -83,7 +104,6 @@ export async function POST(req: Request) {
     if (action === "resolve") {
       const body = await req.json();
       const { run_id, links } = body;
-
       const runId = requirePositiveIntId(run_id, "run_id");
       const existingRun = await prisma.ai_contract_resolution_runs.findFirst({
         where: { id: runId, organization_id: orgId },
@@ -92,11 +112,7 @@ export async function POST(req: Request) {
 
       const created = await Promise.all(
         (links || []).map(async (link: any) => {
-          const entityId = await requireEntityReferenceInOrg(
-            link.entity_type,
-            link.entity_id,
-            ctx
-          );
+          const entityId = await requireEntityReferenceInOrg(link.entity_type, link.entity_id, ctx);
           return prisma.ai_contract_resolution_links.create({
             data: {
               run_id: runId,
@@ -115,42 +131,32 @@ export async function POST(req: Request) {
     if (action === "link_suggest") {
       const body = await req.json();
       const { contract_hash } = body;
-
       const keywords = (contract_hash || "").replace(/[_-]/g, " ").split(/\s+/).filter(Boolean);
       const nameFilters = keywords.length > 0
         ? keywords.map((k: string) => ({ name: { contains: k, mode: "insensitive" as const } }))
         : [];
-
       const artists = nameFilters.length > 0
-        ? await prisma.artists.findMany({
-            where: { OR: nameFilters, organization_id: orgId },
-            take: 10,
-          })
+        ? await prisma.artists.findMany({ where: { OR: nameFilters, organization_id: orgId }, take: 10 })
         : [];
-
       return NextResponse.json({
-        suggestions: [
-          ...artists.map((a: any) => ({
-            entity_type: "artist",
-            entity_id: a.id,
-            display_name: a.name,
-            action: "link",
-            confidence: 75,
-            rationale: `Name match from contract_hash keywords`,
-          })),
-        ],
+        suggestions: artists.map((a: any) => ({
+          entity_type: "artist",
+          entity_id: a.id,
+          display_name: a.name,
+          action: "link",
+          confidence: 75,
+          rationale: "Name match from contract_hash keywords",
+        })),
       });
     }
 
     if (action === "track_map_plan") {
       const body = await req.json();
-      const { contract_hash } = body;
-
       const plan = await prisma.ai_contract_resolution_runs.create({
         data: {
           organization_id: orgId,
           user_id: userId,
-          contract_hash: contract_hash || "manual-map",
+          contract_hash: body.contract_hash || "manual-map",
           extractor_version: "map_plan",
           linker_version: "v1",
         },
@@ -173,12 +179,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unknown action" }, { status: 400 });
   } catch (err: unknown) {
     const mapped = resourceAuthErrorResponse(err);
-    if (
-      mapped.status === 401 ||
-      mapped.status === 403 ||
-      mapped.status === 400 ||
-      mapped.status === 404
-    ) {
+    if ([401, 403, 400, 404].includes(mapped.status)) {
       return NextResponse.json(mapped.body, { status: mapped.status });
     }
     const orgMapped = orgContextErrorResponse(err);
