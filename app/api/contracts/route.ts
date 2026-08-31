@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
-import { storeFile } from "@/lib/storage";
+import { documentService } from "@/lib/documents";
 import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
 import {
   requireContractInOrg,
@@ -293,6 +293,11 @@ export async function POST(req: Request) {
 
       const file = formData.get("file") as File | null;
       if (!file) return NextResponse.json({ error: "No file provided" }, { status: 400 });
+      if (file.type !== "application/pdf") {
+        return NextResponse.json({ error: "Only PDF contracts are supported" }, { status: 400 });
+      }
+
+      await requireContractInOrg(id, ctx);
 
       const existingDocs = await prisma.contract_documents.findMany({
         where: { contract_id: id },
@@ -300,29 +305,54 @@ export async function POST(req: Request) {
         take: 1,
       });
       const nextVersion = (existingDocs[0]?.version ?? 0) + 1;
+      const body = Buffer.from(await file.arrayBuffer());
 
-      const stored = await storeFile(file, `v${nextVersion}`, {
-        domain: "contracts",
-        entityId: id,
-        allowedMime: ["application/pdf"],
+      // Document Platform is the source of truth for the uploaded bytes.
+      // ContractDocumentRelation provides the explicit Contract → Document link
+      // consumed by Contract Intelligence.
+      const platformUpload = await documentService.uploadDocument({
+        organizationId: orgUuid,
+        userId,
+        fileName: file.name,
+        mimeType: file.type,
+        body,
+        allowedMimeTypes: ["application/pdf"],
         maxSizeBytes: 50 * 1024 * 1024,
+        folder: "contracts",
       });
 
+      await prisma.contractDocumentRelation.create({
+        data: {
+          contractId: id,
+          documentId: platformUpload.document.id,
+          createdBy: userId,
+        },
+      });
+
+      // Keep the legacy contract_documents row for existing Contract UI/counts.
+      // The canonical document identity is document_id below, not this row id.
       const doc = await prisma.contract_documents.create({
         data: {
           contract_id: id,
           organization_id: orgId,
-          file_path: stored.url,
+          file_path: `document:${platformUpload.document.id}`,
           file_name: file.name,
           version: nextVersion,
           uploaded_by: userId,
-          checksum: stored.checksum,
-          mime_type: stored.mime_type,
-          size_bytes: stored.size_bytes,
+          checksum: platformUpload.document.checksum,
+          mime_type: platformUpload.document.mimeType,
+          size_bytes: platformUpload.document.fileSize,
         },
       });
 
-      return NextResponse.json(doc, { status: 201 });
+      return NextResponse.json(
+        {
+          ...doc,
+          document_id: platformUpload.document.id,
+          document: platformUpload.document,
+        },
+        { status: 201 }
+      );
     }
 
     const body = await req.json();
@@ -383,104 +413,12 @@ export async function PUT(req: Request) {
         signed_date: body.signed_date !== undefined ? (body.signed_date ? new Date(body.signed_date) : null) : undefined,
         notes: body.notes !== undefined ? body.notes : undefined,
         status_quo_override: body.status_quo_override !== undefined ? body.status_quo_override : undefined,
-        contract_number: body.contract_number !== undefined ? body.contract_number : undefined,
       },
     });
 
     return NextResponse.json(updated);
   } catch (err: any) {
-    const mapped = resourceAuthErrorResponse(err);
-    if (mapped.status === 401 || mapped.status === 403 || mapped.status === 404) {
-      return NextResponse.json(mapped.body, { status: mapped.status });
-    }
     console.error("[PUT /api/contracts]", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
-}
-
-export async function DELETE(req: Request) {
-  try {
-    const ctx = await requireOrgAuth();
-    const { searchParams } = new URL(req.url);
-    const idStr = searchParams.get("id");
-    if (!idStr) return NextResponse.json({ error: "Missing contract ID" }, { status: 400 });
-    const id = parseInt(idStr);
-    if (!Number.isFinite(id)) return NextResponse.json({ error: "Invalid contract ID" }, { status: 400 });
-
-    // Ownership first — all nested deletes require the contract to belong to the org
-    await requireContractInOrg(id, ctx);
-
-    const trackIdStr = searchParams.get("trackId");
-    if (trackIdStr) {
-      const trackId = parseInt(trackIdStr);
-      await prisma.contract_track_links.deleteMany({
-        where: { contract_id: id, track_id: trackId },
-      });
-      return new NextResponse(null, { status: 204 });
-    }
-
-    const partyIdStr = searchParams.get("partyId");
-    if (partyIdStr) {
-      const partyId = parseInt(partyIdStr);
-      await prisma.contract_parties.deleteMany({
-        where: { contract_id: id, id: partyId },
-      });
-      return new NextResponse(null, { status: 204 });
-    }
-
-    const assetIdStr = searchParams.get("assetId");
-    if (assetIdStr) {
-      const assetId = parseInt(assetIdStr);
-      await prisma.contract_assets.deleteMany({
-        where: { contract_id: id, id: assetId },
-      });
-      return new NextResponse(null, { status: 204 });
-    }
-
-    const splitGroupIdStr = searchParams.get("splitGroupId");
-    const splitIdStr = searchParams.get("splitId");
-    if (splitGroupIdStr) {
-      const groupId = parseInt(splitGroupIdStr);
-      if (splitIdStr) {
-        const splitId = parseInt(splitIdStr);
-        await prisma.contract_splits.deleteMany({
-          where: { group_id: groupId, id: splitId },
-        });
-      } else {
-        await prisma.contract_split_groups.deleteMany({
-          where: { contract_id: id, id: groupId },
-        });
-      }
-      return new NextResponse(null, { status: 204 });
-    }
-
-    const docIdStr = searchParams.get("docId");
-    if (docIdStr) {
-      const docId = parseInt(docIdStr);
-      await prisma.contract_documents.deleteMany({
-        where: { contract_id: id, id: docId },
-      });
-      return new NextResponse(null, { status: 204 });
-    }
-
-    await prisma.contract_track_links.deleteMany({ where: { contract_id: id } });
-    await prisma.contract_parties.deleteMany({ where: { contract_id: id } });
-    await prisma.contract_assets.deleteMany({ where: { contract_id: id } });
-    const splitGroups = await prisma.contract_split_groups.findMany({ where: { contract_id: id } });
-    const groupIds = splitGroups.map((g) => g.id);
-    await prisma.contract_splits.deleteMany({ where: { group_id: { in: groupIds } } });
-    await prisma.contract_split_groups.deleteMany({ where: { contract_id: id } });
-    await prisma.contract_documents.deleteMany({ where: { contract_id: id } });
-
-    await prisma.contracts.delete({ where: { id } });
-
-    return new NextResponse(null, { status: 204 });
-  } catch (err: any) {
-    const mapped = resourceAuthErrorResponse(err);
-    if (mapped.status === 401 || mapped.status === 403 || mapped.status === 404) {
-      return NextResponse.json(mapped.body, { status: mapped.status });
-    }
-    console.error("[DELETE /api/contracts]", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return resourceAuthErrorResponse(err);
   }
 }
