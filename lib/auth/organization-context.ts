@@ -81,27 +81,6 @@ function parseIdentityId(session: SessionLike): string | null {
   return session?.user?.identityId ?? session?.user?.id ?? null;
 }
 
-/**
- * Resolve the legacy INT actor solely for compatibility fields that require users.id.
- * IAM organization membership is the authorization boundary. The legacy users
- * row is an actor-compatibility record, and users.email is globally unique, so
- * this mapping must not be constrained by the catalog organization UUID.
- */
-async function resolveLegacyActorUserId(
-  email: string | null | undefined,
-): Promise<number> {
-  const normalizedEmail = email?.trim().toLowerCase();
-  if (!normalizedEmail) return 0;
-
-  const user = await prisma.user.findUnique({
-    where: { email: normalizedEmail },
-    select: { id: true, is_active: true },
-  });
-
-  if (!user || user.is_active === false) return 0;
-  return user.id;
-}
-
 export async function getOrganizationContext(
   session?: SessionLike | null
 ): Promise<OrganizationContext> {
@@ -118,6 +97,12 @@ export async function getOrganizationContext(
   if (!identityId) {
     throw new OrganizationContextError("Unauthorized", 401, "UNAUTHORIZED");
   }
+
+  const identity = await prisma.iamIdentity.findUnique({
+    where: { id: identityId },
+    select: { legacyUserId: true },
+  });
+  const legacyUserId = identity?.legacyUserId ?? 0;
 
   const memberships = await prisma.iamOrganizationMembership.findMany({
     where: { identityId, status: "active" },
@@ -145,7 +130,6 @@ export async function getOrganizationContext(
     const organizationId = requestedOrg
       ? resolveCatalogOrganizationId(requestedOrg)
       : getLegacyCatalogScopeId();
-    const legacyUserId = await resolveLegacyActorUserId(sess.user.email);
 
     return {
       organizationId,
@@ -181,7 +165,6 @@ export async function getOrganizationContext(
     org.legacyTenantId && orgOwnsLegacyCatalog(org.legacyTenantId)
       ? catalogOrganizationId
       : org.id;
-  const legacyUserId = await resolveLegacyActorUserId(sess.user.email);
 
   return {
     organizationId,
