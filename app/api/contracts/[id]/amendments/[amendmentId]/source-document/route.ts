@@ -28,10 +28,18 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
     const contractId = parseId(p.id);
     if (!contractId) return NextResponse.json({ success: false, data: null, message: "Invalid contract id", errors: ["Invalid contract id"], code: "INVALID_CONTRACT_ID" }, { status: 400 });
 
-    const draft = await prisma.contractAmendmentDraft.findFirst({ where: { contractId, amendmentId: p.amendmentId, organizationId: ctx.organizationId }, select: { sourceDocumentId: true } });
-    if (!draft?.sourceDocumentId) return NextResponse.json({ success: false, data: null, message: "No amendment source document is attached", errors: ["No source document attached"], code: "SOURCE_DOCUMENT_NOT_FOUND" }, { status: 404 });
+    const draftRows = await prisma.$queryRaw<Array<{ sourceDocumentId: string | null }>>`
+      SELECT "sourceDocumentId"
+      FROM "contract_amendment_drafts"
+      WHERE "contractId" = ${contractId}
+        AND "amendmentId" = ${p.amendmentId}::uuid
+        AND "organizationId" = ${ctx.organizationId}::uuid
+      LIMIT 1
+    `;
+    const sourceDocumentId = draftRows[0]?.sourceDocumentId ?? null;
+    if (!sourceDocumentId) return NextResponse.json({ success: false, data: null, message: "No amendment source document is attached", errors: ["No source document attached"], code: "SOURCE_DOCUMENT_NOT_FOUND" }, { status: 404 });
 
-    const document = await documentService.getActiveDocument(draft.sourceDocumentId, ctx.organizationId);
+    const document = await documentService.getActiveDocument(sourceDocumentId, ctx.organizationId);
     if (!document) return NextResponse.json({ success: false, data: null, message: "Amendment source document not found", errors: ["Source document not found"], code: "SOURCE_DOCUMENT_NOT_FOUND" }, { status: 404 });
     if (document.mimeType !== "application/pdf") return NextResponse.json({ success: false, data: null, message: "Amendment source document is not a PDF", errors: ["PDF required"], code: "SOURCE_DOCUMENT_NOT_PDF" }, { status: 415 });
 
