@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { IntelligenceError } from "@/lib/document-intelligence";
 
 export type ContractReadinessBlocker =
   | "verified_contract_missing"
@@ -44,6 +45,22 @@ export function buildContractReadiness(input: {
     blockers,
     checks: input,
   };
+}
+
+/**
+ * Throw a deterministic operational-readiness error when a contract cannot
+ * be consumed by a downstream operation that requires a fully resolved
+ * contract. Readiness is human-confirmation based; AI suggestions never pass.
+ */
+export function assertContractReady(readiness: ContractReadiness): void {
+  if (readiness.ready) return;
+
+  throw new IntelligenceError(
+    "Contract is not operationally ready",
+    409,
+    "CONTRACT_NOT_OPERATIONALLY_READY",
+    readiness.blockers
+  );
 }
 
 /**
