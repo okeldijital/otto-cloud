@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Edit3, FileUp, Loader2, Plus, Save } from "lucide-react";
+import { Edit3, FileSearch, FileUp, Loader2, Plus, Save } from "lucide-react";
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
@@ -36,6 +36,10 @@ export default function ContractAmendmentsPanel({ contractId }: Props) {
   const [draftLoading, setDraftLoading] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
+  const [sourceDocumentId, setSourceDocumentId] = useState<string | null>(null);
+  const [extractionId, setExtractionId] = useState<string | null>(null);
+  const [extractionStatus, setExtractionStatus] = useState<string | null>(null);
+  const [extracting, setExtracting] = useState(false);
   const [sourceUploading, setSourceUploading] = useState(false);
   const sourceInputRef = useRef<HTMLInputElement>(null);
 
@@ -81,6 +85,9 @@ export default function ContractAmendmentsPanel({ contractId }: Props) {
       const res = await api.post(`/contracts/${contractId}/amendments/${amendmentId}/draft`);
       const d = res.data?.data?.draft;
       setDraft(d?.content || emptyDraft);
+      setSourceDocumentId(d?.sourceDocumentId || null);
+      setExtractionId(null);
+      setExtractionStatus(null);
       setEditing(amendmentId);
     } catch (err: any) {
       setError(err?.response?.data?.message || "Unable to create amendment draft.");
@@ -107,17 +114,55 @@ export default function ContractAmendmentsPanel({ contractId }: Props) {
       const res = await api.post(`/contracts/${contractId}/amendments/${editing}/source-document`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      setSuccess("Amendment PDF attached as a new immutable source document. It can now enter verification.");
-      await load();
-      if (res.data?.data?.sourceDocumentId) {
-        setSuccess(`Amendment PDF attached as source document ${res.data.data.sourceDocumentId}. It remains non-authoritative until verified.`);
-      }
+      const id = res.data?.data?.sourceDocumentId;
+      setSourceDocumentId(id || null);
+      setExtractionId(null);
+      setExtractionStatus(null);
+      setSuccess("Amendment PDF attached as a new immutable source document. It is ready for extraction.");
     } catch (err: any) {
       setError(err?.response?.data?.message || "Unable to attach amendment PDF.");
     } finally {
       setSourceUploading(false);
       if (sourceInputRef.current) sourceInputRef.current.value = "";
     }
+  };
+
+  const startExtraction = async () => {
+    if (!sourceDocumentId) return;
+    setExtracting(true); setError(""); setSuccess(""); setExtractionStatus("queued");
+    try {
+      const res = await api.post("/ai/contracts?action=extract", {
+        document_id: sourceDocumentId,
+        contract_id: Number(contractId),
+      });
+      const job = res.data?.data || res.data;
+      const jobId = job?.id || job?.jobId || job?.job_id || null;
+      const initialExtractionId = job?.extractionId || job?.extraction_id || null;
+      if (initialExtractionId) setExtractionId(String(initialExtractionId));
+      setExtractionStatus(job?.status || "queued");
+
+      if (!jobId) {
+        setSuccess("Extraction started. The Contract Intelligence service is processing the amendment PDF.");
+        return;
+      }
+
+      for (let attempt = 0; attempt < 30; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        const statusRes = await api.get("/ai/contracts", {
+          params: { action: "extraction_status", document_id: sourceDocumentId, job_id: jobId },
+        });
+        const status = statusRes.data?.status || statusRes.data?.data?.status || "processing";
+        const currentExtractionId = statusRes.data?.extractionId || statusRes.data?.extraction_id || statusRes.data?.data?.extractionId || statusRes.data?.data?.extraction_id;
+        if (currentExtractionId) setExtractionId(String(currentExtractionId));
+        setExtractionStatus(status);
+        if (["completed", "complete", "succeeded", "failed", "error"].includes(String(status).toLowerCase())) break;
+      }
+
+      setSuccess("Amendment extraction has completed or reached a terminal state. Human verification is still required before the amendment becomes authoritative.");
+    } catch (err: any) {
+      setExtractionStatus("failed");
+      setError(err?.response?.data?.error || err?.response?.data?.message || "Unable to start amendment extraction.");
+    } finally { setExtracting(false); }
   };
 
   const field = (label: string, key: keyof Draft, multiline = false) => (
@@ -156,6 +201,14 @@ export default function ContractAmendmentsPanel({ contractId }: Props) {
         </div>
         <div className="mt-3 rounded-lg border border-white/5 bg-white/[0.02] p-3"><p className="text-xs text-text-secondary mb-2">Parties</p>{(draft.parties || []).map((p, i) => <div key={i} className="grid grid-cols-2 gap-2 mb-2"><input value={p.name} onChange={(e) => setDraft((d) => ({ ...d, parties: (d.parties || []).map((x, j) => j === i ? { ...x, name: e.target.value } : x) }))} placeholder="Party name" className="rounded-lg bg-white/5 border border-white/10 px-2 py-1.5 text-sm text-white" /><input value={p.role || ""} onChange={(e) => setDraft((d) => ({ ...d, parties: (d.parties || []).map((x, j) => j === i ? { ...x, role: e.target.value } : x) }))} placeholder="Role" className="rounded-lg bg-white/5 border border-white/10 px-2 py-1.5 text-sm text-white" /></div>)}<Button variant="secondary" size="sm" onClick={() => setDraft((d) => ({ ...d, parties: [...(d.parties || []), { name: "", role: "" }] }))}><Plus size={14} /> Add party</Button></div>
         <div className="mt-4 flex items-center gap-2 text-xs text-text-secondary"><Edit3 size={14} /> Editing is isolated from the verified contract and must enter verification before becoming authoritative.</div>
+
+        <div className="mt-5 rounded-xl border border-white/10 bg-white/[0.02] p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div><p className="text-sm font-medium text-white">Source document & extraction</p><p className="text-xs text-text-secondary mt-1">The amendment PDF is the source of truth. Extraction creates derived data only.</p></div>
+            {sourceDocumentId && <Badge variant="success" size="sm">PDF attached</Badge>}
+          </div>
+          {!sourceDocumentId ? <p className="mt-3 text-xs text-text-secondary">Attach the finalized amendment PDF to continue.</p> : <div className="mt-3 space-y-3"><div className="rounded-lg border border-white/5 bg-white/5 px-3 py-2 text-xs text-text-secondary break-all">Source document: {sourceDocumentId}</div><div className="flex flex-wrap items-center gap-2"><Button variant="primary" size="sm" disabled={extracting} onClick={() => void startExtraction()}><FileSearch size={14} /> {extracting ? "Extracting…" : extractionId ? "Re-run extraction" : "Start extraction"}</Button>{extractionStatus && <Badge variant={String(extractionStatus).toLowerCase().includes("fail") ? "danger" : "warn"} size="sm">{extractionStatus}</Badge>}{extractionId && <span className="text-xs text-text-secondary">Extraction: {extractionId}</span>}</div><p className="text-xs text-text-secondary">After extraction, the result remains non-authoritative. The next step is human verification, which is required before this amendment can create a new verified contract version.</p></div>}
+        </div>
       </Card>}
 
       <Card title="Amendments">
