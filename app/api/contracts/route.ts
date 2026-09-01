@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
-import { storeFile } from "@/lib/storage";
+import { documentService } from "@/lib/documents";
 import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
 import {
   requireContractInOrg,
@@ -72,7 +72,6 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const ctx = await requireOrganization();
     const orgId = ctx.legacyIntOrgId;
-    const orgUuid = ctx.organizationId;
 
     const action = searchParams.get("action");
 
@@ -261,7 +260,7 @@ export async function POST(req: Request) {
 
     if (action === "add_split") {
       const body = await req.json();
-      const { id, group_id } = body;
+      const { group_id } = body;
       const split = await prisma.contract_splits.create({
         data: {
           group_id: parseInt(group_id),
@@ -293,6 +292,11 @@ export async function POST(req: Request) {
 
       const file = formData.get("file") as File | null;
       if (!file) return NextResponse.json({ error: "No file provided" }, { status: 400 });
+      if (file.type !== "application/pdf") {
+        return NextResponse.json({ error: "Only PDF contracts are supported" }, { status: 400 });
+      }
+
+      await requireContractInOrg(id, ctx);
 
       const existingDocs = await prisma.contract_documents.findMany({
         where: { contract_id: id },
@@ -300,29 +304,49 @@ export async function POST(req: Request) {
         take: 1,
       });
       const nextVersion = (existingDocs[0]?.version ?? 0) + 1;
+      const body = Buffer.from(await file.arrayBuffer());
 
-      const stored = await storeFile(file, `v${nextVersion}`, {
-        domain: "contracts",
-        entityId: id,
-        allowedMime: ["application/pdf"],
+      const platformUpload = await documentService.uploadDocument({
+        organizationId: orgUuid,
+        userId,
+        fileName: file.name,
+        mimeType: file.type,
+        body,
+        allowedMimeTypes: ["application/pdf"],
         maxSizeBytes: 50 * 1024 * 1024,
+        folder: "contracts",
+      });
+
+      await prisma.contractDocumentRelation.create({
+        data: {
+          contractId: id,
+          documentId: platformUpload.document.id,
+          createdBy: userId,
+        },
       });
 
       const doc = await prisma.contract_documents.create({
         data: {
           contract_id: id,
           organization_id: orgId,
-          file_path: stored.url,
+          file_path: `document:${platformUpload.document.id}`,
           file_name: file.name,
           version: nextVersion,
           uploaded_by: userId,
-          checksum: stored.checksum,
-          mime_type: stored.mime_type,
-          size_bytes: stored.size_bytes,
+          checksum: platformUpload.document.checksum,
+          mime_type: platformUpload.document.mimeType,
+          size_bytes: platformUpload.document.fileSize,
         },
       });
 
-      return NextResponse.json(doc, { status: 201 });
+      return NextResponse.json(
+        {
+          ...doc,
+          document_id: platformUpload.document.id,
+          document: platformUpload.document,
+        },
+        { status: 201 }
+      );
     }
 
     const body = await req.json();
@@ -407,7 +431,6 @@ export async function DELETE(req: Request) {
     const id = parseInt(idStr);
     if (!Number.isFinite(id)) return NextResponse.json({ error: "Invalid contract ID" }, { status: 400 });
 
-    // Ownership first — all nested deletes require the contract to belong to the org
     await requireContractInOrg(id, ctx);
 
     const trackIdStr = searchParams.get("trackId");
@@ -468,7 +491,9 @@ export async function DELETE(req: Request) {
     await prisma.contract_assets.deleteMany({ where: { contract_id: id } });
     const splitGroups = await prisma.contract_split_groups.findMany({ where: { contract_id: id } });
     const groupIds = splitGroups.map((g) => g.id);
-    await prisma.contract_splits.deleteMany({ where: { group_id: { in: groupIds } } });
+    if (groupIds.length > 0) {
+      await prisma.contract_splits.deleteMany({ where: { group_id: { in: groupIds } } });
+    }
     await prisma.contract_split_groups.deleteMany({ where: { contract_id: id } });
     await prisma.contract_documents.deleteMany({ where: { contract_id: id } });
 

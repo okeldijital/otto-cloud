@@ -69,10 +69,14 @@ export default function AddContractWizard({ isOpen, onClose, onCreated }: AddCon
       const fd = new FormData(); fd.append("file", file);
       const documentRes = await api.post(`/contracts?action=upload_document&id=${created.id}`, fd);
       const document = documentRes.data;
-      const extractionRes = await api.post("/ai/contracts/intake", { document_id: document.id, contract_id: created.id });
+      const documentId = document?.document_id || document?.document?.id;
+      if (!documentId || typeof documentId !== "string") {
+        throw new Error("Contract upload did not return a canonical document id.");
+      }
+      const extractionRes = await api.post("/ai/contracts/intake", { document_id: documentId, contract_id: created.id });
       setJob(extractionRes.data); setStage("extracting");
     } catch (err: any) {
-      setError(err?.response?.data?.error || "Unable to start contract intake."); setStage("error");
+      setError(err?.response?.data?.error || err?.message || "Unable to start contract intake."); setStage("error");
     } finally { setBusy(false); }
   };
 

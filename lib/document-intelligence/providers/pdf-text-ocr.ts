@@ -2,10 +2,8 @@ import type { OcrPageResult, OcrProvider, OcrResult } from "./ocr-provider";
 import { NATIVE_TEXT_THRESHOLD_PER_PAGE } from "../constants";
 
 /**
- * Deterministic text/OCR provider using PDF.js text layer.
- * Native PDFs: extract embedded text (OCR skipped when density is high).
- * Scanned/image PDFs: low density → ocrApplied=true with best-effort extract
- * (placeholder for Google Vision / Textract / Tesseract).
+ * Native PDF text extraction with a self-hosted OCR worker fallback for
+ * scanned/image PDFs. No hosted OCR API is required.
  */
 export class PdfTextOcrProvider implements OcrProvider {
   readonly name = "pdfjs-text";
@@ -16,23 +14,55 @@ export class PdfTextOcrProvider implements OcrProvider {
     filename?: string;
   }): Promise<OcrResult> {
     const pages = await extractPdfPages(params.buffer);
-    const fullText = pages.map((p) => p.text).join("\n\n");
+    const fullText = pages.map((p) => p.text).join("\n\n").trim();
     const pageCount = Math.max(1, pages.length);
     const density = fullText.replace(/\s+/g, "").length / pageCount;
-    const ocrApplied = density < NATIVE_TEXT_THRESHOLD_PER_PAGE;
 
-    return {
-      provider: this.name,
-      pages,
-      fullText: fullText.trim(),
-      ocrApplied,
-    };
+    if (density >= NATIVE_TEXT_THRESHOLD_PER_PAGE) {
+      return { provider: this.name, pages, fullText, ocrApplied: false };
+    }
+
+    const workerUrl = process.env.OCR_WORKER_URL?.replace(/\/$/, "");
+    if (!workerUrl) {
+      throw new Error(
+        "OCR worker is not configured. Set OCR_WORKER_URL for scanned PDFs."
+      );
+    }
+
+    const response = await fetch(`${workerUrl}/ocr`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        ...(process.env.OCR_WORKER_TOKEN
+          ? { authorization: `Bearer ${process.env.OCR_WORKER_TOKEN}` }
+          : {}),
+      },
+      body: JSON.stringify({
+        mimeType: params.mimeType,
+        filename: params.filename,
+        data: params.buffer.toString("base64"),
+      }),
+      signal: AbortSignal.timeout(Number(process.env.OCR_WORKER_TIMEOUT_MS || 120_000)),
+    });
+
+    if (!response.ok) {
+      const detail = await response.text().catch(() => "");
+      throw new Error(
+        `OCR worker failed (${response.status})${detail ? `: ${detail.slice(0, 500)}` : ""}`
+      );
+    }
+
+    const result = (await response.json()) as OcrResult;
+    if (!result.ocrApplied || !Array.isArray(result.pages)) {
+      throw new Error("OCR worker returned an invalid result");
+    }
+
+    return result;
   }
 }
 
 async function extractPdfPages(buffer: Buffer): Promise<OcrPageResult[]> {
   try {
-    // Dynamic import — pdfjs-dist is already a dependency via react-pdf
     const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
     const data = new Uint8Array(buffer);
     const loadingTask = pdfjs.getDocument({
@@ -55,7 +85,6 @@ async function extractPdfPages(buffer: Buffer): Promise<OcrPageResult[]> {
     }
     return pages.length > 0 ? pages : [{ pageNumber: 1, text: "" }];
   } catch {
-    // Corrupt or unsupported PDF — return empty page for pipeline error handling
     return [{ pageNumber: 1, text: "" }];
   }
 }

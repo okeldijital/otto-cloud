@@ -1,6 +1,25 @@
 {
-  "framework": "nextjs",
-  "buildCommand": "npm run build",
-  "installCommand": "npm install --legacy-peer-deps",
-  "outputDirectory": ".next"
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "services": {
+    "frontend": {
+      "root": ".",
+      "framework": "nextjs",
+      "buildCommand": "npm run build",
+      "installCommand": "npm install --legacy-peer-deps",
+      "outputDirectory": ".next",
+      "bindings": [
+        {
+          "type": "service",
+          "service": "ocr",
+          "format": "url",
+          "env": "OCR_WORKER_URL"
+        }
+      ]
+    },
+    "ocr": {
+      "root": "ocr-worker/",
+      "runtime": "container",
+      "entrypoint": "Dockerfile.vercel"
+    }
+  }
 }
