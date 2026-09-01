@@ -20,7 +20,7 @@ function test(name: string, fn: () => void) {
 
 console.log("\nContract Readiness\n");
 
-test("missing verified contract blocks readiness", () => {
+test("missing verified contract blocks capture and readiness", () => {
   const result = buildContractReadiness({
     verifiedContract: false,
     artist: false,
@@ -28,44 +28,69 @@ test("missing verified contract blocks readiness", () => {
     terms: false,
   });
   assert.equal(result.ready, false);
+  assert.equal(result.captureReady, false);
+  assert.equal(result.captureStatus, "blocked");
+  assert.equal(result.catalogueLinkageStatus, "pending");
   assert.deepEqual(result.blockers, ["verified_contract_missing"]);
 });
 
-test("verified contract with missing dependencies is blocked", () => {
-  const result = buildContractReadiness({
-    verifiedContract: true,
-    artist: true,
-    release: false,
-    terms: false,
-  });
-  assert.equal(result.ready, false);
-  assert.deepEqual(result.blockers, ["release_unresolved", "terms_unverified"]);
-});
-
-test("all operational dependencies make contract ready", () => {
-  const result = buildContractReadiness({
-    verifiedContract: true,
-    artist: true,
-    release: true,
-    terms: true,
-  });
-  assert.equal(result.ready, true);
-  assert.equal(result.status, "ready");
-  assert.deepEqual(result.blockers, []);
-});
-
-test("pending suggestions do not satisfy readiness", () => {
+test("verified contract with terms is captured even when catalogue links are pending", () => {
   const result = buildContractReadiness({
     verifiedContract: true,
     artist: false,
     release: false,
     terms: true,
   });
+  assert.equal(result.captureReady, true);
+  assert.equal(result.captureStatus, "captured");
+  assert.equal(result.catalogueLinkageStatus, "pending");
   assert.equal(result.ready, false);
   assert.deepEqual(result.blockers, ["artist_unresolved", "release_unresolved"]);
 });
 
-test("operational readiness assertion accepts ready contracts", () => {
+test("verified contract with missing terms is not captured", () => {
+  const result = buildContractReadiness({
+    verifiedContract: true,
+    artist: true,
+    release: true,
+    terms: false,
+  });
+  assert.equal(result.captureReady, false);
+  assert.equal(result.captureStatus, "blocked");
+  assert.equal(result.catalogueLinkageStatus, "pending");
+  assert.equal(result.ready, false);
+  assert.deepEqual(result.blockers, ["terms_unverified"]);
+});
+
+test("all operational dependencies contextualise the contract", () => {
+  const result = buildContractReadiness({
+    verifiedContract: true,
+    artist: true,
+    release: true,
+    terms: true,
+  });
+  assert.equal(result.captureReady, true);
+  assert.equal(result.captureStatus, "captured");
+  assert.equal(result.catalogueLinkageStatus, "contextualised");
+  assert.equal(result.ready, true);
+  assert.equal(result.status, "ready");
+  assert.deepEqual(result.blockers, []);
+});
+
+test("pending suggestions do not satisfy catalogue readiness", () => {
+  const result = buildContractReadiness({
+    verifiedContract: true,
+    artist: false,
+    release: false,
+    terms: true,
+  });
+  assert.equal(result.captureReady, true);
+  assert.equal(result.catalogueLinkageStatus, "pending");
+  assert.equal(result.ready, false);
+  assert.deepEqual(result.blockers, ["artist_unresolved", "release_unresolved"]);
+});
+
+test("operational readiness assertion accepts contextualised contracts", () => {
   const result = buildContractReadiness({
     verifiedContract: true,
     artist: true,
@@ -75,7 +100,7 @@ test("operational readiness assertion accepts ready contracts", () => {
   assert.doesNotThrow(() => assertContractReady(result));
 });
 
-test("operational readiness assertion rejects blocked contracts", () => {
+test("operational readiness assertion rejects non-contextualised contracts", () => {
   const result = buildContractReadiness({
     verifiedContract: true,
     artist: false,
