@@ -4,7 +4,6 @@
     "frontend": {
       "root": ".",
       "framework": "nextjs",
-      "routePrefix": "/",
       "buildCommand": "npm run build",
       "installCommand": "npm install --legacy-peer-deps",
       "outputDirectory": ".next",
@@ -20,8 +19,15 @@
     "ocr": {
       "root": "ocr-worker/",
       "runtime": "container",
-      "routePrefix": "/ocr-worker",
       "entrypoint": "Dockerfile.vercel"
     }
-  }
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": {
+        "service": "frontend"
+      }
+    }
+  ]
 }
