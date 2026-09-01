@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import PageHeader from "@/components/ui/PageHeader";
+import ContractAmendmentsPanel from "@/components/contracts/lifecycle/ContractAmendmentsPanel";
 import api from "@/lib/api";
 
 export default function ContractDetailPage() {
@@ -28,6 +29,7 @@ export default function ContractDetailPage() {
           <div><span className="text-text-secondary text-sm">Created:</span><p className="text-white">{contract.created_at ? new Date(contract.created_at).toLocaleDateString() : "—"}</p></div>
         </div>
       </div>
+      <ContractAmendmentsPanel contractId={id} />
     </div>
   );
 }
