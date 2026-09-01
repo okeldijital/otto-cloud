@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { Edit3, Loader2, Plus, Save } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Edit3, FileUp, Loader2, Plus, Save } from "lucide-react";
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
@@ -36,6 +36,8 @@ export default function ContractAmendmentsPanel({ contractId }: Props) {
   const [draftLoading, setDraftLoading] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
+  const [sourceUploading, setSourceUploading] = useState(false);
+  const sourceInputRef = useRef<HTMLInputElement>(null);
 
   const [number, setNumber] = useState("");
   const [effectiveDate, setEffectiveDate] = useState("");
@@ -96,6 +98,28 @@ export default function ContractAmendmentsPanel({ contractId }: Props) {
     } finally { setSaving(false); }
   };
 
+  const attachSourceDocument = async (file: File) => {
+    if (!editing) return;
+    setSourceUploading(true); setError(""); setSuccess("");
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await api.post(`/contracts/${contractId}/amendments/${editing}/source-document`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setSuccess("Amendment PDF attached as a new immutable source document. It can now enter verification.");
+      await load();
+      if (res.data?.data?.sourceDocumentId) {
+        setSuccess(`Amendment PDF attached as source document ${res.data.data.sourceDocumentId}. It remains non-authoritative until verified.`);
+      }
+    } catch (err: any) {
+      setError(err?.response?.data?.message || "Unable to attach amendment PDF.");
+    } finally {
+      setSourceUploading(false);
+      if (sourceInputRef.current) sourceInputRef.current.value = "";
+    }
+  };
+
   const field = (label: string, key: keyof Draft, multiline = false) => (
     <label className="text-xs text-text-secondary">
       {label}
@@ -125,7 +149,8 @@ export default function ContractAmendmentsPanel({ contractId }: Props) {
       </Card>}
 
       {editing && <Card title="Amendment draft editor">
-        <div className="flex items-center justify-between mb-4"><div><p className="text-sm text-white">Proposed changes to the current verified contract</p><p className="text-xs text-text-secondary mt-1">This is a working copy. Saving it does not change the verified contract.</p></div><Button variant="primary" size="sm" disabled={saving} onClick={saveDraft}><Save size={14} /> Save draft</Button></div>
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4"><div><p className="text-sm text-white">Proposed changes to the current verified contract</p><p className="text-xs text-text-secondary mt-1">This is a working copy. Saving it does not change the verified contract.</p></div><div className="flex gap-2"><Button variant="secondary" size="sm" disabled={sourceUploading} onClick={() => sourceInputRef.current?.click()}><FileUp size={14} /> {sourceUploading ? "Attaching…" : "Attach amendment PDF"}</Button><input ref={sourceInputRef} type="file" accept="application/pdf,.pdf" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) void attachSourceDocument(file); }} /><Button variant="primary" size="sm" disabled={saving} onClick={saveDraft}><Save size={14} /> Save draft</Button></div></div>
+        <div className="mb-4 rounded-lg border border-warning/20 bg-warning/5 px-3 py-2 text-xs text-text-secondary">Attach the finalized amendment PDF here. OTTO stores it as a new source document; it does not overwrite the original contract. The new document must still pass extraction and human verification before becoming authoritative.</div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {field("Title", "title")}{field("Document type", "documentType")}{field("Reference number", "referenceNumber")}{field("Currency", "currency")}{field("Effective date", "effectiveDateText")}{field("Expiration date", "expirationDateText")}{field("Governing law", "governingLaw")}{field("Territories", "territorySummary", true)}{field("Term", "termSummary", true)}{field("Rights", "rightsSummary", true)}{field("Obligations", "obligationsSummary", true)}
         </div>
