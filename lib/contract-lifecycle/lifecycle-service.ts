@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import type { OrganizationContext } from "@/lib/auth/organization-context";
 import { IntelligenceError } from "@/lib/document-intelligence";
 import { verifiedContractService } from "@/lib/verified-contract";
+import { assertContractReady, contractReadinessService } from "@/lib/contract-readiness";
 import {
   canTransition,
   KEY_DATE_LABELS,
@@ -140,6 +141,20 @@ export class ContractLifecycleService {
       params.contractId,
       params.ctx.userId
     );
+
+    const activatingByStatus =
+      params.status === LIFECYCLE_STATUS.active &&
+      params.status !== current.status;
+    const activatingByRenewal =
+      !!params.markRenewed && current.status === LIFECYCLE_STATUS.pending_renewal;
+
+    if (activatingByStatus || activatingByRenewal) {
+      const readiness = await contractReadinessService.evaluate({
+        organizationId: params.organizationId,
+        contractId: params.contractId,
+      });
+      assertContractReady(readiness);
+    }
 
     const updates: any = {};
     if (params.notes !== undefined) updates.notes = params.notes;
