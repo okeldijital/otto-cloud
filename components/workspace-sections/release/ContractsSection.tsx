@@ -10,6 +10,7 @@ import {
   HeartPulse,
   History,
   Loader2,
+  Plus,
   RefreshCw,
   ShieldAlert,
 } from "lucide-react";
@@ -38,8 +39,9 @@ const LC_VARIANT: Record<string, string> = {
 };
 
 /**
- * Release Workspace — Contracts panel (read-only consumer of platform projections).
- * No edit controls. Open Contract Center for changes.
+ * Release Workspace — Contracts panel.
+ * Reads contract projections and permits explicit user-managed Contract linkage.
+ * No extraction or catalogue inference occurs here.
  */
 export default function ContractsSection({ workspace, onRefresh }: SectionProps) {
   const releaseId =
@@ -49,6 +51,7 @@ export default function ContractsSection({ workspace, onRefresh }: SectionProps)
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [linking, setLinking] = useState(false);
   const [error, setError] = useState("");
   const [summary, setSummary] = useState<any>(null);
   const [timeline, setTimeline] = useState<any[]>([]);
@@ -90,6 +93,33 @@ export default function ContractsSection({ workspace, onRefresh }: SectionProps)
     load(false);
   }, [load]);
 
+  const linkExistingContract = async () => {
+    if (!releaseId || linking) return;
+    const raw = window.prompt("Enter the existing OTTO Contract ID to link to this release:");
+    if (!raw?.trim()) return;
+    const contractId = Number(raw.trim());
+    if (!Number.isInteger(contractId) || contractId <= 0) {
+      setError("Enter a valid Contract ID.");
+      return;
+    }
+
+    setLinking(true);
+    setError("");
+    try {
+      await api.post(`/releases/${releaseId}/contracts`, { contractId });
+      await load(true);
+      onRefresh?.();
+    } catch (err: any) {
+      setError(
+        err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          "Unable to link contract to release"
+      );
+    } finally {
+      setLinking(false);
+    }
+  };
+
   const health = summary?.health;
   const contracts = summary?.contracts || [];
   const counts = summary?.counts || {};
@@ -111,22 +141,33 @@ export default function ContractsSection({ workspace, onRefresh }: SectionProps)
             <FileText size={20} className="text-accent" /> Contracts
           </h2>
           <p className="text-xs text-text-secondary mt-1">
-            Read-only projections from Contract Center · Relationships · Lifecycle
+            Contract catalogue context for this release · user-managed links
           </p>
         </div>
-        <Button
-          variant="secondary"
-          size="sm"
-          disabled={refreshing}
-          onClick={() => {
-            setRefreshing(true);
-            load(true);
-            onRefresh?.();
-          }}
-        >
-          <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
-          Refresh projection
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="primary"
+            size="sm"
+            disabled={linking}
+            onClick={linkExistingContract}
+          >
+            {linking ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+            Link Contract
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={refreshing}
+            onClick={() => {
+              setRefreshing(true);
+              load(true);
+              onRefresh?.();
+            }}
+          >
+            <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
+            Refresh projection
+          </Button>
+        </div>
       </div>
 
       {error && (
@@ -135,7 +176,6 @@ export default function ContractsSection({ workspace, onRefresh }: SectionProps)
         </div>
       )}
 
-      {/* Health + counts */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card className="p-4">
           <p className="text-xs text-text-secondary">Linked</p>
@@ -151,19 +191,14 @@ export default function ContractsSection({ workspace, onRefresh }: SectionProps)
         </Card>
         <Card className="p-4">
           <p className="text-xs text-text-secondary">Expiring soon</p>
-          <p className="text-2xl font-bold text-white">
-            {counts.expiringSoon ?? 0}
-          </p>
+          <p className="text-2xl font-bold text-white">{counts.expiringSoon ?? 0}</p>
         </Card>
         <Card className="p-4">
           <p className="text-xs text-text-secondary">Pending renewal</p>
-          <p className="text-2xl font-bold text-white">
-            {counts.pendingRenewal ?? 0}
-          </p>
+          <p className="text-2xl font-bold text-white">{counts.pendingRenewal ?? 0}</p>
         </Card>
       </div>
 
-      {/* Sub-nav */}
       <div className="flex gap-2 border-b border-white/5 pb-2">
         {(
           [
@@ -193,7 +228,7 @@ export default function ContractsSection({ workspace, onRefresh }: SectionProps)
             <Card className="p-8 text-center text-sm text-text-secondary">
               No contracts linked to this release.
               <p className="mt-2 text-xs">
-                Link a contract to this release from Contract Center → Relationships.
+                Use <span className="text-white">Link Contract</span> to attach an existing OTTO contract.
               </p>
             </Card>
           ) : (
@@ -207,25 +242,15 @@ export default function ContractsSection({ workspace, onRefresh }: SectionProps)
                     <p className="text-xs text-text-secondary mt-0.5">
                       #{c.contractId}
                       {c.relationshipType ? ` · ${c.relationshipType}` : ""}
-                      {c.verifiedVersion != null
-                        ? ` · verified v${c.verifiedVersion}`
-                        : ""}
+                      {c.verifiedVersion != null ? ` · verified v${c.verifiedVersion}` : ""}
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
-                    <Badge
-                      variant={
-                        (HEALTH_VARIANT[c.healthStatus] || "neutral") as any
-                      }
-                    >
+                    <Badge variant={(HEALTH_VARIANT[c.healthStatus] || "neutral") as any}>
                       {c.healthStatus}
                     </Badge>
                     {c.lifecycleStatus && (
-                      <Badge
-                        variant={
-                          (LC_VARIANT[c.lifecycleStatus] || "neutral") as any
-                        }
-                      >
+                      <Badge variant={(LC_VARIANT[c.lifecycleStatus] || "neutral") as any}>
                         {c.lifecycleStatus}
                       </Badge>
                     )}
@@ -233,63 +258,26 @@ export default function ContractsSection({ workspace, onRefresh }: SectionProps)
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-                  <div>
-                    <span className="text-text-secondary">Effective</span>
-                    <p className="text-white">{c.effectiveDate || "—"}</p>
-                  </div>
-                  <div>
-                    <span className="text-text-secondary">Expiration</span>
-                    <p className="text-white">{c.expirationDate || "—"}</p>
-                  </div>
-                  <div>
-                    <span className="text-text-secondary">Renewal</span>
-                    <p className="text-white">{c.renewalDate || "—"}</p>
-                  </div>
-                  <div>
-                    <span className="text-text-secondary">Last verified</span>
-                    <p className="text-white">
-                      {c.lastVerifiedAt
-                        ? new Date(c.lastVerifiedAt).toLocaleDateString()
-                        : "—"}
-                    </p>
-                  </div>
+                  <div><span className="text-text-secondary">Effective</span><p className="text-white">{c.effectiveDate || "—"}</p></div>
+                  <div><span className="text-text-secondary">Expiration</span><p className="text-white">{c.expirationDate || "—"}</p></div>
+                  <div><span className="text-text-secondary">Renewal</span><p className="text-white">{c.renewalDate || "—"}</p></div>
+                  <div><span className="text-text-secondary">Last verified</span><p className="text-white">{c.lastVerifiedAt ? new Date(c.lastVerifiedAt).toLocaleDateString() : "—"}</p></div>
                 </div>
 
                 {c.parties?.length > 0 && (
                   <p className="text-xs text-text-secondary">
-                    Parties:{" "}
-                    {c.parties
-                      .map((p: any) => p.name)
-                      .filter(Boolean)
-                      .join(", ")}
+                    Parties: {c.parties.map((p: any) => p.name).filter(Boolean).join(", ")}
                   </p>
                 )}
 
                 {c.rightsSummary && (
-                  <p className="text-xs text-text-secondary line-clamp-2">
-                    Rights: {c.rightsSummary}
-                  </p>
+                  <p className="text-xs text-text-secondary line-clamp-2">Rights: {c.rightsSummary}</p>
                 )}
 
                 <div className="flex flex-wrap gap-2 pt-1">
-                  <Link
-                    href={`/contracts/${c.contractId}`}
-                    className="inline-flex items-center gap-1 text-xs text-accent hover:underline"
-                  >
-                    <ExternalLink size={12} /> Open Contract
-                  </Link>
-                  <Link
-                    href={`/contracts/${c.contractId}?tab=timeline`}
-                    className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-white"
-                  >
-                    <History size={12} /> View Timeline
-                  </Link>
-                  <Link
-                    href={`/contracts/${c.contractId}?tab=relationships`}
-                    className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-white"
-                  >
-                    <FileText size={12} /> View Relationship
-                  </Link>
+                  <Link href={`/contracts/${c.contractId}`} className="inline-flex items-center gap-1 text-xs text-accent hover:underline"><ExternalLink size={12} /> Open Contract</Link>
+                  <Link href={`/contracts/${c.contractId}?tab=timeline`} className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-white"><History size={12} /> View Timeline</Link>
+                  <Link href={`/contracts/${c.contractId}?tab=relationships`} className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-white"><FileText size={12} /> View Relationship</Link>
                 </div>
               </Card>
             ))
@@ -297,18 +285,11 @@ export default function ContractsSection({ workspace, onRefresh }: SectionProps)
 
           {upcoming.length > 0 && (
             <Card className="p-4">
-              <h4 className="text-sm font-semibold text-white mb-2">
-                Upcoming dates
-              </h4>
+              <h4 className="text-sm font-semibold text-white mb-2">Upcoming dates</h4>
               <ul className="space-y-1.5">
                 {upcoming.map((d: any, i: number) => (
-                  <li
-                    key={`${d.contractId}-${d.dateType}-${i}`}
-                    className="text-xs flex justify-between gap-2 text-text-secondary"
-                  >
-                    <span>
-                      {d.dateType} · {d.contractTitle || `#${d.contractId}`}
-                    </span>
+                  <li key={`${d.contractId}-${d.dateType}-${i}`} className="text-xs flex justify-between gap-2 text-text-secondary">
+                    <span>{d.dateType} · {d.contractTitle || `#${d.contractId}`}</span>
                     <span className="text-white">{d.dateValue}</span>
                   </li>
                 ))}
@@ -323,45 +304,21 @@ export default function ContractsSection({ workspace, onRefresh }: SectionProps)
           <div className="flex items-center gap-2">
             <HeartPulse size={18} className="text-accent" />
             <h3 className="text-white font-medium">Contract health</h3>
-            <Badge
-              variant={(HEALTH_VARIANT[health?.status] || "neutral") as any}
-            >
-              {health?.status || "—"}
-            </Badge>
+            <Badge variant={(HEALTH_VARIANT[health?.status] || "neutral") as any}>{health?.status || "—"}</Badge>
           </div>
           <ul className="space-y-2">
             {(health?.reasons || []).map((r: string, i: number) => (
-              <li
-                key={i}
-                className="text-sm text-text-secondary flex items-start gap-2"
-              >
-                {health?.status === "critical" ? (
-                  <ShieldAlert size={14} className="text-red-400 mt-0.5" />
-                ) : health?.status === "warning" ? (
-                  <AlertTriangle size={14} className="text-amber-400 mt-0.5" />
-                ) : (
-                  <CheckCircle2 size={14} className="text-emerald-400 mt-0.5" />
-                )}
+              <li key={i} className="text-sm text-text-secondary flex items-start gap-2">
+                {health?.status === "critical" ? <ShieldAlert size={14} className="text-red-400 mt-0.5" /> : health?.status === "warning" ? <AlertTriangle size={14} className="text-amber-400 mt-0.5" /> : <CheckCircle2 size={14} className="text-emerald-400 mt-0.5" />}
                 {r}
               </li>
             ))}
           </ul>
           <div className="space-y-2 pt-2 border-t border-white/5">
             {contracts.map((c: any) => (
-              <div
-                key={c.contractId}
-                className="flex justify-between text-xs gap-2"
-              >
-                <span className="text-white truncate">
-                  {c.contractTitle || `#${c.contractId}`}
-                </span>
-                <Badge
-                  variant={
-                    (HEALTH_VARIANT[c.healthStatus] || "neutral") as any
-                  }
-                >
-                  {c.healthStatus}
-                </Badge>
+              <div key={c.contractId} className="flex justify-between text-xs gap-2">
+                <span className="text-white truncate">{c.contractTitle || `#${c.contractId}`}</span>
+                <Badge variant={(HEALTH_VARIANT[c.healthStatus] || "neutral") as any}>{c.healthStatus}</Badge>
               </div>
             ))}
           </div>
@@ -370,36 +327,19 @@ export default function ContractsSection({ workspace, onRefresh }: SectionProps)
 
       {tab === "timeline" && (
         <Card className="p-4">
-          <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-            <History size={16} /> Unified timeline
-          </h3>
+          <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2"><History size={16} /> Unified timeline</h3>
           {timeline.length === 0 ? (
             <p className="text-sm text-text-secondary">No timeline entries yet.</p>
           ) : (
             <ul className="space-y-3 max-h-96 overflow-auto">
               {timeline.map((e) => (
-                <li
-                  key={e.id}
-                  className="border-b border-white/5 pb-2 last:border-0"
-                >
+                <li key={e.id} className="border-b border-white/5 pb-2 last:border-0">
                   <div className="flex justify-between gap-2">
                     <span className="text-sm text-white">{e.title}</span>
-                    <span className="text-xs text-text-secondary shrink-0">
-                      {e.occurredAt
-                        ? new Date(e.occurredAt).toLocaleString()
-                        : ""}
-                    </span>
+                    <span className="text-xs text-text-secondary shrink-0">{e.occurredAt ? new Date(e.occurredAt).toLocaleString() : ""}</span>
                   </div>
-                  <p className="text-xs text-text-secondary mt-0.5">
-                    {e.entryType}
-                    {e.isContractEvent ? " · contract event" : ""}
-                    {e.contractId != null ? ` · #${e.contractId}` : ""}
-                  </p>
-                  {e.description && (
-                    <p className="text-xs text-text-secondary mt-1">
-                      {e.description}
-                    </p>
-                  )}
+                  <p className="text-xs text-text-secondary mt-0.5">{e.entryType}{e.isContractEvent ? " · contract event" : ""}{e.contractId != null ? ` · #${e.contractId}` : ""}</p>
+                  {e.description && <p className="text-xs text-text-secondary mt-1">{e.description}</p>}
                 </li>
               ))}
             </ul>
