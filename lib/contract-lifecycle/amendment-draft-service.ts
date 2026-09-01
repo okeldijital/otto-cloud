@@ -51,7 +51,7 @@ export async function createAmendmentDraft(params: {
   });
 
   const existing = await prisma.$queryRaw<Array<any>>`
-    SELECT "id", "status", "content", "sourceVerifiedContractId", "createdAt", "updatedAt"
+    SELECT "id", "status", "content", "sourceVerifiedContractId", "sourceDocumentId", "createdAt", "updatedAt"
     FROM "contract_amendment_drafts"
     WHERE "amendmentId" = ${params.amendmentId}::uuid
       AND "organizationId" = ${params.organizationId}::uuid
@@ -81,7 +81,7 @@ export async function createAmendmentDraft(params: {
     VALUES
       (${id}::uuid, ${params.organizationId}::uuid, ${params.contractId}, ${params.amendmentId}::uuid,
        ${current?.id ?? null}::uuid, 'draft', ${JSON.stringify(content)}::jsonb, ${params.ctx.userId}, ${params.ctx.userId})
-    RETURNING "id", "status", "content", "sourceVerifiedContractId", "createdAt", "updatedAt"
+    RETURNING "id", "status", "content", "sourceVerifiedContractId", "sourceDocumentId", "createdAt", "updatedAt"
   `;
 
   return { draft: rows[0], created: true };
@@ -93,7 +93,7 @@ export async function getAmendmentDraft(params: {
   amendmentId: string;
 }) {
   const rows = await prisma.$queryRaw<Array<any>>`
-    SELECT "id", "status", "content", "sourceVerifiedContractId", "createdBy", "updatedBy", "createdAt", "updatedAt"
+    SELECT "id", "status", "content", "sourceVerifiedContractId", "sourceDocumentId", "createdBy", "updatedBy", "createdAt", "updatedAt"
     FROM "contract_amendment_drafts"
     WHERE "organizationId" = ${params.organizationId}::uuid
       AND "contractId" = ${params.contractId}
@@ -124,7 +124,7 @@ export async function updateAmendmentDraft(params: {
       AND "contractId" = ${params.contractId}
       AND "amendmentId" = ${params.amendmentId}::uuid
       AND "status" = 'draft'
-    RETURNING "id", "status", "content", "sourceVerifiedContractId", "createdAt", "updatedAt"
+    RETURNING "id", "status", "content", "sourceVerifiedContractId", "sourceDocumentId", "createdAt", "updatedAt"
   `;
   return rows[0];
 }
