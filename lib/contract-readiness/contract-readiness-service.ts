@@ -18,6 +18,34 @@ export type ContractReadiness = {
   };
 };
 
+export function buildContractReadiness(input: {
+  verifiedContract: boolean;
+  artist: boolean;
+  release: boolean;
+  terms: boolean;
+}): ContractReadiness {
+  if (!input.verifiedContract) {
+    return {
+      ready: false,
+      status: "blocked",
+      blockers: ["verified_contract_missing"],
+      checks: input,
+    };
+  }
+
+  const blockers: ContractReadinessBlocker[] = [];
+  if (!input.artist) blockers.push("artist_unresolved");
+  if (!input.release) blockers.push("release_unresolved");
+  if (!input.terms) blockers.push("terms_unverified");
+
+  return {
+    ready: blockers.length === 0,
+    status: blockers.length === 0 ? "ready" : "blocked",
+    blockers,
+    checks: input,
+  };
+}
+
 /**
  * Operational readiness gate for a contract.
  *
@@ -37,21 +65,16 @@ export class ContractReadinessService {
         isCurrent: true,
         status: "active",
       },
-      select: { id: true; extractionId: true; },
+      select: { id: true, extractionId: true },
     });
 
     if (!verified) {
-      return {
-        ready: false,
-        status: "blocked",
-        blockers: ["verified_contract_missing"],
-        checks: {
-          verifiedContract: false,
-          artist: false,
-          release: false,
-          terms: false,
-        },
-      };
+      return buildContractReadiness({
+        verifiedContract: false,
+        artist: false,
+        release: false,
+        terms: false,
+      });
     }
 
     const [artistLink, releaseLink, terms] = await Promise.all([
@@ -86,24 +109,12 @@ export class ContractReadinessService {
       }),
     ]);
 
-    const checks = {
+    return buildContractReadiness({
       verifiedContract: true,
       artist: !!artistLink,
       release: !!releaseLink,
       terms: !!terms,
-    };
-
-    const blockers: ContractReadinessBlocker[] = [];
-    if (!checks.artist) blockers.push("artist_unresolved");
-    if (!checks.release) blockers.push("release_unresolved");
-    if (!checks.terms) blockers.push("terms_unverified");
-
-    return {
-      ready: blockers.length === 0,
-      status: blockers.length === 0 ? "ready" : "blocked",
-      blockers,
-      checks,
-    };
+    });
   }
 }
 
