@@ -11,6 +11,9 @@ import type { TargetEntityType } from "./constants";
 /**
  * RelationshipDiscoveryService — generates suggestions from Verified Contract.
  * Never creates links automatically.
+ *
+ * Resolution sources are deliberately limited to verified data. AI extraction
+ * drafts are never used to create relationship suggestions.
  */
 export class RelationshipDiscoveryService {
   /**
@@ -31,9 +34,14 @@ export class RelationshipDiscoveryService {
       return { suggestions: [], message: "No verified contract domain object yet" };
     }
 
-    // Source strings from verified parties + title
-    const sources: { text: string; preferredTypes: TargetEntityType[]; relType: string }[] =
-      [];
+    // Source strings from verified parties + explicit verified release/work title.
+    // Contract title is intentionally not treated as a release identifier because
+    // the legal agreement title and the governed release title are different concepts.
+    const sources: {
+      text: string;
+      preferredTypes: TargetEntityType[];
+      relType: string;
+    }[] = [];
 
     for (const party of verified.parties || []) {
       sources.push({
@@ -43,16 +51,27 @@ export class RelationshipDiscoveryService {
       });
     }
 
-    if (verified.title) {
+    const releaseTitleField = await prisma.verifiedField.findFirst({
+      where: {
+        extractionId: verified.extractionId,
+        organizationId: params.organizationId,
+        fieldKey: "release_title",
+        decision: { in: ["accepted", "edited"] },
+      },
+      orderBy: { verifiedAt: "desc" },
+      select: { verifiedValue: true },
+    });
+
+    if (releaseTitleField?.verifiedValue?.trim()) {
       sources.push({
-        text: verified.title,
+        text: releaseTitleField.verifiedValue.trim(),
         preferredTypes: ["release", "work", "track"],
         relType: "applies_to",
       });
     }
 
     if (verified.territorySummary) {
-      // territory names are not entities usually — skip entity match
+      // Territory names are not entities usually — skip entity match.
     }
 
     const created: any[] = [];
@@ -67,7 +86,6 @@ export class RelationshipDiscoveryService {
       });
 
       for (const m of matches) {
-        // Prefer matches within preferred types
         if (!src.preferredTypes.includes(m.entityType)) continue;
         if (m.confidence < 0.65) continue;
 
@@ -75,7 +93,6 @@ export class RelationshipDiscoveryService {
         if (seen.has(key)) continue;
         seen.add(key);
 
-        // Skip if already actively linked
         const existingLink = await prisma.contractRelationship.findFirst({
           where: {
             contractId: params.contractId,
@@ -87,7 +104,6 @@ export class RelationshipDiscoveryService {
         });
         if (existingLink) continue;
 
-        // Skip if pending suggestion already exists
         const existingSug = await prisma.relationshipSuggestion.findFirst({
           where: {
             contractId: params.contractId,

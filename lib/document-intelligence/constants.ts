@@ -1,4 +1,4 @@
-export const EXTRACTION_PROMPT_VERSION = "contract-extract-v1";
+export const EXTRACTION_PROMPT_VERSION = "contract-extract-v2";
 
 export const JOB_STATUS = {
   queued: "queued",
@@ -80,6 +80,7 @@ export const EXTRACTION_FIELD_DEFS: {
   { key: "effective_date", label: "Effective date" },
   { key: "expiration_date", label: "Expiration date" },
   { key: "parties", label: "Parties" },
+  { key: "release_title", label: "Release / work title" },
   { key: "governing_law", label: "Governing law" },
   { key: "reference_number", label: "Reference number" },
   { key: "currency", label: "Currency" },

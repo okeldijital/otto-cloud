@@ -5,6 +5,7 @@ import {
 } from "@/lib/auth/organization-context";
 import { prisma } from "@/lib/prisma";
 import { IntelligenceError } from "@/lib/document-intelligence";
+import { contractReadinessService } from "@/lib/contract-readiness";
 import {
   canManageRelationships,
   relationshipService,
@@ -55,10 +56,18 @@ export async function GET(
     const includeHistory =
       new URL(req.url).searchParams.get("includeHistory") === "true";
 
-    const relationships = await relationshipService.list({
-      organizationId: ctx.organizationId,
-      contractId,
-    });
+    const [relationships, meta, readiness] = await Promise.all([
+      relationshipService.list({
+        organizationId: ctx.organizationId,
+        contractId,
+      }),
+      relationshipService.getMeta(),
+      contractReadinessService.evaluate({
+        organizationId: ctx.organizationId,
+        contractId,
+      }),
+    ]);
+
     const history = includeHistory
       ? await relationshipService.listHistory({
           organizationId: ctx.organizationId,
@@ -66,12 +75,11 @@ export async function GET(
         })
       : undefined;
 
-    const meta = await relationshipService.getMeta();
-
     return ok({
       relationships,
       history,
       meta,
+      readiness,
       permissions: { canManage: canManageRelationships(ctx) },
     });
   } catch (error) {
