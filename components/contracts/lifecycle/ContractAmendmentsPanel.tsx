@@ -1,15 +1,30 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Loader2, Plus } from "lucide-react";
+import { Edit3, Loader2, Plus, Save } from "lucide-react";
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import api from "@/lib/api";
 
-interface Props {
-  contractId: string | number;
-}
+interface Props { contractId: string | number; }
+
+type Draft = {
+  title?: string | null;
+  documentType?: string | null;
+  referenceNumber?: string | null;
+  effectiveDateText?: string | null;
+  expirationDateText?: string | null;
+  governingLaw?: string | null;
+  currency?: string | null;
+  territorySummary?: string | null;
+  termSummary?: string | null;
+  rightsSummary?: string | null;
+  obligationsSummary?: string | null;
+  parties?: Array<{ name: string; role?: string | null }>;
+};
+
+const emptyDraft: Draft = { parties: [] };
 
 export default function ContractAmendmentsPanel({ contractId }: Props) {
   const [loading, setLoading] = useState(true);
@@ -18,6 +33,9 @@ export default function ContractAmendmentsPanel({ contractId }: Props) {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [saving, setSaving] = useState(false);
+  const [draftLoading, setDraftLoading] = useState<string | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [draft, setDraft] = useState<Draft>(emptyDraft);
 
   const [number, setNumber] = useState("");
   const [effectiveDate, setEffectiveDate] = useState("");
@@ -34,137 +52,89 @@ export default function ContractAmendmentsPanel({ contractId }: Props) {
       setCanManage(lRes.data?.data?.permissions?.canManage !== false);
     } catch (err: any) {
       setError(err?.response?.data?.message || "Unable to load amendments.");
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   }, [contractId]);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
   const register = async () => {
-    setSaving(true);
-    setError("");
+    setSaving(true); setError(""); setSuccess("");
     try {
-      await api.post(`/contracts/${contractId}/amendments`, {
-        amendmentNumber: number,
-        effectiveDate: effectiveDate || null,
-        reason: reason || null,
+      const res = await api.post(`/contracts/${contractId}/amendments`, {
+        amendmentNumber: number, effectiveDate: effectiveDate || null, reason: reason || null,
       });
-      setSuccess("Amendment registered.");
-      setNumber("");
-      setEffectiveDate("");
-      setReason("");
+      const amendment = res.data?.data?.amendment;
+      setNumber(""); setEffectiveDate(""); setReason("");
+      setSuccess("Amendment registered. Create a draft below to edit its proposed terms.");
       await load();
+      if (amendment?.id) await openDraft(amendment.id);
     } catch (err: any) {
       setError(err?.response?.data?.message || "Unable to register amendment.");
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center py-12 text-text-secondary gap-2 items-center">
-        <Loader2 className="animate-spin" size={18} /> Loading amendments…
-      </div>
-    );
-  }
+  const openDraft = async (amendmentId: string) => {
+    setDraftLoading(amendmentId); setError(""); setSuccess("");
+    try {
+      const res = await api.post(`/contracts/${contractId}/amendments/${amendmentId}/draft`);
+      const d = res.data?.data?.draft;
+      setDraft(d?.content || emptyDraft);
+      setEditing(amendmentId);
+    } catch (err: any) {
+      setError(err?.response?.data?.message || "Unable to create amendment draft.");
+    } finally { setDraftLoading(null); }
+  };
+
+  const saveDraft = async () => {
+    if (!editing) return;
+    setSaving(true); setError(""); setSuccess("");
+    try {
+      await api.patch(`/contracts/${contractId}/amendments/${editing}/draft`, { content: draft });
+      setSuccess("Amendment draft saved. It remains non-authoritative until verified.");
+    } catch (err: any) {
+      setError(err?.response?.data?.message || "Unable to save amendment draft.");
+    } finally { setSaving(false); }
+  };
+
+  const field = (label: string, key: keyof Draft, multiline = false) => (
+    <label className="text-xs text-text-secondary">
+      {label}
+      {multiline ? (
+        <textarea value={(draft[key] as string) || ""} onChange={(e) => setDraft((d) => ({ ...d, [key]: e.target.value }))} rows={3} className="mt-1 w-full rounded-lg bg-white/5 border border-white/10 px-2 py-1.5 text-sm text-white" />
+      ) : (
+        <input value={(draft[key] as string) || ""} onChange={(e) => setDraft((d) => ({ ...d, [key]: e.target.value }))} className="mt-1 w-full rounded-lg bg-white/5 border border-white/10 px-2 py-1.5 text-sm text-white" />
+      )}
+    </label>
+  );
+
+  if (loading) return <div className="flex justify-center py-12 text-text-secondary gap-2 items-center"><Loader2 className="animate-spin" size={18} /> Loading amendments…</div>;
 
   return (
     <div className="space-y-6">
-      {error && (
-        <div className="rounded-xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
-          {error}
-        </div>
-      )}
-      {success && (
-        <div className="rounded-xl border border-success/30 bg-success/10 px-4 py-3 text-sm text-success">
-          {success}
-        </div>
-      )}
+      {error && <div className="rounded-xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">{error}</div>}
+      {success && <div className="rounded-xl border border-success/30 bg-success/10 px-4 py-3 text-sm text-success">{success}</div>}
 
-      {canManage && (
-        <Card title="Register amendment">
-          <p className="text-xs text-text-secondary mb-3">
-            Amendments are separate records. No document comparison in this milestone.
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <label className="text-xs text-text-secondary">
-              Amendment number *
-              <input
-                value={number}
-                onChange={(e) => setNumber(e.target.value)}
-                placeholder="A-001"
-                className="mt-1 w-full rounded-lg bg-white/5 border border-white/10 px-2 py-1.5 text-sm text-white"
-              />
-            </label>
-            <label className="text-xs text-text-secondary">
-              Effective date
-              <input
-                type="date"
-                value={effectiveDate}
-                onChange={(e) => setEffectiveDate(e.target.value)}
-                className="mt-1 w-full rounded-lg bg-white/5 border border-white/10 px-2 py-1.5 text-sm text-white"
-              />
-            </label>
-            <label className="text-xs text-text-secondary">
-              Reason
-              <input
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                className="mt-1 w-full rounded-lg bg-white/5 border border-white/10 px-2 py-1.5 text-sm text-white"
-              />
-            </label>
-          </div>
-          <div className="mt-3">
-            <Button
-              variant="primary"
-              size="sm"
-              disabled={saving || !number.trim()}
-              onClick={register}
-            >
-              <Plus size={14} /> Register
-            </Button>
-          </div>
-        </Card>
-      )}
+      {canManage && <Card title="Register amendment">
+        <p className="text-xs text-text-secondary mb-3">Create a controlled amendment record. Editing below creates a non-authoritative draft; the original verified contract is never modified.</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <label className="text-xs text-text-secondary">Amendment number *<input value={number} onChange={(e) => setNumber(e.target.value)} placeholder="A-001" className="mt-1 w-full rounded-lg bg-white/5 border border-white/10 px-2 py-1.5 text-sm text-white" /></label>
+          <label className="text-xs text-text-secondary">Effective date<input type="date" value={effectiveDate} onChange={(e) => setEffectiveDate(e.target.value)} className="mt-1 w-full rounded-lg bg-white/5 border border-white/10 px-2 py-1.5 text-sm text-white" /></label>
+          <label className="text-xs text-text-secondary">Reason<input value={reason} onChange={(e) => setReason(e.target.value)} className="mt-1 w-full rounded-lg bg-white/5 border border-white/10 px-2 py-1.5 text-sm text-white" /></label>
+        </div>
+        <div className="mt-3"><Button variant="primary" size="sm" disabled={saving || !number.trim()} onClick={register}><Plus size={14} /> Register & draft</Button></div>
+      </Card>}
+
+      {editing && <Card title="Amendment draft editor">
+        <div className="flex items-center justify-between mb-4"><div><p className="text-sm text-white">Proposed changes to the current verified contract</p><p className="text-xs text-text-secondary mt-1">This is a working copy. Saving it does not change the verified contract.</p></div><Button variant="primary" size="sm" disabled={saving} onClick={saveDraft}><Save size={14} /> Save draft</Button></div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {field("Title", "title")}{field("Document type", "documentType")}{field("Reference number", "referenceNumber")}{field("Currency", "currency")}{field("Effective date", "effectiveDateText")}{field("Expiration date", "expirationDateText")}{field("Governing law", "governingLaw")}{field("Territories", "territorySummary", true)}{field("Term", "termSummary", true)}{field("Rights", "rightsSummary", true)}{field("Obligations", "obligationsSummary", true)}
+        </div>
+        <div className="mt-3 rounded-lg border border-white/5 bg-white/[0.02] p-3"><p className="text-xs text-text-secondary mb-2">Parties</p>{(draft.parties || []).map((p, i) => <div key={i} className="grid grid-cols-2 gap-2 mb-2"><input value={p.name} onChange={(e) => setDraft((d) => ({ ...d, parties: (d.parties || []).map((x, j) => j === i ? { ...x, name: e.target.value } : x) }))} placeholder="Party name" className="rounded-lg bg-white/5 border border-white/10 px-2 py-1.5 text-sm text-white" /><input value={p.role || ""} onChange={(e) => setDraft((d) => ({ ...d, parties: (d.parties || []).map((x, j) => j === i ? { ...x, role: e.target.value } : x) }))} placeholder="Role" className="rounded-lg bg-white/5 border border-white/10 px-2 py-1.5 text-sm text-white" /></div>)}<Button variant="secondary" size="sm" onClick={() => setDraft((d) => ({ ...d, parties: [...(d.parties || []), { name: "", role: "" }] }))}><Plus size={14} /> Add party</Button></div>
+        <div className="mt-4 flex items-center gap-2 text-xs text-text-secondary"><Edit3 size={14} /> Editing is isolated from the verified contract and must enter verification before becoming authoritative.</div>
+      </Card>}
 
       <Card title="Amendments">
-        {amendments.length === 0 ? (
-          <p className="text-sm text-text-secondary">No amendments registered.</p>
-        ) : (
-          <ul className="space-y-2">
-            {amendments.map((a) => (
-              <li
-                key={a.id}
-                className="rounded-xl border border-white/10 bg-white/5 p-3 flex flex-wrap justify-between gap-2"
-              >
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-sm text-white">
-                      {a.amendmentNumber}
-                    </span>
-                    <Badge variant="warn" size="sm">
-                      {a.status}
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-text-secondary mt-1">
-                    Effective {a.effectiveDate || "—"}
-                    {a.reason ? ` · ${a.reason}` : ""}
-                    {a.linkedVerifiedVersion != null
-                      ? ` · linked verified v${a.linkedVerifiedVersion}`
-                      : ""}
-                  </p>
-                </div>
-                <span className="text-xs text-text-secondary">
-                  {a.createdAt ? new Date(a.createdAt).toLocaleString() : ""}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
+        {amendments.length === 0 ? <p className="text-sm text-text-secondary">No amendments registered.</p> : <ul className="space-y-2">{amendments.map((a) => <li key={a.id} className="rounded-xl border border-white/10 bg-white/5 p-3 flex flex-wrap justify-between gap-2"><div><div className="flex items-center gap-2"><span className="font-medium text-sm text-white">{a.amendmentNumber}</span><Badge variant="warn" size="sm">{a.status}</Badge></div><p className="text-xs text-text-secondary mt-1">Effective {a.effectiveDate || "—"}{a.reason ? ` · ${a.reason}` : ""}{a.linkedVerifiedVersion != null ? ` · linked verified v${a.linkedVerifiedVersion}` : ""}</p></div><div className="flex items-center gap-3"><span className="text-xs text-text-secondary">{a.createdAt ? new Date(a.createdAt).toLocaleString() : ""}</span>{canManage && a.status === "registered" && <Button variant="secondary" size="sm" disabled={draftLoading === a.id} onClick={() => openDraft(a.id)}>{draftLoading === a.id ? <Loader2 size={13} className="animate-spin" /> : <Edit3 size={13} />} Edit draft</Button>}</div></li>)}</ul>}
       </Card>
     </div>
   );
