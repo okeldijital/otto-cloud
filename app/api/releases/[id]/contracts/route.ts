@@ -39,7 +39,7 @@ async function assertRelease(releaseId: number, organizationId: string) {
   return r;
 }
 
-async function assertContract(contractId: number, organizationId: string) {
+async function assertContract(contractId: number, organizationId: number) {
   const c = await prisma.contracts.findFirst({
     where: { id: contractId, organization_id: organizationId },
     select: { id: true, title: true },
@@ -121,7 +121,7 @@ export async function POST(
       return fail("contractId is required", 400, "VALIDATION");
     }
 
-    const contract = await assertContract(contractId, ctx.organizationId);
+    const contract = await assertContract(contractId, ctx.legacyIntOrgId);
     if (!contract) return fail("Contract not found", 404, "CONTRACT_NOT_FOUND");
 
     const relationship = await relationshipService.create({
