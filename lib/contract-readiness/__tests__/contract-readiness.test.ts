@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
-import { buildContractReadiness } from "../contract-readiness-service";
+import {
+  assertContractReady,
+  buildContractReadiness,
+} from "../contract-readiness-service";
 
 let passed = 0;
 let failed = 0;
@@ -60,6 +63,34 @@ test("pending suggestions do not satisfy readiness", () => {
   });
   assert.equal(result.ready, false);
   assert.deepEqual(result.blockers, ["artist_unresolved", "release_unresolved"]);
+});
+
+test("operational readiness assertion accepts ready contracts", () => {
+  const result = buildContractReadiness({
+    verifiedContract: true,
+    artist: true,
+    release: true,
+    terms: true,
+  });
+  assert.doesNotThrow(() => assertContractReady(result));
+});
+
+test("operational readiness assertion rejects blocked contracts", () => {
+  const result = buildContractReadiness({
+    verifiedContract: true,
+    artist: false,
+    release: true,
+    terms: false,
+  });
+  assert.throws(
+    () => assertContractReady(result),
+    (error: any) =>
+      error?.status === 409 &&
+      error?.code === "CONTRACT_NOT_OPERATIONALLY_READY" &&
+      Array.isArray(error?.details) &&
+      error.details.includes("artist_unresolved") &&
+      error.details.includes("terms_unverified")
+  );
 });
 
 console.log(`\n${passed} passed, ${failed} failed\n`);
