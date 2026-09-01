@@ -62,6 +62,10 @@ function extractFields(text: string, filename?: string): ExtractedFieldDraft[] {
     firstMatch(text, /parties[:\s]+([^\n]{5,200})/i) ||
     firstMatch(text, /between\s+(.+?)\s+and\s+(.+?)(?:\.|\n)/i);
 
+  const releaseTitle =
+    firstMatch(text, /(?:release|album|ep|single|work)\s*(?:title|name)?[:\s]+([^\n]{2,160})/i) ||
+    firstMatch(text, /(?:in connection with|relating to|concerning)\s+(?:the\s+)?(?:release|album|ep|single|work)\s+["“]?([^"”\n]{2,160})["”]?/i);
+
   const governing =
     firstMatch(text, /governing\s+law[:\s]+([^\n]{3,80})/i) ||
     firstMatch(text, /laws?\s+of\s+the\s+state\s+of\s+([A-Za-z\s]{3,40})/i);
@@ -83,6 +87,7 @@ function extractFields(text: string, filename?: string): ExtractedFieldDraft[] {
     effective_date: { value: clean(effective), confidence: effective ? 0.6 : 0.1 },
     expiration_date: { value: clean(expiration), confidence: expiration ? 0.55 : 0.1 },
     parties: { value: clean(parties), confidence: parties ? 0.5 : 0.1 },
+    release_title: { value: clean(releaseTitle), confidence: releaseTitle ? 0.5 : 0.1 },
     governing_law: { value: clean(governing), confidence: governing ? 0.55 : 0.1 },
     reference_number: { value: clean(reference), confidence: reference ? 0.65 : 0.1 },
     currency: { value: clean(currency), confidence: currency ? 0.7 : 0.1 },
@@ -92,7 +97,7 @@ function extractFields(text: string, filename?: string): ExtractedFieldDraft[] {
     obligations: { value: clean(obligations), confidence: obligations ? 0.4 : 0.1 },
   };
 
-  return EXTRACTION_FIELD_DEFS.map((def, i) => {
+  return EXTRACTION_FIELD_DEFS.map((def) => {
     const hit = raw[def.key] || { value: null, confidence: 0.1 };
     return {
       fieldKey: def.key,
