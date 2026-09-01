@@ -8,6 +8,10 @@ export type ContractReadinessBlocker =
   | "terms_unverified";
 
 export type ContractReadiness = {
+  /**
+   * Legacy downstream gate. A contract is operationally ready only when
+   * verified contractual data and required catalogue relationships exist.
+   */
   ready: boolean;
   status: "ready" | "blocked";
   blockers: ContractReadinessBlocker[];
@@ -17,6 +21,16 @@ export type ContractReadiness = {
     release: boolean;
     terms: boolean;
   };
+  /**
+   * Contract capture is intentionally independent from catalogue linkage.
+   * A contract can be Captured / Verified before an Artist or Release is linked.
+   */
+  captureReady: boolean;
+  captureStatus: "captured" | "blocked";
+  /**
+   * Downstream catalogue context is a separate state from contract capture.
+   */
+  catalogueLinkageStatus: "pending" | "contextualised";
 };
 
 export function buildContractReadiness(input: {
@@ -25,12 +39,22 @@ export function buildContractReadiness(input: {
   release: boolean;
   terms: boolean;
 }): ContractReadiness {
+  const captureReady = input.verifiedContract && input.terms;
+  const captureStatus = captureReady ? "captured" : "blocked";
+  const catalogueLinkageStatus =
+    captureReady && input.artist && input.release
+      ? "contextualised"
+      : "pending";
+
   if (!input.verifiedContract) {
     return {
       ready: false,
       status: "blocked",
       blockers: ["verified_contract_missing"],
       checks: input,
+      captureReady,
+      captureStatus,
+      catalogueLinkageStatus,
     };
   }
 
@@ -44,6 +68,9 @@ export function buildContractReadiness(input: {
     status: blockers.length === 0 ? "ready" : "blocked",
     blockers,
     checks: input,
+    captureReady,
+    captureStatus,
+    catalogueLinkageStatus,
   };
 }
 
@@ -69,6 +96,10 @@ export function assertContractReady(readiness: ContractReadiness): void {
  * Readiness is deliberately derived from human-verified contract data and
  * human-confirmed relationships. AI extraction and pending suggestions do not
  * satisfy any readiness requirement.
+ *
+ * Important: this gate intentionally exposes capture readiness separately.
+ * Contract capture does not require an Artist or Release relationship. Those
+ * are downstream catalogue-linkage dependencies.
  */
 export class ContractReadinessService {
   async evaluate(params: {
