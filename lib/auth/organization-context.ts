@@ -255,7 +255,7 @@ export function orgContextErrorResponse(err: unknown): {
   status: number;
 } {
   if (err instanceof OrganizationContextError) {
-    return { body: { error: err.message, code: err.code } , status: err.status };
+    return { body: { error: err.message, code: err.code }, status: err.status };
   }
   console.error("[organization-context]", err);
   return { body: { error: "Internal server error" }, status: 500 };
@@ -273,4 +273,11 @@ export function orgWhereInt(
   extra: Record<string, unknown> = {}
 ): Record<string, unknown> {
   return { organization_id: ctx.legacyIntOrgId, ...extra };
+}
+
+export function orgWhereActive(
+  ctx: OrganizationContext,
+  extra: Record<string, unknown> = {}
+): Record<string, unknown> {
+  return { organization_id: ctx.organizationId, is_deleted: false, ...extra };
 }
