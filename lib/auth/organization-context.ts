@@ -13,7 +13,13 @@
 import { getServerSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { ensureLegacyActorForIdentity } from "@/lib/platform/identity/services/legacy-migration";
-import { getLegacyCatalogScopeId, getLegacyIntOrgId, orgOwnsLegacyCatalog, resolveCatalogOrganizationId } from "@/lib/auth/migration-compat";
+import {
+  allowLegacyUserScope,
+  getLegacyCatalogScopeId,
+  getLegacyIntOrgId,
+  orgOwnsLegacyCatalog,
+  resolveCatalogOrganizationId,
+} from "@/lib/auth/migration-compat";
 
 export type OrgContextSource = "membership" | "superadmin";
 
@@ -168,8 +174,18 @@ export async function getOrganizationContext(
     ? [...new Set(active.role.permissions.map((rp) => rp.permission.key))]
     : [...new Set(sess.user.permissions ?? [])];
 
-  const organizationId =
-    org.legacyTenantId && orgOwnsLegacyCatalog(org.legacyTenantId)
+  // Legacy users may have active IAM memberships while their catalog and
+  // contract data still live under the legacy catalog scope. Keep IAM
+  // authorization bound to `org`, but use the compatibility scope for
+  // legacy-domain data access until the catalog is fully re-keyed.
+  const usesLegacyCatalogScope = allowLegacyUserScope({
+    userOrganizationId: sess.user.organization_id,
+    isSuperAdmin: !!sess.user.is_superuser,
+  });
+
+  const organizationId = usesLegacyCatalogScope
+    ? getLegacyCatalogScopeId()
+    : org.legacyTenantId && orgOwnsLegacyCatalog(org.legacyTenantId)
       ? catalogOrganizationId
       : org.id;
 
@@ -257,11 +273,4 @@ export function orgWhereInt(
   extra: Record<string, unknown> = {}
 ): Record<string, unknown> {
   return { organization_id: ctx.legacyIntOrgId, ...extra };
-}
-
-export function orgWhereActive(
-  ctx: OrganizationContext,
-  extra: Record<string, unknown> = {}
-): Record<string, unknown> {
-  return { organization_id: ctx.organizationId, is_deleted: false, ...extra };
 }
