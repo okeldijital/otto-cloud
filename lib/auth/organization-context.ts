@@ -117,6 +117,14 @@ export async function getOrganizationContext(
   const legacyUserId =
     identity.legacyUserId ?? await ensureLegacyActorForIdentity(identityId);
 
+  // The Better Auth session carries the active IAM organization, not the
+  // legacy user's historical catalog scope. Read the latter only as migration
+  // compatibility metadata; IAM membership remains the authorization boundary.
+  const legacyActor = await prisma.users.findUnique({
+    where: { id: legacyUserId },
+    select: { organization_id: true },
+  });
+
   const memberships = await prisma.iamOrganizationMembership.findMany({
     where: { identityId, status: "active" },
     include: {
@@ -175,11 +183,11 @@ export async function getOrganizationContext(
     : [...new Set(sess.user.permissions ?? [])];
 
   // Legacy users may have active IAM memberships while their catalog and
-  // contract data still live under the legacy catalog scope. Keep IAM
-  // authorization bound to `org`, but use the compatibility scope for
-  // legacy-domain data access until the catalog is fully re-keyed.
+  // contract data still live under the legacy catalog scope. The session's
+  // organization_id is IAM-native, so use the legacy actor's stored scope for
+  // this compatibility decision. This does not authorize IAM access.
   const usesLegacyCatalogScope = allowLegacyUserScope({
-    userOrganizationId: sess.user.organization_id,
+    userOrganizationId: legacyActor?.organization_id,
     isSuperAdmin: !!sess.user.is_superuser,
   });
 
