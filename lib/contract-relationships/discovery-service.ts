@@ -9,6 +9,15 @@ import {
 import type { TargetEntityType } from "./constants";
 
 /**
+ * Extract a governed title when verification stored the surrounding sentence
+ * rather than only the quoted title. Example: recording titled "Golden Hour".
+ */
+function extractExplicitTitle(value: string): string {
+  const match = value.match(/(?:recording|release|work|track)\s+titled\s+["“”']([^"“”']{2,})["”']/i);
+  return match?.[1]?.trim() || value.trim();
+}
+
+/**
  * RelationshipDiscoveryService — generates suggestions from Verified Contract.
  * Never creates links automatically.
  *
@@ -64,7 +73,7 @@ export class RelationshipDiscoveryService {
 
     if (releaseTitleField?.verifiedValue?.trim()) {
       sources.push({
-        text: releaseTitleField.verifiedValue.trim(),
+        text: extractExplicitTitle(releaseTitleField.verifiedValue),
         preferredTypes: ["release", "work", "track"],
         relType: "applies_to",
       });
