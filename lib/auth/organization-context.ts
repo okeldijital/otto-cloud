@@ -120,7 +120,7 @@ export async function getOrganizationContext(
   // The Better Auth session carries the active IAM organization, not the
   // legacy user's historical catalog scope. Read the latter only as migration
   // compatibility metadata; IAM membership remains the authorization boundary.
-  const legacyActor = await prisma.users.findUnique({
+  const legacyActor = await prisma.user.findUnique({
     where: { id: legacyUserId },
     select: { organization_id: true },
   });
