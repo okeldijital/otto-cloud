@@ -97,9 +97,12 @@ export async function POST(
       return ok({ results });
     }
 
-    // Generate suggestions from verified contract
+    // Generate suggestions from verified contract. During migration the
+    // verified contract is IAM-org scoped while catalog entities remain under
+    // the legacy catalog scope held in ctx.organizationId.
     const result = await relationshipDiscoveryService.discover({
       organizationId: ctx.organizationId,
+      verifiedOrganizationId: ctx.organization?.id,
       contractId,
       userId: ctx.userId,
       force: !!body?.force,
