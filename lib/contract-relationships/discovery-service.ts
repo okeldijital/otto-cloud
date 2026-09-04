@@ -23,19 +23,26 @@ function extractExplicitTitle(value: string): string {
  *
  * Resolution sources are deliberately limited to verified data. AI extraction
  * drafts are never used to create relationship suggestions.
+ *
+ * Verified contracts and the imported catalog can temporarily live under
+ * different organization scopes during the IAM/catalog migration. The caller
+ * supplies the verified-contract scope separately from the catalog scope.
  */
 export class RelationshipDiscoveryService {
   /**
    * Generate (or refresh pending) suggestions for a contract from current verified domain.
    */
   async discover(params: {
+    /** Catalog scope used for matching and relationship records. */
     organizationId: string;
+    /** IAM organization scope used by the verified-contract domain. */
+    verifiedOrganizationId?: string;
     contractId: number;
     userId?: number;
     force?: boolean;
   }) {
     const verified = await verifiedContractService.getCurrent({
-      organizationId: params.organizationId,
+      organizationId: params.verifiedOrganizationId ?? params.organizationId,
       contractId: params.contractId,
     });
 
@@ -63,7 +70,7 @@ export class RelationshipDiscoveryService {
     const releaseTitleField = await prisma.verifiedField.findFirst({
       where: {
         extractionId: verified.extractionId,
-        organizationId: params.organizationId,
+        organizationId: verified.organizationId,
         fieldKey: "release_title",
         decision: { in: ["accepted", "edited"] },
       },
