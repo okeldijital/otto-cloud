@@ -45,7 +45,7 @@ export async function evaluateReleaseReadiness(
   ctx: OrganizationContext
 ): Promise<ReleaseReadiness | null> {
   const release = await prisma.releases.findFirst({
-    where: { release_id: releaseId, organization_id: ctx.organizationId, is_deleted: false },
+    where: { id: releaseId, organization_id: ctx.organizationId, is_deleted: false },
   });
   if (!release) return null;
 
