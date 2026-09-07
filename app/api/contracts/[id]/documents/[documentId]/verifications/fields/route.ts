@@ -4,7 +4,7 @@ import {
   requireOrganization,
 } from "@/lib/auth/organization-context";
 import { IntelligenceError } from "@/lib/document-intelligence";
-import { verificationService } from "@/lib/document-intelligence/verification/verification-service";
+import { verificationServiceV2 as verificationService } from "@/lib/document-intelligence/verification/verification-service-v2";
 import { contractDocumentService } from "@/lib/contract-center";
 
 function ok<T>(data: T, message?: string) {
@@ -58,6 +58,17 @@ export async function PATCH(
     const { extractionId, fieldKey, action, value } = body || {};
     if (!extractionId || !fieldKey || !action) {
       return fail("extractionId, fieldKey, and action are required", 400, "VALIDATION");
+    }
+
+    if (action === "mark_not_found") {
+      const verification = await verificationService.markNotFound({
+        ctx,
+        organizationId: ctx.organizationId,
+        documentId: params.documentId,
+        extractionId,
+        fieldKey,
+      });
+      return ok({ verification }, "Field marked not found in document");
     }
 
     await verificationService.updateField({
