@@ -2,6 +2,7 @@
 
 import {
   Brain,
+  CheckCircle2,
   Download,
   Eye,
   FileText,
@@ -45,6 +46,7 @@ export default function DocumentRow({
   const d = item.document;
   const busy = actionBusyId === d.id;
   const isDeleted = d.status === "deleted";
+  const reviewRequired = extractionStatus === "awaiting_verification";
 
   return (
     <article
@@ -112,6 +114,18 @@ export default function DocumentRow({
         </Badge>
         <ExtractionStatusBadge status={extractionStatus} />
 
+        {reviewRequired && onOpenIntelligence && !isDeleted && (
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => onOpenIntelligence(item)}
+            aria-label={`Review extracted fields for ${d.originalFilename}`}
+          >
+            <CheckCircle2 size={14} aria-hidden />
+            Review extraction
+          </Button>
+        )}
+
         {busy || extractionBusy ? (
           <Loader2 size={16} className="animate-spin text-primary" aria-label="Working" />
         ) : (
@@ -170,7 +184,7 @@ export default function DocumentRow({
                 <span className="hidden sm:inline">Extract</span>
               </Button>
             )}
-            {onOpenIntelligence && (
+            {onOpenIntelligence && !reviewRequired && (
               <Button
                 variant="ghost"
                 size="sm"
