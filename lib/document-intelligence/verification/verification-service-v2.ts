@@ -114,7 +114,9 @@ export class VerificationServiceV2 extends BaseVerificationService {
       },
       include: { fields: true },
     });
-    const field = extraction?.fields.find((item) => item.fieldKey === params.fieldKey);
+    if (!extraction) throw new IntelligenceError("Extraction not found", 404, "EXTRACTION_NOT_FOUND");
+    const contractId = extraction.contractId;
+    const field = extraction.fields.find((item) => item.fieldKey === params.fieldKey);
     if (!field) throw new IntelligenceError("Field not found", 404, "FIELD_NOT_FOUND");
 
     const sourceLocation = {
@@ -150,13 +152,13 @@ export class VerificationServiceV2 extends BaseVerificationService {
         organizationId: params.organizationId,
         userId: params.ctx.userId,
         documentId: params.documentId,
-        contractId: extraction.contractId,
+        contractId,
         extractionId: params.extractionId,
         sessionId: session.id,
         fieldKey: params.fieldKey,
         changes: { humanNotFound: true },
       });
-      await emitVerificationActivity({ action: "Verification Updated", userId: params.ctx.userId, contractId: extraction.contractId });
+      await emitVerificationActivity({ action: "Verification Updated", userId: params.ctx.userId, contractId });
     }
 
     return this.getVerification({
