@@ -38,6 +38,8 @@ export async function reconcileLifecycleAfterVerification(params: {
       },
     });
 
+    await seedVerifiedKeyDates(params);
+
     await appendTimeline({
       organizationId: params.organizationId,
       contractId: params.contractId,
@@ -93,6 +95,8 @@ export async function reconcileLifecycleAfterVerification(params: {
   });
 
   if (shouldTransition) {
+    await seedVerifiedKeyDates(params, lifecycle.id);
+
     await appendTimeline({
       organizationId: params.organizationId,
       contractId: params.contractId,
@@ -137,4 +141,59 @@ export async function reconcileLifecycleAfterVerification(params: {
   }
 
   return lifecycle;
+}
+
+async function seedVerifiedKeyDates(
+  params: {
+    organizationId: string;
+    contractId: number;
+    verifiedContractId: string;
+  },
+  lifecycleId?: string
+) {
+  const id = lifecycleId ?? (
+    await prisma.contractLifecycle.findUniqueOrThrow({
+      where: { contractId: params.contractId },
+      select: { id: true },
+    })
+  ).id;
+
+  const verified = await prisma.verifiedContract.findUnique({
+    where: { id: params.verifiedContractId },
+    select: { effectiveDateText: true, expirationDateText: true },
+  });
+  if (!verified) return;
+
+  for (const [dateType, text] of [
+    ["effective", verified.effectiveDateText],
+    ["expiration", verified.expirationDateText],
+  ] as const) {
+    if (!text) continue;
+    const parsed = tryParseDate(text);
+    if (!parsed) continue;
+
+    await prisma.contractKeyDate.upsert({
+      where: {
+        lifecycleId_dateType: { lifecycleId: id, dateType },
+      },
+      create: {
+        lifecycleId: id,
+        organizationId: params.organizationId,
+        contractId: params.contractId,
+        dateType,
+        dateValue: parsed,
+        timezone: "UTC",
+        verificationState: "verified",
+        source: "verified_contract",
+        sourceRef: params.verifiedContractId,
+        notes: `Seeded from: ${text}`,
+      },
+      update: {},
+    });
+  }
+}
+
+function tryParseDate(text: string): Date | null {
+  const parsed = Date.parse(text);
+  return Number.isNaN(parsed) ? null : new Date(parsed);
 }
