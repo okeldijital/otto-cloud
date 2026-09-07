@@ -71,7 +71,7 @@ export async function DELETE(req: Request) {
       }
       await tx.contract_split_groups.deleteMany({ where: { contract_id: id } });
 
-      await tx.ContractDocumentRelation.deleteMany({ where: { contractId: id } });
+      await tx.contractDocumentRelation.deleteMany({ where: { contractId: id } });
       await tx.contract_documents.deleteMany({ where: { contract_id: id } });
       await tx.contracts.delete({ where: { id } });
     });
