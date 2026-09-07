@@ -23,9 +23,11 @@ export default function ContractsPage() {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isWizardOpen, setIsWizardOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const fetchData = async () => {
     try {
+      setLoading(true);
       const res = await api.get("/contracts");
       const items = Array.isArray(res.data) ? res.data : res.data?.items || [];
       setData(items);
@@ -47,6 +49,32 @@ export default function ContractsPage() {
     }
   };
 
+  const handleDelete = async (contract: any) => {
+    if (!contract?.id || deletingId !== null) return;
+
+    const status = String(contract.status || "Draft").toLowerCase();
+    if (!["draft", "pending_verification"].includes(status)) {
+      window.alert("Only failed or unverified intake records can be deleted. Verified or linked contracts are protected.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Delete “${contract.title || "Untitled contract"}”?\n\nThis permanently removes this failed/draft intake record. Verified or linked contracts cannot be deleted.`
+    );
+    if (!confirmed) return;
+
+    try {
+      setDeletingId(contract.id);
+      await api.delete(`/contracts/delete?id=${encodeURIComponent(contract.id)}`);
+      setData((current) => current.filter((item) => item.id !== contract.id));
+    } catch (err: any) {
+      console.error("Failed to delete contract:", err);
+      window.alert(err?.response?.data?.error || "Unable to delete this contract.");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -65,7 +93,7 @@ export default function ContractsPage() {
         isLoading={loading}
         onRowClick={(row: any) => window.location.href = `/admin-of-works/contracts/${row.id}`}
         onEdit={(row: any) => window.location.href = `/admin-of-works/contracts/${row.id}`}
-        onDelete={() => {}}
+        onDelete={handleDelete}
       />
       <AddContractWizard
         isOpen={isWizardOpen}
