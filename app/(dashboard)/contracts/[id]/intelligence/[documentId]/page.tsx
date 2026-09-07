@@ -192,8 +192,8 @@ export default function DocumentIntelligencePage() {
           <p className="text-xs text-text-secondary mt-1">If the source document does not contain the information, mark the field as “Not found”. This is a reviewed outcome and does not invent a value.</p>
           <div className="flex flex-wrap gap-2 mt-2">
             {requiredPendingFields.map((field: any) => (
-              <Button key={field.fieldKey} variant="ghost" size="sm" disabled={starting || fieldBusy === field.fieldKey} onClick={() => patchField(field.fieldKey, "mark_not_found")}>
-                Mark {field.fieldLabel} not found
+              <Button key={field.fieldKey} variant="primary" size="sm" disabled={starting || fieldBusy === field.fieldKey} onClick={() => patchField(field.fieldKey, "mark_not_found")}>
+                Mark “{field.fieldLabel}” as Not Found
               </Button>
             ))}
           </div>
