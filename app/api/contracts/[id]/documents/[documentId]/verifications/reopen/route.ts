@@ -4,7 +4,7 @@ import {
   requireOrganization,
 } from "@/lib/auth/organization-context";
 import { IntelligenceError } from "@/lib/document-intelligence";
-import { verificationService } from "@/lib/document-intelligence/verification/verification-service";
+import { verificationServiceV2 as verificationService } from "@/lib/document-intelligence/verification/verification-service-v2";
 import { contractDocumentService } from "@/lib/contract-center";
 
 function ok<T>(data: T, message?: string) {
