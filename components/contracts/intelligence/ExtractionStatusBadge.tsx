@@ -9,7 +9,7 @@ const LABELS: Record<string, { label: string; variant: string }> = {
   completed: { label: "Draft ready", variant: "success" },
   failed: { label: "Failed", variant: "critical" },
   cancelled: { label: "Cancelled", variant: "neutral" },
-  awaiting_verification: { label: "Awaiting review", variant: "warn" },
+  awaiting_verification: { label: "Review required", variant: "warn" },
   draft: { label: "Draft", variant: "neutral" },
 };
 
@@ -33,13 +33,15 @@ export default function ExtractionStatusBadge({ status, size = "sm" }: Props) {
       {meta.label}
       <span
         className={`ml-1.5 inline-block w-1.5 h-1.5 rounded-full ${
-          status === "completed" || status === "awaiting_verification"
+          status === "completed"
             ? "bg-success"
-            : status === "failed"
-              ? "bg-danger"
-              : status === "running" || status === "retrying"
-                ? "bg-primary animate-pulse"
-                : "bg-text-secondary"
+            : status === "awaiting_verification"
+              ? "bg-primary"
+              : status === "failed"
+                ? "bg-danger"
+                : status === "running" || status === "retrying"
+                  ? "bg-primary animate-pulse"
+                  : "bg-text-secondary"
         }`}
         aria-hidden
       />
