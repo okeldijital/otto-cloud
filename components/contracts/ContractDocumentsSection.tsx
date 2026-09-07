@@ -2,7 +2,21 @@
 
 /**
  * Contract detail Documents tab — Milestone 2.2 Repository UI.
- * Re-exports DocumentRepository for a stable import path.
+ * Adds an explicit workflow handoff when extraction is ready for human review.
  */
-export { DocumentRepository as default } from "./repository";
+import ExtractionReviewHandoff from "./repository/ExtractionReviewHandoff";
+import { DocumentRepository } from "./repository";
 export type { RepositoryDocument as ContractDocumentItem } from "./repository";
+
+interface Props {
+  contractId: string | number;
+}
+
+export default function ContractDocumentsSection({ contractId }: Props) {
+  return (
+    <div className="space-y-5">
+      <ExtractionReviewHandoff contractId={contractId} />
+      <DocumentRepository contractId={contractId} />
+    </div>
+  );
+}
