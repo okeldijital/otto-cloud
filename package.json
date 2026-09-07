@@ -48,6 +48,7 @@
     "test:relationships": "tsx lib/contract-relationships/__tests__/matching.test.ts",
     "test:lifecycle": "tsx lib/contract-lifecycle/__tests__/lifecycle.test.ts",
     "test:contract-deletion": "tsx lib/contract-lifecycle/__tests__/deletion-policy.test.ts",
+    "test:reconcile-verification": "tsx lib/contract-lifecycle/__tests__/reconcile-verification-policy.test.ts",
     "test:platform-events": "tsx lib/platform/events/__tests__/platform-events.test.ts",
     "test:event-contracts": "tsx lib/platform/events/__tests__/schema-validation.test.ts",
     "test:notifications": "tsx lib/platform/notifications/__tests__/notifications.test.ts",
@@ -69,6 +70,7 @@
     "@tanstack/react-query": "^5.101.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/uuid": "^10.0.0",
+    "@vercel/blob": "^2.0.0",
     "axios": "^1.17.0",
     "@types/node": "^20",
     "bcryptjs": "^3.0.3",
@@ -78,12 +80,11 @@
     "lucide-react": "^0.577.0",
     "next": "^16.2.7",
     "papaparse": "^5.5.3",
+    "pg": "^8.16.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-grid-layout": "^2.2.3",
     "react-pdf": "^10.4.0",
-    "recharts": "^3.8.0",
-    "pg": "^8.16.3",
     "uuid": "^13.0.0",
     "xlsx": "^0.18.0",
     "zod": "^4.4.3",
@@ -91,7 +92,6 @@
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
-    "autoprefixer": "^10.5.0",
     "@types/papaparse": "^5.5.2",
     "@types/react": "^18.3.31",
     "@types/react-dom": "^18.3.7",
@@ -103,9 +103,5 @@
     "typescript": "^5",
     "vercel": "^58.1.0",
     "prisma": "^5.22.0"
-  },
-  "optionalDependencies": {
-    "@anthropic-ai/sdk": "^0.104.1",
-    "openai": "^6.42.1"
   }
 }
