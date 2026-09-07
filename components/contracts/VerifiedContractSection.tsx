@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Loader2, ShieldCheck } from "lucide-react";
+import { ArrowRight, FileCheck2, Loader2, ShieldCheck } from "lucide-react";
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
@@ -11,16 +11,60 @@ interface Props {
   contractId: string | number;
 }
 
+type ReviewItem = {
+  documentId: string;
+  filename: string;
+  extractionId: string;
+};
+
 /**
  * Read-only Verified Contract domain view (Milestone 3.2).
  * Editing only via verification workspace.
+ *
+ * When no verified contract exists yet, this tab also surfaces the persisted
+ * workflow state so users are never left with an ambiguous empty state.
  */
 export default function VerifiedContractSection({ contractId }: Props) {
   const [loading, setLoading] = useState(true);
   const [verified, setVerified] = useState<any>(null);
   const [history, setHistory] = useState<any>(null);
+  const [reviewItem, setReviewItem] = useState<ReviewItem | null>(null);
   const [error, setError] = useState("");
   const [showHistory, setShowHistory] = useState(false);
+
+  const loadReviewState = useCallback(async () => {
+    try {
+      const docsRes = await api.get(
+        `/contracts/${contractId}/documents?includeDeleted=false`
+      );
+      const docs = docsRes.data?.data?.items ?? docsRes.data?.items ?? [];
+      const activeDocs = Array.isArray(docs)
+        ? docs.filter((d: any) => d?.document?.status === "active")
+        : [];
+
+      for (const item of activeDocs) {
+        try {
+          const res = await api.get(
+            `/contracts/${contractId}/documents/${item.document.id}/extractions`
+          );
+          const data = res.data?.data;
+          if (data?.extractionId && data?.extractionStatus === "awaiting_verification") {
+            setReviewItem({
+              documentId: item.document.id,
+              filename: item.document.originalFilename,
+              extractionId: data.extractionId,
+            });
+            return;
+          }
+        } catch {
+          // A document without an available extraction is not a review handoff.
+        }
+      }
+      setReviewItem(null);
+    } catch {
+      setReviewItem(null);
+    }
+  }, [contractId]);
 
   const load = useCallback(async () => {
     try {
@@ -30,8 +74,11 @@ export default function VerifiedContractSection({ contractId }: Props) {
         api.get(`/contracts/${contractId}/verified`),
         api.get(`/contracts/${contractId}/verified/history`),
       ]);
-      setVerified(vRes.data?.data?.verified ?? null);
+      const nextVerified = vRes.data?.data?.verified ?? null;
+      setVerified(nextVerified);
       setHistory(hRes.data?.data ?? null);
+      if (!nextVerified) await loadReviewState();
+      else setReviewItem(null);
     } catch (err: any) {
       setError(
         err?.response?.data?.message || "Unable to load verified contract."
@@ -39,7 +86,7 @@ export default function VerifiedContractSection({ contractId }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [contractId]);
+  }, [contractId, loadReviewState]);
 
   useEffect(() => {
     void load();
@@ -69,12 +116,52 @@ export default function VerifiedContractSection({ contractId }: Props) {
   if (!verified) {
     return (
       <Card title="Verified Contract">
-        <div className="text-sm text-text-secondary space-y-2">
-          <p>
-            No verified contract domain object yet. Complete human verification
-            for a signed agreement to promote trusted business data.
-          </p>
-          <p className="text-xs">
+        <div className="space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 w-10 h-10 shrink-0 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+              <FileCheck2 size={20} className="text-primary" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant={reviewItem ? "warn" : "neutral"} size="sm">
+                  {reviewItem ? "Review required" : "Not verified"}
+                </Badge>
+              </div>
+              <h3 className="text-base font-semibold text-white mt-2">
+                {reviewItem
+                  ? "Extraction is complete. Human verification is the next step."
+                  : "No verified contract has been promoted yet."}
+              </h3>
+              <p className="text-sm text-text-secondary mt-1">
+                {reviewItem
+                  ? "Review the extracted fields against the signed PDF, correct or reject anything inaccurate, then complete verification. Only the verified layer is available to downstream modules."
+                  : "Complete human verification for a signed agreement to promote trusted business data."}
+              </p>
+            </div>
+          </div>
+
+          {reviewItem && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-primary font-semibold">
+                  Next action
+                </p>
+                <p className="text-sm text-white mt-1">Review {reviewItem.filename}</p>
+              </div>
+              <Button
+                variant="primary"
+                onClick={() => {
+                  window.location.href =
+                    `/contracts/${contractId}/verification?document_id=${encodeURIComponent(reviewItem.documentId)}&extraction_id=${encodeURIComponent(reviewItem.extractionId)}`;
+                }}
+              >
+                Open verification
+                <ArrowRight size={14} />
+              </Button>
+            </div>
+          )}
+
+          <p className="text-xs text-text-secondary">
             Downstream modules (Releases, Rights, Royalties, Reporting) consume this
             surface only — never raw AI drafts.
           </p>
