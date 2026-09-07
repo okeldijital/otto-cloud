@@ -5,7 +5,6 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "vercel-build": "tsx scripts/migrate-contract-amendments.ts && next build",
     "start": "next start",
     "lint": "eslint app/api lib/auth lib/permissions.ts lib/platform/identity --max-warnings 0",
     "lint:full": "eslint app lib components hooks contexts --max-warnings 50",

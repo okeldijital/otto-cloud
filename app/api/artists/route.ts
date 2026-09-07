@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { getServerSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import {
@@ -78,30 +79,30 @@ export async function GET(req: Request) {
       const relation = searchParams.get("relation");
 
       if (relation === "releases") {
-        const releases = await prisma.releases.findMany({
-          where: {
-            organization_id: orgId,
-            is_deleted: false,
-            OR: [
-              { artist_id: id },
-              { artist_ids: { array_contains: id } },
-            ],
-          },
-        });
+        const releases = await prisma.$queryRaw<any[]>(Prisma.sql`
+          SELECT *
+          FROM "releases"
+          WHERE "organization_id" = ${orgId}
+            AND "is_deleted" = false
+            AND (
+              "artist_id" = ${id}
+              OR "artist_ids"::jsonb @> jsonb_build_array(${id})
+            )
+        `);
         return NextResponse.json(releases);
       }
 
       if (relation === "works") {
-        const works = await prisma.works.findMany({
-          where: {
-            organization_id: orgId,
-            is_deleted: false,
-            OR: [
-              { composers: { array_contains: id } },
-              { arrangers: { array_contains: id } },
-            ],
-          },
-        });
+        const works = await prisma.$queryRaw<any[]>(Prisma.sql`
+          SELECT *
+          FROM "works"
+          WHERE "organization_id" = ${orgId}
+            AND "is_deleted" = false
+            AND (
+              "composers"::jsonb @> jsonb_build_array(${id})
+              OR "arrangers"::jsonb @> jsonb_build_array(${id})
+            )
+        `);
         return NextResponse.json(works);
       }
 
@@ -273,7 +274,6 @@ export async function PUT(req: Request) {
 
     const body = await req.json();
     const { member_ids, ...updateData } = body;
-    // Never allow client to re-home ownership
     delete updateData.organization_id;
     delete updateData.organizationId;
 
@@ -300,7 +300,6 @@ export async function PUT(req: Request) {
     if (member_ids !== undefined && (updated.artist_kind || "solo") === "group") {
       await prisma.artist_memberships.deleteMany({ where: { group_id: id } });
       for (const mid of member_ids) {
-        // Member artists must also belong to this org
         await requireArtistInOrg(mid, ctx);
         await prisma.artist_memberships.create({
           data: { group_id: id, member_id: mid },
@@ -338,7 +337,6 @@ export async function DELETE(req: Request) {
     const id = parseInt(idStr);
     if (!Number.isFinite(id)) return NextResponse.json({ error: "Invalid artist ID" }, { status: 400 });
 
-    // Prove ownership before any mutation
     await requireArtistInOrg(id, ctx);
 
     const memberIdStr = searchParams.get("memberId");

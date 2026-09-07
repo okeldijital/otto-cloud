@@ -15,6 +15,16 @@ export type VerifiedContractEventType =
   (typeof VERIFIED_CONTRACT_EVENTS)[keyof typeof VERIFIED_CONTRACT_EVENTS];
 
 /**
+ * Legacy/domain event names that do not yet have a registered platform event
+ * contract. They remain persisted and audited, but must not be sent through
+ * the strict platform event bus until their contracts are registered.
+ */
+const PLATFORM_UNREGISTERED_EVENTS = new Set<VerifiedContractEventType>([
+  VERIFIED_CONTRACT_EVENTS.PartyAdded,
+  VERIFIED_CONTRACT_EVENTS.PartyUpdated,
+]);
+
+/**
  * Publish domain event + platform event bus (M4.2).
  */
 export async function publishVerifiedContractEvent(params: {
@@ -53,14 +63,37 @@ export async function publishVerifiedContractEvent(params: {
       verifiedContractId: params.verifiedContractId,
     });
 
+    if (PLATFORM_UNREGISTERED_EVENTS.has(params.eventType)) {
+      logger.info("verified-contract.event", "Platform event contract not registered; domain event retained only", {
+        eventType: params.eventType,
+        contractId: params.contractId,
+        verifiedContractId: params.verifiedContractId,
+      });
+      return;
+    }
+
+    const platformEventMap: Record<string, string> = {
+      [VERIFIED_CONTRACT_EVENTS.Created]: "contracts.verified.created",
+      [VERIFIED_CONTRACT_EVENTS.Updated]: "contracts.verified.updated",
+      [VERIFIED_CONTRACT_EVENTS.Reverified]: "contracts.verified.reverified",
+    };
+    const eventName = platformEventMap[params.eventType];
+    if (!eventName) {
+      logger.warn("verified-contract.event", "No registered platform event mapping; domain event retained only", {
+        eventType: params.eventType,
+      });
+      return;
+    }
+
     await publishPlatformEvent({
-      eventName: params.eventType,
+      eventName,
       organizationId: params.organizationId,
       producer: "contract-center",
       actorUserId: params.userId,
       entityType: "contract",
       entityId: params.contractId,
       payload: {
+        organizationId: params.organizationId,
         contractId: params.contractId,
         verifiedContractId: params.verifiedContractId,
         legacyEventType: params.eventType,
