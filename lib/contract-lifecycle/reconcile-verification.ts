@@ -5,15 +5,13 @@ import {
   LIFECYCLE_STATUS_LABELS,
   type LifecycleStatus,
 } from "./constants";
+import { decideVerificationReconciliation } from "./reconcile-verification-policy";
 import { appendTimeline, publishLifecycleEvent } from "./events";
 
 /**
  * Reconcile the operational lifecycle after a verified-contract promotion.
- *
- * Verification is the authoritative transition into the Verified lifecycle
- * state. This helper is deliberately idempotent: it may be called for every
- * successful promotion, including re-verification of an already-active
- * contract.
+ * Verification is authoritative for entry into Verified. The operation is
+ * idempotent and preserves already-advanced lifecycle states.
  */
 export async function reconcileLifecycleAfterVerification(params: {
   organizationId: string;
@@ -26,7 +24,11 @@ export async function reconcileLifecycleAfterVerification(params: {
     where: { contractId: params.contractId },
   });
 
-  if (!current) {
+  const decision = decideVerificationReconciliation(
+    current?.status as LifecycleStatus | null
+  );
+
+  if (decision.action === "create") {
     const lifecycle = await prisma.contractLifecycle.create({
       data: {
         organizationId: params.organizationId,
@@ -38,8 +40,7 @@ export async function reconcileLifecycleAfterVerification(params: {
       },
     });
 
-    await seedVerifiedKeyDates(params);
-
+    await seedVerifiedKeyDates(params, lifecycle.id);
     await appendTimeline({
       organizationId: params.organizationId,
       contractId: params.contractId,
@@ -53,7 +54,6 @@ export async function reconcileLifecycleAfterVerification(params: {
         verifiedVersion: params.verifiedVersion,
       },
     });
-
     await publishLifecycleEvent({
       organizationId: params.organizationId,
       contractId: params.contractId,
@@ -66,26 +66,21 @@ export async function reconcileLifecycleAfterVerification(params: {
       },
       userId: params.userId,
     });
-
     return lifecycle;
   }
 
+  if (!current) throw new Error("Contract lifecycle reconciliation state missing");
   if (current.organizationId !== params.organizationId) {
     throw new Error("Contract lifecycle organization mismatch");
   }
-
-  const from = current.status as LifecycleStatus;
-  const shouldTransition =
-    from === LIFECYCLE_STATUS.draft ||
-    from === LIFECYCLE_STATUS.pending_verification;
 
   const lifecycle = await prisma.contractLifecycle.update({
     where: { id: current.id },
     data: {
       verifiedContractId: params.verifiedContractId,
-      ...(shouldTransition
+      ...(decision.action === "transition"
         ? {
-            previousStatus: from,
+            previousStatus: decision.from,
             status: LIFECYCLE_STATUS.verified,
             statusChangedAt: new Date(),
             statusChangedBy: params.userId,
@@ -94,30 +89,28 @@ export async function reconcileLifecycleAfterVerification(params: {
     },
   });
 
-  if (shouldTransition) {
+  if (decision.action === "transition") {
     await seedVerifiedKeyDates(params, lifecycle.id);
-
     await appendTimeline({
       organizationId: params.organizationId,
       contractId: params.contractId,
       entryType: "status_change",
       title: `Status → ${LIFECYCLE_STATUS_LABELS.verified}`,
-      description: `From ${from}`,
+      description: `From ${decision.from}`,
       actorUserId: params.userId,
       payload: {
-        from,
+        from: decision.from,
         to: LIFECYCLE_STATUS.verified,
         verifiedContractId: params.verifiedContractId,
         verifiedVersion: params.verifiedVersion,
       },
     });
-
     await publishLifecycleEvent({
       organizationId: params.organizationId,
       contractId: params.contractId,
       eventType: LIFECYCLE_EVENTS.StatusChanged,
       payload: {
-        from,
+        from: decision.from,
         to: LIFECYCLE_STATUS.verified,
         verifiedContractId: params.verifiedContractId,
         verifiedVersion: params.verifiedVersion,
@@ -133,7 +126,7 @@ export async function reconcileLifecycleAfterVerification(params: {
       description: `Verified version ${params.verifiedVersion} is current`,
       actorUserId: params.userId,
       payload: {
-        status: from,
+        status: decision.status,
         verifiedContractId: params.verifiedContractId,
         verifiedVersion: params.verifiedVersion,
       },
@@ -149,15 +142,8 @@ async function seedVerifiedKeyDates(
     contractId: number;
     verifiedContractId: string;
   },
-  lifecycleId?: string
+  lifecycleId: string
 ) {
-  const id = lifecycleId ?? (
-    await prisma.contractLifecycle.findUniqueOrThrow({
-      where: { contractId: params.contractId },
-      select: { id: true },
-    })
-  ).id;
-
   const verified = await prisma.verifiedContract.findUnique({
     where: { id: params.verifiedContractId },
     select: { effectiveDateText: true, expirationDateText: true },
@@ -173,11 +159,9 @@ async function seedVerifiedKeyDates(
     if (!parsed) continue;
 
     await prisma.contractKeyDate.upsert({
-      where: {
-        lifecycleId_dateType: { lifecycleId: id, dateType },
-      },
+      where: { lifecycleId_dateType: { lifecycleId, dateType } },
       create: {
-        lifecycleId: id,
+        lifecycleId,
         organizationId: params.organizationId,
         contractId: params.contractId,
         dateType,
