@@ -104,6 +104,16 @@ export async function promoteVerifiedContract(input: PromoteInput) {
     },
   });
   if (existing) {
+    const { reconcileLifecycleAfterVerification } = await import(
+      "@/lib/contract-lifecycle/reconcile-verification"
+    );
+    await reconcileLifecycleAfterVerification({
+      organizationId: input.organizationId,
+      contractId: input.contractId,
+      verifiedContractId: existing.id,
+      verifiedVersion: existing.version,
+      userId: input.reviewerUserId,
+    });
     return { verifiedContract: existing, created: false, eventType: null as string | null };
   }
 
@@ -311,6 +321,17 @@ export async function promoteVerifiedContract(input: PromoteInput) {
         dates: true,
       },
     });
+  });
+
+  const { reconcileLifecycleAfterVerification } = await import(
+    "@/lib/contract-lifecycle/reconcile-verification"
+  );
+  await reconcileLifecycleAfterVerification({
+    organizationId: input.organizationId,
+    contractId: input.contractId,
+    verifiedContractId: result.id,
+    verifiedVersion: result.version,
+    userId: input.reviewerUserId,
   });
 
   const eventType = isReverify
