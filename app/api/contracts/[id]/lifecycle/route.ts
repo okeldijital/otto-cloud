@@ -65,6 +65,7 @@ export async function GET(
         organizationId: ctx.organizationId,
         contractId,
         verifiedContractId: verified.id,
+        verifiedVersion: verified.version,
         userId: ctx.userId,
       });
     }
