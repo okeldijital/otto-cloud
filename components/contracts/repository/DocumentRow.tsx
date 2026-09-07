@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Brain,
   CheckCircle2,
   Download,
   Eye,
@@ -119,10 +118,10 @@ export default function DocumentRow({
             variant="primary"
             size="sm"
             onClick={() => onOpenIntelligence(item)}
-            aria-label={`Review extracted fields for ${d.originalFilename}`}
+            aria-label={`Open human verification for ${d.originalFilename}`}
           >
             <CheckCircle2 size={14} aria-hidden />
-            Review extraction
+            Open verification
           </Button>
         )}
 
@@ -172,7 +171,7 @@ export default function DocumentRow({
               <Trash2 size={14} aria-hidden />
               <span className="hidden sm:inline">Delete</span>
             </Button>
-            {onExtract && (
+            {onExtract && !reviewRequired && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -180,7 +179,6 @@ export default function DocumentRow({
                 disabled={isDeleted}
                 aria-label={`Extract intelligence from ${d.originalFilename}`}
               >
-                <Brain size={14} aria-hidden />
                 <span className="hidden sm:inline">Extract</span>
               </Button>
             )}
