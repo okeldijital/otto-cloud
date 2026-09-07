@@ -24,6 +24,31 @@ const pool = new Pool({
   options: "-c search_path=auth,public",
 });
 
+void pool
+  .query(`
+    SELECT
+      current_database() AS database_name,
+      current_schema() AS current_schema,
+      current_setting('search_path') AS search_path,
+      to_regclass('auth.account') IS NOT NULL AS auth_account_exists,
+      to_regclass('auth.session') IS NOT NULL AS auth_session_exists,
+      to_regclass('auth.user') IS NOT NULL AS auth_user_exists,
+      to_regclass('auth.verification') IS NOT NULL AS auth_verification_exists,
+      EXISTS (
+        SELECT 1
+        FROM pg_indexes
+        WHERE schemaname = 'auth'
+          AND tablename = 'account'
+          AND indexname = 'account_issuer_accountId_key'
+      ) AS stale_issuer_index_exists
+  `)
+  .then(({ rows }) => {
+    console.info("[OTTO Auth DB Diagnostic]", rows[0]);
+  })
+  .catch((error) => {
+    console.error("[OTTO Auth DB Diagnostic] query failed", error);
+  });
+
 /**
  * Better Auth is the authentication/session provider for the runtime boundary.
  * OTTO IAM remains authoritative for identity, organization membership and RBAC.
