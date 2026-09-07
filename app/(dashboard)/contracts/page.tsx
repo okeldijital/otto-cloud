@@ -38,7 +38,7 @@ export default function ContractsPage() {
   const filtered = useMemo(() => contracts.filter((c) => { const q = search.toLowerCase(); return (!q || (c.title || "").toLowerCase().includes(q) || (c.contract_number || "").toLowerCase().includes(q)) && (statusFilter === "All" || (c.status || "").toLowerCase() === statusFilter.toLowerCase()) && (typeFilter === "All" || (c.type || c.contract_type || "").toLowerCase() === typeFilter.toLowerCase()) && (expiring === 0 || (c.end_date && isExpiredSoon(c.end_date, expiring))); }), [contracts, search, statusFilter, typeFilter, expiring]);
 
   const deleteContract = async (contract: any) => {
-    if (!contract?.id || deletingId) return;
+    if (!contract?.id || deletingId !== null) return;
     const confirmed = window.confirm(`Delete “${contract.title || "Untitled contract"}”? This permanently removes the failed/draft intake record. Verified or linked contracts cannot be deleted.`);
     if (!confirmed) return;
     try {
@@ -46,6 +46,7 @@ export default function ContractsPage() {
       await api.delete(`/contracts/delete?id=${encodeURIComponent(contract.id)}`);
       setContracts((current) => current.filter((item) => item.id !== contract.id));
     } catch (err: any) {
+      console.error("Failed to delete contract:", err);
       const message = err?.response?.data?.error || "Unable to delete this contract.";
       window.alert(message);
     } finally {
@@ -74,7 +75,7 @@ export default function ContractsPage() {
               <td className="p-4 text-sm text-text-secondary">{c._count?.assets ?? c.contract_assets?.length ?? 0} tracks</td>
               <td className="p-4"><div className="flex items-center gap-2"><FileText size={14} className="text-text-secondary" /><span className="text-sm">{docCount > 0 ? `v${docCount}` : "—"}</span></div><div className="mt-1"><Badge variant={COMPLETENESS_VARIANTS[completeness.status] || "neutral"} size="sm">{completeness.status}</Badge></div></td>
               <td className={`p-4 text-sm ${endsSoon ? "text-danger" : "text-text-secondary"}`}>{c.start_date ? formatDate(c.start_date) : "—"} → {c.end_date ? formatDate(c.end_date) : "—"}</td>
-              <td className="p-4"><div className="flex gap-2"><Button variant="ghost" size="sm" onClick={(e: React.MouseEvent) => { e.stopPropagation(); router.push(`/contracts/${c.id}`); }}>View</Button><Button variant="ghost" size="sm" onClick={(e: React.MouseEvent) => { e.stopPropagation(); router.push(`/contracts/${c.id}?tab=parties`); }}>Add Parties</Button>{deletable && <Button variant="ghost" size="sm" disabled={deletingId === c.id} onClick={(e: React.MouseEvent) => { e.stopPropagation(); void deleteContract(c); }} title="Delete failed intake"><Trash2 size={15} /></Button>}</div></td>
+              <td className="p-4"><div className="flex gap-2"><Button variant="ghost" size="sm" onClick={(e: React.MouseEvent) => { e.stopPropagation(); router.push(`/contracts/${c.id}`); }}>View</Button><Button variant="ghost" size="sm" onClick={(e: React.MouseEvent) => { e.stopPropagation(); router.push(`/contracts/${c.id}?tab=parties`); }}>Add Parties</Button>{deletable && <button type="button" aria-label={`Delete ${c.title || "contract"}`} title="Delete failed intake" disabled={deletingId !== null} onClick={(e) => { e.preventDefault(); e.stopPropagation(); void deleteContract(c); }} className="inline-flex h-9 w-9 items-center justify-center rounded-md text-text-secondary hover:text-danger hover:bg-surface-elevated transition-colors disabled:pointer-events-none disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"><Trash2 size={15} /></button>}</div></td>
             </tr>; })}</tbody></table></div>}
       </Card>
       <AddContractWizard isOpen={showWizard} onClose={() => setShowWizard(false)} onCreated={(created: any) => { const cid = created?.id || created?.contract_id; if (cid) router.push(`/contracts/${cid}`); fetchData(); }} />
