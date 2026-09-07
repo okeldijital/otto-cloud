@@ -59,8 +59,7 @@
     "test:identity": "tsx lib/platform/identity/__tests__/identity-foundation.test.ts && tsx lib/platform/identity/__tests__/authentication-a1.test.ts && tsx lib/platform/identity/__tests__/authentication-a2-a4.test.ts && tsx lib/platform/identity/__tests__/password-a2.test.ts && tsx lib/platform/identity/__tests__/session-a3.test.ts && tsx lib/platform/identity/__tests__/mfa-a4.test.ts && tsx lib/platform/identity/__tests__/cutover-a45.test.ts && tsx lib/platform/identity/__tests__/rbac-a5.test.ts && tsx lib/platform/identity/__tests__/productization-a6.test.ts",
     "migrate:legacy-auth": "tsx scripts/migrate-legacy-auth.ts",
     "migrate:legacy-auth:report": "tsx scripts/migrate-legacy-auth-report.ts",
-    "link:attachments": "tsx scripts/migrate-data/link-attachments/engine.ts",
-    "link:attachments:dry-run": "tsx scripts/migrate-data/link-attachments/engine.ts --dry-run"
+    "link:attachments": "tsx scripts/migrate-data/link-attachments/engine.ts --dry-run"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1089.0",
@@ -79,12 +78,14 @@
     "jose": "^6.2.3",
     "lucide-react": "^0.577.0",
     "next": "^16.2.7",
+    "openai": "^6.42.1",
     "papaparse": "^5.5.3",
     "pg": "^8.16.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-grid-layout": "^2.2.3",
     "react-pdf": "^10.4.0",
+    "recharts": "^3.8.0",
     "uuid": "^13.0.0",
     "xlsx": "^0.18.0",
     "zod": "^4.4.3",
