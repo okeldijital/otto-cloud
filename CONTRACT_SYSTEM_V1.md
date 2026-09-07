@@ -57,3 +57,6 @@ Deletion removes the contract's intake/lifecycle relations and cleans up orphane
 The integer contract organization scope is a documented compatibility boundary under ADR-001 and `docs/architecture/multi-tenant-model.md`. It should be migrated to UUID organization scope only as part of a deliberate schema/data migration with validation and an ADR-backed removal of the compatibility layer.
 
 The older standalone legacy contract implementation is not the governing workflow for current OTTO Cloud operations.
+
+## 9. Operational Verification
+Production contract verification depends on the shared authentication/session subsystem being healthy. Authentication schema changes must be verified against the production `auth` schema before contract E2E acceptance is declared.
