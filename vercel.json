@@ -4,7 +4,7 @@
     "frontend": {
       "root": ".",
       "framework": "nextjs",
-      "buildCommand": "npm run vercel-build",
+      "buildCommand": "npm run build",
       "installCommand": "npm install --legacy-peer-deps",
       "outputDirectory": ".next",
       "bindings": [
