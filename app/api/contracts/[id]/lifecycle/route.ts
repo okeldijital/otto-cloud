@@ -9,6 +9,8 @@ import {
   canManageLifecycle,
   contractLifecycleService,
 } from "@/lib/contract-lifecycle";
+import { verifiedContractService } from "@/lib/verified-contract";
+import { reconcileLifecycleAfterVerification } from "@/lib/contract-lifecycle/reconcile-verification";
 
 function ok<T>(data: T, message?: string) {
   return NextResponse.json({
@@ -50,6 +52,22 @@ export async function GET(
     const contractId = parseContractId(params.id);
     if (!contractId) return fail("Invalid contract id", 400, "INVALID_CONTRACT_ID");
     await assertContract(contractId, ctx.legacyIntOrgId);
+
+    // Self-heal legacy lifecycle records when an authoritative verified contract
+    // exists. This is intentionally application-level and organization-scoped:
+    // no direct database repair is required from an operator.
+    const verified = await verifiedContractService.getCurrent({
+      organizationId: ctx.organizationId,
+      contractId,
+    });
+    if (verified) {
+      await reconcileLifecycleAfterVerification({
+        organizationId: ctx.organizationId,
+        contractId,
+        verifiedContractId: verified.id,
+        userId: ctx.userId,
+      });
+    }
 
     const lifecycle = await contractLifecycleService.getOrCreate({
       organizationId: ctx.organizationId,
