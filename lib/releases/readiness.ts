@@ -15,6 +15,31 @@ export type ReleaseReadiness = {
   };
 };
 
+export type RightsReadinessInput = {
+  hasArtists: boolean;
+  artistCoverage: boolean;
+  releaseCoverage: boolean;
+  trackCoverage: boolean;
+};
+
+/**
+ * Rights readiness is coverage-based rather than "any contract exists".
+ *
+ * A release is covered when:
+ * - every associated artist has an active, organization-scoped contract
+ *   relationship of `represents`, and
+ * - either the release itself has an active `applies_to` contract or every
+ *   track has an active `applies_to` contract.
+ *
+ * When no artist is associated with the release, artist coverage is not a
+ * blocker. This preserves the existing release model while preventing an
+ * unrelated or foreign contract from satisfying readiness.
+ */
+export function buildRightsReadiness(input: RightsReadinessInput): boolean {
+  const artistCoverage = !input.hasArtists || input.artistCoverage;
+  return artistCoverage && (input.releaseCoverage || input.trackCoverage);
+}
+
 export async function evaluateReleaseReadiness(
   releaseId: number,
   ctx: OrganizationContext
@@ -40,33 +65,126 @@ export async function evaluateReleaseReadiness(
     typeof releaseDate === "string" && !Number.isNaN(Date.parse(releaseDate));
 
   const trackIds = tracks.map((track) => track.id);
-  const hasReleaseContract = !!(await prisma.contract_assets.findFirst({
-    where: { asset_type: "Release", asset_id: releaseId },
-  }));
-  const hasTrackContract = trackIds.length > 0 && !!(await prisma.contract_assets.findFirst({
-    where: { asset_type: "Track", asset_id: { in: trackIds } },
-  }));
 
   const artistIds: number[] = [];
   if (release.artist_id) artistIds.push(release.artist_id);
   if (Array.isArray(artistIdsValue)) {
     artistIds.push(...artistIdsValue.filter((id): id is number => typeof id === "number"));
   }
+  const uniqueArtistIds = [...new Set(artistIds)];
+  const trackEntityIds = trackIds.map(String);
+  const artistEntityIds = uniqueArtistIds.map(String);
 
-  const hasArtistContract =
-    artistIds.length > 0 &&
-    !!(await prisma.contract_parties.findFirst({
-      where: { entity_type: "Artist", entity_id: { in: artistIds } },
-    }));
-  const rights =
-    hasReleaseContract || hasTrackContract || (artistIds.length === 0 ? true : hasArtistContract);
+  const [releaseRelationships, trackRelationships, artistRelationships] = await Promise.all([
+    prisma.contractRelationship.findMany({
+      where: {
+        organizationId: ctx.organizationId,
+        targetEntityType: "release",
+        targetEntityId: String(releaseId),
+        relationshipType: "applies_to",
+        status: "active",
+      },
+      select: { contractId: true },
+    }),
+    trackEntityIds.length > 0
+      ? prisma.contractRelationship.findMany({
+          where: {
+            organizationId: ctx.organizationId,
+            targetEntityType: "track",
+            targetEntityId: { in: trackEntityIds },
+            relationshipType: "applies_to",
+            status: "active",
+          },
+          select: { contractId: true, targetEntityId: true },
+        })
+      : Promise.resolve([] as Array<{ contractId: number; targetEntityId: string }>),
+    artistEntityIds.length > 0
+      ? prisma.contractRelationship.findMany({
+          where: {
+            organizationId: ctx.organizationId,
+            targetEntityType: "artist",
+            targetEntityId: { in: artistEntityIds },
+            relationshipType: "represents",
+            status: "active",
+          },
+          select: { contractId: true, targetEntityId: true },
+        })
+      : Promise.resolve([] as Array<{ contractId: number; targetEntityId: string }>),
+  ]);
+
+  const contractIds = [
+    ...new Set([
+      ...releaseRelationships.map((r) => r.contractId),
+      ...trackRelationships.map((r) => r.contractId),
+      ...artistRelationships.map((r) => r.contractId),
+    ]),
+  ];
+
+  const verifiedContracts =
+    contractIds.length > 0
+      ? await prisma.verifiedContract.findMany({
+          where: {
+            organizationId: ctx.organizationId,
+            contractId: { in: contractIds },
+            isCurrent: true,
+            status: "active",
+          },
+          select: { contractId: true, extractionId: true },
+        })
+      : [];
+
+  const extractionIds = verifiedContracts.map((v) => v.extractionId).filter(Boolean);
+  const verifiedTerms =
+    extractionIds.length > 0
+      ? await prisma.verifiedField.findMany({
+          where: {
+            organizationId: ctx.organizationId,
+            extractionId: { in: extractionIds },
+            fieldKey: "term",
+            decision: { in: ["accepted", "edited"] },
+          },
+          select: { extractionId: true },
+        })
+      : [];
+
+  const readyContractIds = new Set(
+    verifiedContracts
+      .filter((v) => verifiedTerms.some((term) => term.extractionId === v.extractionId))
+      .map((v) => v.contractId)
+  );
+
+  const releaseCoverage = releaseRelationships.some((r) => readyContractIds.has(r.contractId));
+
+  const coveredTracks = new Set(
+    trackRelationships
+      .filter((r) => readyContractIds.has(r.contractId))
+      .map((r) => r.targetEntityId)
+  );
+  const trackCoverage =
+    trackIds.length > 0 && trackIds.every((id) => coveredTracks.has(String(id)));
+
+  const coveredArtists = new Set(
+    artistRelationships
+      .filter((r) => readyContractIds.has(r.contractId))
+      .map((r) => r.targetEntityId)
+  );
+  const artistCoverage =
+    uniqueArtistIds.length === 0 ||
+    uniqueArtistIds.every((id) => coveredArtists.has(String(id)));
+
+  const rights = buildRightsReadiness({
+    hasArtists: uniqueArtistIds.length > 0,
+    artistCoverage,
+    releaseCoverage,
+    trackCoverage,
+  });
 
   const blockers: string[] = [];
   if (!metadata.valid) blockers.push("Required release metadata is incomplete or invalid.");
   if (tracks.length === 0) blockers.push("At least one track must be assigned to the release.");
   if (!hasArtwork) blockers.push("Artwork is required before the release can be marked ready.");
   if (!hasReleaseDate) blockers.push("A valid release date is required before the release can be marked ready.");
-  if (!rights) blockers.push("Rights/ownership evidence is required for the release or its associated artist/tracks.");
+  if (!rights) blockers.push("Rights/ownership evidence is required for the release and its associated artists/tracks.");
 
   return {
     ready: blockers.length === 0,
