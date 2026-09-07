@@ -84,7 +84,7 @@ export default function DocumentIntelligencePage() {
       const res = await api.patch(`/contracts/${contractId}/documents/${documentId}/verifications/fields`, { extractionId, fieldKey, action, value });
       setVerification(res.data?.data?.verification ?? null);
       setUnsavedNote(true);
-      setSuccess(`Field ${action} applied.`);
+      setSuccess(action === "mark_not_found" ? `Field marked not found in the source document.` : `Field ${action} applied.`);
     } catch (err: any) {
       setError(err?.response?.data?.message || "Unable to update field.");
     } finally { setFieldBusy(null); }
@@ -103,7 +103,7 @@ export default function DocumentIntelligencePage() {
       if (action === "reject_all") {
         setSuccess(updated ? `${updated} extracted field${updated === 1 ? "" : "s"} rejected.` : "No extracted fields required rejection.");
       } else if (threshold === 0) {
-        setSuccess(updated ? `${updated} extracted field${updated === 1 ? "" : "s"} accepted.` : "No extracted fields were available to accept.");
+        setSuccess(updated ? `${updated} extracted field${updated === 1 ? "" : "s"} accepted.` : "All extracted fields were already accepted or no extracted values were available.");
       } else {
         setSuccess(updated ? `${updated} field${updated === 1 ? "" : "s"} accepted at the ${Math.round(threshold * 100)}% threshold.` : `No fields met the ${Math.round(threshold * 100)}% confidence threshold.`);
       }
@@ -157,6 +157,8 @@ export default function DocumentIntelligencePage() {
   const completed = verification?.session?.status === "completed";
   const reviewComplete = !!progress && progress.extracted > 0 && progress.draft === 0;
   const readyToComplete = !!progress?.canComplete;
+  const requiredPending = progress?.requiredPending || [];
+  const requiredPendingFields = (verification?.fields || []).filter((field: any) => requiredPending.includes(field.fieldKey));
 
   return (
     <div className="space-y-5">
@@ -166,7 +168,7 @@ export default function DocumentIntelligencePage() {
           <ExtractionStatusBadge status={verification?.extractionStatus || verification?.session?.status || job?.status} />
           {unsavedNote && !completed && <Badge variant="warn" size="sm">Session has updates</Badge>}
           {!extractionId && <Button variant="primary" size="sm" onClick={startExtraction} disabled={starting}><Brain size={14} /> Start extraction</Button>}
-          {canVerify && extractionId && !completed && <Button variant="primary" size="sm" onClick={complete} disabled={starting || !readyToComplete} title={readyToComplete ? "Complete verification" : "Review all extracted fields and resolve required fields first"}><ShieldCheck size={14} /> Complete verification</Button>}
+          {canVerify && extractionId && !completed && <Button variant="primary" size="sm" onClick={complete} disabled={starting || !readyToComplete} title={readyToComplete ? "Complete verification" : "Resolve all required fields and review all extracted fields first"}><ShieldCheck size={14} /> Complete verification</Button>}
           {canVerify && completed && <Button variant="secondary" size="sm" onClick={reopen} disabled={starting}><RefreshCw size={14} /> Reopen</Button>}
         </div>} />
       </div>
@@ -185,7 +187,17 @@ export default function DocumentIntelligencePage() {
           <Badge variant={completed || readyToComplete ? "success" : reviewComplete ? "warn" : "neutral"} size="sm">{progress.percent}% reviewed</Badge>
         </div>
         <div className="h-2 rounded-full bg-white/10 overflow-hidden mt-3"><div className="h-full bg-primary transition-all" style={{ width: `${progress.percent}%` }} /></div>
-        {progress.requiredPending?.length > 0 && <p className="text-xs text-warning mt-2">Required information missing or unresolved: {progress.requiredPending.join(", ")}</p>}
+        {requiredPending.length > 0 && <div className="mt-3 rounded-lg border border-warning/30 bg-warning/10 p-3">
+          <p className="text-xs font-semibold text-warning">Required fields need an explicit human decision</p>
+          <p className="text-xs text-text-secondary mt-1">If the source document does not contain the information, mark the field as “Not found”. This is a reviewed outcome and does not invent a value.</p>
+          <div className="flex flex-wrap gap-2 mt-2">
+            {requiredPendingFields.map((field: any) => (
+              <Button key={field.fieldKey} variant="ghost" size="sm" disabled={starting || fieldBusy === field.fieldKey} onClick={() => patchField(field.fieldKey, "mark_not_found")}>
+                Mark {field.fieldLabel} not found
+              </Button>
+            ))}
+          </div>
+        </div>}
         {readyToComplete && !completed && <p className="text-xs text-success mt-2">All extracted fields have been reviewed and all required fields are resolved. Use “Complete verification” to promote the verified layer.</p>}
         {completed && <p className="text-xs text-success mt-2">The verified layer is authoritative for downstream contract workflows. AI drafts remain preserved separately.</p>}
       </div>}
@@ -213,7 +225,7 @@ export default function DocumentIntelligencePage() {
         <section className="xl:col-span-3 space-y-3">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-text-secondary">Verified values</h3>
           <Card><p className="text-xs text-text-secondary mb-3">Trusted business data promoted on completion. AI drafts remain stored separately and are never overwritten.</p>{verification?.isDocumentVerified ? <Badge variant="success" size="sm">Document verified (session v{verification.session?.version})</Badge> : <Badge variant="warn" size="sm">Not verified — human review required</Badge>}</Card>
-          {(verification?.verifiedFields || []).length === 0 ? <Card><p className="text-sm text-text-secondary">No verified values yet. Complete verification to promote the layer.</p></Card> : <div className="space-y-2 max-h-[60vh] overflow-y-auto">{verification.verifiedFields.map((v: any) => <div key={v.fieldKey} className="rounded-xl border border-success/20 bg-success/5 p-3"><div className="flex justify-between gap-2 text-xs mb-1"><span className="font-semibold uppercase text-text-secondary">{v.fieldLabel}</span><Badge variant="success" size="sm">{v.decision}</Badge></div><p className="text-sm text-white whitespace-pre-wrap break-words">{v.verifiedValue ?? <span className="italic text-text-secondary">Rejected</span>}</p>{v.aiValue != null && String(v.aiValue) !== String(v.verifiedValue) && <p className="text-[11px] text-text-secondary mt-1">AI was: {v.aiValue}</p>}</div>)}</div>}
+          {(verification?.verifiedFields || []).length === 0 ? <Card><p className="text-sm text-text-secondary">No verified values yet. Complete verification to promote the layer.</p></Card> : <div className="space-y-2 max-h-[60vh] overflow-y-auto">{verification.verifiedFields.map((v: any) => <div key={v.fieldKey} className="rounded-xl border border-success/20 bg-success/5 p-3"><div className="flex justify-between gap-2 text-xs mb-1"><span className="font-semibold uppercase text-text-secondary">{v.fieldLabel}</span><Badge variant="success" size="sm">{v.decision}</Badge></div><p className="text-sm text-white whitespace-pre-wrap break-words">{v.verifiedValue ?? <span className="italic text-text-secondary">Rejected / not found</span>}</p>{v.aiValue != null && String(v.aiValue) !== String(v.verifiedValue) && <p className="text-[11px] text-text-secondary mt-1">AI was: {v.aiValue}</p>}</div>)}</div>}
           {(verification?.history || []).length > 0 && <Card title="Recent history"><ul className="space-y-1.5 text-xs text-text-secondary max-h-40 overflow-y-auto">{verification.history.slice(0, 15).map((h: any) => <li key={h.id}><span className="text-white">{h.action}</span>{h.fieldKey ? ` · ${h.fieldKey}` : ""}<span className="block opacity-70">{h.createdAt ? new Date(h.createdAt).toLocaleString() : ""}</span></li>)}</ul></Card>}
         </section>
       </div>
