@@ -11,7 +11,7 @@ import api from "@/lib/api";
 
 const columns = [
   { key: "name", label: "Name", sortable: true },
-  { key: "code", label: "Code", render: (row: any) => row.code || "—" },
+  { key: "label_id", label: "Label ID", render: (row: any) => row.label_id || "—" },
 ];
 
 export default function LabelsPage() {
@@ -20,7 +20,7 @@ export default function LabelsPage() {
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [newLabel, setNewLabel] = useState<any>({ name: "", code: "" });
+  const [newLabel, setNewLabel] = useState<any>({ name: "", label_id: "" });
 
   const fetchData = async () => {
     try {
@@ -54,7 +54,7 @@ export default function LabelsPage() {
     try {
       await api.post("/labels", newLabel);
       setShowAddModal(false);
-      setNewLabel({ name: "", code: "" });
+      setNewLabel({ name: "", label_id: "" });
       fetchData();
     } catch (err: any) {
       alert(err?.response?.data?.error || "Failed to create label");
@@ -91,8 +91,8 @@ export default function LabelsPage() {
             <input className="input w-full" value={newLabel.name} onChange={(e) => setNewLabel({ ...newLabel, name: e.target.value })} required />
           </div>
           <div>
-            <label className="text-xs text-text-secondary font-bold">Code</label>
-            <input className="input w-full" value={newLabel.code} onChange={(e) => setNewLabel({ ...newLabel, code: e.target.value })} placeholder="e.g. OTR" />
+            <label className="text-xs text-text-secondary font-bold">Label ID</label>
+            <input className="input w-full" value={newLabel.label_id} onChange={(e) => setNewLabel({ ...newLabel, label_id: e.target.value })} placeholder="e.g. OTR" />
           </div>
         </div>
       </EntityForm>
