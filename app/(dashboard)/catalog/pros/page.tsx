@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import Button from "@/components/ui/Button";
@@ -14,12 +15,11 @@ const columns = [
 ];
 
 export default function ProsPage() {
+  const router = useRouter();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [editItem, setEditItem] = useState<any>(null);
   const [form, setForm] = useState<any>({ name: "", pro_id: "" });
 
   const fetchData = async () => {
@@ -45,27 +45,6 @@ export default function ProsPage() {
       fetchData();
     } catch (err: any) {
       alert(err?.response?.data?.error || "Failed to delete PRO");
-    }
-  };
-
-  const handleEdit = (row: any) => {
-    setEditItem(row);
-    setForm({ name: row.name || "", pro_id: row.pro_id || "" });
-    setShowEditModal(true);
-  };
-
-  const handleUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    try {
-      await api.put(`/pros?id=${editItem.id}`, form);
-      setShowEditModal(false);
-      setEditItem(null);
-      fetchData();
-    } catch (err: any) {
-      alert(err?.response?.data?.error || "Failed to update PRO");
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -100,25 +79,12 @@ export default function ProsPage() {
         columns={columns}
         data={data}
         isLoading={loading}
-        onRowClick={handleEdit}
-        onEdit={handleEdit}
+        onRowClick={(row: any) => router.push(`/catalog/pros/${row.id}`)}
+        onEdit={(row: any) => router.push(`/catalog/pros/${row.id}`)}
         onDelete={handleDelete}
       />
 
       <EntityForm title="New PRO" isOpen={showAddModal} onClose={() => setShowAddModal(false)} onSubmit={handleCreate} isSubmitting={isSubmitting} error={undefined}>
-        <div className="space-y-4">
-          <div>
-            <label className="text-xs text-text-secondary font-bold">Name *</label>
-            <input className="input w-full" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-          </div>
-          <div>
-            <label className="text-xs text-text-secondary font-bold">PRO ID</label>
-            <input className="input w-full" value={form.pro_id} onChange={(e) => setForm({ ...form, pro_id: e.target.value })} />
-          </div>
-        </div>
-      </EntityForm>
-
-      <EntityForm title="Edit PRO" isOpen={showEditModal} onClose={() => setShowEditModal(false)} onSubmit={handleUpdate} isSubmitting={isSubmitting} error={undefined}>
         <div className="space-y-4">
           <div>
             <label className="text-xs text-text-secondary font-bold">Name *</label>
