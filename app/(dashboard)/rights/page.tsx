@@ -54,7 +54,7 @@ export default function RightsRegistryPage() {
           <p className="text-sm text-text-secondary mt-1">Operational rights derived from verified contracts — not legal evidence</p>
         </div>
         <div className="flex gap-2">
-          <Link href="/rights/review"><Button variant="secondary" size="sm"><FileCheck size={14} /> Review queue</Button></Link>
+          <Link href="/rights/review"><Button size="sm"><FileCheck size={14} /> Review queue</Button></Link>
           <Button variant="secondary" size="sm" onClick={() => load()}><RefreshCw size={14} /> Refresh</Button>
         </div>
       </div>
@@ -67,13 +67,23 @@ export default function RightsRegistryPage() {
 
       <div className="flex flex-wrap gap-2">
         <div className="flex-1 min-w-[200px] relative"><Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" /><input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Enter" && search()} placeholder="Search title, owner, category…" className="input w-full pl-9" /></div>
-        <select value={status} onChange={(e) => setStatus(e.target.value)} className="input w-auto"><option value="">All statuses</option>{["active", "approved", "suspended", "expired", "terminated", "archived"].map((s) => <option key={s} value={s}>{s}</option>)}</select>
+        <select value={status} onChange={(e) => setStatus(e.target.value)} className="input w-auto appearance-none bg-white text-black border-border focus:border-accent focus:ring-2 focus:ring-accent/20">
+          <option value="" className="bg-black text-white">All statuses</option>
+          {["active", "approved", "suspended", "expired", "terminated", "archived"].map((s) => <option key={s} value={s} className="bg-black text-white">{s}</option>)}
+        </select>
         <Button size="sm" onClick={search}>Search</Button>
       </div>
 
       {error && <div className="text-sm text-danger flex items-center gap-2"><AlertTriangle size={16} /> {error}</div>}
       {loading ? <div className="flex justify-center py-16 text-text-secondary text-sm gap-2"><Loader2 className="animate-spin" size={18} /> Loading…</div> : items.length === 0 ? (
-        <Card className="p-10 text-center text-sm text-text-secondary">No rights in the registry yet.<p className="mt-2 text-xs">Promote from a verified contract, then approve candidates in Review.</p></Card>
+        <Card className="p-10 text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-border bg-surface-elevated text-accent">
+            <Scale size={22} />
+          </div>
+          <h2 className="text-lg font-semibold text-text-primary">No rights in the registry yet</h2>
+          <p className="mx-auto mt-2 max-w-md text-sm text-text-secondary">Operational rights are promoted from verified contracts and reviewed before they become active registry records.</p>
+          <Link href="/rights/review" className="mt-5 inline-flex"><Button size="sm"><FileCheck size={14} /> Review queue</Button></Link>
+        </Card>
       ) : <div className="space-y-2">{items.map((r) => <Link key={r.id} href={`/rights/${r.id}`}><Card className="p-4 hover:border-accent/30 transition-colors"><div className="flex flex-wrap justify-between gap-2"><div><h3 className="text-text-primary font-medium">{r.title}</h3><p className="text-xs text-text-secondary mt-0.5">{r.categoryLabel || r.category}{r.contractId != null ? ` · Contract #${r.contractId}` : ""}{r.ownerName ? ` · ${r.ownerName}` : ""}</p></div><div className="flex gap-1.5">{r.exclusive && <Badge variant="warn">Exclusive</Badge>}<Badge variant={(STATUS_VARIANT[r.status] || "neutral") as any}>{r.status}</Badge></div></div></Card></Link>)}</div>}
     </div>
   );
