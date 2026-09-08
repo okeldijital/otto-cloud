@@ -40,6 +40,7 @@
     "test:a8-idor": "tsx lib/auth/__tests__/resource-authorization-idor.test.ts",
     "test:a8-privilege": "tsx lib/auth/__tests__/privilege-escalation.test.ts",
     "test:prod-tenant-isolation": "tsx scripts/acceptance/prod-tenant-isolation.ts",
+    "test:prod-rights-e2e": "tsx scripts/acceptance/prod-rights-e2e.ts",
     "test:documents": "tsx lib/documents/__tests__/checksum.test.ts && tsx lib/documents/__tests__/document-service.test.ts",
     "test:repository": "tsx components/contracts/repository/__tests__/repositoryUtils.test.ts",
     "test:pdf": "tsx lib/documents/pdf/__tests__/pdfError.test.ts",
