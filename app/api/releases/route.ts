@@ -5,8 +5,8 @@ import { orgContextErrorResponse, orgWhereActive, requireOrganization } from "@/
 import { requireOrgAuth, requireReleaseInOrg, resourceAuthErrorResponse, trackOrgScopeWhere } from "@/lib/auth/resource-authorization";
 import { validateReleaseMetadata } from "@/lib/releases/validation";
 import { getReleaseArtistIds } from "@/lib/catalog-release-artists";
+import { replaceCatalogArtistIds } from "@/lib/catalog-artist-relations";
 
-// RRM-002B: release lifecycle transitions are enforced at the API boundary.
 const RELEASE_STATUSES = ["draft", "ready", "scheduled", "released"] as const;
 type ReleaseStatus = (typeof RELEASE_STATUSES)[number];
 const RELEASE_TRANSITIONS: Record<ReleaseStatus, readonly ReleaseStatus[]> = {
@@ -58,7 +58,10 @@ export async function GET(req: Request) {
       const trackIds = tracks.map((t) => t.id);
       let hasContract = !!(await prisma.contract_assets.findFirst({ where: { asset_type: "Release", asset_id: id } }));
       if (!hasContract && trackIds.length) hasContract = !!(await prisma.contract_assets.findFirst({ where: { asset_type: "Track", asset_id: { in: trackIds } } }));
-      const artistIdList = await getReleaseArtistIds(id);
+      const canonicalArtistIds = await getReleaseArtistIds(id);
+      const artistIdList = canonicalArtistIds.length
+        ? canonicalArtistIds
+        : [release.artist_id, ...(Array.isArray(release.artist_ids) ? (release.artist_ids as number[]) : [])].filter((value): value is number => Number.isInteger(value));
       const hasArtistContract = artistIdList.length > 0 ? !!(await prisma.contract_parties.findFirst({ where: { entity_type: "Artist", entity_id: { in: artistIdList } } })) : false;
       return NextResponse.json({ ...release, artist_ids: artistIdList, status: await getReleaseStatus(id), _tracks: tracks, _hasContract: hasContract, _hasArtistContract: hasArtistContract });
     }
@@ -71,11 +74,12 @@ export async function GET(req: Request) {
       const trackIds = tracks.map((t) => t.id);
       let hasContract = !!(await prisma.contract_assets.findFirst({ where: { asset_type: "Release", asset_id: r.id } }));
       if (!hasContract && trackIds.length) hasContract = !!(await prisma.contract_assets.findFirst({ where: { asset_type: "Track", asset_id: { in: trackIds } } }));
-      const artistIdList: number[] = [];
-      if (r.artist_id) artistIdList.push(r.artist_id);
-      if (Array.isArray(r.artist_ids)) artistIdList.push(...(r.artist_ids as number[]));
+      const canonicalArtistIds = await getReleaseArtistIds(r.id);
+      const artistIdList = canonicalArtistIds.length
+        ? canonicalArtistIds
+        : [r.artist_id, ...(Array.isArray(r.artist_ids) ? (r.artist_ids as number[]) : [])].filter((value): value is number => Number.isInteger(value));
       const hasArtistContract = artistIdList.length > 0 ? !!(await prisma.contract_parties.findFirst({ where: { entity_type: "Artist", entity_id: { in: artistIdList } } })) : false;
-      return { ...r, status: await getReleaseStatus(r.id), _tracks: tracks, _hasContract: hasContract, _hasArtistContract: hasArtistContract };
+      return { ...r, artist_ids: artistIdList, status: await getReleaseStatus(r.id), _tracks: tracks, _hasContract: hasContract, _hasArtistContract: hasArtistContract };
     }));
     return NextResponse.json({ total, items: enriched });
   } catch (err: any) {
@@ -92,11 +96,12 @@ export async function POST(req: Request) {
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const ctx = await requireOrganization();
     const body = await req.json();
-    const { track_ids, ...releaseData } = body;
+    const { track_ids, artist_ids, ...releaseData } = body;
     const requestedStatus = releaseData.status;
     delete releaseData.status;
     const metadataValidation = validateReleaseMetadata(releaseData, "create");
     if (!metadataValidation.valid) return NextResponse.json({ error: "Invalid release metadata", fields: metadataValidation.errors }, { status: 400 });
+    if (artist_ids !== undefined && (!Array.isArray(artist_ids) || artist_ids.some((value: unknown) => !Number.isInteger(value) || (value as number) <= 0))) return NextResponse.json({ error: "artist_ids must be an array of positive integer artist IDs." }, { status: 400 });
     releaseData.organization_id = ctx.organizationId;
     if (requestedStatus !== undefined) {
       const transition = validateReleaseTransition("draft", requestedStatus);
@@ -111,6 +116,17 @@ export async function POST(req: Request) {
     const existing = await prisma.releases.findFirst({ where: { title: releaseData.title, organization_id: ctx.organizationId } });
     if (existing) return NextResponse.json({ error: `A release with the title '${releaseData.title}' already exists.` }, { status: 409 });
     let newRelease = await prisma.releases.create({ data: releaseData });
+    if (artist_ids !== undefined) {
+      try {
+        const canonicalArtistIds = await replaceCatalogArtistIds("release", newRelease.id, ctx.organizationId, artist_ids);
+        if (canonicalArtistIds.length) {
+          await prisma.releases.update({ where: { id: newRelease.id }, data: { artist_id: canonicalArtistIds[0], artist_ids: canonicalArtistIds } });
+        }
+      } catch (err: any) {
+        await prisma.releases.delete({ where: { id: newRelease.id } }).catch(() => null);
+        return NextResponse.json({ error: err instanceof Error ? err.message : "Invalid release artists" }, { status: 400 });
+      }
+    }
     if (requestedStatus !== undefined && requestedStatus !== "draft") {
       await setReleaseStatus(newRelease.id, requestedStatus);
       newRelease = { ...newRelease, status: requestedStatus } as typeof newRelease;
@@ -143,12 +159,13 @@ export async function PUT(req: Request) {
     const id = parseInt(idStr);
     if (!Number.isFinite(id)) return NextResponse.json({ error: "Invalid release ID" }, { status: 400 });
     const body = await req.json();
-    const { track_ids, ...updateData } = body;
+    const { track_ids, artist_ids, ...updateData } = body;
     delete updateData.organization_id;
     delete updateData.organizationId;
     const existing = await requireReleaseInOrg(id, ctx);
     const metadataValidation = validateReleaseMetadata(updateData, "update");
     if (!metadataValidation.valid) return NextResponse.json({ error: "Invalid release metadata", fields: metadataValidation.errors }, { status: 400 });
+    if (artist_ids !== undefined && (!Array.isArray(artist_ids) || artist_ids.some((value: unknown) => !Number.isInteger(value) || (value as number) <= 0))) return NextResponse.json({ error: "artist_ids must be an array of positive integer artist IDs." }, { status: 400 });
     const requestedStatus = updateData.status;
     delete updateData.status;
     if (requestedStatus !== undefined) {
@@ -167,8 +184,16 @@ export async function PUT(req: Request) {
       if (dup) return NextResponse.json({ error: `A release with the title '${updateData.title}' already exists.` }, { status: 409 });
     }
     const updated = await prisma.releases.update({ where: { id }, data: updateData });
+    if (artist_ids !== undefined) {
+      try {
+        const canonicalArtistIds = await replaceCatalogArtistIds("release", id, ctx.organizationId, artist_ids);
+        await prisma.releases.update({ where: { id }, data: { artist_id: canonicalArtistIds[0] ?? null, artist_ids: canonicalArtistIds } });
+      } catch (err: any) {
+        return NextResponse.json({ error: err instanceof Error ? err.message : "Invalid release artists" }, { status: 400 });
+      }
+    }
     if (requestedStatus !== undefined) await setReleaseStatus(id, requestedStatus);
-    const responseRelease = { ...updated, status: requestedStatus !== undefined ? requestedStatus : await getReleaseStatus(id) };
+    const responseRelease = { ...updated, ...(artist_ids !== undefined ? { artist_id: artist_ids[0] ?? null, artist_ids: [...new Set<number>(artist_ids)] } : {}), status: requestedStatus !== undefined ? requestedStatus : await getReleaseStatus(id) };
     if (track_ids !== undefined) {
       const currentTracks = await prisma.tracks.findMany({ where: { release_id: id, ...(trackOrgScopeWhere(ctx) as object) } });
       const currentIds = new Set(currentTracks.map((t) => t.id));
