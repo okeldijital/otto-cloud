@@ -22,19 +22,18 @@ function testLifecycleContract() {
 }
 
 function testMetadataContract() {
-  const valid = validateReleaseMetadata(
-    {
-      title: "RRM Acceptance Release",
-      release_type: "Single",
-      catalog_number: "OD-2026-001",
-      upc_code: "123456789012",
-      release_date: "2026-09-01",
-      artwork_url: "https://example.com/artwork.jpg",
-      track_ids: [1],
-    },
-    "create"
-  );
+  const validInput = {
+    title: "RRM Acceptance Release",
+    release_type: "Single",
+    catalog_number: "OD-2026-001",
+    upc_code: "123456789012",
+    release_date: "2026-09-01",
+    artwork_url: "https://example.com/artwork.jpg",
+    track_ids: [1],
+  };
+  const valid = validateReleaseMetadata(validInput, "create");
   assert.equal(valid.valid, true);
+  assert.equal(validInput.release_date, "2026-09-01T00:00:00.000Z");
 
   const missingTitle = validateReleaseMetadata(
     {
