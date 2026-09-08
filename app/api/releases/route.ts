@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { orgContextErrorResponse, orgWhereActive, requireOrganization } from "@/lib/auth/organization-context";
 import { requireOrgAuth, requireReleaseInOrg, resourceAuthErrorResponse, trackOrgScopeWhere } from "@/lib/auth/resource-authorization";
 import { validateReleaseMetadata } from "@/lib/releases/validation";
+import { getReleaseArtistIds } from "@/lib/catalog-release-artists";
 
 // RRM-002B: release lifecycle transitions are enforced at the API boundary.
 const RELEASE_STATUSES = ["draft", "ready", "scheduled", "released"] as const;
@@ -57,11 +58,9 @@ export async function GET(req: Request) {
       const trackIds = tracks.map((t) => t.id);
       let hasContract = !!(await prisma.contract_assets.findFirst({ where: { asset_type: "Release", asset_id: id } }));
       if (!hasContract && trackIds.length) hasContract = !!(await prisma.contract_assets.findFirst({ where: { asset_type: "Track", asset_id: { in: trackIds } } }));
-      const artistIdList: number[] = [];
-      if (release.artist_id) artistIdList.push(release.artist_id);
-      if (Array.isArray(release.artist_ids)) artistIdList.push(...(release.artist_ids as number[]));
+      const artistIdList = await getReleaseArtistIds(id);
       const hasArtistContract = artistIdList.length > 0 ? !!(await prisma.contract_parties.findFirst({ where: { entity_type: "Artist", entity_id: { in: artistIdList } } })) : false;
-      return NextResponse.json({ ...release, status: await getReleaseStatus(id), _tracks: tracks, _hasContract: hasContract, _hasArtistContract: hasArtistContract });
+      return NextResponse.json({ ...release, artist_ids: artistIdList, status: await getReleaseStatus(id), _tracks: tracks, _hasContract: hasContract, _hasArtistContract: hasArtistContract });
     }
     const skip = parseInt(searchParams.get("skip") || "0");
     const limit = parseInt(searchParams.get("limit") || "100");
@@ -124,7 +123,7 @@ export async function POST(req: Request) {
       await prisma.workspace_members.create({ data: { workspace_id: workspace.id, user_id: userId, role: "owner" } });
       await prisma.workspace_timeline_events.create({ data: { workspace_id: workspace.id, user_id: userId, event_type: "system", summary: `Release workspace created for "${newRelease.title}"` } });
       const channels = ["General", "Artwork", "Marketing", "Distribution", "Production", "Legal"];
-      for (let i = 0; i < channels.length; i++) await prisma.workspace_discussion_channels.create({ data: { workspace_id: workspace.id, organization_id: newRelease.organization_id, name: channels[i], slug: channels[i].toLowerCase(), sort_order: i, created_by: userId } });
+      for (let i = 0; i < channels.length; i++) await prisma.workspace_discussion_channels.create({ data: { workspace_id: newRelease.organization_id, name: channels[i], slug: channels[i].toLowerCase(), sort_order: i, created_by: userId } });
     } catch (wsErr) { console.error("[Release Workspace auto-create failed]", wsErr); }
     if (track_ids?.length) await Promise.all((await prisma.tracks.findMany({ where: { id: { in: track_ids }, ...(trackOrgScopeWhere(ctx) as object) } })).map((t) => prisma.tracks.update({ where: { id: t.id }, data: { release_id: newRelease.id, tenant_id: ctx.organizationId, credits: !t.credits && newRelease.credits ? (newRelease.credits as any) : ((t.credits as any) ?? undefined) } })));
     return NextResponse.json(newRelease, { status: 201 });
