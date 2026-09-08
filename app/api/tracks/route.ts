@@ -13,6 +13,7 @@ import {
   resourceAuthErrorResponse,
   trackOrgScopeWhere,
 } from "@/lib/auth/resource-authorization";
+import { getCatalogArtistIds, replaceCatalogArtistIds } from "@/lib/catalog-artist-relations";
 
 function normalizeDuration(value: unknown): Date | null {
   if (value === undefined || value === null || value === "") return null;
@@ -39,8 +40,15 @@ function normalizeTrackPayload(input: Record<string, any>) {
   const payload = { ...input };
   delete payload.organization_id;
   delete payload.organizationId;
+  delete payload.artist_ids;
   if ("duration" in payload) payload.duration = normalizeDuration(payload.duration);
   return payload;
+}
+
+async function getTrackArtistIdsCompat(trackId: number, legacyArtistIds: unknown) {
+  const artistIds = await getCatalogArtistIds("track", trackId);
+  if (artistIds.length) return artistIds;
+  return Array.isArray(legacyArtistIds) ? (legacyArtistIds as number[]) : [];
 }
 
 /**
@@ -59,7 +67,8 @@ export async function GET(req: Request) {
       if (!Number.isFinite(id)) return NextResponse.json({ error: "Invalid track ID" }, { status: 400 });
       const track = await prisma.tracks.findFirst({ where: { id, ...(scope as object) }, include: { track_releases: true } });
       if (!track) return NextResponse.json({ error: "Track not found" }, { status: 404 });
-      return NextResponse.json({ ...track, secondary_release_ids: track.track_releases.map((tr) => tr.release_id) });
+      const artist_ids = await getTrackArtistIdsCompat(id, track.artist_ids);
+      return NextResponse.json({ ...track, artist_ids, secondary_release_ids: track.track_releases.map((tr) => tr.release_id) });
     }
 
     const q = searchParams.get("q") || searchParams.get("query") || "";
@@ -73,14 +82,16 @@ export async function GET(req: Request) {
         prisma.tracks.findMany({ where, take: limit, skip: offset, include: { track_releases: true } }),
         prisma.tracks.count({ where }),
       ]);
-      return NextResponse.json({ items: items.map((t) => ({ ...t, secondary_release_ids: t.track_releases.map((tr) => tr.release_id) })), total });
+      const enriched = await Promise.all(items.map(async (t) => ({ ...t, artist_ids: await getTrackArtistIdsCompat(t.id, t.artist_ids), secondary_release_ids: t.track_releases.map((tr) => tr.release_id) })));
+      return NextResponse.json({ items: enriched, total });
     }
 
     const idsStr = searchParams.get("ids");
     if (idsStr) {
       const ids = idsStr.split(",").map((s) => parseInt(s)).filter((n) => !isNaN(n));
       const items = await prisma.tracks.findMany({ where: { id: { in: ids }, ...(scope as object) }, include: { track_releases: true } });
-      return NextResponse.json({ items: items.map((t) => ({ ...t, secondary_release_ids: t.track_releases.map((tr) => tr.release_id) })) });
+      const enriched = await Promise.all(items.map(async (t) => ({ ...t, artist_ids: await getTrackArtistIdsCompat(t.id, t.artist_ids), secondary_release_ids: t.track_releases.map((tr) => tr.release_id) })));
+      return NextResponse.json({ items: enriched });
     }
 
     const skip = parseInt(searchParams.get("skip") || "0");
@@ -89,7 +100,8 @@ export async function GET(req: Request) {
       prisma.tracks.findMany({ where: scope as object, skip, take: limit, include: { track_releases: true } }),
       prisma.tracks.count({ where: scope as object }),
     ]);
-    return NextResponse.json({ total, items: tracks.map((t) => ({ ...t, secondary_release_ids: t.track_releases.map((tr) => tr.release_id) })) });
+    const enriched = await Promise.all(tracks.map(async (t) => ({ ...t, artist_ids: await getTrackArtistIdsCompat(t.id, t.artist_ids), secondary_release_ids: t.track_releases.map((tr) => tr.release_id) })));
+    return NextResponse.json({ total, items: enriched });
   } catch (err: any) {
     const mapped = orgContextErrorResponse(err);
     if (mapped.status === 401 || mapped.status === 403) return NextResponse.json(mapped.body, { status: mapped.status });
@@ -108,10 +120,11 @@ export async function POST(req: Request) {
       const ids: number[] = body.ids;
       if (!ids.length) return NextResponse.json({ items: [] });
       const items = await prisma.tracks.findMany({ where: { id: { in: ids }, ...(scope as object) }, include: { track_releases: true } });
-      return NextResponse.json({ items: items.map((t) => ({ ...t, secondary_release_ids: t.track_releases.map((tr) => tr.release_id) })) });
+      const enriched = await Promise.all(items.map(async (t) => ({ ...t, artist_ids: await getTrackArtistIdsCompat(t.id, t.artist_ids), secondary_release_ids: t.track_releases.map((tr) => tr.release_id) })));
+      return NextResponse.json({ items: enriched });
     }
 
-    const { secondary_release_ids, ...rawTrackData } = body;
+    const { secondary_release_ids, artist_ids, ...rawTrackData } = body;
     const trackData = normalizeTrackPayload(rawTrackData) as Prisma.tracksUncheckedCreateInput;
 
     if (trackData.release_id) await requireReleaseInOrg(parseInt(String(trackData.release_id)), ctx);
@@ -129,6 +142,7 @@ export async function POST(req: Request) {
     }
 
     const newTrack = await prisma.tracks.create({ data: trackData });
+    if (Array.isArray(artist_ids)) await replaceCatalogArtistIds("track", newTrack.id, ctx.organizationId, artist_ids);
 
     if (secondary_release_ids?.length) {
       for (const rid of secondary_release_ids as number[]) {
@@ -138,11 +152,13 @@ export async function POST(req: Request) {
     }
 
     const full = await prisma.tracks.findUnique({ where: { id: newTrack.id }, include: { track_releases: true } });
-    return NextResponse.json({ ...full, secondary_release_ids: full?.track_releases.map((tr) => tr.release_id) ?? [] }, { status: 201 });
+    const canonicalArtistIds = await getTrackArtistIdsCompat(newTrack.id, full?.artist_ids);
+    return NextResponse.json({ ...full, artist_ids: canonicalArtistIds, secondary_release_ids: full?.track_releases.map((tr) => tr.release_id) ?? [] }, { status: 201 });
   } catch (err: any) {
     const mapped = resourceAuthErrorResponse(err);
     if (mapped.status === 401 || mapped.status === 403 || mapped.status === 404) return NextResponse.json(mapped.body, { status: mapped.status });
     if (err?.message?.startsWith("Duration")) return NextResponse.json({ error: err.message }, { status: 400 });
+    if (err?.message?.includes("artist_ids must contain") || err?.message?.includes("artists are not accessible")) return NextResponse.json({ error: err.message }, { status: 400 });
     console.error("[POST /api/tracks]", err);
     if (err.code === "P2002") return NextResponse.json({ error: "A track with this ISRC, Track ID, or Title already exists." }, { status: 409 });
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -159,7 +175,7 @@ export async function PUT(req: Request) {
     if (!Number.isFinite(id)) return NextResponse.json({ error: "Invalid track ID" }, { status: 400 });
 
     const body = await req.json();
-    const { secondary_release_ids, ...rawUpdateData } = body;
+    const { secondary_release_ids, artist_ids, ...rawUpdateData } = body;
     const updateData = normalizeTrackPayload(rawUpdateData) as Prisma.tracksUncheckedUpdateInput;
     const existing = await requireTrackInOrg(id, ctx);
 
@@ -177,6 +193,10 @@ export async function PUT(req: Request) {
     }
 
     await prisma.tracks.update({ where: { id }, data: updateData });
+    if (artist_ids !== undefined) {
+      if (!Array.isArray(artist_ids)) return NextResponse.json({ error: "artist_ids must be an array of artist IDs" }, { status: 400 });
+      await replaceCatalogArtistIds("track", id, ctx.organizationId, artist_ids);
+    }
 
     if (secondary_release_ids !== undefined) {
       await prisma.track_releases.deleteMany({ where: { track_id: id } });
@@ -189,11 +209,13 @@ export async function PUT(req: Request) {
     }
 
     const full = await prisma.tracks.findFirst({ where: { id, ...(trackOrgScopeWhere(ctx) as object) }, include: { track_releases: true } });
-    return NextResponse.json({ ...full, secondary_release_ids: full?.track_releases.map((tr) => tr.release_id) ?? [] });
+    const canonicalArtistIds = await getTrackArtistIdsCompat(id, full?.artist_ids);
+    return NextResponse.json({ ...full, artist_ids: canonicalArtistIds, secondary_release_ids: full?.track_releases.map((tr) => tr.release_id) ?? [] });
   } catch (err: any) {
     const mapped = resourceAuthErrorResponse(err);
     if (mapped.status === 401 || mapped.status === 403 || mapped.status === 404) return NextResponse.json(mapped.body, { status: mapped.status });
     if (err?.message?.startsWith("Duration")) return NextResponse.json({ error: err.message }, { status: 400 });
+    if (err?.message?.includes("artist_ids must contain") || err?.message?.includes("artists are not accessible")) return NextResponse.json({ error: err.message }, { status: 400 });
     console.error("[PUT /api/tracks]", err);
     if (err.code === "P2002") return NextResponse.json({ error: "A database integrity error occurred. This track title or ISRC might already be in use." }, { status: 409 });
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
