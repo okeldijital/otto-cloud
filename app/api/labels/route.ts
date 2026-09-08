@@ -6,34 +6,48 @@ import {
   orgContextErrorResponse,
   requireOrganization,
 } from "@/lib/auth/organization-context";
+import {
+  labelRelatedCatalogWhere,
+  parsePositiveIntId,
+} from "@/lib/catalog/label-scope";
 
 /**
  * Labels are GLOBAL REFERENCE DATA (no organization_id column).
  * Reads: authenticated org session.
  * Mutations: platform authority only (A.8 Step 5 / R4-001).
+ * Related artists/releases are organization-scoped.
  * See docs/architecture/multi-tenant-model.md §4.3.
  */
 export async function GET(req: Request) {
   try {
-    await requireOrganization();
+    const ctx = await requireOrganization();
 
     const { searchParams } = new URL(req.url);
     const idStr = searchParams.get("id");
 
     if (idStr) {
-      const id = parseInt(idStr);
+      const id = parsePositiveIntId(idStr);
+      if (!id) return NextResponse.json({ error: "Invalid label ID" }, { status: 400 });
       const relation = searchParams.get("relation");
 
       if (relation === "releases") {
         const releases = await prisma.releases.findMany({
-          where: { label_id: id, is_deleted: false },
+          where: labelRelatedCatalogWhere("releases", id, ctx.organizationId),
+          orderBy: { title: "asc" },
         });
         return NextResponse.json(releases);
       }
 
       if (relation === "artists") {
-        const artists = await prisma.artists.findMany({ where: { label_id: id } });
+        const artists = await prisma.artists.findMany({
+          where: labelRelatedCatalogWhere("artists", id, ctx.organizationId),
+          orderBy: { name: "asc" },
+        });
         return NextResponse.json(artists);
+      }
+
+      if (relation) {
+        return NextResponse.json({ error: "Unsupported relation" }, { status: 400 });
       }
 
       const label = await prisma.labels.findUnique({ where: { id } });
@@ -108,9 +122,8 @@ export async function PUT(req: Request) {
     }
 
     const { searchParams } = new URL(req.url);
-    const idStr = searchParams.get("id");
-    if (!idStr) return NextResponse.json({ error: "Missing label ID" }, { status: 400 });
-    const id = parseInt(idStr);
+    const id = parsePositiveIntId(searchParams.get("id"));
+    if (!id) return NextResponse.json({ error: "Missing label ID" }, { status: 400 });
 
     const body = await req.json();
 
@@ -154,9 +167,8 @@ export async function DELETE(req: Request) {
     }
 
     const { searchParams } = new URL(req.url);
-    const idStr = searchParams.get("id");
-    if (!idStr) return NextResponse.json({ error: "Missing label ID" }, { status: 400 });
-    const id = parseInt(idStr);
+    const id = parsePositiveIntId(searchParams.get("id"));
+    if (!id) return NextResponse.json({ error: "Missing label ID" }, { status: 400 });
 
     const existing = await prisma.labels.findUnique({ where: { id } });
     if (!existing) return NextResponse.json({ error: "Label not found" }, { status: 404 });
