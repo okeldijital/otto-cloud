@@ -1,39 +1,52 @@
 import api from '../lib/api';
 
-const unwrapItems = (data) => {
-    if (Array.isArray(data)) return data;
-    if (Array.isArray(data?.items)) return data.items;
-    return data ? [data] : [];
-};
+const toLegacyDocument = (item) => ({
+    ...item,
+    original_filename: item.originalName || item.fileName,
+    mime_type: item.mimeType,
+    file_size_bytes: item.fileSize,
+    created_at: item.createdAt,
+});
 
 const officeDocumentsService = {
     async list(params = {}) {
-        const response = await api.get('/documents', { params });
-        return unwrapItems(response.data);
+        const response = await api.get('/api/files', {
+            params: {
+                entityType: params.entityType || params.entity_type,
+                entityId: params.entityId || params.entity_id,
+            },
+        });
+        const items = Array.isArray(response.data?.items)
+            ? response.data.items
+            : Array.isArray(response.data)
+                ? response.data
+                : [];
+        return items.map(toLegacyDocument);
     },
 
     async upload(payload) {
-        const response = await api.post('/documents', payload, {
+        const response = await api.post('/api/storage/upload', payload, {
             headers: { 'Content-Type': 'multipart/form-data' },
         });
-        return response.data?.item || response.data;
+        return toLegacyDocument(response.data?.attachment || response.data);
     },
 
-    async link(documentId, payload) {
-        const response = await api.post(`/documents/${documentId}/links`, payload);
-        return response.data?.item || response.data;
+    async link() {
+        // The canonical storage upload binds the attachment to the entity at
+        // creation time. Linking as a second mutation is intentionally removed.
+        return null;
     },
 
     async remove(documentId) {
-        return api.delete(`/documents/${documentId}`);
+        return api.delete(`/api/storage/${documentId}`);
     },
 
     downloadUrl(documentId) {
-        return `/api/documents/${documentId}/download`;
+        return `/api/files?attachmentId=${encodeURIComponent(documentId)}`;
     },
 
     previewUrl(documentId) {
-        return `/api/documents/${documentId}/preview`;
+        return `/api/files?attachmentId=${encodeURIComponent(documentId)}`;
     },
 };
 
