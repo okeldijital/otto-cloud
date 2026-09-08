@@ -11,8 +11,7 @@ import api from "@/lib/api";
 
 const columns = [
   { key: "title", label: "Title", sortable: true },
-  { key: "work_type", label: "Type", sortable: true, render: (row: any) => row.work_type || "—" },
-  { key: "iswc", label: "ISWC", sortable: true, render: (row: any) => row.iswc || "—" },
+  { key: "iswc_code", label: "ISWC", sortable: true, render: (row: any) => row.iswc_code || "—" },
 ];
 
 export default function WorksPage() {
@@ -20,10 +19,9 @@ export default function WorksPage() {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState("all");
   const [showAddModal, setShowAddModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [newWork, setNewWork] = useState<any>({ title: "", work_type: "Original", iswc: "" });
+  const [newWork, setNewWork] = useState<any>({ title: "", iswc_code: "" });
 
   const fetchData = async () => {
     try {
@@ -41,21 +39,14 @@ export default function WorksPage() {
     fetchData();
   }, []);
 
-  const workTypes = useMemo(
-    () => Array.from(new Set(data.map((work) => String(work.work_type || "").trim()).filter(Boolean))).sort(),
-    [data]
-  );
-
   const filteredData = useMemo(() => {
     const query = search.trim().toLowerCase();
     return data.filter((work) => {
-      const matchesType = typeFilter === "all" || String(work.work_type || "").toLowerCase() === typeFilter;
-      const matchesSearch = !query || [work.title, work.work_type, work.iswc]
+      return !query || [work.title, work.iswc_code]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(query));
-      return matchesType && matchesSearch;
     });
-  }, [data, search, typeFilter]);
+  }, [data, search]);
 
   const handleDelete = async (row: any) => {
     if (!window.confirm(`Delete work "${row.title}"? This cannot be undone.`)) return;
@@ -73,7 +64,7 @@ export default function WorksPage() {
     try {
       await api.post("/works", newWork);
       setShowAddModal(false);
-      setNewWork({ title: "", work_type: "Original", iswc: "" });
+      setNewWork({ title: "", iswc_code: "" });
       fetchData();
     } catch (err: any) {
       alert(err?.response?.data?.error || "Failed to create work");
@@ -96,34 +87,20 @@ export default function WorksPage() {
       />
 
       <section className="flex flex-col gap-3 border-b border-border pb-4 md:flex-row md:items-center md:justify-between" aria-label="Work catalogue controls">
-        <div className="flex w-full flex-col gap-3 sm:flex-row">
-          <div className="relative w-full sm:max-w-md">
-            <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
-            <input
-              type="search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search works..."
-              aria-label="Search works"
-              className="h-10 w-full rounded-md border border-border bg-surface pl-9 pr-3 text-sm text-text-primary placeholder:text-text-secondary/70 outline-none transition-colors focus:border-accent focus:ring-1 focus:ring-accent/50"
-            />
-          </div>
-          <label className="relative flex h-10 items-center rounded-md border border-border bg-surface px-3 text-sm text-text-secondary">
-            <SlidersHorizontal size={16} className="mr-2" />
-            <span className="sr-only">Filter by work type</span>
-            <select
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
-              aria-label="Filter works by type"
-              className="appearance-none bg-transparent pr-5 text-sm text-text-primary outline-none"
-            >
-              <option value="all">All types</option>
-              {workTypes.map((type) => (
-                <option key={type} value={type.toLowerCase()}>{type}</option>
-              ))}
-            </select>
-          </label>
+        <div className="relative w-full md:max-w-md">
+          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search works..."
+            aria-label="Search works"
+            className="h-10 w-full rounded-md border border-border bg-surface pl-9 pr-3 text-sm text-text-primary placeholder:text-text-secondary/70 outline-none transition-colors focus:border-accent focus:ring-1 focus:ring-accent/50"
+          />
         </div>
+        <Button variant="secondary" size="sm" icon={SlidersHorizontal} aria-label="Filter works">
+          Filter
+        </Button>
       </section>
 
       <DataTable
@@ -135,8 +112,8 @@ export default function WorksPage() {
         onDelete={handleDelete}
       />
 
-      {!loading && (search || typeFilter !== "all") && filteredData.length === 0 && data.length > 0 && (
-        <p className="-mt-3 text-xs text-text-secondary">No works match the current catalogue filters.</p>
+      {!loading && search && filteredData.length === 0 && data.length > 0 && (
+        <p className="-mt-3 text-xs text-text-secondary">No works match “{search}”.</p>
       )}
 
       <EntityForm title="New Work" isOpen={showAddModal} onClose={() => setShowAddModal(false)} onSubmit={handleCreate} isSubmitting={isSubmitting} error={undefined}>
@@ -146,17 +123,8 @@ export default function WorksPage() {
             <input className="input w-full" value={newWork.title} onChange={(e) => setNewWork({ ...newWork, title: e.target.value })} required />
           </div>
           <div>
-            <label className="text-xs text-text-secondary font-bold">Type</label>
-            <select className="input w-full" value={newWork.work_type} onChange={(e) => setNewWork({ ...newWork, work_type: e.target.value })}>
-              <option value="Original">Original</option>
-              <option value="Arrangement">Arrangement</option>
-              <option value="Cover">Cover</option>
-              <option value="Remix">Remix</option>
-            </select>
-          </div>
-          <div>
             <label className="text-xs text-text-secondary font-bold">ISWC</label>
-            <input className="input w-full" value={newWork.iswc} onChange={(e) => setNewWork({ ...newWork, iswc: e.target.value })} placeholder="e.g. T-123456789-0" />
+            <input className="input w-full" value={newWork.iswc_code} onChange={(e) => setNewWork({ ...newWork, iswc_code: e.target.value })} placeholder="e.g. T-123456789-0" />
           </div>
         </div>
       </EntityForm>

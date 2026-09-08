@@ -17,7 +17,7 @@ const columns = [
     key: "duration",
     label: "Duration",
     sortable: true,
-    render: (row: any) => row.duration || "—",
+    render: (row: any) => row.duration ? String(row.duration).replace(/^.*T/, "").replace(/\.\d+Z$/, "") : "—",
   },
 ];
 
@@ -29,7 +29,7 @@ export default function TracksPage() {
   const [genreFilter, setGenreFilter] = useState("all");
   const [showAddModal, setShowAddModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [newTrack, setNewTrack] = useState<any>({ title: "", isrc: "", genre: "", duration: "" });
+  const [newTrack, setNewTrack] = useState<any>({ title: "", isrc_code: "", genre: "", duration: "" });
 
   const fetchData = async () => {
     try {
@@ -64,7 +64,7 @@ export default function TracksPage() {
   }, [data, search, genreFilter]);
 
   const handleDelete = async (row: any) => {
-    if (!window.confirm(`Delete track \"${row.title}\"? This cannot be undone.`)) return;
+    if (!window.confirm(`Delete track "${row.title}"? This cannot be undone.`)) return;
     try {
       await api.delete(`/tracks?id=${row.id}`);
       fetchData();
@@ -77,15 +77,14 @@ export default function TracksPage() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      const payload = {
+      await api.post("/tracks", {
         title: newTrack.title,
-        isrc_code: newTrack.isrc || undefined,
+        isrc_code: newTrack.isrc_code || undefined,
         genre: newTrack.genre || undefined,
         duration: newTrack.duration || undefined,
-      };
-      await api.post("/tracks", payload);
+      });
       setShowAddModal(false);
-      setNewTrack({ title: "", isrc: "", genre: "", duration: "" });
+      setNewTrack({ title: "", isrc_code: "", genre: "", duration: "" });
       fetchData();
     } catch (err: any) {
       alert(err?.response?.data?.error || "Failed to create track");
@@ -159,7 +158,7 @@ export default function TracksPage() {
           </div>
           <div>
             <label className="text-xs text-text-secondary font-bold">ISRC</label>
-            <input className="input w-full" value={newTrack.isrc} onChange={(e) => setNewTrack({ ...newTrack, isrc: e.target.value })} placeholder="e.g. USABC1234567" />
+            <input className="input w-full" value={newTrack.isrc_code} onChange={(e) => setNewTrack({ ...newTrack, isrc_code: e.target.value })} placeholder="e.g. USABC1234567" />
           </div>
           <div>
             <label className="text-xs text-text-secondary font-bold">Genre</label>
