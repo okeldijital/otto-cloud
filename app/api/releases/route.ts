@@ -6,6 +6,7 @@ import { requireOrgAuth, requireReleaseInOrg, resourceAuthErrorResponse, trackOr
 import { validateReleaseMetadata } from "@/lib/releases/validation";
 import { getReleaseArtistIds } from "@/lib/catalog-release-artists";
 import { replaceCatalogArtistIds } from "@/lib/catalog-artist-relations";
+import { validatePrimaryTrackAssignments } from "@/lib/catalog-release-relations";
 
 const RELEASE_STATUSES = ["draft", "ready", "scheduled", "released"] as const;
 type ReleaseStatus = (typeof RELEASE_STATUSES)[number];
@@ -96,32 +97,35 @@ export async function POST(req: Request) {
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const ctx = await requireOrganization();
     const body = await req.json();
-    const { track_ids, artist_ids, ...releaseData } = body;
+    const { track_ids, move_track_ids, artist_ids, ...releaseData } = body;
     const requestedStatus = releaseData.status;
     delete releaseData.status;
     const metadataValidation = validateReleaseMetadata(releaseData, "create");
     if (!metadataValidation.valid) return NextResponse.json({ error: "Invalid release metadata", fields: metadataValidation.errors }, { status: 400 });
     if (artist_ids !== undefined && (!Array.isArray(artist_ids) || artist_ids.some((value: unknown) => !Number.isInteger(value) || (value as number) <= 0))) return NextResponse.json({ error: "artist_ids must be an array of positive integer artist IDs." }, { status: 400 });
+    if (move_track_ids !== undefined && (!Array.isArray(move_track_ids) || move_track_ids.some((value: unknown) => !Number.isInteger(value) || (value as number) <= 0))) return NextResponse.json({ error: "move_track_ids must be an array of positive integer track IDs." }, { status: 400 });
     releaseData.organization_id = ctx.organizationId;
     if (requestedStatus !== undefined) {
       const transition = validateReleaseTransition("draft", requestedStatus);
       if (!transition.ok) return NextResponse.json({ error: transition.error }, { status: 400 });
     }
     if (track_ids !== undefined && (!Array.isArray(track_ids) || track_ids.some((id: unknown) => !Number.isInteger(id)))) return NextResponse.json({ error: "track_ids must be an array of integer track IDs." }, { status: 400 });
-    if (track_ids?.length) {
-      const uniqueTrackIds = [...new Set<number>(track_ids)];
-      const accessibleTracks = await prisma.tracks.findMany({ where: { id: { in: uniqueTrackIds }, ...(trackOrgScopeWhere(ctx) as object) }, select: { id: true } });
-      if (accessibleTracks.length !== uniqueTrackIds.length) return NextResponse.json({ error: "One or more tracks are not accessible to this organization" }, { status: 404 });
-    }
+    const uniqueTrackIds = track_ids ? [...new Set<number>(track_ids)] : [];
+    const moveTrackIds = move_track_ids ? [...new Set<number>(move_track_ids)] : [];
+    let assignmentCheck: ReturnType<typeof validatePrimaryTrackAssignments> | null = null;
+    if (uniqueTrackIds.length) {
+      const tracks = await prisma.tracks.findMany({ where: { id: { in: uniqueTrackIds }, ...(trackOrgScopeWhere(ctx) as object) }, select: { id: true, release_id: true } });
+      if (tracks.length !== uniqueTrackIds.length) return NextResponse.json({ error: "One or more tracks are not accessible to this organization" }, { status: 404 });
+      assignmentCheck = validatePrimaryTrackAssignments(tracks, -1, moveTrackIds);
+      if (assignmentCheck.requiresMove.length) return NextResponse.json({ error: "One or more tracks already have a Primary Release. Explicit move_track_ids is required to reassign them.", track_ids: assignmentCheck.requiresMove }, { status: 409 });
+    } else if (moveTrackIds.length) return NextResponse.json({ error: "move_track_ids requires the tracks to also be included in track_ids." }, { status: 400 });
     const existing = await prisma.releases.findFirst({ where: { title: releaseData.title, organization_id: ctx.organizationId } });
     if (existing) return NextResponse.json({ error: `A release with the title '${releaseData.title}' already exists.` }, { status: 409 });
     let newRelease = await prisma.releases.create({ data: releaseData });
     if (artist_ids !== undefined) {
       try {
         const canonicalArtistIds = await replaceCatalogArtistIds("release", newRelease.id, ctx.organizationId, artist_ids);
-        if (canonicalArtistIds.length) {
-          await prisma.releases.update({ where: { id: newRelease.id }, data: { artist_id: canonicalArtistIds[0], artist_ids: canonicalArtistIds } });
-        }
+        if (canonicalArtistIds.length) await prisma.releases.update({ where: { id: newRelease.id }, data: { artist_id: canonicalArtistIds[0], artist_ids: canonicalArtistIds } });
       } catch (err: any) {
         await prisma.releases.delete({ where: { id: newRelease.id } }).catch(() => null);
         return NextResponse.json({ error: err instanceof Error ? err.message : "Invalid release artists" }, { status: 400 });
@@ -141,11 +145,16 @@ export async function POST(req: Request) {
       const channels = ["General", "Artwork", "Marketing", "Distribution", "Production", "Legal"];
       for (let i = 0; i < channels.length; i++) await prisma.workspace_discussion_channels.create({ data: { workspace_id: workspace.id, organization_id: newRelease.organization_id, name: channels[i], slug: channels[i].toLowerCase(), sort_order: i, created_by: userId } });
     } catch (wsErr) { console.error("[Release Workspace auto-create failed]", wsErr); }
-    if (track_ids?.length) await Promise.all((await prisma.tracks.findMany({ where: { id: { in: track_ids }, ...(trackOrgScopeWhere(ctx) as object) } })).map((t) => prisma.tracks.update({ where: { id: t.id }, data: { release_id: newRelease.id, tenant_id: ctx.organizationId, credits: !t.credits && newRelease.credits ? (newRelease.credits as any) : ((t.credits as any) ?? undefined) } })));
+    if (uniqueTrackIds.length) {
+      const tracksToAssign = await prisma.tracks.findMany({ where: { id: { in: uniqueTrackIds }, ...(trackOrgScopeWhere(ctx) as object) } });
+      await Promise.all(tracksToAssign.filter((t) => t.release_id !== newRelease.id).map((t) => prisma.tracks.update({ where: { id: t.id }, data: { release_id: newRelease.id, tenant_id: ctx.organizationId, credits: !t.credits && newRelease.credits ? (newRelease.credits as any) : ((t.credits as any) ?? undefined) } })));
+    }
     return NextResponse.json(newRelease, { status: 201 });
   } catch (err: any) {
     console.error("[POST /api/releases]", err);
     if (err.code === "P2002") return NextResponse.json({ error: "A release with this Title, Catalog Number, or UPC already exists." }, { status: 409 });
+    const mapped = resourceAuthErrorResponse(err);
+    if (mapped.status === 400 || mapped.status === 403 || mapped.status === 404) return NextResponse.json(mapped.body, { status: mapped.status });
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
@@ -159,13 +168,14 @@ export async function PUT(req: Request) {
     const id = parseInt(idStr);
     if (!Number.isFinite(id)) return NextResponse.json({ error: "Invalid release ID" }, { status: 400 });
     const body = await req.json();
-    const { track_ids, artist_ids, ...updateData } = body;
+    const { track_ids, move_track_ids, artist_ids, ...updateData } = body;
     delete updateData.organization_id;
     delete updateData.organizationId;
     const existing = await requireReleaseInOrg(id, ctx);
     const metadataValidation = validateReleaseMetadata(updateData, "update");
     if (!metadataValidation.valid) return NextResponse.json({ error: "Invalid release metadata", fields: metadataValidation.errors }, { status: 400 });
     if (artist_ids !== undefined && (!Array.isArray(artist_ids) || artist_ids.some((value: unknown) => !Number.isInteger(value) || (value as number) <= 0))) return NextResponse.json({ error: "artist_ids must be an array of positive integer artist IDs." }, { status: 400 });
+    if (move_track_ids !== undefined && (!Array.isArray(move_track_ids) || move_track_ids.some((value: unknown) => !Number.isInteger(value) || (value as number) <= 0))) return NextResponse.json({ error: "move_track_ids must be an array of positive integer track IDs." }, { status: 400 });
     const requestedStatus = updateData.status;
     delete updateData.status;
     if (requestedStatus !== undefined) {
@@ -174,11 +184,16 @@ export async function PUT(req: Request) {
       if (!transition.ok) return NextResponse.json({ error: transition.error }, { status: 400 });
     }
     if (track_ids !== undefined && (!Array.isArray(track_ids) || track_ids.some((tid: unknown) => !Number.isInteger(tid)))) return NextResponse.json({ error: "track_ids must be an array of integer track IDs." }, { status: 400 });
+    const uniqueTrackIds = track_ids ? [...new Set<number>(track_ids)] : [];
+    const moveTrackIds = move_track_ids ? [...new Set<number>(move_track_ids)] : [];
+    let assignmentCheck: ReturnType<typeof validatePrimaryTrackAssignments> | null = null;
+    let tracksForAssignment: Array<{ id: number; release_id: number | null; credits: unknown }> = [];
     if (track_ids !== undefined) {
-      const uniqueTrackIds = [...new Set<number>(track_ids)];
-      const accessibleTracks = await prisma.tracks.findMany({ where: { id: { in: uniqueTrackIds }, ...(trackOrgScopeWhere(ctx) as object) }, select: { id: true } });
-      if (accessibleTracks.length !== uniqueTrackIds.length) return NextResponse.json({ error: "One or more tracks are not accessible to this organization" }, { status: 404 });
-    }
+      tracksForAssignment = await prisma.tracks.findMany({ where: { id: { in: uniqueTrackIds }, ...(trackOrgScopeWhere(ctx) as object) }, select: { id: true, release_id: true, credits: true } });
+      if (tracksForAssignment.length !== uniqueTrackIds.length) return NextResponse.json({ error: "One or more tracks are not accessible to this organization" }, { status: 404 });
+      assignmentCheck = validatePrimaryTrackAssignments(tracksForAssignment, id, moveTrackIds);
+      if (assignmentCheck.requiresMove.length) return NextResponse.json({ error: "One or more tracks already have another Primary Release. Explicit move_track_ids is required to reassign them.", track_ids: assignmentCheck.requiresMove }, { status: 409 });
+    } else if (moveTrackIds.length) return NextResponse.json({ error: "move_track_ids requires the tracks to also be included in track_ids." }, { status: 400 });
     if (updateData.title && updateData.title !== existing.title) {
       const dup = await prisma.releases.findFirst({ where: { title: updateData.title, organization_id: ctx.organizationId, is_deleted: false } });
       if (dup) return NextResponse.json({ error: `A release with the title '${updateData.title}' already exists.` }, { status: 409 });
@@ -197,14 +212,12 @@ export async function PUT(req: Request) {
     if (track_ids !== undefined) {
       const currentTracks = await prisma.tracks.findMany({ where: { release_id: id, ...(trackOrgScopeWhere(ctx) as object) } });
       const currentIds = new Set(currentTracks.map((t) => t.id));
-      const newIds = new Set<number>(track_ids);
+      const newIds = new Set<number>(uniqueTrackIds);
       const toUnassign = Array.from(currentIds).filter((tid) => !newIds.has(tid));
       if (toUnassign.length) await prisma.tracks.updateMany({ where: { id: { in: toUnassign }, release_id: id, ...(trackOrgScopeWhere(ctx) as object) }, data: { release_id: null } });
       const toAssign = Array.from(newIds).filter((tid) => !currentIds.has(tid));
       if (toAssign.length) {
-        const tracksToAssign = await prisma.tracks.findMany({ where: { id: { in: toAssign }, ...(trackOrgScopeWhere(ctx) as object) } });
-        if (tracksToAssign.length !== toAssign.length) return NextResponse.json({ error: "One or more tracks are not accessible to this organization" }, { status: 404 });
-        await Promise.all(tracksToAssign.map((t) => prisma.tracks.update({ where: { id: t.id }, data: { release_id: id, tenant_id: ctx.organizationId, credits: !t.credits && responseRelease.credits ? (responseRelease.credits as any) : ((t.credits as any) ?? undefined) } })));
+        await Promise.all(tracksForAssignment.filter((t) => toAssign.includes(t.id)).map((t) => prisma.tracks.update({ where: { id: t.id }, data: { release_id: id, tenant_id: ctx.organizationId, credits: !t.credits && responseRelease.credits ? (responseRelease.credits as any) : ((t.credits as any) ?? undefined) } })));
       }
     }
     return NextResponse.json(responseRelease);
