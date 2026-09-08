@@ -32,6 +32,7 @@ export default function TracksSection({ workspace }: Props) {
   const releaseId = Number(workspace?.release?.id);
   const [tracks, setTracks] = useState<Track[]>([]);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [moveTrackIds, setMoveTrackIds] = useState<number[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -53,6 +54,7 @@ export default function TracksSection({ workspace }: Props) {
       const assignedTracks = Array.isArray(assignedResponse.data) ? assignedResponse.data : [];
       setTracks(allTracks);
       setSelectedIds(assignedTracks.map((track: Track) => track.id));
+      setMoveTrackIds([]);
     } catch (err: any) {
       console.error("Failed to load release tracks:", err);
       setError(err?.response?.data?.error || "Failed to load tracks");
@@ -80,10 +82,20 @@ export default function TracksSection({ workspace }: Props) {
     [tracks, selectedIds]
   );
 
-  const toggleTrack = (id: number) => {
+  const toggleTrack = (track: Track) => {
     setSaved(false);
+    const assigned = selectedIds.includes(track.id);
+    if (!assigned && track.release_id != null && track.release_id !== releaseId) {
+      const confirmed = window.confirm(
+        `"${track.title}" is already assigned to another Primary Release. Move it to this Release?`,
+      );
+      if (!confirmed) return;
+      setMoveTrackIds((current) => [...new Set([...current, track.id])]);
+    } else if (assigned) {
+      setMoveTrackIds((current) => current.filter((trackId) => trackId !== track.id));
+    }
     setSelectedIds((current) =>
-      current.includes(id) ? current.filter((trackId) => trackId !== id) : [...current, id]
+      assigned ? current.filter((trackId) => trackId !== track.id) : [...current, track.id]
     );
   };
 
@@ -93,7 +105,10 @@ export default function TracksSection({ workspace }: Props) {
     setError(null);
     setSaved(false);
     try {
-      await api.put(`/releases?id=${releaseId}`, { track_ids: selectedIds });
+      await api.put(`/releases?id=${releaseId}`, {
+        track_ids: selectedIds,
+        move_track_ids: moveTrackIds.filter((trackId) => selectedIds.includes(trackId)),
+      });
       await fetchTracks();
       setSaved(true);
     } catch (err: any) {
@@ -132,7 +147,7 @@ export default function TracksSection({ workspace }: Props) {
                 <button
                   type="button"
                   aria-label={`Remove ${track.title}`}
-                  onClick={() => toggleTrack(track.id)}
+                  onClick={() => toggleTrack(track)}
                   className="rounded-md p-2 text-text-secondary transition-colors hover:bg-white/10 hover:text-white"
                 >
                   <Trash2 size={15} />
@@ -166,11 +181,12 @@ export default function TracksSection({ workspace }: Props) {
               {filteredTracks.map((track) => {
                 const assigned = selectedIds.includes(track.id);
                 const belongsToAnotherRelease = track.release_id != null && track.release_id !== releaseId;
+                const markedForMove = moveTrackIds.includes(track.id);
                 return (
                   <button
                     key={track.id}
                     type="button"
-                    onClick={() => toggleTrack(track.id)}
+                    onClick={() => toggleTrack(track)}
                     className={`flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
                       assigned ? "border-accent/60 bg-accent/10" : "border-border bg-white/5 hover:bg-white/10"
                     }`}
@@ -183,7 +199,7 @@ export default function TracksSection({ workspace }: Props) {
                       <span className="block truncate font-medium">{track.title}</span>
                       <span className="block text-xs text-text-secondary">
                         {track.isrc_code || "No ISRC"} · {track.genre || "No genre"}
-                        {belongsToAnotherRelease ? " · Assigned to another release" : ""}
+                        {belongsToAnotherRelease ? (markedForMove ? " · Move to this release" : " · Assigned to another release") : ""}
                       </span>
                     </span>
                   </button>
