@@ -57,10 +57,25 @@ export async function evaluateReleaseReadiness(
   });
 
   const artwork = releaseRecord["artwork_url"];
+  const legacyCoverArt = releaseRecord["cover_art_url"];
   const releaseDate = releaseRecord["release_date"];
   const artistIdsValue = releaseRecord["artist_ids"];
 
-  const hasArtwork = typeof artwork === "string" && artwork.trim().length > 0;
+  const releaseAttachment = await prisma.attachment.findFirst({
+    where: {
+      organizationId: ctx.organizationId,
+      entityType: "release",
+      entityId: String(releaseId),
+    },
+    select: { id: true },
+  });
+
+  // Release artwork is now stored through the universal Attachment/Storage
+  // Service by the release UI. Keep legacy URL fields as compatibility fallbacks.
+  const hasArtwork =
+    releaseAttachment !== null ||
+    (typeof artwork === "string" && artwork.trim().length > 0) ||
+    (typeof legacyCoverArt === "string" && legacyCoverArt.trim().length > 0);
   const hasReleaseDate =
     typeof releaseDate === "string" && !Number.isNaN(Date.parse(releaseDate));
 
