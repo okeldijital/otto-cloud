@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ChevronLeft, Layout, Plus, Bot } from "lucide-react";
+import { ChevronLeft, Layout } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import Button from "@/components/ui/Button";
 import api from "@/lib/api";
@@ -29,10 +29,12 @@ import DistributionSection from "@/components/workspace-sections/release/Distrib
 import CalendarSection from "@/components/workspace-sections/release/CalendarSection";
 import PlaybookSection from "@/components/workspace-sections/release/PlaybookSection";
 import ContractsSection from "@/components/workspace-sections/release/ContractsSection";
+import TracksSection from "@/components/workspace-sections/release/TracksSection";
 import DynamicFieldsSection from "@/components/workspace-sections/DynamicFieldsSection";
 
 registerSection({ key: "overview", label: "Overview", component: OverviewSection, icon: "overview" });
-registerSection({ key: "metadata", label: "Metadata", component: ReleaseMetadataSection, icon: "metadata", templates: ["release"] });
+registerSection({ key: "metadata", label: "Metadata", component: ReleaseMetadataSection, icon: "metadata", templates: ["release"], defaultOrder: 1 });
+registerSection({ key: "tracks", label: "Tracks", component: TracksSection, icon: "tracks", templates: ["release"], defaultOrder: 2 });
 registerSection({
   key: "contracts",
   label: "Contracts",
