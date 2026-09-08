@@ -33,19 +33,18 @@ export function validatePrimaryTrackAssignments(
     if (!trackIds.has(id)) throw new ResourceAuthError("move_track_ids contains a track that is not part of the assignment set", 400, "VALIDATION_ERROR");
   }
 
+  const invalidMoves = tracks.filter((track) => moveSet.has(track.id) && (track.release_id == null || track.release_id === targetReleaseId));
+  if (invalidMoves.length) throw new ResourceAuthError("move_track_ids must only contain tracks being moved from another Primary Release", 400, "VALIDATION_ERROR");
+
   const assignable: number[] = [];
   const alreadyAssigned: number[] = [];
   const requiresMove: number[] = [];
 
   for (const track of tracks) {
     if (track.release_id === targetReleaseId) alreadyAssigned.push(track.id);
-    else if (track.release_id == null) assignable.push(track.id);
-    else if (moveSet.has(track.id)) assignable.push(track.id);
+    else if (track.release_id == null || moveSet.has(track.id)) assignable.push(track.id);
     else requiresMove.push(track.id);
   }
-
-  const invalidMoves = tracks.filter((track) => moveSet.has(track.id) && track.release_id === targetReleaseId);
-  if (invalidMoves.length) throw new ResourceAuthError("move_track_ids must only contain tracks being assigned to the release", 400, "VALIDATION_ERROR");
 
   return { assignable, alreadyAssigned, requiresMove };
 }
