@@ -1,32 +1,153 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import PageHeader from "@/components/ui/PageHeader";
+import Card from "@/components/ui/Card";
+import Button from "@/components/ui/Button";
+import Badge from "@/components/ui/Badge";
 import api from "@/lib/api";
+import { ArrowLeft, Building, Edit, Hash, Music, Trash2 } from "lucide-react";
 
 export default function ProDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const [pro, setPro] = useState<any>(null);
+  const [artists, setArtists] = useState<any[]>([]);
+  const [works, setWorks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get(`/pros?id=${id}`).then(r => setPro(r.data)).catch(() => {}).finally(() => setLoading(false));
+    const fetchData = async () => {
+      try {
+        const [{ data: proData }, { data: artistData }, { data: workData }] = await Promise.all([
+          api.get(`/pros?id=${id}`),
+          api.get(`/pros?id=${id}&relation=artists`),
+          api.get(`/pros?id=${id}&relation=works`),
+        ]);
+        setPro(proData);
+        setArtists(Array.isArray(artistData) ? artistData : []);
+        setWorks(Array.isArray(workData) ? workData : []);
+      } catch (err) {
+        console.error("Failed to load PRO detail:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
   }, [id]);
+
+  const handleRename = async () => {
+    const name = window.prompt("PRO name:", pro.name || "");
+    if (!name || name === pro.name) return;
+    try {
+      const { data } = await api.put(`/pros?id=${id}`, { name });
+      setPro(data);
+    } catch (err: any) {
+      alert(err?.response?.data?.error || "Update failed");
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm(`Delete PRO "${pro.name}"?`)) return;
+    try {
+      await api.delete(`/pros?id=${id}`);
+      router.push("/catalog/pros");
+    } catch (err: any) {
+      alert(err?.response?.data?.error || "Delete failed");
+    }
+  };
 
   if (loading) return <div className="p-12 text-center text-text-secondary">Loading...</div>;
   if (!pro) return <div className="p-12 text-center text-text-secondary">PRO not found</div>;
 
   return (
     <div className="space-y-6">
-      <PageHeader title={pro.name || "PRO"} subtitle={`Performance Rights Organization #${id}`} />
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-premium-glass border border-white/5 rounded-2xl p-6 backdrop-blur-xl space-y-4">
-          <h3 className="text-lg font-semibold text-white">Details</h3>
-          <div className="space-y-3">
-            <div><span className="text-text-secondary text-sm">Name:</span><p className="text-white">{pro.name || "—"}</p></div>
-            <div><span className="text-text-secondary text-sm">Code:</span><p className="text-white">{pro.code || "—"}</p></div>
-          </div>
+      <div className="flex items-center gap-4">
+        <button
+          onClick={() => router.push("/catalog/pros")}
+          className="text-text-secondary hover:text-white transition-colors"
+          aria-label="Back to PROs"
+        >
+          <ArrowLeft size={20} />
+        </button>
+        <PageHeader
+          title={pro.name || "PRO"}
+          subtitle="Performance Rights Organization"
+          actions={
+            <div className="flex gap-2">
+              <Button variant="secondary" size="sm" onClick={handleRename}>
+                <Edit size={14} /> Rename
+              </Button>
+              <Button variant="danger" size="sm" onClick={handleDelete}>
+                <Trash2 size={14} /> Delete
+              </Button>
+            </div>
+          }
+        />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
+          <Card title="Details">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <span className="text-text-secondary text-xs block">Name</span>
+                <span className="font-medium">{pro.name || "—"}</span>
+              </div>
+              <div>
+                <span className="text-text-secondary text-xs block">PRO ID</span>
+                <span className="flex items-center gap-1"><Hash size={14} />{pro.pro_id || "—"}</span>
+              </div>
+            </div>
+          </Card>
+
+          <Card title="Linked Artists">
+            {artists.length === 0 ? (
+              <p className="text-text-secondary text-sm">No artists linked to this PRO.</p>
+            ) : (
+              <div className="space-y-2">
+                {artists.map((artist: any) => (
+                  <div
+                    key={artist.id}
+                    className="flex items-center gap-3 p-2 rounded-lg bg-white/5 cursor-pointer hover:bg-white/10"
+                    onClick={() => router.push(`/catalog/artists/${artist.id}`)}
+                  >
+                    <Music size={16} />
+                    <span>{artist.name}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        </div>
+
+        <div className="space-y-6">
+          <Card title="Linked Works">
+            {works.length === 0 ? (
+              <p className="text-text-secondary text-sm">No works linked to this PRO.</p>
+            ) : (
+              <div className="space-y-2">
+                {works.map((work: any) => (
+                  <div
+                    key={work.id}
+                    className="flex items-center justify-between p-2 rounded-lg bg-white/5 cursor-pointer hover:bg-white/10"
+                    onClick={() => router.push(`/catalog/works/${work.id}`)}
+                  >
+                    <span className="text-sm flex items-center gap-2"><Building size={15} />{work.title}</span>
+                    <Badge variant="neutral">{work.iswc_code || "—"}</Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+
+          <Card title="Quick Stats">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between"><span>Linked Works</span><Badge variant="primary">{works.length}</Badge></div>
+              <div className="flex items-center justify-between"><span>Linked Artists</span><Badge variant="primary">{artists.length}</Badge></div>
+            </div>
+          </Card>
         </div>
       </div>
     </div>
