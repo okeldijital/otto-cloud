@@ -37,10 +37,40 @@ export async function replaceTrackSecondaryReleases(
     if (ids.length) {
       await tx.track_releases.createMany({
         data: ids.map((releaseId) => ({ track_id: trackId, release_id: releaseId })),
-        skipDuplicates: false,
       });
     }
   });
 
   return ids;
+}
+
+/**
+ * Apply primary and secondary release changes atomically.
+ * `tracks.release_id` is the primary relationship; `track_releases` contains
+ * only secondary relationships. Secondary replacement never changes primary.
+ */
+export async function setTrackReleaseRelations(
+  trackId: number,
+  primaryReleaseId: number | null,
+  secondaryReleaseIds: unknown,
+  ctx: OrganizationContext,
+): Promise<number[]> {
+  if (primaryReleaseId !== null) await requireReleaseInOrg(primaryReleaseId, ctx);
+  const secondaryIds = normalizeSecondaryReleaseIds(secondaryReleaseIds, primaryReleaseId);
+  await validateReleaseIdsInOrg(secondaryIds, ctx);
+
+  await prisma.$transaction(async (tx) => {
+    await tx.tracks.update({
+      where: { id: trackId },
+      data: { release_id: primaryReleaseId, tenant_id: ctx.organizationId },
+    });
+    await tx.track_releases.deleteMany({ where: { track_id: trackId } });
+    if (secondaryIds.length) {
+      await tx.track_releases.createMany({
+        data: secondaryIds.map((releaseId) => ({ track_id: trackId, release_id: releaseId })),
+      });
+    }
+  });
+
+  return secondaryIds;
 }
