@@ -3,7 +3,7 @@ import { nextCookies } from "better-auth/next-js";
 import { Pool } from "pg";
 import { sendOttoEmail } from "@/lib/email/resend";
 
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL;
 const baseURL =
   process.env.BETTER_AUTH_URL ||
   process.env.NEXT_PUBLIC_URL ||
@@ -12,7 +12,7 @@ const baseURL =
 const secret = process.env.BETTER_AUTH_SECRET || process.env.NEXTAUTH_SECRET;
 
 if (!databaseUrl) {
-  throw new Error("DATABASE_URL is required for Better Auth");
+  throw new Error("DATABASE_URL_UNPOOLED or DATABASE_URL is required for Better Auth");
 }
 
 if (!secret || secret.length < 32) {
