@@ -3,7 +3,12 @@ import { nextCookies } from "better-auth/next-js";
 import { Pool } from "pg";
 import { sendOttoEmail } from "@/lib/email/resend";
 
-const databaseUrl = process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL;
+const configuredDatabaseUrl = process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL;
+const databaseUrl = configuredDatabaseUrl?.replace(
+  /^(postgres(?:ql)?:\/\/[^@]+@)([^/?#]+)(.*)$/,
+  (_match, prefix: string, host: string, suffix: string) =>
+    `${prefix}${host.replace(/-pooler(?=\.)/, "")}${suffix}`,
+);
 const baseURL =
   process.env.BETTER_AUTH_URL ||
   process.env.NEXT_PUBLIC_URL ||
@@ -52,6 +57,10 @@ void pool
 /**
  * Better Auth is the authentication/session provider for the runtime boundary.
  * OTTO IAM remains authoritative for identity, organization membership and RBAC.
+ *
+ * Neon pooled connections reject session startup parameters such as search_path.
+ * Prefer DATABASE_URL_UNPOOLED when supplied; otherwise derive the direct Neon
+ * endpoint from DATABASE_URL so the auth schema can safely use search_path.
  */
 export const auth = betterAuth({
   database: pool,
