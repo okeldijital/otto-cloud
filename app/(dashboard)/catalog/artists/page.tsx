@@ -18,7 +18,7 @@ export default function ArtistsPage() {
   const [search, setSearch] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [newArtist, setNewArtist] = useState<any>({ name: "", stage_name: "", email: "", ipi_number: "" });
+  const [newArtist, setNewArtist] = useState<any>({ name: "", aka: "", contact_email: "", ipi_number: "" });
 
   const ids = useMemo(() => data.map((a) => a.id), [data]);
   const { urls: photoUrls } = useAttachmentMap("artist", ids);
@@ -27,7 +27,7 @@ export default function ArtistsPage() {
     const query = search.trim().toLowerCase();
     if (!query) return data;
     return data.filter((artist) =>
-      [artist.name, artist.stage_name, artist.email, artist.ipi_number]
+      [artist.name, artist.aka, artist.contact_email, artist.ipi_number]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(query))
     );
@@ -52,8 +52,8 @@ export default function ArtistsPage() {
         ),
       },
       { key: "name", label: "Name", sortable: true },
-      { key: "stage_name", label: "Stage Name", sortable: true },
-      { key: "email", label: "Email", sortable: true },
+      { key: "aka", label: "AKA", sortable: true },
+      { key: "contact_email", label: "Email", sortable: true },
       {
         key: "ipi_number",
         label: "IPI",
@@ -96,7 +96,7 @@ export default function ArtistsPage() {
     try {
       await api.post("/artists", newArtist);
       setShowAddModal(false);
-      setNewArtist({ name: "", stage_name: "", email: "", ipi_number: "" });
+      setNewArtist({ name: "", aka: "", contact_email: "", ipi_number: "" });
       fetchData();
     } catch (err: any) {
       alert(err?.response?.data?.error || "Failed to create artist");
@@ -155,12 +155,12 @@ export default function ArtistsPage() {
             <input className="input w-full" value={newArtist.name} onChange={(e) => setNewArtist({ ...newArtist, name: e.target.value })} required />
           </div>
           <div>
-            <label className="text-xs font-bold text-text-secondary">Stage Name</label>
-            <input className="input w-full" value={newArtist.stage_name} onChange={(e) => setNewArtist({ ...newArtist, stage_name: e.target.value })} />
+            <label className="text-xs font-bold text-text-secondary">AKA</label>
+            <input className="input w-full" value={newArtist.aka} onChange={(e) => setNewArtist({ ...newArtist, aka: e.target.value })} />
           </div>
           <div>
             <label className="text-xs font-bold text-text-secondary">Email</label>
-            <input className="input w-full" type="email" value={newArtist.email} onChange={(e) => setNewArtist({ ...newArtist, email: e.target.value })} />
+            <input className="input w-full" type="email" value={newArtist.contact_email} onChange={(e) => setNewArtist({ ...newArtist, contact_email: e.target.value })} />
           </div>
           <div>
             <label className="text-xs font-bold text-text-secondary">IPI Number</label>
