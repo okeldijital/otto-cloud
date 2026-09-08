@@ -80,7 +80,7 @@ export async function GET(req: Request) {
       if (relation === "releases") {
         const releases = await prisma.$queryRaw<any[]>(Prisma.sql`
           SELECT * FROM "releases"
-          WHERE "organization_id" = ${orgId} AND "is_deleted" = false
+          WHERE "organization_id" = ${Prisma.raw(`'${orgId}'::uuid`)} AND "is_deleted" = false
             AND ("artist_id" = ${id} OR "artist_ids"::jsonb @> jsonb_build_array(${id}))
         `);
         return NextResponse.json(releases);
@@ -89,7 +89,7 @@ export async function GET(req: Request) {
       if (relation === "works") {
         const works = await prisma.$queryRaw<any[]>(Prisma.sql`
           SELECT * FROM "works"
-          WHERE "organization_id" = ${orgId} AND "is_deleted" = false
+          WHERE "organization_id" = ${Prisma.raw(`'${orgId}'::uuid`)} AND "is_deleted" = false
             AND ("composers"::jsonb @> jsonb_build_array(${id}) OR "arrangers"::jsonb @> jsonb_build_array(${id}))
         `);
         return NextResponse.json(works);
