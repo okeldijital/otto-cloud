@@ -10,7 +10,7 @@ import api from "@/lib/api";
 
 const columns = [
   { key: "name", label: "Name", sortable: true },
-  { key: "code", label: "Code", render: (row: any) => row.code || "—" },
+  { key: "pro_id", label: "PRO ID", render: (row: any) => row.pro_id || "—" },
 ];
 
 export default function ProsPage() {
@@ -20,7 +20,7 @@ export default function ProsPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editItem, setEditItem] = useState<any>(null);
-  const [form, setForm] = useState<any>({ name: "", code: "" });
+  const [form, setForm] = useState<any>({ name: "", pro_id: "" });
 
   const fetchData = async () => {
     try {
@@ -50,7 +50,7 @@ export default function ProsPage() {
 
   const handleEdit = (row: any) => {
     setEditItem(row);
-    setForm({ name: row.name || "", code: row.code || "" });
+    setForm({ name: row.name || "", pro_id: row.pro_id || "" });
     setShowEditModal(true);
   };
 
@@ -75,7 +75,7 @@ export default function ProsPage() {
     try {
       await api.post("/pros", form);
       setShowAddModal(false);
-      setForm({ name: "", code: "" });
+      setForm({ name: "", pro_id: "" });
       fetchData();
     } catch (err: any) {
       alert(err?.response?.data?.error || "Failed to create PRO");
@@ -90,7 +90,7 @@ export default function ProsPage() {
         title="PROs"
         subtitle="Performance Rights Organizations"
         actions={
-          <Button variant="primary" size="sm" onClick={() => { setForm({ name: "", code: "" }); setShowAddModal(true); }}>
+          <Button variant="primary" size="sm" onClick={() => { setForm({ name: "", pro_id: "" }); setShowAddModal(true); }}>
             <Plus size={16} />
             Add PRO
           </Button>
@@ -112,8 +112,8 @@ export default function ProsPage() {
             <input className="input w-full" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
           </div>
           <div>
-            <label className="text-xs text-text-secondary font-bold">Code</label>
-            <input className="input w-full" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} />
+            <label className="text-xs text-text-secondary font-bold">PRO ID</label>
+            <input className="input w-full" value={form.pro_id} onChange={(e) => setForm({ ...form, pro_id: e.target.value })} />
           </div>
         </div>
       </EntityForm>
@@ -125,8 +125,8 @@ export default function ProsPage() {
             <input className="input w-full" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
           </div>
           <div>
-            <label className="text-xs text-text-secondary font-bold">Code</label>
-            <input className="input w-full" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} />
+            <label className="text-xs text-text-secondary font-bold">PRO ID</label>
+            <input className="input w-full" value={form.pro_id} onChange={(e) => setForm({ ...form, pro_id: e.target.value })} />
           </div>
         </div>
       </EntityForm>
