@@ -16,12 +16,12 @@ function idColumnFor(entity: CatalogArtistRelationEntity) {
  * is normalized in release_artists / track_artists.
  */
 export async function getCatalogArtistIds(entity: CatalogArtistRelationEntity, entityId: number) {
-  const rows = await prisma.$queryRaw<Array<{ artist_id: number }>>`
-    SELECT artist_id
-    FROM ${prisma.raw(tableFor(entity))}
-    WHERE ${prisma.raw(idColumnFor(entity))} = ${entityId}
-    ORDER BY position ASC
-  `;
+  const table = tableFor(entity);
+  const idColumn = idColumnFor(entity);
+  const rows = await prisma.$queryRawUnsafe<Array<{ artist_id: number }>>(
+    `SELECT artist_id FROM ${table} WHERE ${idColumn} = $1 ORDER BY position ASC`,
+    entityId,
+  );
   return rows.map((row) => row.artist_id);
 }
 
