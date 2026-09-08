@@ -4,6 +4,8 @@ import type { OrganizationContext } from "@/lib/auth/organization-context";
 
 export type SecondaryReleaseInput = number[];
 
+type PrimaryTrackAssignment = { id: number; release_id: number | null };
+
 export function normalizeSecondaryReleaseIds(value: unknown, primaryReleaseId?: number | null): number[] {
   if (!Array.isArray(value)) throw new ResourceAuthError("secondary_release_ids must be an array of release IDs", 400, "VALIDATION_ERROR");
   const ids = value.map((raw) => {
@@ -17,6 +19,35 @@ export function normalizeSecondaryReleaseIds(value: unknown, primaryReleaseId?: 
     throw new ResourceAuthError("The primary release cannot also be a secondary release", 400, "RELATIONSHIP_CONFLICT");
   }
   return unique;
+}
+
+/** Validate Release-side assignment without permitting an implicit Primary Release move. */
+export function validatePrimaryTrackAssignments(
+  tracks: PrimaryTrackAssignment[],
+  targetReleaseId: number,
+  moveTrackIds: number[] = [],
+): { assignable: number[]; alreadyAssigned: number[]; requiresMove: number[] } {
+  const moveSet = new Set(moveTrackIds);
+  const trackIds = new Set(tracks.map((track) => track.id));
+  for (const id of moveSet) {
+    if (!trackIds.has(id)) throw new ResourceAuthError("move_track_ids contains a track that is not part of the assignment set", 400, "VALIDATION_ERROR");
+  }
+
+  const assignable: number[] = [];
+  const alreadyAssigned: number[] = [];
+  const requiresMove: number[] = [];
+
+  for (const track of tracks) {
+    if (track.release_id === targetReleaseId) alreadyAssigned.push(track.id);
+    else if (track.release_id == null) assignable.push(track.id);
+    else if (moveSet.has(track.id)) assignable.push(track.id);
+    else requiresMove.push(track.id);
+  }
+
+  const invalidMoves = tracks.filter((track) => moveSet.has(track.id) && track.release_id === targetReleaseId);
+  if (invalidMoves.length) throw new ResourceAuthError("move_track_ids must only contain tracks being assigned to the release", 400, "VALIDATION_ERROR");
+
+  return { assignable, alreadyAssigned, requiresMove };
 }
 
 export async function validateReleaseIdsInOrg(ids: number[], ctx: OrganizationContext): Promise<void> {
