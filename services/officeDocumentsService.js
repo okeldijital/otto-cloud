@@ -43,6 +43,7 @@ const officeDocumentsService = {
     },
 
     async upload(payload, params = {}) {
+        // Accept explicit entity context while retaining compatibility with the existing Files UI.
         const entityType = params.entityType || params.entity_type || activeEntity.entityType;
         const entityId = params.entityId || params.entity_id || activeEntity.entityId;
         if (!entityType || !entityId) {
