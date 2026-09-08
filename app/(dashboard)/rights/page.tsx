@@ -67,9 +67,9 @@ export default function RightsRegistryPage() {
 
       <div className="flex flex-wrap gap-2">
         <div className="flex-1 min-w-[200px] relative"><Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" /><input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Enter" && search()} placeholder="Search title, owner, category…" className="input w-full pl-9" /></div>
-        <select value={status} onChange={(e) => setStatus(e.target.value)} className="input w-auto appearance-none bg-surface text-text-primary border-border focus:border-accent focus:ring-2 focus:ring-accent/20">
-          <option value="">All statuses</option>
-          {["active", "approved", "suspended", "expired", "terminated", "archived"].map((s) => <option key={s} value={s}>{s}</option>)}
+        <select value={status} onChange={(e) => setStatus(e.target.value)} className="input w-auto appearance-none bg-white text-black border-border focus:border-accent focus:ring-2 focus:ring-accent/20">
+          <option value="" className="bg-black text-white">All statuses</option>
+          {["active", "approved", "suspended", "expired", "terminated", "archived"].map((s) => <option key={s} value={s} className="bg-black text-white">{s}</option>)}
         </select>
         <Button size="sm" onClick={search}>Search</Button>
       </div>
