@@ -21,7 +21,12 @@ assert.deepEqual(validatePrimaryTrackAssignments(tracks, 10, [3]), {
 
 assert.throws(
   () => validatePrimaryTrackAssignments(tracks, 10, [2]),
-  /move_track_ids must only contain tracks being assigned to the release/,
+  /move_track_ids must only contain tracks being moved from another Primary Release/,
+);
+
+assert.throws(
+  () => validatePrimaryTrackAssignments(tracks, 10, [1]),
+  /move_track_ids must only contain tracks being moved from another Primary Release/,
 );
 
 assert.throws(
