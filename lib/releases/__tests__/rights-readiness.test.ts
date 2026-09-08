@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { buildRightsReadiness } from "@/lib/releases/readiness";
+import { buildRightsReadiness, hasReleaseArtwork } from "@/lib/releases/readiness";
 
 function testRightsReadinessPolicy() {
   // Same-organization release-level evidence plus complete artist coverage.
@@ -69,5 +69,28 @@ function testRightsReadinessPolicy() {
   );
 }
 
+function testArtworkSources() {
+  // Current release UI stores artwork as an organization-scoped attachment.
+  assert.equal(hasReleaseArtwork({ attachmentExists: true }), true);
+
+  // Legacy artwork URL remains a valid compatibility source.
+  assert.equal(
+    hasReleaseArtwork({ attachmentExists: false, artworkUrl: "https://example.com/art.jpg" }),
+    true
+  );
+  assert.equal(
+    hasReleaseArtwork({ attachmentExists: false, legacyCoverArtUrl: "https://example.com/legacy.jpg" }),
+    true
+  );
+
+  // Empty/absent artwork must remain a readiness blocker.
+  assert.equal(hasReleaseArtwork({ attachmentExists: false }), false);
+  assert.equal(
+    hasReleaseArtwork({ attachmentExists: false, artworkUrl: "   ", legacyCoverArtUrl: "" }),
+    false
+  );
+}
+
 testRightsReadinessPolicy();
+testArtworkSources();
 console.log("RRM rights readiness regression tests passed.");

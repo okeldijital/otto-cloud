@@ -22,6 +22,21 @@ export type RightsReadinessInput = {
   trackCoverage: boolean;
 };
 
+export type ReleaseArtworkInput = {
+  attachmentExists: boolean;
+  artworkUrl?: unknown;
+  legacyCoverArtUrl?: unknown;
+};
+
+/** Release artwork may be represented by the current Attachment/Storage Service or legacy URL fields. */
+export function hasReleaseArtwork(input: ReleaseArtworkInput): boolean {
+  return (
+    input.attachmentExists ||
+    (typeof input.artworkUrl === "string" && input.artworkUrl.trim().length > 0) ||
+    (typeof input.legacyCoverArtUrl === "string" && input.legacyCoverArtUrl.trim().length > 0)
+  );
+}
+
 /**
  * Rights readiness is coverage-based rather than "any contract exists".
  *
@@ -57,10 +72,26 @@ export async function evaluateReleaseReadiness(
   });
 
   const artwork = releaseRecord["artwork_url"];
+  const legacyCoverArt = releaseRecord["cover_art_url"];
   const releaseDate = releaseRecord["release_date"];
   const artistIdsValue = releaseRecord["artist_ids"];
 
-  const hasArtwork = typeof artwork === "string" && artwork.trim().length > 0;
+  const releaseAttachment = await prisma.attachment.findFirst({
+    where: {
+      organizationId: ctx.organizationId,
+      entityType: "release",
+      entityId: String(releaseId),
+    },
+    select: { id: true },
+  });
+
+  // Release artwork is stored through the universal Attachment/Storage Service by the release UI.
+  // Legacy URL fields remain supported for compatibility with older releases.
+  const hasArtwork = hasReleaseArtwork({
+    attachmentExists: releaseAttachment !== null,
+    artworkUrl: artwork,
+    legacyCoverArtUrl: legacyCoverArt,
+  });
   const hasReleaseDate =
     typeof releaseDate === "string" && !Number.isNaN(Date.parse(releaseDate));
 

@@ -12,6 +12,7 @@
     "auth:migrate": "auth migrate",
     "test:r7-release-api": "tsx lib/releases/__tests__/acceptance.test.ts",
     "test:rrm-rights-readiness": "tsx lib/releases/__tests__/rights-readiness.test.ts",
+    "test:prod-release-e2e": "tsx scripts/acceptance/prod-release-e2e.ts",
     "test:a8-step5": "tsx lib/auth/__tests__/step5-security-remediation.test.ts",
     "test:a8-http": "tsx lib/auth/__tests__/http-authorization-boundary.test.ts",
     "test:a9-http": "tsx lib/auth/__tests__/a9-http-boundary.test.ts",
