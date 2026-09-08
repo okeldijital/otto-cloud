@@ -22,6 +22,21 @@ export type RightsReadinessInput = {
   trackCoverage: boolean;
 };
 
+export type ReleaseArtworkInput = {
+  attachmentExists: boolean;
+  artworkUrl?: unknown;
+  legacyCoverArtUrl?: unknown;
+};
+
+/** Release artwork may be represented by the current Attachment/Storage Service or legacy URL fields. */
+export function hasReleaseArtwork(input: ReleaseArtworkInput): boolean {
+  return (
+    input.attachmentExists ||
+    (typeof input.artworkUrl === "string" && input.artworkUrl.trim().length > 0) ||
+    (typeof input.legacyCoverArtUrl === "string" && input.legacyCoverArtUrl.trim().length > 0)
+  );
+}
+
 /**
  * Rights readiness is coverage-based rather than "any contract exists".
  *
@@ -70,12 +85,13 @@ export async function evaluateReleaseReadiness(
     select: { id: true },
   });
 
-  // Release artwork is now stored through the universal Attachment/Storage
-  // Service by the release UI. Keep legacy URL fields as compatibility fallbacks.
-  const hasArtwork =
-    releaseAttachment !== null ||
-    (typeof artwork === "string" && artwork.trim().length > 0) ||
-    (typeof legacyCoverArt === "string" && legacyCoverArt.trim().length > 0);
+  // Release artwork is stored through the universal Attachment/Storage Service by the release UI.
+  // Legacy URL fields remain supported for compatibility with older releases.
+  const hasArtwork = hasReleaseArtwork({
+    attachmentExists: releaseAttachment !== null,
+    artworkUrl: artwork,
+    legacyCoverArtUrl: legacyCoverArt,
+  });
   const hasReleaseDate =
     typeof releaseDate === "string" && !Number.isNaN(Date.parse(releaseDate));
 
