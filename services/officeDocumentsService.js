@@ -1,5 +1,7 @@
 import api from '../lib/api';
 
+let activeEntity = { entityType: null, entityId: null };
+
 const DOC_TYPE_LABELS = {
     split_sheet: 'Split Sheet',
     registration_proof: 'PRO Registration',
@@ -18,9 +20,6 @@ const toLegacyDocument = (item) => {
         mime_type: item.mimeType,
         file_size_bytes: item.fileSize,
         created_at: item.createdAt,
-        // The canonical Attachment model does not persist the legacy document
-        // title/description/doc_type fields. Keep the compatibility shape
-        // deterministic so the existing Files UI never renders empty metadata.
         title: item.title || originalFilename,
         description: item.description || '',
         doc_type: DOC_TYPE_LABELS[category] ? category : 'other',
@@ -31,6 +30,7 @@ const officeDocumentsService = {
     async list(params = {}) {
         const entityType = params.entityType || params.entity_type;
         const entityId = params.entityId || params.entity_id;
+        activeEntity = { entityType, entityId };
         const response = await api.get('/files', {
             params: { entityType, entityId },
         });
@@ -43,12 +43,13 @@ const officeDocumentsService = {
     },
 
     async upload(payload, params = {}) {
-        const entityType = params.entityType || params.entity_type;
-        const entityId = params.entityId || params.entity_id;
+        const entityType = params.entityType || params.entity_type || activeEntity.entityType;
+        const entityId = params.entityId || params.entity_id || activeEntity.entityId;
         if (!entityType || !entityId) {
             throw new Error('Attachment entity context is not available');
         }
 
+        activeEntity = { entityType, entityId };
         payload.append('entityType', entityType);
         payload.append('entityId', String(entityId));
         const response = await api.post('/storage/upload', payload, {
