@@ -1,25 +1,32 @@
 import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 import { getFileBuffer } from "@/lib/storage";
 import {
   requireAttachmentInOrg,
   requireOrgAuth,
   resourceAuthErrorResponse,
+  requireUploadEntityInOrg,
 } from "@/lib/auth/resource-authorization";
 
 /**
- * File download by attachment id only (A.8 IDOR fix).
- * Raw storage paths are not accepted — use /api/storage/download/[id] preferred path.
+ * Files API.
+ *
+ * GET /api/files?entityType=track&entityId=123 lists organization-scoped
+ * attachments bound to an entity.
+ * GET /api/files?attachmentId=... downloads one attachment by id.
+ * Raw storage paths are never accepted.
  */
 export async function GET(req: Request) {
   try {
     const ctx = await requireOrgAuth();
     const { searchParams } = new URL(req.url);
+    const entityType = searchParams.get("entityType") || searchParams.get("entity_type");
+    const entityId = searchParams.get("entityId") || searchParams.get("entity_id");
     const attachmentId =
       searchParams.get("attachmentId") ||
       searchParams.get("id") ||
       searchParams.get("attachment_id");
 
-    // Reject path-based access (previous IDOR vector)
     if (searchParams.get("path")) {
       return NextResponse.json(
         {
@@ -29,6 +36,39 @@ export async function GET(req: Request) {
         },
         { status: 400 }
       );
+    }
+
+    if (entityType || entityId) {
+      if (!entityType || !entityId) {
+        return NextResponse.json(
+          { error: "entityType and entityId are required" },
+          { status: 400 }
+        );
+      }
+
+      const bound = await requireUploadEntityInOrg(entityType, entityId, ctx);
+      const attachments = await prisma.attachment.findMany({
+        where: {
+          organizationId: ctx.organizationId,
+          entityType: bound.entityType,
+          entityId: bound.entityId,
+        },
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          entityType: true,
+          entityId: true,
+          fileName: true,
+          originalName: true,
+          mimeType: true,
+          category: true,
+          fileSize: true,
+          version: true,
+          createdAt: true,
+        },
+      });
+
+      return NextResponse.json({ items: attachments });
     }
 
     if (!attachmentId) {
@@ -66,6 +106,7 @@ export async function GET(req: Request) {
       headers: {
         "Content-Type": mimeType,
         "Content-Length": String(buffer.length),
+        "Content-Disposition": `inline; filename="${name.replace(/"/g, "")}"`,
         "Cache-Control": "private, max-age=3600",
       },
     });
