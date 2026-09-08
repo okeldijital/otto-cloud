@@ -35,6 +35,10 @@ export function validateReleaseMetadata(input: Record<string, unknown>, mode: "c
   if (input.release_date !== undefined && input.release_date !== null && input.release_date !== "") {
     if (typeof input.release_date !== "string" || Number.isNaN(Date.parse(input.release_date))) {
       errors.release_date = "Release date must be a valid ISO date.";
+    } else {
+      // The database field is Prisma DateTime while the UI supplies a date-only value.
+      // Normalize valid date input before the caller passes the object to Prisma.
+      input.release_date = new Date(input.release_date).toISOString();
     }
   }
 
