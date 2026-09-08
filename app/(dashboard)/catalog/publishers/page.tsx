@@ -11,7 +11,7 @@ import api from "@/lib/api";
 
 const columns = [
   { key: "name", label: "Name", sortable: true },
-  { key: "code", label: "Code", render: (row: any) => row.code || "—" },
+  { key: "publisher_id", label: "Publisher ID", render: (row: any) => row.publisher_id || "—" },
 ];
 
 export default function PublishersPage() {
@@ -20,7 +20,7 @@ export default function PublishersPage() {
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [newPublisher, setNewPublisher] = useState<any>({ name: "", code: "" });
+  const [newPublisher, setNewPublisher] = useState<any>({ name: "", publisher_id: "" });
 
   const fetchData = async () => {
     try {
@@ -54,7 +54,7 @@ export default function PublishersPage() {
     try {
       await api.post("/publishers", newPublisher);
       setShowAddModal(false);
-      setNewPublisher({ name: "", code: "" });
+      setNewPublisher({ name: "", publisher_id: "" });
       fetchData();
     } catch (err: any) {
       alert(err?.response?.data?.error || "Failed to create publisher");
@@ -91,8 +91,8 @@ export default function PublishersPage() {
             <input className="input w-full" value={newPublisher.name} onChange={(e) => setNewPublisher({ ...newPublisher, name: e.target.value })} required />
           </div>
           <div>
-            <label className="text-xs text-text-secondary font-bold">Code</label>
-            <input className="input w-full" value={newPublisher.code} onChange={(e) => setNewPublisher({ ...newPublisher, code: e.target.value })} />
+            <label className="text-xs text-text-secondary font-bold">Publisher ID</label>
+            <input className="input w-full" value={newPublisher.publisher_id} onChange={(e) => setNewPublisher({ ...newPublisher, publisher_id: e.target.value })} />
           </div>
         </div>
       </EntityForm>
