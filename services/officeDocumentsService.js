@@ -53,6 +53,16 @@ const officeDocumentsService = {
         activeEntity = { entityType, entityId };
         payload.append('entityType', entityType);
         payload.append('entityId', String(entityId));
+
+        // The canonical Storage API persists `category`. The legacy Files UI sends `doc_type`.
+        // Translate that field at the service boundary so the selected document type is not lost.
+        if (!payload.get('category')) {
+            const legacyType = payload.get('doc_type');
+            if (typeof legacyType === 'string' && DOC_TYPE_LABELS[legacyType]) {
+                payload.append('category', legacyType);
+            }
+        }
+
         const response = await api.post('/storage/upload', payload, {
             headers: { 'Content-Type': 'multipart/form-data' },
         });
