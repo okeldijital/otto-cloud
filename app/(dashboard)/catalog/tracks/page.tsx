@@ -64,7 +64,7 @@ export default function TracksPage() {
   }, [data, search, genreFilter]);
 
   const handleDelete = async (row: any) => {
-    if (!window.confirm(`Delete track "${row.title}"? This cannot be undone.`)) return;
+    if (!window.confirm(`Delete track \"${row.title}\"? This cannot be undone.`)) return;
     try {
       await api.delete(`/tracks?id=${row.id}`);
       fetchData();
@@ -77,7 +77,13 @@ export default function TracksPage() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      await api.post("/tracks", newTrack);
+      const payload = {
+        title: newTrack.title,
+        isrc_code: newTrack.isrc || undefined,
+        genre: newTrack.genre || undefined,
+        duration: newTrack.duration || undefined,
+      };
+      await api.post("/tracks", payload);
       setShowAddModal(false);
       setNewTrack({ title: "", isrc: "", genre: "", duration: "" });
       fetchData();
