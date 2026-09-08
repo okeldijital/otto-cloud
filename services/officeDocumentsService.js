@@ -1,5 +1,7 @@
 import api from '../lib/api';
 
+let activeEntity = { entityType: null, entityId: null };
+
 const toLegacyDocument = (item) => ({
     ...item,
     original_filename: item.originalName || item.fileName,
@@ -10,11 +12,11 @@ const toLegacyDocument = (item) => ({
 
 const officeDocumentsService = {
     async list(params = {}) {
+        const entityType = params.entityType || params.entity_type;
+        const entityId = params.entityId || params.entity_id;
+        activeEntity = { entityType, entityId };
         const response = await api.get('/api/files', {
-            params: {
-                entityType: params.entityType || params.entity_type,
-                entityId: params.entityId || params.entity_id,
-            },
+            params: { entityType, entityId },
         });
         const items = Array.isArray(response.data?.items)
             ? response.data.items
@@ -25,6 +27,11 @@ const officeDocumentsService = {
     },
 
     async upload(payload) {
+        if (!activeEntity.entityType || !activeEntity.entityId) {
+            throw new Error('Attachment entity context is not available');
+        }
+        payload.append('entityType', activeEntity.entityType);
+        payload.append('entityId', String(activeEntity.entityId));
         const response = await api.post('/api/storage/upload', payload, {
             headers: { 'Content-Type': 'multipart/form-data' },
         });
@@ -32,8 +39,7 @@ const officeDocumentsService = {
     },
 
     async link() {
-        // The canonical storage upload binds the attachment to the entity at
-        // creation time. Linking as a second mutation is intentionally removed.
+        // Canonical storage upload binds the attachment to the entity at creation time.
         return null;
     },
 
