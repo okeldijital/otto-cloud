@@ -15,7 +15,7 @@ const officeDocumentsService = {
         const entityType = params.entityType || params.entity_type;
         const entityId = params.entityId || params.entity_id;
         activeEntity = { entityType, entityId };
-        const response = await api.get('/api/files', {
+        const response = await api.get('/files', {
             params: { entityType, entityId },
         });
         const items = Array.isArray(response.data?.items)
@@ -32,7 +32,7 @@ const officeDocumentsService = {
         }
         payload.append('entityType', activeEntity.entityType);
         payload.append('entityId', String(activeEntity.entityId));
-        const response = await api.post('/api/storage/upload', payload, {
+        const response = await api.post('/storage/upload', payload, {
             headers: { 'Content-Type': 'multipart/form-data' },
         });
         return toLegacyDocument(response.data?.attachment || response.data);
@@ -44,7 +44,7 @@ const officeDocumentsService = {
     },
 
     async remove(documentId) {
-        return api.delete(`/api/storage/${documentId}`);
+        return api.delete(`/storage/${documentId}`);
     },
 
     downloadUrl(documentId) {
