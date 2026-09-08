@@ -96,8 +96,9 @@ export async function GET(req: Request) {
       }
 
       if (relation === "members") {
+        await requireArtistInOrg(id, ctx);
         const memberships = await prisma.artist_memberships.findMany({
-          where: { group_id: id },
+          where: { group_id: id, organization_id: ctx.legacyIntOrgId },
           include: { artists_artist_memberships_member_idToartists: true },
         });
         return NextResponse.json(
@@ -243,7 +244,7 @@ export async function PUT(req: Request) {
     const updated = await prisma.artists.update({ where: { id }, data: updateData, include: includeMemberships });
 
     if (member_ids !== undefined && (updated.artist_kind || "solo") === "group") {
-      await prisma.artist_memberships.deleteMany({ where: { group_id: id } });
+      await prisma.artist_memberships.deleteMany({ where: { group_id: id, organization_id: ctx.legacyIntOrgId } });
       for (const mid of member_ids) {
         await requireArtistInOrg(Number(mid), ctx);
         await prisma.artist_memberships.create({ data: { group_id: id, member_id: Number(mid), organization_id: ctx.legacyIntOrgId } });
@@ -275,7 +276,7 @@ export async function DELETE(req: Request) {
     if (memberIdStr) {
       const memberId = parseInt(memberIdStr);
       await requireArtistInOrg(memberId, ctx);
-      await prisma.artist_memberships.deleteMany({ where: { group_id: id, member_id: memberId } });
+      await prisma.artist_memberships.deleteMany({ where: { group_id: id, member_id: memberId, organization_id: ctx.legacyIntOrgId } });
       return new NextResponse(null, { status: 204 });
     }
 
