@@ -13,10 +13,42 @@ import {
   trackOrgScopeWhere,
 } from "@/lib/auth/resource-authorization";
 
+function normalizeDuration(value: unknown): Date | null {
+  if (value === undefined || value === null || value === "") return null;
+  if (value instanceof Date) return value;
+  if (typeof value !== "string") throw new Error("Invalid duration");
+
+  const match = value.trim().match(/^(\d{1,2}):(\d{2})(?::(\d{2})(?:\.(\d{1,6}))?)?$/);
+  if (!match) throw new Error("Duration must use HH:MM, HH:MM:SS, or HH:MM:SS.ffffff format");
+
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  const seconds = Number(match[3] || "0");
+  const micros = (match[4] || "").padEnd(6, "0");
+  const milliseconds = Number(micros.slice(0, 3) || "0");
+
+  if (hours > 23 || minutes > 59 || seconds > 59) {
+    throw new Error("Duration must be a valid PostgreSQL time value");
+  }
+
+  return new Date(Date.UTC(1970, 0, 1, hours, minutes, seconds, milliseconds));
+}
+
+function normalizeTrackPayload(input: Record<string, any>) {
+  const payload = { ...input };
+  delete payload.organization_id;
+  delete payload.organizationId;
+
+  if ("duration" in payload) {
+    payload.duration = normalizeDuration(payload.duration);
+  }
+
+  return payload;
+}
+
 /**
- * Tracks have no organization_id column.
- * Access is scoped via tenant_id, primary release, work, or secondary track_releases
- * belonging to the caller's organization (see trackOrgScopeWhere).
+ * Tracks are organization-owned through tenant_id plus release/work relationships.
+ * The tenant_id path is the canonical ownership boundary for newly-created tracks.
  */
 export async function GET(req: Request) {
   try {
@@ -152,8 +184,8 @@ export async function POST(req: Request) {
       });
     }
 
-    const { secondary_release_ids, ...trackData } = body;
-    delete trackData.organization_id;
+    const { secondary_release_ids, ...rawTrackData } = body;
+    const trackData = normalizeTrackPayload(rawTrackData);
 
     if (trackData.release_id) {
       await requireReleaseInOrg(parseInt(String(trackData.release_id)), ctx);
@@ -162,7 +194,6 @@ export async function POST(req: Request) {
       await requireWorkInOrg(parseInt(String(trackData.work_id)), ctx);
     }
 
-    // Stamp tenant for future org scoping
     trackData.tenant_id = ctx.organizationId;
 
     if (trackData.release_id) {
@@ -203,6 +234,9 @@ export async function POST(req: Request) {
     if (mapped.status === 401 || mapped.status === 403 || mapped.status === 404) {
       return NextResponse.json(mapped.body, { status: mapped.status });
     }
+    if (err?.message?.startsWith("Duration")) {
+      return NextResponse.json({ error: err.message }, { status: 400 });
+    }
     console.error("[POST /api/tracks]", err);
     if (err.code === "P2002") {
       return NextResponse.json(
@@ -224,8 +258,8 @@ export async function PUT(req: Request) {
     if (!Number.isFinite(id)) return NextResponse.json({ error: "Invalid track ID" }, { status: 400 });
 
     const body = await req.json();
-    const { secondary_release_ids, ...updateData } = body;
-    delete updateData.organization_id;
+    const { secondary_release_ids, ...rawUpdateData } = body;
+    const updateData = normalizeTrackPayload(rawUpdateData);
 
     const existing = await requireTrackInOrg(id, ctx);
 
@@ -281,6 +315,9 @@ export async function PUT(req: Request) {
     const mapped = resourceAuthErrorResponse(err);
     if (mapped.status === 401 || mapped.status === 403 || mapped.status === 404) {
       return NextResponse.json(mapped.body, { status: mapped.status });
+    }
+    if (err?.message?.startsWith("Duration")) {
+      return NextResponse.json({ error: err.message }, { status: 400 });
     }
     console.error("[PUT /api/tracks]", err);
     if (err.code === "P2002") {
