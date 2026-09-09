@@ -27,7 +27,7 @@ export default function ArtistsPage() {
     const query = search.trim().toLowerCase();
     if (!query) return data;
     return data.filter((artist) =>
-      [artist.name, artist.aka, artist.contact_email, artist.ipi_number]
+      [artist.name, artist.aka, artist.display_name, artist.contact_email, artist.ipi_number]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(query))
     );
@@ -43,7 +43,7 @@ export default function ArtistsPage() {
             entityType="artist"
             entityId={row.id}
             src={photoUrls[String(row.id)] ?? null}
-            alt={row.name}
+            alt={row.display_name || row.aka || row.name}
             size={40}
             placeholder="artist"
             className="rounded-full"
@@ -51,8 +51,18 @@ export default function ArtistsPage() {
           />
         ),
       },
-      { key: "name", label: "Name", sortable: true },
-      { key: "aka", label: "AKA", sortable: true },
+      {
+        key: "display_name",
+        label: "Artist",
+        sortable: true,
+        render: (row: any) => row.display_name || row.aka || row.name || "—",
+      },
+      {
+        key: "name",
+        label: "Legal Name",
+        sortable: true,
+        render: (row: any) => row.name || "—",
+      },
       { key: "contact_email", label: "Email", sortable: true },
       {
         key: "ipi_number",
@@ -81,7 +91,7 @@ export default function ArtistsPage() {
   }, []);
 
   const handleDelete = async (row: any) => {
-    if (!window.confirm(`Delete artist "${row.name}"? This cannot be undone.`)) return;
+    if (!window.confirm(`Delete artist "${row.display_name || row.aka || row.name}"? This cannot be undone.`)) return;
     try {
       await api.delete(`/artists?id=${row.id}`);
       fetchData();
@@ -151,11 +161,11 @@ export default function ArtistsPage() {
       <EntityForm title="New Artist" isOpen={showAddModal} onClose={() => setShowAddModal(false)} onSubmit={handleCreate} isSubmitting={isSubmitting} error={undefined}>
         <div className="space-y-4">
           <div>
-            <label className="text-xs font-bold text-text-secondary">Name *</label>
+            <label className="text-xs font-bold text-text-secondary">Legal Name *</label>
             <input className="input w-full" value={newArtist.name} onChange={(e) => setNewArtist({ ...newArtist, name: e.target.value })} required />
           </div>
           <div>
-            <label className="text-xs font-bold text-text-secondary">AKA</label>
+            <label className="text-xs font-bold text-text-secondary">Stage Name (AKA)</label>
             <input className="input w-full" value={newArtist.aka} onChange={(e) => setNewArtist({ ...newArtist, aka: e.target.value })} />
           </div>
           <div>
