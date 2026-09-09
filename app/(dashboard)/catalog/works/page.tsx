@@ -40,10 +40,21 @@ export default function WorksPage() {
   });
 
   const fetchData = async () => {
+    setLoading(true);
     try {
-      const res = await api.get("/works");
+      const res = await api.get("/works?limit=50");
       const items = Array.isArray(res.data) ? res.data : res.data?.items || [];
-      setData(items);
+      const aggregates = await Promise.all(
+        items.map(async (item: any) => {
+          try {
+            const detail = await api.get(`/works?id=${item.id}`);
+            return detail.data;
+          } catch {
+            return item;
+          }
+        }),
+      );
+      setData(aggregates);
     } catch (err) {
       console.error("Failed to fetch works:", err);
     } finally {
