@@ -1,9 +1,9 @@
 /**
  * Organization-scoped Label relationship contract.
  *
- * Labels themselves are global reference data (no organization_id).
- * Related catalog rows (artists, releases) MUST be filtered to the
- * active organization so Label Detail cannot leak cross-tenant records.
+ * Labels are organization-owned catalogue entities. Related catalog rows
+ * (artists, releases) MUST be filtered to the active organization, and the
+ * database enforces the same organization boundary through composite FKs.
  */
 
 export type LabelCatalogRelation = "artists" | "releases";
