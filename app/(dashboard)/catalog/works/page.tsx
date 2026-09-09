@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Search, SlidersHorizontal } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
@@ -11,7 +11,17 @@ import api from "@/lib/api";
 
 const columns = [
   { key: "title", label: "Title", sortable: true },
+  {
+    key: "writers",
+    label: "Writers",
+    sortable: false,
+    render: (row: any) => {
+      const writers = Array.isArray(row.contributors) ? row.contributors : [];
+      return writers.length ? writers.map((writer: any) => writer.name).join(", ") : "—";
+    },
+  },
   { key: "iswc_code", label: "ISWC", sortable: true, render: (row: any) => row.iswc_code || "—" },
+  { key: "status", label: "Status", sortable: true, render: (row: any) => row.status || "draft" },
 ];
 
 export default function WorksPage() {
@@ -21,7 +31,13 @@ export default function WorksPage() {
   const [search, setSearch] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [newWork, setNewWork] = useState<any>({ title: "", iswc_code: "" });
+  const [newWork, setNewWork] = useState({
+    title: "",
+    workId: "",
+    iswcCode: "",
+    workType: "composition",
+    status: "draft",
+  });
 
   const fetchData = async () => {
     try {
@@ -42,7 +58,10 @@ export default function WorksPage() {
   const filteredData = useMemo(() => {
     const query = search.trim().toLowerCase();
     return data.filter((work) => {
-      return !query || [work.title, work.iswc_code]
+      const writers = Array.isArray(work.contributors)
+        ? work.contributors.map((writer: any) => writer.name).join(" ")
+        : "";
+      return !query || [work.title, work.iswc_code, work.status, writers]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(query));
     });
@@ -62,10 +81,16 @@ export default function WorksPage() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      await api.post("/works", newWork);
+      const { data: created } = await api.post("/works", {
+        workId: newWork.workId || null,
+        title: newWork.title,
+        iswcCode: newWork.iswcCode || null,
+        workType: newWork.workType || null,
+        status: newWork.status || "draft",
+      });
       setShowAddModal(false);
-      setNewWork({ title: "", iswc_code: "" });
-      fetchData();
+      setNewWork({ title: "", workId: "", iswcCode: "", workType: "composition", status: "draft" });
+      router.push(`/catalog/works/${created.id}`);
     } catch (err: any) {
       alert(err?.response?.data?.error || "Failed to create work");
     } finally {
@@ -77,7 +102,7 @@ export default function WorksPage() {
     <div className="space-y-6">
       <PageHeader
         title="Works"
-        subtitle="Manage compositions and arrangements"
+        subtitle="Manage musical works, authorship, publishing and registrations"
         actions={
           <Button variant="primary" size="sm" onClick={() => setShowAddModal(true)}>
             <Plus size={16} />
@@ -93,7 +118,7 @@ export default function WorksPage() {
             type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search works..."
+            placeholder="Search title, writer, ISWC..."
             aria-label="Search works"
             className="h-10 w-full rounded-md border border-border bg-surface pl-9 pr-3 text-sm text-text-primary placeholder:text-text-secondary/70 outline-none transition-colors focus:border-accent focus:ring-1 focus:ring-accent/50"
           />
@@ -122,9 +147,35 @@ export default function WorksPage() {
             <label className="text-xs text-text-secondary font-bold">Title *</label>
             <input className="input w-full" value={newWork.title} onChange={(e) => setNewWork({ ...newWork, title: e.target.value })} required />
           </div>
-          <div>
-            <label className="text-xs text-text-secondary font-bold">ISWC</label>
-            <input className="input w-full" value={newWork.iswc_code} onChange={(e) => setNewWork({ ...newWork, iswc_code: e.target.value })} placeholder="e.g. T-123456789-0" />
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+              <label className="text-xs text-text-secondary font-bold">Work ID</label>
+              <input className="input w-full" value={newWork.workId} onChange={(e) => setNewWork({ ...newWork, workId: e.target.value })} placeholder="Optional external work ID" />
+            </div>
+            <div>
+              <label className="text-xs text-text-secondary font-bold">ISWC</label>
+              <input className="input w-full" value={newWork.iswcCode} onChange={(e) => setNewWork({ ...newWork, iswcCode: e.target.value })} placeholder="e.g. T-123456789-0" />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+              <label className="text-xs text-text-secondary font-bold">Work Type</label>
+              <select className="input w-full" value={newWork.workType} onChange={(e) => setNewWork({ ...newWork, workType: e.target.value })}>
+                <option value="composition">Composition</option>
+                <option value="arrangement">Arrangement</option>
+                <option value="adaptation">Adaptation</option>
+                <option value="translation">Translation</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs text-text-secondary font-bold">Status</label>
+              <select className="input w-full" value={newWork.status} onChange={(e) => setNewWork({ ...newWork, status: e.target.value })}>
+                <option value="draft">Draft</option>
+                <option value="pending">Pending</option>
+                <option value="registered">Registered</option>
+                <option value="rejected">Rejected</option>
+              </select>
+            </div>
           </div>
         </div>
       </EntityForm>
