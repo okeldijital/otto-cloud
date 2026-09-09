@@ -7,7 +7,7 @@ import PageHeader from "@/components/ui/PageHeader";
 import Button from "@/components/ui/Button";
 import DataTable from "@/components/DataTable";
 import EntityArtwork from "@/components/media/EntityArtwork";
-import ReleaseCreationWizard from "@/components/catalog/ReleaseCreationWizardV4";
+import ReleaseCreationWizard from "@/components/catalog/ReleaseCreationWizardV2";
 import { useAttachmentMap } from "@/hooks/useAttachment";
 import api from "@/lib/api";
 
@@ -22,8 +22,7 @@ export default function ReleasesPage() {
   const { urls: coverUrls } = useAttachmentMap("release", ids);
   const filteredData = useMemo(() => { const query = search.trim().toLowerCase(); return data.filter((release) => { const matchesType = typeFilter === "all" || String(release.release_type || "").toLowerCase() === typeFilter; const matchesSearch = !query || [release.title, release.release_type, release.release_date, release.catalog_number].filter(Boolean).some((value) => String(value).toLowerCase().includes(query)); return matchesType && matchesSearch; }); }, [data, search, typeFilter]);
   const columns = useMemo(() => [
-    { key: "artwork", label: "", render: (row: any) => <EntityArtwork entityType="release" entityId={row.id} src={coverUrls[String(row.id)] ?? null} alt={row.title} size={40} placeholder="release" className="rounded-lg" style={{ borderRadius: 8 }} /> },
-    { key: "title", label: "Title", sortable: true }, { key: "release_type", label: "Type", sortable: true }, { key: "release_date", label: "Release Date", sortable: true, render: (row: any) => row.release_date ? new Date(row.release_date).toLocaleDateString() : "—" }, { key: "catalog_number", label: "Catalog #", render: (row: any) => row.catalog_number || "—" },
+    { key: "artwork", label: "", render: (row: any) => <EntityArtwork entityType="release" entityId={row.id} src={coverUrls[String(row.id)] ?? null} alt={row.title} size={40} placeholder="release" className="rounded-lg" style={{ borderRadius: 8 }} /> }, { key: "title", label: "Title", sortable: true }, { key: "release_type", label: "Type", sortable: true }, { key: "release_date", label: "Release Date", sortable: true, render: (row: any) => row.release_date ? new Date(row.release_date).toLocaleDateString() : "—" }, { key: "catalog_number", label: "Catalog #", render: (row: any) => row.catalog_number || "—" },
   ], [coverUrls]);
   const fetchData = async () => { try { const res = await api.get("/releases"); const items = Array.isArray(res.data) ? res.data : res.data?.items || []; setData(items); } catch (err) { console.error("Failed to fetch releases:", err); } finally { setLoading(false); } };
   useEffect(() => { fetchData(); }, []);
