@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSignedUploadUrl, generateStorageKey, validateUpload } from "@/lib/storage";
+import { getMediaImageMaxBytes } from "@/lib/storage/image-policy";
 import { DEFAULT_SIGNED_URL_EXPIRY } from "@/lib/storage/constants";
 import { orgContextErrorResponse } from "@/lib/auth/organization-context";
 import {
@@ -31,7 +32,13 @@ export async function POST(req: NextRequest) {
     }
 
     const bound = await requireUploadEntityInOrg(entityType, entityId, ctx);
-    const validation = validateUpload({ fileName, mimeType, fileSize });
+    const maxImageBytes = getMediaImageMaxBytes(entityType, mimeType);
+    const validation = validateUpload({
+      fileName,
+      mimeType,
+      fileSize,
+      maxSizeBytes: maxImageBytes ?? undefined,
+    });
     if (!validation.valid) {
       return NextResponse.json(
         { error: "Validation failed", details: validation.errors },
