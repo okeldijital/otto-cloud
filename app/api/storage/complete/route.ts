@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { HeadObjectCommand } from "@aws-sdk/client-s3";
 import { prisma } from "@/lib/prisma";
 import { detectMimeCategory, storageClient, storageConfig, sanitizeFilename, validateUpload } from "@/lib/storage";
+import { getMediaImageMaxBytes } from "@/lib/storage/image-policy";
 import { logAttachmentActivity } from "@/lib/storage";
 import { orgContextErrorResponse } from "@/lib/auth/organization-context";
 import {
@@ -36,7 +37,13 @@ export async function POST(req: NextRequest) {
     }
 
     const bound = await requireUploadEntityInOrg(entityType, entityId, ctx);
-    const validation = validateUpload({ fileName, mimeType, fileSize: expectedSize });
+    const maxImageBytes = getMediaImageMaxBytes(entityType, mimeType);
+    const validation = validateUpload({
+      fileName,
+      mimeType,
+      fileSize: expectedSize,
+      maxSizeBytes: maxImageBytes ?? undefined,
+    });
     if (!validation.valid) {
       return NextResponse.json(
         { error: "Validation failed", details: validation.errors },
