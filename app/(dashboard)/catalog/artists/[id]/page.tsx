@@ -10,6 +10,7 @@ import EntityForm from "@/components/EntityForm";
 import Badge from "@/components/ui/Badge";
 import GroupMembersManager from "@/components/catalog/GroupMembersManager";
 import EntityArtwork from "@/components/media/EntityArtwork";
+import { invalidateEntityArtwork } from "@/hooks/useAttachment";
 import api from "@/lib/api";
 
 type Artist = any;
@@ -18,6 +19,13 @@ function listItems(value: any): any[] {
   if (Array.isArray(value)) return value;
   if (Array.isArray(value?.items)) return value.items;
   return [];
+}
+
+function errorMessage(err: any, fallback: string): string {
+  const value = err?.response?.data?.error ?? err?.message;
+  if (typeof value === "string" && value.trim()) return value;
+  if (Array.isArray(err?.response?.data?.details)) return err.response.data.details.join(", ");
+  return fallback;
 }
 
 export default function ArtistDetailPage() {
@@ -93,6 +101,38 @@ export default function ArtistDetailPage() {
     setEditOpen(true);
   };
 
+  const handleProfileUpload = async (file: File) => {
+    const uploadResponse = await api.post("/storage/upload-url", {
+      entityType: "artist",
+      entityId: String(id),
+      fileName: file.name,
+      mimeType: file.type,
+      fileSize: file.size,
+      folder: "artist",
+    });
+
+    const upload = uploadResponse.data;
+    const r2Response = await fetch(upload.uploadUrl, {
+      method: "PUT",
+      headers: { "Content-Type": file.type },
+      body: file,
+    });
+
+    if (!r2Response.ok) throw new Error(`R2 upload failed (${r2Response.status})`);
+
+    await api.post("/storage/complete", {
+      entityType: "artist",
+      entityId: String(id),
+      key: upload.key,
+      fileName: upload.fileName,
+      originalName: file.name,
+      mimeType: file.type,
+      fileSize: file.size,
+    });
+
+    invalidateEntityArtwork("artist", id);
+  };
+
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
@@ -114,20 +154,14 @@ export default function ArtistDetailPage() {
         streaming_links: { spotify: editData.spotify_url, apple_music: editData.apple_music_url, youtube: editData.youtube_url },
       });
 
-      if (profileImage) {
-        const formData = new FormData();
-        formData.append("file", profileImage);
-        formData.append("entityType", "artist");
-        formData.append("entityId", String(id));
-        await api.post("/storage/upload", formData);
-      }
+      if (profileImage) await handleProfileUpload(profileImage);
 
       setArtist(data);
       setEditOpen(false);
       setProfileImage(null);
       await fetchData();
     } catch (err: any) {
-      alert(err?.response?.data?.error || "Failed to update artist");
+      alert(errorMessage(err, "Failed to update artist"));
     } finally {
       setSubmitting(false);
     }
@@ -139,7 +173,7 @@ export default function ArtistDetailPage() {
       await api.delete(`/artists?id=${id}`);
       router.push("/catalog/artists");
     } catch (err: any) {
-      alert(err?.response?.data?.error || "Delete failed");
+      alert(errorMessage(err, "Delete failed"));
     }
   };
 
@@ -164,96 +198,32 @@ export default function ArtistDetailPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <button onClick={() => router.push("/catalog/artists")} className="text-text-secondary hover:text-white transition-colors" aria-label="Back to Artists">
-          <ChevronLeft size={20} />
-        </button>
-        <PageHeader
-          title={primaryName}
-          subtitle={artist.aka && artist.name ? `Legal name: ${artist.name}` : `Artist #${id}`}
-          actions={
-            <div className="flex gap-2">
-              <Button variant="secondary" size="sm" onClick={handleEditClick}><Edit size={14} /> Edit</Button>
-              <Button variant="danger" size="sm" onClick={handleDelete}><Trash2 size={14} /> Delete</Button>
-            </div>
-          }
-        />
+        <button onClick={() => router.push("/catalog/artists")} className="text-text-secondary hover:text-white transition-colors" aria-label="Back to Artists"><ChevronLeft size={20} /></button>
+        <PageHeader title={primaryName} subtitle={artist.aka && artist.name ? `Legal name: ${artist.name}` : `Artist #${id}`} actions={<div className="flex gap-2"><Button variant="secondary" size="sm" onClick={handleEditClick}><Edit size={14} /> Edit</Button><Button variant="danger" size="sm" onClick={handleDelete}><Trash2 size={14} /> Delete</Button></div>} />
       </div>
 
-      {artist.artist_kind === "group" && (
-        <Card title="Group Membership"><GroupMembersManager artist={artist} onUpdate={fetchData} /></Card>
-      )}
+      {artist.artist_kind === "group" && <Card title="Group Membership"><GroupMembersManager artist={artist} onUpdate={fetchData} /></Card>}
 
       <div className="flex gap-2 border-b border-white/5 pb-2 overflow-x-auto">
-        {tabs.map((tab) => (
-          <button key={tab.key} onClick={() => setActiveTab(tab.key)} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${activeTab === tab.key ? "bg-primary text-white" : "text-text-secondary hover:text-white"}`}>
-            {tab.label}
-          </button>
-        ))}
+        {tabs.map((tab) => <button key={tab.key} onClick={() => setActiveTab(tab.key)} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${activeTab === tab.key ? "bg-primary text-white" : "text-text-secondary hover:text-white"}`}>{tab.label}</button>)}
       </div>
 
       {activeTab === "overview" && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
-            <Card title="Contact Information">
-              <div className="grid grid-cols-2 gap-4">
-                <div><span className="text-text-secondary text-xs block">Email</span><span className="flex items-center gap-1"><Mail size={14} />{artist.contact_email || "—"}</span></div>
-                <div><span className="text-text-secondary text-xs block">Phone</span><span className="flex items-center gap-1"><Phone size={14} />{artist.contact_phone || "—"}</span></div>
-                <div className="col-span-2"><span className="text-text-secondary text-xs block">Address</span><span className="flex items-center gap-1"><MapPin size={14} />{artist.physical_address || "—"}</span></div>
-              </div>
-            </Card>
-            <Card title="Professional Details">
-              <div className="grid grid-cols-2 gap-4">
-                <div><span className="text-text-secondary text-xs block">IPI Number</span><span>{artist.ipi_number || "—"}</span></div>
-                <div><span className="text-text-secondary text-xs block">ID Number</span><span>{artist.id_number || "—"}</span></div>
-                <div><span className="text-text-secondary text-xs block">Nationality</span><span>{artist.nationality || "—"}</span></div>
-                <div><span className="text-text-secondary text-xs block">Legal Name</span><span>{artist.name || artist.legal_name || "—"}</span></div>
-                <div><span className="text-text-secondary text-xs block">Label</span><span>{label?.name || "—"}</span></div>
-                <div><span className="text-text-secondary text-xs block">Publisher</span><span>{publisher?.name || "—"}</span></div>
-                <div><span className="text-text-secondary text-xs block">PRO</span><span>{pro?.name || "—"}</span></div>
-              </div>
-            </Card>
-            <Card title="Social & Streaming">
-              <div className="grid grid-cols-2 gap-4">
-                <div><span className="text-text-secondary text-xs block">Instagram</span><span className="flex items-center gap-1"><Instagram size={14} />{social.instagram || "—"}</span></div>
-                <div><span className="text-text-secondary text-xs block">Twitter</span><span className="flex items-center gap-1"><Twitter size={14} />{social.twitter || "—"}</span></div>
-                <div><span className="text-text-secondary text-xs block">Spotify</span><span>{streaming.spotify || "—"}</span></div>
-                <div><span className="text-text-secondary text-xs block">Apple Music</span><span>{streaming.apple_music || "—"}</span></div>
-                <div><span className="text-text-secondary text-xs block">YouTube</span><span>{streaming.youtube || "—"}</span></div>
-              </div>
-            </Card>
-            <Card title="Banking Details">
-              <div className="grid grid-cols-2 gap-4">
-                <div><span className="text-text-secondary text-xs block">Bank Name</span><span>{banking.bank_name || "—"}</span></div>
-                <div><span className="text-text-secondary text-xs block">Account Number</span><span>{banking.account_number || "—"}</span></div>
-                <div><span className="text-text-secondary text-xs block">Branch Code</span><span>{banking.branch_code || "—"}</span></div>
-              </div>
-            </Card>
+            <Card title="Contact Information"><div className="grid grid-cols-2 gap-4"><div><span className="text-text-secondary text-xs block">Email</span><span className="flex items-center gap-1"><Mail size={14} />{artist.contact_email || "—"}</span></div><div><span className="text-text-secondary text-xs block">Phone</span><span className="flex items-center gap-1"><Phone size={14} />{artist.contact_phone || "—"}</span></div><div className="col-span-2"><span className="text-text-secondary text-xs block">Address</span><span className="flex items-center gap-1"><MapPin size={14} />{artist.physical_address || "—"}</span></div></div></Card>
+            <Card title="Professional Details"><div className="grid grid-cols-2 gap-4"><div><span className="text-text-secondary text-xs block">IPI Number</span><span>{artist.ipi_number || "—"}</span></div><div><span className="text-text-secondary text-xs block">ID Number</span><span>{artist.id_number || "—"}</span></div><div><span className="text-text-secondary text-xs block">Nationality</span><span>{artist.nationality || "—"}</span></div><div><span className="text-text-secondary text-xs block">Legal Name</span><span>{artist.name || artist.legal_name || "—"}</span></div><div><span className="text-text-secondary text-xs block">Label</span><span>{label?.name || "—"}</span></div><div><span className="text-text-secondary text-xs block">Publisher</span><span>{publisher?.name || "—"}</span></div><div><span className="text-text-secondary text-xs block">PRO</span><span>{pro?.name || "—"}</span></div></div></Card>
+            <Card title="Social & Streaming"><div className="grid grid-cols-2 gap-4"><div><span className="text-text-secondary text-xs block">Instagram</span><span className="flex items-center gap-1"><Instagram size={14} />{social.instagram || "—"}</span></div><div><span className="text-text-secondary text-xs block">Twitter</span><span className="flex items-center gap-1"><Twitter size={14} />{social.twitter || "—"}</span></div><div><span className="text-text-secondary text-xs block">Spotify</span><span>{streaming.spotify || "—"}</span></div><div><span className="text-text-secondary text-xs block">Apple Music</span><span>{streaming.apple_music || "—"}</span></div><div><span className="text-text-secondary text-xs block">YouTube</span><span>{streaming.youtube || "—"}</span></div></div></Card>
+            <Card title="Banking Details"><div className="grid grid-cols-2 gap-4"><div><span className="text-text-secondary text-xs block">Bank Name</span><span>{banking.bank_name || "—"}</span></div><div><span className="text-text-secondary text-xs block">Account Number</span><span>{banking.account_number || "—"}</span></div><div><span className="text-text-secondary text-xs block">Branch Code</span><span>{banking.branch_code || "—"}</span></div></div></Card>
           </div>
-          <div className="space-y-6">
-            <Card title="Photo"><EntityArtwork entityType="artist" entityId={artist.id} alt={primaryName} placeholder="artist" className="w-full rounded-xl" style={{ width: "100%", height: 280, borderRadius: 12 }} /></Card>
-            <Card title="Quick Stats">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between"><span className="flex items-center gap-2"><Disc size={14} /> Releases</span><Badge variant="primary">{releases.length}</Badge></div>
-                <div className="flex items-center justify-between"><span className="flex items-center gap-2"><Music size={14} /> Works</span><Badge variant="primary">{works.length}</Badge></div>
-                <div className="flex items-center justify-between"><span className="flex items-center gap-2"><User size={14} /> Members</span><Badge variant="primary">{artist.member_count || 0}</Badge></div>
-              </div>
-            </Card>
-          </div>
+          <div className="space-y-6"><Card title="Photo"><EntityArtwork entityType="artist" entityId={artist.id} alt={primaryName} placeholder="artist" className="w-full rounded-xl" style={{ width: "100%", height: 280, borderRadius: 12 }} /></Card><Card title="Quick Stats"><div className="space-y-3"><div className="flex items-center justify-between"><span className="flex items-center gap-2"><Disc size={14} /> Releases</span><Badge variant="primary">{releases.length}</Badge></div><div className="flex items-center justify-between"><span className="flex items-center gap-2"><Music size={14} /> Works</span><Badge variant="primary">{works.length}</Badge></div><div className="flex items-center justify-between"><span className="flex items-center gap-2"><User size={14} /> Members</span><Badge variant="primary">{artist.member_count || 0}</Badge></div></div></Card></div>
         </div>
       )}
 
       {activeTab === "releases" && <Card title="Releases">{releases.length === 0 ? <p className="text-text-secondary py-4 text-center">No releases yet.</p> : <div className="space-y-2">{releases.map((release) => <button key={release.id} className="w-full flex items-center justify-between p-3 rounded-lg bg-white/5 hover:bg-white/10 text-left" onClick={() => router.push(`/catalog/releases/${release.id}`)}><span className="font-medium">{release.title}</span><span className="text-text-secondary text-sm">{release.release_date ? new Date(release.release_date).toLocaleDateString() : ""}</span></button>)}</div>}</Card>}
       {activeTab === "works" && <Card title="Works">{works.length === 0 ? <p className="text-text-secondary py-4 text-center">No works yet.</p> : <div className="space-y-2">{works.map((work) => <button key={work.id} className="w-full flex items-center justify-between p-3 rounded-lg bg-white/5 hover:bg-white/10 text-left" onClick={() => router.push(`/catalog/works/${work.id}`)}><span className="font-medium">{work.title}</span><span className="text-text-secondary text-sm">{work.iswc_code ? `ISWC: ${work.iswc_code}` : ""}</span></button>)}</div>}</Card>}
       {activeTab === "documents" && <Card title="Documents"><p className="text-text-secondary text-sm">Document management coming in Office Suite milestone.</p></Card>}
-      {activeTab === "financials" && (
-        <Card title="Financials">
-          <div className="py-10 text-center">
-            <p className="font-medium">Artist financial history</p>
-            <p className="text-text-secondary text-sm mt-2">No authoritative payment or advance history is currently exposed to the Artist workspace.</p>
-            <p className="text-text-secondary text-xs mt-1">Financial transaction mapping will be added only after the existing contracts/finance data model is audited.</p>
-          </div>
-        </Card>
-      )}
+      {activeTab === "financials" && <Card title="Financials"><div className="py-10 text-center"><p className="font-medium">Artist financial history</p><p className="text-text-secondary text-sm mt-2">No authoritative payment or advance history is currently exposed to the Artist workspace.</p><p className="text-text-secondary text-xs mt-1">Financial transaction mapping will be added only after the existing contracts/finance data model is audited.</p></div></Card>}
 
       <EntityForm title="Edit Artist" isOpen={editOpen} onClose={() => setEditOpen(false)} onSubmit={handleUpdate} isSubmitting={submitting} error={undefined}>
         <div className="grid grid-cols-2 gap-4">
@@ -267,11 +237,7 @@ export default function ArtistDetailPage() {
           <div><label className="text-xs text-text-secondary">Label ID</label><input className="input w-full" inputMode="numeric" value={editData.label_id || ""} onChange={(e) => setEditData({ ...editData, label_id: e.target.value })} /></div>
           <div><label className="text-xs text-text-secondary">Publisher ID</label><input className="input w-full" inputMode="numeric" value={editData.publisher_id || ""} onChange={(e) => setEditData({ ...editData, publisher_id: e.target.value })} /></div>
           <div><label className="text-xs text-text-secondary">PRO ID</label><input className="input w-full" inputMode="numeric" value={editData.pro_id || ""} onChange={(e) => setEditData({ ...editData, pro_id: e.target.value })} /></div>
-          <div className="col-span-2">
-            <label className="text-xs text-text-secondary block mb-1">Profile Photo</label>
-            <input className="input w-full" type="file" accept="image/*" onChange={(e) => setProfileImage(e.target.files?.[0] || null)} />
-            <p className="text-xs text-text-secondary mt-1">Choose an image directly. No image URL is required.</p>
-          </div>
+          <div className="col-span-2"><label className="text-xs text-text-secondary">Profile Photo</label><input className="input w-full" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif,image/bmp,image/tiff" onChange={(e) => setProfileImage(e.target.files?.[0] || null)} /><p className="text-xs text-text-secondary mt-1">Upload directly to Otto Cloud storage. No image URL required.</p></div>
           <div><label className="text-xs text-text-secondary">Instagram</label><input className="input w-full" value={editData.instagram || ""} onChange={(e) => setEditData({ ...editData, instagram: e.target.value })} /></div>
           <div><label className="text-xs text-text-secondary">Twitter</label><input className="input w-full" value={editData.twitter || ""} onChange={(e) => setEditData({ ...editData, twitter: e.target.value })} /></div>
           <div><label className="text-xs text-text-secondary">Spotify</label><input className="input w-full" value={editData.spotify_url || ""} onChange={(e) => setEditData({ ...editData, spotify_url: e.target.value })} /></div>
