@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ChevronLeft, Disc, Edit, FileText, Globe, Instagram, Mail, MapPin, Music, Phone, Trash2, Twitter, User } from "lucide-react";
+import { ChevronLeft, Disc, Edit, Instagram, Mail, MapPin, Music, Phone, Trash2, Twitter, User } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
@@ -33,6 +33,7 @@ export default function ArtistDetailPage() {
   const [activeTab, setActiveTab] = useState("overview");
   const [editOpen, setEditOpen] = useState(false);
   const [editData, setEditData] = useState<any>({});
+  const [profileImage, setProfileImage] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const fetchData = useCallback(async () => {
@@ -67,12 +68,12 @@ export default function ArtistDetailPage() {
     const social = artist.social_media || {};
     const banking = artist.banking_details || {};
     const streaming = artist.streaming_links || {};
+    setProfileImage(null);
     setEditData({
       name: artist.name || "",
       aka: artist.aka || "",
       nationality: artist.nationality || "",
       id_number: artist.id_number || "",
-      profile_image_url: artist.profile_image_url || "",
       contact_email: artist.contact_email || "",
       contact_phone: artist.contact_phone || "",
       physical_address: artist.physical_address || "",
@@ -101,7 +102,6 @@ export default function ArtistDetailPage() {
         aka: editData.aka,
         nationality: editData.nationality,
         id_number: editData.id_number,
-        profile_image_url: editData.profile_image_url,
         contact_email: editData.contact_email,
         contact_phone: editData.contact_phone,
         physical_address: editData.physical_address,
@@ -113,8 +113,19 @@ export default function ArtistDetailPage() {
         banking_details: { bank_name: editData.bank_name, account_number: editData.account_number, branch_code: editData.branch_code },
         streaming_links: { spotify: editData.spotify_url, apple_music: editData.apple_music_url, youtube: editData.youtube_url },
       });
+
+      if (profileImage) {
+        const formData = new FormData();
+        formData.append("file", profileImage);
+        formData.append("entityType", "artist");
+        formData.append("entityId", String(id));
+        await api.post("/storage/upload", formData);
+      }
+
       setArtist(data);
       setEditOpen(false);
+      setProfileImage(null);
+      await fetchData();
     } catch (err: any) {
       alert(err?.response?.data?.error || "Failed to update artist");
     } finally {
@@ -123,7 +134,7 @@ export default function ArtistDetailPage() {
   };
 
   const handleDelete = async () => {
-    if (!artist || !window.confirm(`Delete "${artist.name}"?`)) return;
+    if (!artist || !window.confirm(`Delete "${artist.display_name || artist.aka || artist.name}"?`)) return;
     try {
       await api.delete(`/artists?id=${id}`);
       router.push("/catalog/artists");
@@ -141,11 +152,13 @@ export default function ArtistDetailPage() {
   const label = labels.find((item) => item.id === artist.label_id);
   const publisher = publishers.find((item) => item.id === artist.publisher_id);
   const pro = pros.find((item) => item.id === artist.pro_id);
+  const primaryName = artist.display_name || artist.aka || artist.name;
   const tabs = [
     { key: "overview", label: "Overview" },
     { key: "releases", label: `Releases (${releases.length})` },
     { key: "works", label: `Works (${works.length})` },
     { key: "documents", label: "Documents" },
+    { key: "financials", label: "Financials" },
   ];
 
   return (
@@ -155,8 +168,8 @@ export default function ArtistDetailPage() {
           <ChevronLeft size={20} />
         </button>
         <PageHeader
-          title={artist.name}
-          subtitle={artist.aka ? `aka ${artist.aka}` : `Artist #${id}`}
+          title={primaryName}
+          subtitle={artist.aka && artist.name ? `Legal name: ${artist.name}` : `Artist #${id}`}
           actions={
             <div className="flex gap-2">
               <Button variant="secondary" size="sm" onClick={handleEditClick}><Edit size={14} /> Edit</Button>
@@ -170,9 +183,9 @@ export default function ArtistDetailPage() {
         <Card title="Group Membership"><GroupMembersManager artist={artist} onUpdate={fetchData} /></Card>
       )}
 
-      <div className="flex gap-2 border-b border-white/5 pb-2">
+      <div className="flex gap-2 border-b border-white/5 pb-2 overflow-x-auto">
         {tabs.map((tab) => (
-          <button key={tab.key} onClick={() => setActiveTab(tab.key)} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === tab.key ? "bg-primary text-white" : "text-text-secondary hover:text-white"}`}>
+          <button key={tab.key} onClick={() => setActiveTab(tab.key)} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${activeTab === tab.key ? "bg-primary text-white" : "text-text-secondary hover:text-white"}`}>
             {tab.label}
           </button>
         ))}
@@ -193,7 +206,7 @@ export default function ArtistDetailPage() {
                 <div><span className="text-text-secondary text-xs block">IPI Number</span><span>{artist.ipi_number || "—"}</span></div>
                 <div><span className="text-text-secondary text-xs block">ID Number</span><span>{artist.id_number || "—"}</span></div>
                 <div><span className="text-text-secondary text-xs block">Nationality</span><span>{artist.nationality || "—"}</span></div>
-                <div><span className="text-text-secondary text-xs block">Legal Name</span><span>{artist.legal_name || "—"}</span></div>
+                <div><span className="text-text-secondary text-xs block">Legal Name</span><span>{artist.name || artist.legal_name || "—"}</span></div>
                 <div><span className="text-text-secondary text-xs block">Label</span><span>{label?.name || "—"}</span></div>
                 <div><span className="text-text-secondary text-xs block">Publisher</span><span>{publisher?.name || "—"}</span></div>
                 <div><span className="text-text-secondary text-xs block">PRO</span><span>{pro?.name || "—"}</span></div>
@@ -217,7 +230,7 @@ export default function ArtistDetailPage() {
             </Card>
           </div>
           <div className="space-y-6">
-            <Card title="Photo"><EntityArtwork entityType="artist" entityId={artist.id} alt={artist.name} placeholder="artist" className="w-full rounded-xl" style={{ width: "100%", height: 280, borderRadius: 12 }} /></Card>
+            <Card title="Photo"><EntityArtwork entityType="artist" entityId={artist.id} alt={primaryName} placeholder="artist" className="w-full rounded-xl" style={{ width: "100%", height: 280, borderRadius: 12 }} /></Card>
             <Card title="Quick Stats">
               <div className="space-y-3">
                 <div className="flex items-center justify-between"><span className="flex items-center gap-2"><Disc size={14} /> Releases</span><Badge variant="primary">{releases.length}</Badge></div>
@@ -232,10 +245,19 @@ export default function ArtistDetailPage() {
       {activeTab === "releases" && <Card title="Releases">{releases.length === 0 ? <p className="text-text-secondary py-4 text-center">No releases yet.</p> : <div className="space-y-2">{releases.map((release) => <button key={release.id} className="w-full flex items-center justify-between p-3 rounded-lg bg-white/5 hover:bg-white/10 text-left" onClick={() => router.push(`/catalog/releases/${release.id}`)}><span className="font-medium">{release.title}</span><span className="text-text-secondary text-sm">{release.release_date ? new Date(release.release_date).toLocaleDateString() : ""}</span></button>)}</div>}</Card>}
       {activeTab === "works" && <Card title="Works">{works.length === 0 ? <p className="text-text-secondary py-4 text-center">No works yet.</p> : <div className="space-y-2">{works.map((work) => <button key={work.id} className="w-full flex items-center justify-between p-3 rounded-lg bg-white/5 hover:bg-white/10 text-left" onClick={() => router.push(`/catalog/works/${work.id}`)}><span className="font-medium">{work.title}</span><span className="text-text-secondary text-sm">{work.iswc_code ? `ISWC: ${work.iswc_code}` : ""}</span></button>)}</div>}</Card>}
       {activeTab === "documents" && <Card title="Documents"><p className="text-text-secondary text-sm">Document management coming in Office Suite milestone.</p></Card>}
+      {activeTab === "financials" && (
+        <Card title="Financials">
+          <div className="py-10 text-center">
+            <p className="font-medium">Artist financial history</p>
+            <p className="text-text-secondary text-sm mt-2">No authoritative payment or advance history is currently exposed to the Artist workspace.</p>
+            <p className="text-text-secondary text-xs mt-1">Financial transaction mapping will be added only after the existing contracts/finance data model is audited.</p>
+          </div>
+        </Card>
+      )}
 
       <EntityForm title="Edit Artist" isOpen={editOpen} onClose={() => setEditOpen(false)} onSubmit={handleUpdate} isSubmitting={submitting} error={undefined}>
         <div className="grid grid-cols-2 gap-4">
-          <div className="col-span-2"><label className="text-xs text-text-secondary">Name</label><input className="input w-full" value={editData.name || ""} onChange={(e) => setEditData({ ...editData, name: e.target.value })} required /></div>
+          <div className="col-span-2"><label className="text-xs text-text-secondary">Legal Name</label><input className="input w-full" value={editData.name || ""} onChange={(e) => setEditData({ ...editData, name: e.target.value })} required /></div>
           <div className="col-span-2"><label className="text-xs text-text-secondary">Stage Name (AKA)</label><input className="input w-full" value={editData.aka || ""} onChange={(e) => setEditData({ ...editData, aka: e.target.value })} /></div>
           <div><label className="text-xs text-text-secondary">Nationality</label><input className="input w-full" value={editData.nationality || ""} onChange={(e) => setEditData({ ...editData, nationality: e.target.value })} /></div>
           <div><label className="text-xs text-text-secondary">IPI Number</label><input className="input w-full" value={editData.ipi_number || ""} onChange={(e) => setEditData({ ...editData, ipi_number: e.target.value })} /></div>
@@ -245,7 +267,11 @@ export default function ArtistDetailPage() {
           <div><label className="text-xs text-text-secondary">Label ID</label><input className="input w-full" inputMode="numeric" value={editData.label_id || ""} onChange={(e) => setEditData({ ...editData, label_id: e.target.value })} /></div>
           <div><label className="text-xs text-text-secondary">Publisher ID</label><input className="input w-full" inputMode="numeric" value={editData.publisher_id || ""} onChange={(e) => setEditData({ ...editData, publisher_id: e.target.value })} /></div>
           <div><label className="text-xs text-text-secondary">PRO ID</label><input className="input w-full" inputMode="numeric" value={editData.pro_id || ""} onChange={(e) => setEditData({ ...editData, pro_id: e.target.value })} /></div>
-          <div><label className="text-xs text-text-secondary">Profile Image URL</label><input className="input w-full" value={editData.profile_image_url || ""} onChange={(e) => setEditData({ ...editData, profile_image_url: e.target.value })} /></div>
+          <div className="col-span-2">
+            <label className="text-xs text-text-secondary block mb-1">Profile Photo</label>
+            <input className="input w-full" type="file" accept="image/*" onChange={(e) => setProfileImage(e.target.files?.[0] || null)} />
+            <p className="text-xs text-text-secondary mt-1">Choose an image directly. No image URL is required.</p>
+          </div>
           <div><label className="text-xs text-text-secondary">Instagram</label><input className="input w-full" value={editData.instagram || ""} onChange={(e) => setEditData({ ...editData, instagram: e.target.value })} /></div>
           <div><label className="text-xs text-text-secondary">Twitter</label><input className="input w-full" value={editData.twitter || ""} onChange={(e) => setEditData({ ...editData, twitter: e.target.value })} /></div>
           <div><label className="text-xs text-text-secondary">Spotify</label><input className="input w-full" value={editData.spotify_url || ""} onChange={(e) => setEditData({ ...editData, spotify_url: e.target.value })} /></div>
