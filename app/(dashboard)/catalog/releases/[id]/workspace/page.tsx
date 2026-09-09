@@ -71,10 +71,33 @@ export default function ReleaseWorkspacePage() {
   const [activeSection, setActiveSection] = useState("overview");
   const [error, setError] = useState<string | null>(null);
 
+  const createWorkspace = useCallback(async () => {
+    if (!releaseId) return;
+    setCreating(true);
+    try {
+      const { data } = await api.post("/release-workspace", { release_id: parseInt(releaseId) });
+      setWorkspace(data);
+      setError(null);
+      try {
+        const { data: releaseData } = await api.get(`/releases?id=${releaseId}`);
+        setRelease(releaseData);
+      } catch { /* optional */ }
+    } catch (err: any) {
+      setError(err?.response?.data?.error || "Failed to create workspace");
+    } finally {
+      setCreating(false);
+      setLoading(false);
+    }
+  }, [releaseId]);
+
   const fetchData = useCallback(async () => {
     if (!releaseId) return;
     try {
       const { data } = await api.get(`/release-workspace?release_id=${releaseId}`);
+      if (!data) {
+        await createWorkspace();
+        return;
+      }
       setWorkspace(data);
       setError(null);
       try {
@@ -90,24 +113,7 @@ export default function ReleaseWorkspacePage() {
     } finally {
       setLoading(false);
     }
-  }, [releaseId]);
-
-  const createWorkspace = async () => {
-    setCreating(true);
-    try {
-      const { data } = await api.post("/release-workspace", { release_id: parseInt(releaseId) });
-      setWorkspace(data);
-      try {
-        const { data: releaseData } = await api.get(`/releases?id=${releaseId}`);
-        setRelease(releaseData);
-      } catch { /* optional */ }
-    } catch (err: any) {
-      setError(err?.response?.data?.error || "Failed to create workspace");
-    } finally {
-      setCreating(false);
-      setLoading(false);
-    }
-  };
+  }, [releaseId, createWorkspace]);
 
   useEffect(() => {
     fetchData();
