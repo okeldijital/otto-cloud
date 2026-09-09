@@ -69,6 +69,11 @@ export default function ReleasesPage() {
     }
   };
 
+  const handleCreated = (id: number | string) => {
+    fetchData();
+    router.push(`/catalog/releases/${id}`);
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -97,7 +102,7 @@ export default function ReleasesPage() {
 
       {!loading && (search || typeFilter !== "all") && filteredData.length === 0 && data.length > 0 && <p className="-mt-3 text-xs text-text-secondary">No releases match the current catalogue filters.</p>}
 
-      <ReleaseCreationWizard isOpen={showAddModal} onClose={() => setShowAddModal(false)} onCreated={(id) => { fetchData(); router.push(`/catalog/releases/${id}`); }} />
+      <ReleaseCreationWizard isOpen={showAddModal} onClose={() => setShowAddModal(false)} onCreated={handleCreated} />
     </div>
   );
 }
