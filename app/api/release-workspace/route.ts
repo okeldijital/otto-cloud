@@ -53,6 +53,10 @@ export async function GET(req: Request) {
       },
     });
 
+    if (!workspace) {
+      return NextResponse.json({ error: "Release workspace not found" }, { status: 404 });
+    }
+
     return NextResponse.json(workspace);
   } catch (err: any) {
     console.error("[GET /api/release-workspace]", err);
