@@ -9,6 +9,17 @@ import DataTable from "@/components/DataTable";
 import EntityForm from "@/components/EntityForm";
 import api from "@/lib/api";
 
+const emptyLabel = () => ({
+  name: "",
+  label_id: "",
+  contact_person: "",
+  contact_email: "",
+  contact_phone: "",
+  website: "",
+  address: "",
+  logo_url: "",
+});
+
 const columns = [
   { key: "name", label: "Name", sortable: true },
   { key: "label_id", label: "Label ID", render: (row: any) => row.label_id || "—" },
@@ -20,7 +31,7 @@ export default function LabelsPage() {
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [newLabel, setNewLabel] = useState<any>({ name: "", label_id: "" });
+  const [newLabel, setNewLabel] = useState<any>(emptyLabel());
 
   const fetchData = async () => {
     try {
@@ -50,11 +61,22 @@ export default function LabelsPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!newLabel.name.trim()) return;
     setIsSubmitting(true);
     try {
-      await api.post("/labels", newLabel);
+      await api.post("/labels", {
+        ...newLabel,
+        name: newLabel.name.trim(),
+        label_id: newLabel.label_id.trim() || null,
+        contact_person: newLabel.contact_person.trim() || null,
+        contact_email: newLabel.contact_email.trim() || null,
+        contact_phone: newLabel.contact_phone.trim() || null,
+        website: newLabel.website.trim() || null,
+        address: newLabel.address.trim() || null,
+        logo_url: newLabel.logo_url.trim() || null,
+      });
       setShowAddModal(false);
-      setNewLabel({ name: "", label_id: "" });
+      setNewLabel(emptyLabel());
       fetchData();
     } catch (err: any) {
       alert(err?.response?.data?.error || "Failed to create label");
@@ -67,7 +89,7 @@ export default function LabelsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Labels"
-        subtitle="Manage your label roster"
+        subtitle="Manage label identity, contacts and catalogue relationships"
         actions={
           <Button variant="primary" size="sm" onClick={() => setShowAddModal(true)}>
             <Plus size={16} />
@@ -85,14 +107,50 @@ export default function LabelsPage() {
       />
 
       <EntityForm title="New Label" isOpen={showAddModal} onClose={() => setShowAddModal(false)} onSubmit={handleCreate} isSubmitting={isSubmitting} error={undefined}>
-        <div className="space-y-4">
+        <div className="space-y-5">
           <div>
-            <label className="text-xs text-text-secondary font-bold">Name *</label>
-            <input className="input w-full" value={newLabel.name} onChange={(e) => setNewLabel({ ...newLabel, name: e.target.value })} required />
+            <div className="mb-3 text-xs font-bold uppercase tracking-wide text-text-secondary">Identity</div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="md:col-span-2">
+                <label className="text-xs text-text-secondary font-bold">Name *</label>
+                <input className="input w-full" value={newLabel.name} onChange={(e) => setNewLabel({ ...newLabel, name: e.target.value })} required />
+              </div>
+              <div>
+                <label className="text-xs text-text-secondary font-bold">Label ID</label>
+                <input className="input w-full" value={newLabel.label_id} onChange={(e) => setNewLabel({ ...newLabel, label_id: e.target.value })} placeholder="e.g. OTR" />
+              </div>
+              <div>
+                <label className="text-xs text-text-secondary font-bold">Logo URL</label>
+                <input className="input w-full" value={newLabel.logo_url} onChange={(e) => setNewLabel({ ...newLabel, logo_url: e.target.value })} placeholder="https://..." />
+              </div>
+            </div>
           </div>
+
           <div>
-            <label className="text-xs text-text-secondary font-bold">Label ID</label>
-            <input className="input w-full" value={newLabel.label_id} onChange={(e) => setNewLabel({ ...newLabel, label_id: e.target.value })} placeholder="e.g. OTR" />
+            <div className="mb-3 text-xs font-bold uppercase tracking-wide text-text-secondary">Contact</div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <label className="text-xs text-text-secondary font-bold">Contact Person</label>
+                <input className="input w-full" value={newLabel.contact_person} onChange={(e) => setNewLabel({ ...newLabel, contact_person: e.target.value })} />
+              </div>
+              <div>
+                <label className="text-xs text-text-secondary font-bold">Email</label>
+                <input className="input w-full" type="email" value={newLabel.contact_email} onChange={(e) => setNewLabel({ ...newLabel, contact_email: e.target.value })} />
+              </div>
+              <div>
+                <label className="text-xs text-text-secondary font-bold">Phone</label>
+                <input className="input w-full" value={newLabel.contact_phone} onChange={(e) => setNewLabel({ ...newLabel, contact_phone: e.target.value })} />
+              </div>
+              <div>
+                <label className="text-xs text-text-secondary font-bold">Website</label>
+                <input className="input w-full" value={newLabel.website} onChange={(e) => setNewLabel({ ...newLabel, website: e.target.value })} placeholder="https://..." />
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div className="mb-3 text-xs font-bold uppercase tracking-wide text-text-secondary">Address</div>
+            <textarea className="input min-h-24 w-full" value={newLabel.address} onChange={(e) => setNewLabel({ ...newLabel, address: e.target.value })} placeholder="Registered or operating address" />
           </div>
         </div>
       </EntityForm>
