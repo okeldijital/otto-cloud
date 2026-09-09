@@ -27,6 +27,13 @@ function cacheKey(entityType: string, entityId: string | number) {
   return `${String(entityType).toLowerCase()}:${String(entityId)}`;
 }
 
+export function invalidateEntityArtwork(
+  entityType: string,
+  entityId: string | number
+): void {
+  cache.delete(cacheKey(entityType, entityId));
+}
+
 function isFresh(entry: CacheEntry): boolean {
   // Refresh 60s before signed URL expiry (default ~15 min)
   const ttlMs = Math.max(30_000, (entry.expiresIn - 60) * 1000);
