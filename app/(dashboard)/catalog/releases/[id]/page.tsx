@@ -7,7 +7,9 @@ import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import api from "@/lib/api";
 import EntityArtwork from "@/components/media/EntityArtwork";
-import { ChevronLeft, Disc, Music, User, Calendar, Tag, FileText, Edit, Trash2, ExternalLink, Upload, Loader } from "lucide-react";
+import { invalidateEntityArtwork } from "@/hooks/useAttachment";
+import { optimizeImage } from "@/lib/media/image-optimization";
+import { ChevronLeft, Disc, Music, User, Calendar, Tag, FileText, Trash2, ExternalLink, Upload, Loader } from "lucide-react";
 
 function formatDuration(d: string | null): string {
   if (!d) return "";
@@ -20,6 +22,13 @@ function formatDuration(d: string | null): string {
     return `${m}:${s.toString().padStart(2, "0")}`;
   }
   return d;
+}
+
+function errorMessage(err: any, fallback: string): string {
+  const value = err?.response?.data?.error ?? err?.message;
+  if (typeof value === "string" && value.trim()) return value;
+  if (Array.isArray(err?.response?.data?.details)) return err.response.data.details.join(", ");
+  return fallback;
 }
 
 export default function ReleaseDetailPage() {
@@ -40,22 +49,39 @@ export default function ReleaseDetailPage() {
     if (!file) return;
     setUploading(true);
     try {
-      // Universal storage upload — creates Attachment linked to this release
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("entityType", "release");
-      formData.append("entityId", String(id));
-      formData.append("folder", "releases");
-      await api.post("/storage/upload", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+      const optimized = await optimizeImage(file, "artwork");
+      const uploadResponse = await api.post("/storage/upload-url", {
+        entityType: "release",
+        entityId: String(id),
+        fileName: optimized.name,
+        mimeType: optimized.type,
+        fileSize: optimized.size,
+        folder: "releases",
       });
-      // Refresh artwork via Storage Service (do not use legacy /uploads paths)
+      const upload = uploadResponse.data;
+      const r2Response = await fetch(upload.uploadUrl, {
+        method: "PUT",
+        headers: { "Content-Type": optimized.type },
+        body: optimized,
+      });
+      if (!r2Response.ok) throw new Error(`R2 upload failed (${r2Response.status})`);
+      await api.post("/storage/complete", {
+        entityType: "release",
+        entityId: String(id),
+        key: upload.key,
+        fileName: upload.fileName,
+        originalName: file.name,
+        mimeType: optimized.type,
+        fileSize: optimized.size,
+      });
+      invalidateEntityArtwork("release", id);
       setArtworkKey((k) => k + 1);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Upload failed:", err);
-      alert("Failed to upload artwork");
+      alert(errorMessage(err, "Failed to upload artwork"));
     } finally {
       setUploading(false);
+      e.target.value = "";
     }
   };
 
@@ -132,7 +158,7 @@ export default function ReleaseDetailPage() {
               )}
               <label style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)", opacity: 0, cursor: "pointer", transition: "opacity 0.2s" }} className="group-hover:opacity-100">
                 <Upload size={24} className="text-white" />
-                <input type="file" accept="image/*" style={{ display: "none" }} onChange={handleArtworkUpload} />
+                <input type="file" accept="image/jpeg,image/png,image/webp" style={{ display: "none" }} onChange={handleArtworkUpload} />
               </label>
             </div>
             <div className="flex-1 min-w-[200px]">
