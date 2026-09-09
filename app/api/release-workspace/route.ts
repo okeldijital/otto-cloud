@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
-import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
+import { requireOrganization } from "@/lib/auth/organization-context";
 
 export async function GET(req: Request) {
   try {
@@ -68,7 +68,6 @@ export async function POST(req: Request) {
     const ctx = await requireOrganization();
 
     const orgId = ctx.organizationId;
-    const userId = (session.user as any).id;
     const body = await req.json();
     const { release_id } = body;
 
@@ -76,7 +75,21 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "release_id is required" }, { status: 400 });
     }
 
-    const release = await prisma.releases.findUnique({ where: { id: parseInt(release_id) } });
+    // Better Auth exposes an identity UUID, while the legacy Otto User relation
+    // used by workspace ownership/membership/timeline records is integer-backed.
+    // Resolve the authenticated identity to the canonical legacy User row before
+    // writing any workspace records.
+    const user = await prisma.User.findUnique({
+      where: { email: session.user.email },
+      select: { id: true },
+    });
+    if (!user) return NextResponse.json({ error: "Authenticated user not found" }, { status: 403 });
+
+    // A workspace is an organization-owned operational surface. Do not create
+    // one for a release that is outside the active organization.
+    const release = await prisma.releases.findFirst({
+      where: { id: parseInt(release_id), organization_id: orgId, is_deleted: false },
+    });
     if (!release) return NextResponse.json({ error: "Release not found" }, { status: 404 });
 
     const existing = await prisma.workspaces.findFirst({
@@ -88,7 +101,7 @@ export async function POST(req: Request) {
       where: { slug: "release" },
     });
 
-    let releaseType = release.release_type || "Single";
+    const releaseType = release.release_type || "Single";
     const workspaceName = `${release.title} - ${releaseType} Release`;
 
     const workspace = await prisma.workspaces.create({
@@ -99,24 +112,24 @@ export async function POST(req: Request) {
         release_id: release.id,
         status: "planning",
         organization_id: orgId,
-        created_by: userId,
+        created_by: user.id,
       },
     });
 
     await prisma.workspace_members.create({
-      data: { workspace_id: workspace.id, user_id: userId, role: "owner" },
+      data: { workspace_id: workspace.id, user_id: user.id, role: "owner" },
     });
 
     await prisma.workspace_timeline_events.create({
       data: {
         workspace_id: workspace.id,
-        user_id: userId,
+        user_id: user.id,
         event_type: "system",
         summary: `Release workspace created for "${release.title}"`,
       },
     });
 
-    await createDefaultChannels(workspace.id, orgId, userId);
+    await createDefaultChannels(workspace.id, orgId, user.id);
     await calculateReadinessScore(workspace.id, orgId);
 
     const fullWorkspace = await prisma.workspaces.findUnique({
