@@ -11,6 +11,7 @@ import Badge from "@/components/ui/Badge";
 import GroupMembersManager from "@/components/catalog/GroupMembersManager";
 import EntityArtwork from "@/components/media/EntityArtwork";
 import { invalidateEntityArtwork } from "@/hooks/useAttachment";
+import { optimizeImage } from "@/lib/media/image-optimization";
 import api from "@/lib/api";
 
 type Artist = any;
@@ -102,20 +103,22 @@ export default function ArtistDetailPage() {
   };
 
   const handleProfileUpload = async (file: File) => {
+    const optimized = await optimizeImage(file, "avatar");
+
     const uploadResponse = await api.post("/storage/upload-url", {
       entityType: "artist",
       entityId: String(id),
-      fileName: file.name,
-      mimeType: file.type,
-      fileSize: file.size,
+      fileName: optimized.name,
+      mimeType: optimized.type,
+      fileSize: optimized.size,
       folder: "artist",
     });
 
     const upload = uploadResponse.data;
     const r2Response = await fetch(upload.uploadUrl, {
       method: "PUT",
-      headers: { "Content-Type": file.type },
-      body: file,
+      headers: { "Content-Type": optimized.type },
+      body: optimized,
     });
 
     if (!r2Response.ok) throw new Error(`R2 upload failed (${r2Response.status})`);
@@ -126,8 +129,8 @@ export default function ArtistDetailPage() {
       key: upload.key,
       fileName: upload.fileName,
       originalName: file.name,
-      mimeType: file.type,
-      fileSize: file.size,
+      mimeType: optimized.type,
+      fileSize: optimized.size,
     });
 
     invalidateEntityArtwork("artist", id);
@@ -237,7 +240,7 @@ export default function ArtistDetailPage() {
           <div><label className="text-xs text-text-secondary">Label ID</label><input className="input w-full" inputMode="numeric" value={editData.label_id || ""} onChange={(e) => setEditData({ ...editData, label_id: e.target.value })} /></div>
           <div><label className="text-xs text-text-secondary">Publisher ID</label><input className="input w-full" inputMode="numeric" value={editData.publisher_id || ""} onChange={(e) => setEditData({ ...editData, publisher_id: e.target.value })} /></div>
           <div><label className="text-xs text-text-secondary">PRO ID</label><input className="input w-full" inputMode="numeric" value={editData.pro_id || ""} onChange={(e) => setEditData({ ...editData, pro_id: e.target.value })} /></div>
-          <div className="col-span-2"><label className="text-xs text-text-secondary">Profile Photo</label><input className="input w-full" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif,image/bmp,image/tiff" onChange={(e) => setProfileImage(e.target.files?.[0] || null)} /><p className="text-xs text-text-secondary mt-1">Upload directly to Otto Cloud storage. No image URL required.</p></div>
+          <div className="col-span-2"><label className="text-xs text-text-secondary">Profile Photo</label><input className="input w-full" type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => setProfileImage(e.target.files?.[0] || null)} /><p className="text-xs text-text-secondary mt-1">Images are automatically resized and compressed before upload. Maximum stored avatar size: 750 KB.</p></div>
           <div><label className="text-xs text-text-secondary">Instagram</label><input className="input w-full" value={editData.instagram || ""} onChange={(e) => setEditData({ ...editData, instagram: e.target.value })} /></div>
           <div><label className="text-xs text-text-secondary">Twitter</label><input className="input w-full" value={editData.twitter || ""} onChange={(e) => setEditData({ ...editData, twitter: e.target.value })} /></div>
           <div><label className="text-xs text-text-secondary">Spotify</label><input className="input w-full" value={editData.spotify_url || ""} onChange={(e) => setEditData({ ...editData, spotify_url: e.target.value })} /></div>
