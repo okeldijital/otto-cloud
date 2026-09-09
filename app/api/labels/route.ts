@@ -1,27 +1,69 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth/session";
-import { platformAuthorityFromSession } from "@/lib/auth/privilege-authorization";
 import { prisma } from "@/lib/prisma";
 import {
   orgContextErrorResponse,
   requireOrganization,
 } from "@/lib/auth/organization-context";
-import {
-  labelRelatedCatalogWhere,
-  parsePositiveIntId,
-} from "@/lib/catalog/label-scope";
+import { parsePositiveIntId } from "@/lib/catalog/label-scope";
 
 /**
- * Labels are GLOBAL REFERENCE DATA (no organization_id column).
- * Reads: authenticated org session.
- * Mutations: platform authority only (A.8 Step 5 / R4-001).
- * Related artists/releases are organization-scoped.
- * See docs/architecture/multi-tenant-model.md §4.3.
+ * Labels are organization-owned catalogue entities.
+ * All reads and mutations are scoped to the active organization.
+ * The SQL bridge is intentional until Prisma schema/client reconciliation
+ * includes labels.organization_id.
  */
+
+const LABEL_COLUMNS = `
+  id,
+  label_id,
+  name,
+  address,
+  contact_email,
+  contact_phone,
+  website,
+  artist_ids,
+  created_at,
+  updated_at,
+  logo_url,
+  contact_person,
+  organization_id
+`;
+
+function cleanNullable(value: unknown) {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== "string") return value;
+  const trimmed = value.trim();
+  return trimmed === "" ? null : trimmed;
+}
+
+function cleanBody(body: any) {
+  return {
+    name: typeof body?.name === "string" ? body.name.trim() : "",
+    labelId: cleanNullable(body?.label_id),
+    contactPerson: cleanNullable(body?.contact_person),
+    contactEmail: cleanNullable(body?.contact_email),
+    contactPhone: cleanNullable(body?.contact_phone),
+    website: cleanNullable(body?.website),
+    address: cleanNullable(body?.address),
+    logoUrl: cleanNullable(body?.logo_url),
+  };
+}
+
+async function getLabel(id: number, organizationId: string) {
+  const rows = await prisma.$queryRaw<any[]>`
+    SELECT ${prisma.$queryRawUnsafe(LABEL_COLUMNS)}
+    FROM labels
+    WHERE id = ${id}
+      AND organization_id = CAST(${organizationId} AS uuid)
+    LIMIT 1
+  `;
+  return rows[0] ?? null;
+}
+
 export async function GET(req: Request) {
   try {
     const ctx = await requireOrganization();
-
     const { searchParams } = new URL(req.url);
     const idStr = searchParams.get("id");
 
@@ -32,7 +74,7 @@ export async function GET(req: Request) {
 
       if (relation === "releases") {
         const releases = await prisma.releases.findMany({
-          where: labelRelatedCatalogWhere("releases", id, ctx.organizationId),
+          where: { label_id: id, organization_id: ctx.organizationId, is_deleted: false },
           orderBy: { title: "asc" },
         });
         return NextResponse.json(releases);
@@ -40,7 +82,7 @@ export async function GET(req: Request) {
 
       if (relation === "artists") {
         const artists = await prisma.artists.findMany({
-          where: labelRelatedCatalogWhere("artists", id, ctx.organizationId),
+          where: { label_id: id, organization_id: ctx.organizationId, is_deleted: false },
           orderBy: { name: "asc" },
         });
         return NextResponse.json(artists);
@@ -50,19 +92,31 @@ export async function GET(req: Request) {
         return NextResponse.json({ error: "Unsupported relation" }, { status: 400 });
       }
 
-      const label = await prisma.labels.findUnique({ where: { id } });
+      const label = await getLabel(id, ctx.organizationId);
       if (!label) return NextResponse.json({ error: "Label not found" }, { status: 404 });
       return NextResponse.json(label);
     }
 
-    const skip = parseInt(searchParams.get("skip") || "0");
-    const limit = parseInt(searchParams.get("limit") || "100");
+    const skip = Math.max(0, parseInt(searchParams.get("skip") || "0", 10) || 0);
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "100", 10) || 100));
 
     const [labels, total] = await Promise.all([
-      prisma.labels.findMany({ skip, take: limit, orderBy: { name: "asc" } }),
-      prisma.labels.count(),
+      prisma.$queryRaw<any[]>`
+        SELECT ${prisma.$queryRawUnsafe(LABEL_COLUMNS)}
+        FROM labels
+        WHERE organization_id = CAST(${ctx.organizationId} AS uuid)
+        ORDER BY name ASC
+        OFFSET ${skip}
+        LIMIT ${limit}
+      `,
+      prisma.$queryRaw<Array<{ count: bigint }>>`
+        SELECT COUNT(*)::bigint AS count
+        FROM labels
+        WHERE organization_id = CAST(${ctx.organizationId} AS uuid)
+      `,
     ]);
-    return NextResponse.json({ total, items: labels });
+
+    return NextResponse.json({ total: Number(total[0]?.count ?? 0), items: labels });
   } catch (err: any) {
     const mapped = orgContextErrorResponse(err);
     if (mapped.status === 401 || mapped.status === 403) {
@@ -75,35 +129,62 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession();
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const ctx = await requireOrganization();
+    const body = cleanBody(await req.json());
 
-    if (!platformAuthorityFromSession(session.user)) {
-      return NextResponse.json(
-        { error: "Platform authority required", code: "PLATFORM_AUTHORITY_REQUIRED" },
-        { status: 403 }
-      );
+    if (!body.name) {
+      return NextResponse.json({ error: "Label name is required" }, { status: 400 });
     }
 
-    const body = await req.json();
-
-    const existing = await prisma.labels.findFirst({ where: { name: body.name } });
-    if (existing) {
+    const duplicate = await prisma.$queryRaw<Array<{ id: number }>>`
+      SELECT id
+      FROM labels
+      WHERE organization_id = CAST(${ctx.organizationId} AS uuid)
+        AND LOWER(name) = LOWER(${body.name})
+      LIMIT 1
+    `;
+    if (duplicate.length) {
       return NextResponse.json(
         { error: `A label with the name '${body.name}' already exists.` },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
-    const newLabel = await prisma.labels.create({ data: body });
-    return NextResponse.json(newLabel, { status: 201 });
+    const created = await prisma.$queryRaw<any[]>`
+      INSERT INTO labels (
+        label_id,
+        name,
+        address,
+        contact_email,
+        contact_phone,
+        website,
+        logo_url,
+        contact_person,
+        organization_id,
+        created_at,
+        updated_at
+      )
+      VALUES (
+        ${body.labelId},
+        ${body.name},
+        ${body.address},
+        ${body.contactEmail},
+        ${body.contactPhone},
+        ${body.website},
+        ${body.logoUrl},
+        ${body.contactPerson},
+        CAST(${ctx.organizationId} AS uuid),
+        CURRENT_TIMESTAMP,
+        CURRENT_TIMESTAMP
+      )
+      RETURNING ${prisma.$queryRawUnsafe(LABEL_COLUMNS)}
+    `;
+
+    return NextResponse.json(created[0], { status: 201 });
   } catch (err: any) {
     console.error("[POST /api/labels]", err);
-    if (err.code === "P2002") {
-      return NextResponse.json(
-        { error: "A database integrity error occurred. This label name or ID might already exist." },
-        { status: 409 }
-      );
+    if (err?.code === "P2002" || err?.code === "23505") {
+      return NextResponse.json({ error: "A label with this name or ID already exists." }, { status: 409 });
     }
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
@@ -111,44 +192,54 @@ export async function POST(req: Request) {
 
 export async function PUT(req: Request) {
   try {
-    const session = await getServerSession();
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-    if (!platformAuthorityFromSession(session.user)) {
-      return NextResponse.json(
-        { error: "Platform authority required", code: "PLATFORM_AUTHORITY_REQUIRED" },
-        { status: 403 }
-      );
-    }
-
+    const ctx = await requireOrganization();
     const { searchParams } = new URL(req.url);
     const id = parsePositiveIntId(searchParams.get("id"));
     if (!id) return NextResponse.json({ error: "Missing label ID" }, { status: 400 });
 
-    const body = await req.json();
-
-    const existing = await prisma.labels.findUnique({ where: { id } });
+    const existing = await getLabel(id, ctx.organizationId);
     if (!existing) return NextResponse.json({ error: "Label not found" }, { status: 404 });
 
-    if (body.name && body.name !== existing.name) {
-      const dup = await prisma.labels.findFirst({ where: { name: body.name } });
-      if (dup) {
-        return NextResponse.json(
-          { error: `A label with the name '${body.name}' already exists.` },
-          { status: 409 }
-        );
-      }
+    const body = cleanBody(await req.json());
+    if (!body.name) return NextResponse.json({ error: "Label name is required" }, { status: 400 });
+
+    const duplicate = await prisma.$queryRaw<Array<{ id: number }>>`
+      SELECT id
+      FROM labels
+      WHERE organization_id = CAST(${ctx.organizationId} AS uuid)
+        AND LOWER(name) = LOWER(${body.name})
+        AND id <> ${id}
+      LIMIT 1
+    `;
+    if (duplicate.length) {
+      return NextResponse.json(
+        { error: `A label with the name '${body.name}' already exists.` },
+        { status: 409 },
+      );
     }
 
-    const updated = await prisma.labels.update({ where: { id }, data: body });
-    return NextResponse.json(updated);
+    const updated = await prisma.$queryRaw<any[]>`
+      UPDATE labels
+      SET
+        label_id = ${body.labelId},
+        name = ${body.name},
+        address = ${body.address},
+        contact_email = ${body.contactEmail},
+        contact_phone = ${body.contactPhone},
+        website = ${body.website},
+        logo_url = ${body.logoUrl},
+        contact_person = ${body.contactPerson},
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ${id}
+        AND organization_id = CAST(${ctx.organizationId} AS uuid)
+      RETURNING ${prisma.$queryRawUnsafe(LABEL_COLUMNS)}
+    `;
+
+    return NextResponse.json(updated[0]);
   } catch (err: any) {
     console.error("[PUT /api/labels]", err);
-    if (err.code === "P2002") {
-      return NextResponse.json(
-        { error: "A database integrity error occurred. This label name or ID might already be in use." },
-        { status: 409 }
-      );
+    if (err?.code === "P2002" || err?.code === "23505") {
+      return NextResponse.json({ error: "A label with this name or ID already exists." }, { status: 409 });
     }
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
@@ -156,31 +247,47 @@ export async function PUT(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
-    const session = await getServerSession();
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-    if (!platformAuthorityFromSession(session.user)) {
-      return NextResponse.json(
-        { error: "Platform authority required", code: "PLATFORM_AUTHORITY_REQUIRED" },
-        { status: 403 }
-      );
-    }
-
+    const ctx = await requireOrganization();
     const { searchParams } = new URL(req.url);
     const id = parsePositiveIntId(searchParams.get("id"));
     if (!id) return NextResponse.json({ error: "Missing label ID" }, { status: 400 });
 
-    const existing = await prisma.labels.findUnique({ where: { id } });
+    const existing = await getLabel(id, ctx.organizationId);
     if (!existing) return NextResponse.json({ error: "Label not found" }, { status: 404 });
 
-    await prisma.labels.delete({ where: { id } });
+    const linked = await prisma.$queryRaw<Array<{ count: bigint }>>`
+      SELECT COUNT(*)::bigint AS count
+      FROM artists
+      WHERE label_id = ${id}
+        AND organization_id = CAST(${ctx.organizationId} AS uuid)
+        AND is_deleted = false
+    `;
+    const linkedReleases = await prisma.$queryRaw<Array<{ count: bigint }>>`
+      SELECT COUNT(*)::bigint AS count
+      FROM releases
+      WHERE label_id = ${id}
+        AND organization_id = CAST(${ctx.organizationId} AS uuid)
+        AND is_deleted = false
+    `;
+    if (Number(linked[0]?.count ?? 0) + Number(linkedReleases[0]?.count ?? 0) > 0) {
+      return NextResponse.json(
+        { error: "Cannot delete label because it is associated with artists or releases." },
+        { status: 409 },
+      );
+    }
+
+    await prisma.$executeRaw`
+      DELETE FROM labels
+      WHERE id = ${id}
+        AND organization_id = CAST(${ctx.organizationId} AS uuid)
+    `;
     return new NextResponse(null, { status: 204 });
   } catch (err: any) {
     console.error("[DELETE /api/labels]", err);
-    if (err.code === "P2003" || err.code === "P2014") {
+    if (err?.code === "P2003" || err?.code === "P2014" || err?.code === "23503") {
       return NextResponse.json(
         { error: "Cannot delete label because it is associated with artists or releases." },
-        { status: 409 }
+        { status: 409 },
       );
     }
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
