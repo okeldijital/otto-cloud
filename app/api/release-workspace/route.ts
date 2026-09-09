@@ -79,7 +79,7 @@ export async function POST(req: Request) {
     // used by workspace ownership/membership/timeline records is integer-backed.
     // Resolve the authenticated identity to the canonical legacy User row before
     // writing any workspace records.
-    const user = await prisma.User.findUnique({
+    const user = await prisma.user.findUnique({
       where: { email: session.user.email },
       select: { id: true },
     });
