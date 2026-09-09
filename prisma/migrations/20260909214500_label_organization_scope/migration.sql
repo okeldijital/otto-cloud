@@ -1,0 +1,14 @@
+-- Label tenancy correction: make catalogue Labels organization-scoped.
+-- VALIDATION ONLY. Do not apply to production until the existing Label rows have
+-- a deterministic organization backfill and the Neon temporary branch passes.
+--
+-- Planned production shape:
+--   ALTER TABLE labels ADD COLUMN organization_id uuid;
+--   backfill existing rows from the authoritative catalogue ownership mapping;
+--   ALTER COLUMN organization_id SET NOT NULL;
+--   add FK/indexes and organization-scoped uniqueness;
+--   then remove platform-authority-only mutation behavior from /api/labels.
+--
+-- This migration is intentionally not executable yet because the current labels
+-- table is global and the repository has not established a safe deterministic
+-- owner for every existing row.
