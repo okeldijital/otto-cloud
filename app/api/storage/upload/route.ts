@@ -5,6 +5,7 @@ import {
   validateUpload,
   logAttachmentActivity,
 } from "@/lib/storage";
+import { getMediaImageMaxBytes } from "@/lib/storage/image-policy";
 import { DEFAULT_FOLDER_NAMES } from "@/lib/storage/constants";
 import {
   orgContextErrorResponse,
@@ -41,9 +42,6 @@ export async function POST(req: NextRequest) {
       (entityType as (typeof DEFAULT_FOLDER_NAMES)[keyof typeof DEFAULT_FOLDER_NAMES]) ||
       DEFAULT_FOLDER_NAMES.misc;
 
-    // Ignore client-supplied organization / tenant / ownership fields
-    // (form may include them from older clients — never trust)
-
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
@@ -63,11 +61,13 @@ export async function POST(req: NextRequest) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
+    const maxImageBytes = getMediaImageMaxBytes(entityType, file.type);
 
     const validation = validateUpload({
       fileName: file.name,
       mimeType: file.type,
       fileSize: buffer.byteLength,
+      maxSizeBytes: maxImageBytes ?? undefined,
     });
     if (!validation.valid) {
       return NextResponse.json(
@@ -120,7 +120,6 @@ export async function POST(req: NextRequest) {
       userAgent,
     });
 
-    // Never expose storageKey / bucket to the client.
     const dto = {
       id: attachment.id,
       entityType: attachment.entityType,
