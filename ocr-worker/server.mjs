@@ -34,7 +34,8 @@ const server = createServer(async (req, res) => {
       return json(res, 413, { error: "PDF exceeds OCR worker size limit" });
     }
 
-    return json(res, 200, await ocrPdf(buffer));
+    const pages = normalizePages(payload.pages);
+    return json(res, 200, await ocrPdf(buffer, pages));
   } catch (error) {
     const message = error instanceof Error ? error.message : "OCR failed";
     const status = message === "Request body too large" ? 413 : 422;
@@ -46,43 +47,63 @@ server.listen(PORT, "0.0.0.0", () => {
   console.log(`OTTO OCR worker listening on ${PORT}`);
 });
 
-async function ocrPdf(buffer) {
+async function ocrPdf(buffer, pages) {
   const root = await mkdtemp(join(tmpdir(), "otto-ocr-worker-"));
   const pdfPath = join(root, "document.pdf");
   const prefix = join(root, "page");
 
   try {
     await writeFile(pdfPath, buffer);
-    await run("pdftoppm", ["-r", "200", "-png", pdfPath, prefix]);
 
+    const renderArgs = ["-r", "200", "-png"];
+    if (pages.length) {
+      renderArgs.push("-f", String(pages[0]), "-l", String(pages[pages.length - 1]));
+    }
+    renderArgs.push(pdfPath, prefix);
+    await run("pdftoppm", renderArgs);
+
+    const requested = new Set(pages);
     const files = (await readdir(root))
       .filter((name) => /^page-\d+\.png$/.test(name))
+      .filter((name) => requested.has(Number(name.match(/\d+/)?.[0])))
       .sort((a, b) => Number(a.match(/\d+/)?.[0]) - Number(b.match(/\d+/)?.[0]));
 
-    if (!files.length) throw new Error("OCR worker could not render PDF pages");
+    if (!files.length) throw new Error("OCR worker could not render requested PDF pages");
 
-    const pages = [];
-    for (let i = 0; i < files.length; i += 1) {
+    const results = [];
+    for (const file of files) {
+      const pageNumber = Number(file.match(/\d+/)?.[0]);
       const { stdout } = await run("tesseract", [
-        join(root, files[i]),
+        join(root, file),
         "stdout",
         "-l",
         OCR_LANG,
         "--psm",
         "3",
       ]);
-      pages.push({ pageNumber: i + 1, text: stdout.trim() });
+      results.push({ pageNumber, text: stdout.trim() });
     }
 
     return {
       provider: "local-tesseract",
       ocrApplied: true,
-      pages,
-      fullText: pages.map((page) => `[PAGE ${page.pageNumber}]\n${page.text}`).join("\n\n"),
+      pages: results,
+      fullText: results
+        .map((page) => `[PAGE ${page.pageNumber}]\n${page.text}`)
+        .join("\n\n"),
     };
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+}
+
+function normalizePages(value) {
+  if (!Array.isArray(value) || value.length === 0) return [1];
+  const pages = [...new Set(value.map(Number))].filter(
+    (page) => Number.isInteger(page) && page > 0
+  );
+  if (!pages.length) return [1];
+  return pages.sort((a, b) => a - b);
 }
 
 function readBody(req, limit) {
@@ -120,6 +141,9 @@ function run(command, args) {
 
 function json(res, status, payload) {
   const data = JSON.stringify(payload);
-  res.writeHead(status, { "content-type": "application/json", "content-length": Buffer.byteLength(data) });
+  res.writeHead(status, {
+    "content-type": "application/json",
+    "content-length": Buffer.byteLength(data),
+  });
   res.end(data);
 }
