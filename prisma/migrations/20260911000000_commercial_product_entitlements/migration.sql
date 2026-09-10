@@ -5,7 +5,7 @@
 -- Product plans represent independently licensable capability bundles.
 
 CREATE TABLE "product_plans" (
-  "id" UUID NOT NULL DEFAULT gen_random_uuid(),
+  "id" UUID NOT NULL,
   "key" VARCHAR(64) NOT NULL,
   "name" VARCHAR(128) NOT NULL,
   "description" TEXT,
@@ -17,7 +17,7 @@ CREATE TABLE "product_plans" (
 );
 
 CREATE TABLE "organization_product_licenses" (
-  "id" UUID NOT NULL DEFAULT gen_random_uuid(),
+  "id" UUID NOT NULL,
   "organization_id" UUID NOT NULL,
   "product_plan_id" UUID NOT NULL,
   "status" VARCHAR(32) NOT NULL DEFAULT 'active',
@@ -45,21 +45,22 @@ CREATE INDEX "ix_org_product_licenses_org" ON "organization_product_licenses"("o
 CREATE INDEX "ix_org_product_licenses_status" ON "organization_product_licenses"("status");
 CREATE INDEX "ix_org_product_licenses_expiry" ON "organization_product_licenses"("expires_at");
 
-INSERT INTO "product_plans" ("key", "name", "description", "features") VALUES
-  ('OTTO_CORE', 'OTTO Core', 'Base OTTO perpetual license.', '["catalog","contracts.core"]'::jsonb),
-  ('OTTO_NETWORK', 'OTTO Network', 'Network and relationship management.', '["network"]'::jsonb),
-  ('OTTO_RIGHTS', 'OTTO Rights', 'Advanced rights administration.', '["rights"]'::jsonb),
-  ('OTTO_ROYALTIES', 'OTTO Royalties', 'Royalty and entitlement operations.', '["royalties"]'::jsonb),
-  ('OTTO_OFFICE', 'OTTO Office', 'Office and reporting capabilities.', '["office"]'::jsonb),
-  ('OTTO_WORKSPACE', 'OTTO Workspace', 'Release workspace capabilities.', '["workspace"]'::jsonb),
-  ('OTTO_AI', 'OTTO Intelligence', 'AI capabilities.', '["ai"]'::jsonb),
-  ('OTTO_CONTRACTS_OCR', 'Contracts OCR', 'OCR and contract document intelligence.', '["contracts.ocr"]'::jsonb)
+INSERT INTO "product_plans" ("id", "key", "name", "description", "features") VALUES
+  ('00000000-0000-4000-8000-000000000101', 'OTTO_CORE', 'OTTO Core', 'Base OTTO perpetual license.', '["catalog","contracts.core"]'::jsonb),
+  ('00000000-0000-4000-8000-000000000102', 'OTTO_NETWORK', 'OTTO Network', 'Network and relationship management.', '["network"]'::jsonb),
+  ('00000000-0000-4000-8000-000000000103', 'OTTO_RIGHTS', 'OTTO Rights', 'Advanced rights administration.', '["rights"]'::jsonb),
+  ('00000000-0000-4000-8000-000000000104', 'OTTO_ROYALTIES', 'OTTO Royalties', 'Royalty and entitlement operations.', '["royalties"]'::jsonb),
+  ('00000000-0000-4000-8000-000000000105', 'OTTO_OFFICE', 'OTTO Office', 'Office and reporting capabilities.', '["office"]'::jsonb),
+  ('00000000-0000-4000-8000-000000000106', 'OTTO_WORKSPACE', 'OTTO Workspace', 'Release workspace capabilities.', '["workspace"]'::jsonb),
+  ('00000000-0000-4000-8000-000000000107', 'OTTO_AI', 'OTTO Intelligence', 'AI capabilities.', '["ai"]'::jsonb),
+  ('00000000-0000-4000-8000-000000000108', 'OTTO_CONTRACTS_OCR', 'Contracts OCR', 'OCR and contract document intelligence.', '["contracts.ocr"]'::jsonb)
 ON CONFLICT ("key") DO NOTHING;
 
 -- Bootstrap existing IAM organizations onto the Core product so the new
 -- commercial gate cannot remove access from organizations that pre-date it.
-INSERT INTO "organization_product_licenses" ("organization_id", "product_plan_id", "source")
-SELECT o."id", p."id", 'commercial-bootstrap'
+-- md5(text)::uuid is deterministic and requires no database extension.
+INSERT INTO "organization_product_licenses" ("id", "organization_id", "product_plan_id", "source")
+SELECT md5(o."id"::text || ':' || p."id"::text)::uuid, o."id", p."id", 'commercial-bootstrap'
 FROM "iam_organizations" o
 CROSS JOIN "product_plans" p
 WHERE o."status" = 'active'
