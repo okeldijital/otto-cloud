@@ -7,9 +7,12 @@ import PageHeader from "@/components/ui/PageHeader";
 import Button from "@/components/ui/Button";
 import DataTable from "@/components/DataTable";
 import EntityForm from "@/components/EntityForm";
+import EntityArtwork from "@/components/media/EntityArtwork";
 import api from "@/lib/api";
+import { useAttachmentMap } from "@/hooks/useAttachment";
 
 const columns = [
+  { key: "artwork", label: "", render: (row: any) => <EntityArtwork entityType="publisher" entityId={row.id} src={row.artwork_url || null} alt={row.name} size={40} placeholder="label" className="rounded-lg" /> },
   { key: "name", label: "Name", sortable: true },
   { key: "pro_id", label: "PRO ID", render: (row: any) => row.pro_id || "—" },
 ];
@@ -21,6 +24,7 @@ export default function ProsPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState<any>({ name: "", pro_id: "" });
+  const { urls: artworkUrls } = useAttachmentMap("publisher", data.map((row) => row.id));
 
   const fetchData = async () => {
     try {
@@ -39,7 +43,7 @@ export default function ProsPage() {
   }, []);
 
   const handleDelete = async (row: any) => {
-    if (!window.confirm(`Delete PRO "${row.name}"? This cannot be undone.`)) return;
+    if (!window.confirm(`Delete PRO \"${row.name}\"? This cannot be undone.`)) return;
     try {
       await api.delete(`/pros?id=${row.id}`);
       fetchData();
@@ -50,9 +54,10 @@ export default function ProsPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.name.trim()) return;
     setIsSubmitting(true);
     try {
-      await api.post("/pros", form);
+      await api.post("/pros", { name: form.name.trim(), pro_id: form.pro_id.trim() || null });
       setShowAddModal(false);
       setForm({ name: "", pro_id: "" });
       fetchData();
@@ -63,11 +68,17 @@ export default function ProsPage() {
     }
   };
 
+  const columnsWithArtwork = columns.map((column) =>
+    column.key === "artwork"
+      ? { ...column, render: (row: any) => <EntityArtwork entityType="publisher" entityId={row.id} src={artworkUrls[String(row.id)] || null} alt={row.name} size={40} placeholder="label" className="rounded-lg" /> }
+      : column
+  );
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="PROs"
-        subtitle="Performance Rights Organizations"
+        subtitle="Manage performance rights organizations and catalogue relationships"
         actions={
           <Button variant="primary" size="sm" onClick={() => { setForm({ name: "", pro_id: "" }); setShowAddModal(true); }}>
             <Plus size={16} />
@@ -76,7 +87,7 @@ export default function ProsPage() {
         }
       />
       <DataTable
-        columns={columns}
+        columns={columnsWithArtwork}
         data={data}
         isLoading={loading}
         onRowClick={(row: any) => router.push(`/catalog/pros/${row.id}`)}
@@ -85,15 +96,21 @@ export default function ProsPage() {
       />
 
       <EntityForm title="New PRO" isOpen={showAddModal} onClose={() => setShowAddModal(false)} onSubmit={handleCreate} isSubmitting={isSubmitting} error={undefined}>
-        <div className="space-y-4">
+        <div className="space-y-5">
           <div>
-            <label className="text-xs text-text-secondary font-bold">Name *</label>
-            <input className="input w-full" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+            <div className="mb-3 text-xs font-bold uppercase tracking-wide text-text-secondary">Identity</div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="md:col-span-2">
+                <label className="text-xs text-text-secondary font-bold">Name *</label>
+                <input className="input w-full" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+              </div>
+              <div>
+                <label className="text-xs text-text-secondary font-bold">PRO ID</label>
+                <input className="input w-full" value={form.pro_id} onChange={(e) => setForm({ ...form, pro_id: e.target.value })} placeholder="e.g. SAMRO" />
+              </div>
+            </div>
           </div>
-          <div>
-            <label className="text-xs text-text-secondary font-bold">PRO ID</label>
-            <input className="input w-full" value={form.pro_id} onChange={(e) => setForm({ ...form, pro_id: e.target.value })} />
-          </div>
+          <p className="text-xs text-text-secondary">Create the PRO first, then manage its artwork and catalogue relationships from the detail page.</p>
         </div>
       </EntityForm>
     </div>
