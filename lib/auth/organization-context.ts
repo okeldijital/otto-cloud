@@ -7,14 +7,13 @@
  * the imported catalog has been fully re-keyed.
  *
  * @see docs/architecture/decisions/ADR-001-isolation-boundary.md
- * @see docs/architecture/multi-tenant-model.md
+ * @see docs/architecture/multi-tenant-model.md §6
  */
 
 import { getServerSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { ensureLegacyActorForIdentity } from "@/lib/platform/identity/services/legacy-migration";
 import {
-  allowLegacyUserScope,
   getLegacyCatalogScopeId,
   getLegacyIntOrgId,
   orgOwnsLegacyCatalog,
@@ -117,14 +116,6 @@ export async function getOrganizationContext(
   const legacyUserId =
     identity.legacyUserId ?? await ensureLegacyActorForIdentity(identityId);
 
-  // The Better Auth session carries the active IAM organization, not the
-  // legacy user's historical catalog scope. Read the latter only as migration
-  // compatibility metadata; IAM membership remains the authorization boundary.
-  const legacyActor = await prisma.user.findUnique({
-    where: { id: legacyUserId },
-    select: { organization_id: true },
-  });
-
   const memberships = await prisma.iamOrganizationMembership.findMany({
     where: { identityId, status: "active" },
     include: {
@@ -182,18 +173,13 @@ export async function getOrganizationContext(
     ? [...new Set(active.role.permissions.map((rp) => rp.permission.key))]
     : [...new Set(sess.user.permissions ?? [])];
 
-  // Legacy users may have active IAM memberships while their catalog and
-  // contract data still live under the legacy catalog scope. The session's
-  // organization_id is IAM-native, so use the legacy actor's stored scope for
-  // this compatibility decision. This does not authorize IAM access.
-  const usesLegacyCatalogScope = allowLegacyUserScope({
-    userOrganizationId: legacyActor?.organization_id,
-    isSuperAdmin: !!sess.user.is_superuser,
-  });
-
-  const organizationId = usesLegacyCatalogScope
-    ? getLegacyCatalogScopeId()
-    : org.legacyTenantId && orgOwnsLegacyCatalog(org.legacyTenantId)
+  // Legacy catalog data is scoped to the selected IAM organization only when
+  // that organization is explicitly mapped as a legacy-catalog owner. Never
+  // use the legacy user's historical organization_id as a global override:
+  // doing so would cause every organization selected by the same identity to
+  // resolve to the same catalog scope.
+  const organizationId =
+    org.legacyTenantId && orgOwnsLegacyCatalog(org.legacyTenantId)
       ? catalogOrganizationId
       : org.id;
 
