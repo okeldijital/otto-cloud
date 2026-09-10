@@ -8,7 +8,6 @@ import Button from "@/components/ui/Button";
 import DataTable from "@/components/DataTable";
 import EntityForm from "@/components/EntityForm";
 import EntityArtwork from "@/components/media/EntityArtwork";
-import { useAttachmentMap } from "@/hooks/useAttachment";
 import api from "@/lib/api";
 
 export default function PublishersPage() {
@@ -29,7 +28,6 @@ export default function PublishersPage() {
     } finally { setLoading(false); }
   };
   useEffect(() => { fetchData(); }, []);
-  const artwork = useAttachmentMap("publisher", data.map((row) => row.id));
 
   const handleDelete = async (row: any) => {
     if (!window.confirm(`Delete publisher "${row.name}"? This cannot be undone.`)) return;
@@ -44,7 +42,7 @@ export default function PublishersPage() {
   };
 
   const columns = [
-    { key: "logo", label: "Logo", render: (row: any) => <EntityArtwork entityType="publisher" entityId={row.id} attachment={artwork[row.id]} size="sm" /> },
+    { key: "logo", label: "Logo", render: (row: any) => <EntityArtwork entityType="publisher" entityId={row.id} size={40} /> },
     { key: "name", label: "Name", sortable: true },
     { key: "publisher_id", label: "Publisher ID", render: (row: any) => row.publisher_id || "—" },
   ];
