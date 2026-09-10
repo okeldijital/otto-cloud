@@ -24,7 +24,7 @@ export default function ReleasesPage() {
   const columns = useMemo(() => [
     { key: "artwork", label: "", render: (row: any) => <EntityArtwork entityType="release" entityId={row.id} src={coverUrls[String(row.id)] ?? null} alt={row.title} size={40} placeholder="release" className="rounded-lg" style={{ borderRadius: 8 }} /> }, { key: "title", label: "Title", sortable: true }, { key: "release_type", label: "Type", sortable: true }, { key: "release_date", label: "Release Date", sortable: true, render: (row: any) => row.release_date ? new Date(row.release_date).toLocaleDateString() : "—" }, { key: "catalog_number", label: "Catalog #", render: (row: any) => row.catalog_number || "—" },
   ], [coverUrls]);
-  const fetchData = async () => { try { const res = await api.get("/releases"); const items = Array.isArray(res.data) ? res.data : res.data?.items || []; setData(items); } catch (err) { console.error("Failed to fetch releases:", err); } finally { setLoading(false); } };
+  const fetchData = async () => { try { const res = await api.get("/releases/list"); const items = Array.isArray(res.data) ? res.data : res.data?.items || []; setData(items); } catch (err) { console.error("Failed to fetch releases:", err); } finally { setLoading(false); } };
   useEffect(() => { fetchData(); }, []);
   const handleDelete = async (row: any) => { if (!window.confirm(`Delete release "${row.title}"? This cannot be undone.`)) return; try { await api.delete(`/releases?id=${row.id}`); fetchData(); } catch (err: any) { alert(err?.response?.data?.error || "Failed to delete release"); } };
   const handleCreated = (id: number | string) => { fetchData(); router.push(`/catalog/releases/${id}`); };

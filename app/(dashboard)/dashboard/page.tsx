@@ -39,14 +39,22 @@ export default function DashboardPage() {
   const [royaltySummary, setRoyaltySummary] = useState<any>(null);
 
   useEffect(() => {
-    Promise.all([
-      api.get("/artists?limit=1").then(r => r.data),
-      api.get("/releases?limit=1").then(r => r.data),
-      api.get("/contracts?limit=1").then(r => r.data),
-      api.get("/tracks?limit=1").then(r => r.data),
-      api.get("/works?limit=1").then(r => r.data),
-      api.get("/royalties?action=summary").then(r => r.data).catch(() => null),
-    ]).then(([artists, releases, contracts, tracks, works, royalties]) => {
+    Promise.allSettled([
+      api.get("/artists?limit=1"),
+      api.get("/releases/list?limit=1"),
+      api.get("/contracts?limit=1"),
+      api.get("/tracks?limit=1"),
+      api.get("/works?limit=1"),
+      api.get("/royalties?action=summary"),
+    ]).then((results) => {
+      const valueAt = (index: number) => results[index]?.status === "fulfilled" ? results[index].value.data : null;
+      const artists = valueAt(0);
+      const releases = valueAt(1);
+      const contracts = valueAt(2);
+      const tracks = valueAt(3);
+      const works = valueAt(4);
+      const royalties = valueAt(5);
+
       setStats({
         artists: Array.isArray(artists) ? artists.length : artists?.total || 0,
         releases: Array.isArray(releases) ? releases.length : releases?.total || 0,
@@ -55,7 +63,7 @@ export default function DashboardPage() {
         works: Array.isArray(works) ? works.length : works?.total || 0,
       });
       setRoyaltySummary(royalties);
-    }).catch(() => null);
+    });
   }, []);
 
   const entityData = stats ? [
