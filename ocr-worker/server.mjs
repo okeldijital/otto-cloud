@@ -1,5 +1,5 @@
 import { createServer } from "node:http";
-import { mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
@@ -50,31 +50,28 @@ server.listen(PORT, "0.0.0.0", () => {
 async function ocrPdf(buffer, pages) {
   const root = await mkdtemp(join(tmpdir(), "otto-ocr-worker-"));
   const pdfPath = join(root, "document.pdf");
-  const prefix = join(root, "page");
 
   try {
     await writeFile(pdfPath, buffer);
 
-    const renderArgs = ["-r", "200", "-png"];
-    if (pages.length) {
-      renderArgs.push("-f", String(pages[0]), "-l", String(pages[pages.length - 1]));
-    }
-    renderArgs.push(pdfPath, prefix);
-    await run("pdftoppm", renderArgs);
-
-    const requested = new Set(pages);
-    const files = (await readdir(root))
-      .filter((name) => /^page-\d+\.png$/.test(name))
-      .filter((name) => requested.has(Number(name.match(/\d+/)?.[0])))
-      .sort((a, b) => Number(a.match(/\d+/)?.[0]) - Number(b.match(/\d+/)?.[0]));
-
-    if (!files.length) throw new Error("OCR worker could not render requested PDF pages");
-
     const results = [];
-    for (const file of files) {
-      const pageNumber = Number(file.match(/\d+/)?.[0]);
+    for (const pageNumber of pages) {
+      const prefix = join(root, `page-${pageNumber}`);
+      await run("pdftoppm", [
+        "-f",
+        String(pageNumber),
+        "-l",
+        String(pageNumber),
+        "-r",
+        "200",
+        "-png",
+        pdfPath,
+        prefix,
+      ]);
+
+      const imagePath = `${prefix}-${pageNumber}.png`;
       const { stdout } = await run("tesseract", [
-        join(root, file),
+        imagePath,
         "stdout",
         "-l",
         OCR_LANG,
@@ -82,6 +79,10 @@ async function ocrPdf(buffer, pages) {
         "3",
       ]);
       results.push({ pageNumber, text: stdout.trim() });
+    }
+
+    if (!results.length) {
+      throw new Error("OCR worker could not render requested PDF pages");
     }
 
     return {
