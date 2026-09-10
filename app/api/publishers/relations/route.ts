@@ -14,15 +14,22 @@ function percent(value: unknown, field: string) {
   return n;
 }
 
+async function requirePublisherInOrg(publisherId: number, organizationId: string) {
+  const rows = await prisma.$queryRaw<Array<{ id: number }>>(Prisma.sql`
+    SELECT id FROM public.publishers
+    WHERE id = ${publisherId} AND organization_id = ${uuid(organizationId)}
+    LIMIT 1
+  `);
+  if (!rows[0]) throw Object.assign(new Error("Publisher not found"), { status: 404 });
+}
+
 export async function GET(req: Request) {
   try {
     const ctx = await requireOrganization();
     const { searchParams } = new URL(req.url);
     const publisherId = Number(searchParams.get("publisherId"));
     if (!Number.isInteger(publisherId)) return NextResponse.json({ error: "Invalid publisher ID" }, { status: 400 });
-
-    const publisher = await prisma.publishers.findUnique({ where: { id: publisherId } });
-    if (!publisher) return NextResponse.json({ error: "Publisher not found" }, { status: 404 });
+    await requirePublisherInOrg(publisherId, ctx.organizationId);
 
     const org = uuid(ctx.organizationId);
     const tenant = ctx.tenantId ? uuid(ctx.tenantId) : Prisma.sql`NULL`;
@@ -44,6 +51,7 @@ export async function GET(req: Request) {
   } catch (err: any) {
     const mapped = resourceAuthErrorResponse(err);
     if (mapped.status === 401 || mapped.status === 403 || mapped.status === 404) return NextResponse.json(mapped.body, { status: mapped.status });
+    if (err?.status === 404) return NextResponse.json({ error: "Publisher not found" }, { status: 404 });
     console.error("[GET /api/publishers/relations]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
@@ -57,8 +65,7 @@ export async function PUT(req: Request) {
     const body = await req.json();
     const publisherId = Number(body.publisherId);
     if (!Number.isInteger(publisherId)) return NextResponse.json({ error: "Invalid publisher ID" }, { status: 400 });
-    const publisher = await prisma.publishers.findUnique({ where: { id: publisherId } });
-    if (!publisher) return NextResponse.json({ error: "Publisher not found" }, { status: 404 });
+    await requirePublisherInOrg(publisherId, ctx.organizationId);
 
     if (body.relation === "artist") {
       const artistId = Number(body.artistId);
@@ -97,6 +104,7 @@ export async function PUT(req: Request) {
   } catch (err: any) {
     const mapped = resourceAuthErrorResponse(err);
     if (mapped.status === 401 || mapped.status === 403 || mapped.status === 404) return NextResponse.json(mapped.body, { status: mapped.status });
+    if (err?.status === 404) return NextResponse.json({ error: "Publisher not found" }, { status: 404 });
     if (err instanceof Error && /must be between 0 and 100/.test(err.message)) return NextResponse.json({ error: err.message }, { status: 400 });
     console.error("[PUT /api/publishers/relations]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -111,6 +119,7 @@ export async function DELETE(req: Request) {
     const publisherId = Number(searchParams.get("publisherId"));
     const entityId = Number(searchParams.get("entityId"));
     if (!Number.isInteger(publisherId) || !Number.isInteger(entityId)) return NextResponse.json({ error: "Invalid relationship IDs" }, { status: 400 });
+    await requirePublisherInOrg(publisherId, ctx.organizationId);
 
     if (relation === "artist") {
       await requireArtistInOrg(entityId, ctx);
@@ -132,6 +141,7 @@ export async function DELETE(req: Request) {
   } catch (err: any) {
     const mapped = resourceAuthErrorResponse(err);
     if (mapped.status === 401 || mapped.status === 403 || mapped.status === 404) return NextResponse.json(mapped.body, { status: mapped.status });
+    if (err?.status === 404) return NextResponse.json({ error: "Publisher not found" }, { status: 404 });
     console.error("[DELETE /api/publishers/relations]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
