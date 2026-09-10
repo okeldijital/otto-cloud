@@ -82,8 +82,31 @@ async function main() {
     );
   });
 
-  await test("legacy int org is positive", () => {
-    assert.ok(getLegacyIntOrgId() > 0);
+  await test("explicit legacy tenant id is preserved", () => {
+    assert.equal(getLegacyIntOrgId("42", "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"), 42);
+    assert.equal(getLegacyIntOrgId(43, "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"), 43);
+  });
+
+  await test("different IAM organizations receive different legacy compatibility scopes", () => {
+    const orgA = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
+    const orgB = "ffffffff-1111-2222-3333-444444444444";
+    const scopeA = getLegacyIntOrgId(undefined, orgA);
+    const scopeB = getLegacyIntOrgId(undefined, orgB);
+
+    assert.ok(scopeA > 0);
+    assert.ok(scopeB > 0);
+    assert.notEqual(scopeA, scopeB);
+  });
+
+  await test("legacy configured INT scope is restricted to the explicit legacy owner", () => {
+    const legacy = getLegacyCatalogScopeId();
+    const other = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
+    const legacyScope = getLegacyIntOrgId(undefined, legacy);
+    const otherScope = getLegacyIntOrgId(undefined, other);
+
+    assert.ok(legacyScope > 0);
+    assert.ok(otherScope > 0);
+    assert.notEqual(otherScope, legacyScope);
   });
 
   console.log("\n=== organization-context (live DB) ===\n");

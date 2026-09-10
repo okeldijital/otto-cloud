@@ -153,7 +153,9 @@ export async function getOrganizationContext(
       isSuperAdmin: true,
       userId: legacyUserId,
       userEmail: sess.user.email ?? null,
-      legacyIntOrgId: getLegacyIntOrgId(),
+      // Super-admin requests still get an organization-specific compatibility
+      // scope. Never fall back to one process-wide legacy INT tenant.
+      legacyIntOrgId: getLegacyIntOrgId(undefined, organizationId),
       dataScopeSource: "superadmin",
     };
   }
@@ -202,7 +204,9 @@ export async function getOrganizationContext(
     isSuperAdmin: !!sess.user.is_superuser,
     userId: legacyUserId,
     userEmail: sess.user.email ?? null,
-    legacyIntOrgId: getLegacyIntOrgId(),
+    // The numeric compatibility scope is now derived from this exact IAM org
+    // (or its real legacyTenantId). It can no longer collapse multiple orgs to 1.
+    legacyIntOrgId: getLegacyIntOrgId(org.legacyTenantId, org.id),
     dataScopeSource: "membership",
   };
 }

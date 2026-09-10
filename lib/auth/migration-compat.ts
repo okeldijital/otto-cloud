@@ -14,6 +14,8 @@
  * @see docs/architecture/multi-tenant-model.md §6
  */
 
+import { createHash } from "node:crypto";
+
 /** Env key for the imported catalog's organization_id value */
 const LEGACY_SCOPE_ENV = "LEGACY_CATALOG_SCOPE_ID";
 
@@ -36,6 +38,10 @@ const BUILTIN_LEGACY_CATALOG_SCOPE = "00000000-0000-0000-0000-000000000001";
  * Remove when users.organization_id becomes nullable.
  */
 const UNASSIGNED_USER_ORG = "00000000-0000-0000-0000-000000000000";
+
+/** Synthetic compatibility scopes live outside the historical 1..999999 range. */
+const SYNTHETIC_INT_SCOPE_MIN = 100000000;
+const SYNTHETIC_INT_SCOPE_RANGE = 2000000000 - SYNTHETIC_INT_SCOPE_MIN;
 
 export function getUnassignedUserOrganizationId(): string {
   return UNASSIGNED_USER_ORG;
@@ -64,13 +70,71 @@ export function getLegacyCatalogScopeId(): string {
   return BUILTIN_LEGACY_CATALOG_SCOPE;
 }
 
-/**
- * Integer organization_id for legacy INT-scoped tables (contracts, individuals).
- */
-export function getLegacyIntOrgId(): number {
+function parseConfiguredLegacyIntOrgId(): number | null {
   const raw = process.env[LEGACY_INT_ORG_ENV];
-  if (raw && !Number.isNaN(parseInt(raw, 10))) return parseInt(raw, 10);
-  return 1;
+  if (!raw) return null;
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function parsePositiveLegacyTenantId(value: unknown): number | null {
+  if (typeof value === "number") {
+    return Number.isSafeInteger(value) && value > 0 ? value : null;
+  }
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!/^\d+$/.test(trimmed)) return null;
+  const parsed = Number(trimmed);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+/**
+ * Generate a stable integer compatibility scope for an IAM organization that
+ * has no legacy numeric tenant id yet. This prevents all new organizations
+ * from silently sharing the historical INT scope (previously every org fell
+ * back to 1). The value is deterministic for the org UUID and deliberately
+ * lives outside the historical legacy range.
+ *
+ * This is a compatibility boundary, not the canonical tenant identifier.
+ * New code must continue using the UUID organization id.
+ */
+function syntheticLegacyIntOrgId(organizationId: string): number {
+  const digest = createHash("sha256").update(organizationId).digest();
+  const raw = digest.readUInt32BE(0);
+  return SYNTHETIC_INT_SCOPE_MIN + (raw % SYNTHETIC_INT_SCOPE_RANGE);
+}
+
+/**
+ * Integer organization_id for legacy INT-scoped tables (contracts, individuals,
+ * audit logs, etc.). The old implementation returned a process-wide `1`,
+ * which made every IAM organization share the same legacy rows.
+ *
+ * Resolution order:
+ * 1. An actual legacyTenantId stored on the selected organization.
+ * 2. The configured legacy INT scope, but only for the explicitly mapped
+ *    legacy catalog organization.
+ * 3. A stable synthetic scope derived from the selected organization UUID.
+ *
+ * Passing no organization identity preserves the old configured value only
+ * for backwards compatibility with isolated migration tooling; request
+ * authorization paths must always pass the active organization.
+ */
+export function getLegacyIntOrgId(
+  legacyTenantId?: unknown,
+  organizationId?: string | null
+): number {
+  const mappedLegacyTenantId = parsePositiveLegacyTenantId(legacyTenantId);
+  if (mappedLegacyTenantId) return mappedLegacyTenantId;
+
+  const configured = parseConfiguredLegacyIntOrgId();
+  if (organizationId) {
+    const isExplicitLegacyOwner =
+      organizationId === getLegacyCatalogScopeId() || parseOwnerSet().has(organizationId);
+    if (configured && isExplicitLegacyOwner) return configured;
+    return syntheticLegacyIntOrgId(organizationId);
+  }
+
+  return configured ?? 1;
 }
 
 export function isLegacyCatalogScopeId(id: string | null | undefined): boolean {
@@ -94,8 +158,6 @@ export function resolveCatalogOrganizationId(organizationId: string): string {
   if (organizationId === legacy) return legacy;
 
   const owners = parseOwnerSet();
-  // Empty owner set: treat any org whose users still hold the legacy user.organization_id
-  // is handled at the context layer. Here, only explicit owners or identity.
   if (owners.size > 0 && owners.has(organizationId)) {
     return legacy;
   }
@@ -105,14 +167,11 @@ export function resolveCatalogOrganizationId(organizationId: string): string {
 
 /**
  * Whether this org should see the imported (legacy-scoped) catalog.
- * When LEGACY_CATALOG_OWNER_ORG_IDS is empty, the context layer may still
- * grant legacy scope if the user's stored organization_id is the legacy UUID
- * (typical for pre-consolidation admin accounts).
+ * When LEGACY_CATALOG_OWNER_ORG_IDS is empty, only the legacy id itself owns it.
  */
 export function orgOwnsLegacyCatalog(organizationId: string): boolean {
   const owners = parseOwnerSet();
   if (owners.size === 0) {
-    // No explicit map: only the legacy id itself "owns" it
     return organizationId === getLegacyCatalogScopeId();
   }
   return owners.has(organizationId) || organizationId === getLegacyCatalogScopeId();
