@@ -38,7 +38,12 @@ export type ProductEntitlementContext = {
   entitlements: ProductEntitlement[];
 };
 
-const CORE_FEATURES: ProductFeature[] = ["catalog", "contracts.core"];
+const CORE_FEATURES: ProductFeature[] = [
+  "catalog",
+  "contracts.core",
+  "office",
+  "workspace",
+];
 const PLAN_FEATURES: Record<string, ProductFeature[]> = {
   [PRODUCT_PLAN_KEYS.CORE]: CORE_FEATURES,
   [PRODUCT_PLAN_KEYS.NETWORK]: ["network"],
@@ -115,11 +120,9 @@ export async function resolveProductEntitlements(
       licenseType: row.licenseType,
       startsAt: row.startsAt,
       expiresAt: row.expiresAt,
-      features: (
-        Array.isArray(row.features)
-          ? row.features.filter((f): f is ProductFeature => typeof f === "string")
-          : PLAN_FEATURES[row.planKey] ?? []
-      ),
+      features: Array.isArray(row.features)
+        ? row.features.filter((f): f is ProductFeature => typeof f === "string")
+        : PLAN_FEATURES[row.planKey] ?? [],
     })),
   };
 }

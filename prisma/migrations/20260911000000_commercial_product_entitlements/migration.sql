@@ -46,7 +46,7 @@ CREATE INDEX "ix_org_product_licenses_status" ON "organization_product_licenses"
 CREATE INDEX "ix_org_product_licenses_expiry" ON "organization_product_licenses"("expires_at");
 
 INSERT INTO "product_plans" ("id", "key", "name", "description", "features") VALUES
-  ('00000000-0000-4000-8000-000000000101', 'OTTO_CORE', 'OTTO Core', 'Base OTTO perpetual license.', '["catalog","contracts.core"]'::jsonb),
+  ('00000000-0000-4000-8000-000000000101', 'OTTO_CORE', 'OTTO Core', 'Base OTTO perpetual license.', '["catalog","contracts.core","office","workspace"]'::jsonb),
   ('00000000-0000-4000-8000-000000000102', 'OTTO_NETWORK', 'OTTO Network', 'Network and relationship management.', '["network"]'::jsonb),
   ('00000000-0000-4000-8000-000000000103', 'OTTO_RIGHTS', 'OTTO Rights', 'Advanced rights administration.', '["rights"]'::jsonb),
   ('00000000-0000-4000-8000-000000000104', 'OTTO_ROYALTIES', 'OTTO Royalties', 'Royalty and entitlement operations.', '["royalties"]'::jsonb),
