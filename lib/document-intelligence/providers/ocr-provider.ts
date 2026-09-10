@@ -13,6 +13,8 @@ export interface OcrResult {
   fullText: string;
   /** true when OCR engine was actually applied (vs native text path). */
   ocrApplied: boolean;
+  /** Total pages in the source document when known. */
+  documentPageCount?: number;
 }
 
 export interface OcrProvider {
