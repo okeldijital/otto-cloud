@@ -2,8 +2,9 @@ import type { OcrPageResult, OcrProvider, OcrResult } from "./ocr-provider";
 import { NATIVE_TEXT_THRESHOLD_PER_PAGE } from "../constants";
 
 /**
- * Native PDF text extraction with a self-hosted OCR worker fallback for
- * scanned/image PDFs. No hosted OCR API is required.
+ * Intake OCR is intentionally page-scoped: automatic extraction only needs
+ * the first page in the common contract-upload case. The source PDF remains
+ * the authoritative document for later deep analysis.
  */
 export class PdfTextOcrProvider implements OcrProvider {
   readonly name = "pdfjs-text";
@@ -13,13 +14,18 @@ export class PdfTextOcrProvider implements OcrProvider {
     mimeType: string;
     filename?: string;
   }): Promise<OcrResult> {
-    const pages = await extractPdfPages(params.buffer);
-    const fullText = pages.map((p) => p.text).join("\n\n").trim();
-    const pageCount = Math.max(1, pages.length);
-    const density = fullText.replace(/\s+/g, "").length / pageCount;
+    const firstPage = await extractFirstPdfPage(params.buffer);
+    const firstPageText = firstPage.text.trim();
+    const density = firstPageText.replace(/\s+/g, "").length;
 
     if (density >= NATIVE_TEXT_THRESHOLD_PER_PAGE) {
-      return { provider: this.name, pages, fullText, ocrApplied: false };
+      return {
+        provider: this.name,
+        pages: [firstPage],
+        fullText: firstPageText,
+        ocrApplied: false,
+        documentPageCount: firstPage.documentPageCount,
+      };
     }
 
     const workerUrl = process.env.OCR_WORKER_URL?.replace(/\/$/, "");
@@ -41,8 +47,11 @@ export class PdfTextOcrProvider implements OcrProvider {
         mimeType: params.mimeType,
         filename: params.filename,
         data: params.buffer.toString("base64"),
+        pages: [1],
       }),
-      signal: AbortSignal.timeout(Number(process.env.OCR_WORKER_TIMEOUT_MS || 120_000)),
+      signal: AbortSignal.timeout(
+        Number(process.env.OCR_WORKER_TIMEOUT_MS || 120_000)
+      ),
     });
 
     if (!response.ok) {
@@ -61,7 +70,9 @@ export class PdfTextOcrProvider implements OcrProvider {
   }
 }
 
-async function extractPdfPages(buffer: Buffer): Promise<OcrPageResult[]> {
+async function extractFirstPdfPage(
+  buffer: Buffer
+): Promise<OcrPageResult & { documentPageCount: number }> {
   try {
     const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
     const data = new Uint8Array(buffer);
@@ -72,20 +83,17 @@ async function extractPdfPages(buffer: Buffer): Promise<OcrPageResult[]> {
       useWorkerFetch: false,
     });
     const doc = await loadingTask.promise;
-    const pages: OcrPageResult[] = [];
-    for (let i = 1; i <= doc.numPages; i++) {
-      const page = await doc.getPage(i);
-      const content = await page.getTextContent();
-      const text = content.items
-        .map((it: any) => (typeof it.str === "string" ? it.str : ""))
-        .join(" ")
-        .replace(/\s+/g, " ")
-        .trim();
-      pages.push({ pageNumber: i, text });
-    }
-    return pages.length > 0 ? pages : [{ pageNumber: 1, text: "" }];
+    const page = await doc.getPage(1);
+    const content = await page.getTextContent();
+    const text = content.items
+      .map((it: any) => (typeof it.str === "string" ? it.str : ""))
+      .join(" ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    return { pageNumber: 1, text, documentPageCount: doc.numPages };
   } catch {
-    return [{ pageNumber: 1, text: "" }];
+    return { pageNumber: 1, text: "", documentPageCount: 1 };
   }
 }
 
