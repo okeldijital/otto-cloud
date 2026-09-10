@@ -8,8 +8,8 @@ export async function GET() {
   const session = await getServerSession();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const userId = parseInt((session.user as any).id);
-  if (isNaN(userId)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const identityId = session.user.identityId;
+  if (!identityId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const memberships = await prisma.$queryRaw<
     Array<{
@@ -45,7 +45,7 @@ export async function GET() {
     INNER JOIN iam_organizations o ON o.id = m."organizationId"
     LEFT JOIN iam_roles r ON r.id = m."roleId"
     LEFT JOIN tenants t ON t.id = o."legacyTenantId"
-    WHERE i."legacyUserId" = ${userId}
+    WHERE i.id = ${identityId}
       AND m.status = 'active'
       AND o.status = 'active'
     ORDER BY m."isDefault" DESC, m."isOwner" DESC, o.name ASC
