@@ -8,8 +8,9 @@ import {
 } from "react";
 
 /**
- * AuthContext — IAM only (NextAuth removed).
- * Session state from GET /api/auth/session exclusively.
+ * AuthContext — IAM + organization-scoped commercial entitlements.
+ * Session state from GET /api/auth/session; product access from
+ * GET /api/auth/product-entitlements.
  */
 
 const AuthContext = createContext({
@@ -18,6 +19,8 @@ const AuthContext = createContext({
   statusMessage: "",
   authSource: /** @type {"iam" | null} */ (null),
   session: null,
+  productEntitlements: { planKeys: [], features: [], entitlements: [] },
+  hasProductFeature: /** @type {(feature: string) => boolean} */ (() => false),
   login: /** @type {(email: string, password: string, opts?: { rememberMe?: boolean }) => Promise<any>} */ (
     () => {}
   ),
@@ -50,7 +53,36 @@ function mapIamUser(sessionPayload) {
 
 export const AuthProvider = ({ children }) => {
   const [iamSession, setIamSession] = useState(null);
+  const [productEntitlements, setProductEntitlements] = useState({
+    planKeys: [],
+    features: [],
+    entitlements: [],
+  });
   const [loading, setLoading] = useState(true);
+
+  const loadProductEntitlements = useCallback(async () => {
+    try {
+      const res = await fetch("/api/auth/product-entitlements", {
+        credentials: "include",
+        cache: "no-store",
+      });
+      if (!res.ok) {
+        setProductEntitlements({ planKeys: [], features: [], entitlements: [] });
+        return null;
+      }
+      const data = await res.json();
+      const next = {
+        planKeys: Array.isArray(data.planKeys) ? data.planKeys : [],
+        features: Array.isArray(data.features) ? data.features : [],
+        entitlements: Array.isArray(data.entitlements) ? data.entitlements : [],
+      };
+      setProductEntitlements(next);
+      return next;
+    } catch {
+      setProductEntitlements({ planKeys: [], features: [], entitlements: [] });
+      return null;
+    }
+  }, []);
 
   const loadIamSession = useCallback(async () => {
     try {
@@ -60,18 +92,22 @@ export const AuthProvider = ({ children }) => {
       });
       if (!res.ok) {
         setIamSession(null);
+        setProductEntitlements({ planKeys: [], features: [], entitlements: [] });
         return null;
       }
       const data = await res.json();
       setIamSession(data);
+      if (data?.authenticated) await loadProductEntitlements();
+      else setProductEntitlements({ planKeys: [], features: [], entitlements: [] });
       return data;
     } catch {
       setIamSession(null);
+      setProductEntitlements({ planKeys: [], features: [], entitlements: [] });
       return null;
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [loadProductEntitlements]);
 
   useEffect(() => {
     loadIamSession();
@@ -79,6 +115,7 @@ export const AuthProvider = ({ children }) => {
 
   const user = mapIamUser(iamSession);
   const isAuthenticated = !!user;
+  const hasProductFeature = (feature) => productEntitlements.features.includes(feature);
 
   const login = async (email, password, opts = {}) => {
     const res = await fetch("/api/auth/login", {
@@ -144,6 +181,7 @@ export const AuthProvider = ({ children }) => {
       body: JSON.stringify({}),
     }).catch(() => undefined);
     setIamSession(null);
+    setProductEntitlements({ planKeys: [], features: [], entitlements: [] });
     if (typeof window !== "undefined") {
       window.location.href = "/auth/login";
     }
@@ -162,6 +200,8 @@ export const AuthProvider = ({ children }) => {
         statusMessage: loading ? "Authenticating..." : "",
         authSource: user ? "iam" : null,
         session: iamSession,
+        productEntitlements,
+        hasProductFeature,
         login,
         completeMfa,
         register,

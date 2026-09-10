@@ -19,6 +19,11 @@ import type { CurrentIdentityContext } from "../authentication/current-identity-
 import { membershipRepository } from "../repositories/MembershipRepository";
 import { authorizationService } from "../authorization/AuthorizationService";
 import { permissionResolver } from "../authorization/PermissionResolver";
+import {
+  hasProductFeature,
+  requiredProductFeatures,
+  type ProductFeature,
+} from "@/lib/platform/productization";
 
 export {
   requireAuthentication,
@@ -58,6 +63,29 @@ export async function requireMembership(
   };
 }
 
+export async function requireProductFeature(
+  req: Request,
+  feature: ProductFeature
+): Promise<CurrentIdentityContext> {
+  const ctx = await requireActiveSession(req);
+  if (ctx.isSuperAdmin) return ctx;
+  if (!ctx.organizationId) {
+    throw new IdentityError(
+      "Active organization required",
+      403,
+      "ORGANIZATION_REQUIRED"
+    );
+  }
+  if (!(await hasProductFeature(ctx.organizationId, feature))) {
+    throw new IdentityError(
+      `Product feature not licensed: ${feature}`,
+      403,
+      "PRODUCT_FEATURE_NOT_LICENSED"
+    );
+  }
+  return ctx;
+}
+
 export async function requirePermission(
   req: Request,
   permission: string | string[]
@@ -81,6 +109,18 @@ export async function requirePermission(
       },
       permission
     );
+
+    const requiredFeatures = requiredProductFeatures(permission);
+    for (const feature of requiredFeatures) {
+      if (!(await hasProductFeature(ctx.organizationId, feature))) {
+        throw new IdentityError(
+          `Product feature not licensed: ${feature}`,
+          403,
+          "PRODUCT_FEATURE_NOT_LICENSED"
+        );
+      }
+    }
+
     return {
       ...ctx,
       permissions: resolved.permissions,
