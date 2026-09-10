@@ -7,7 +7,7 @@ import PageHeader from "@/components/ui/PageHeader";
 import Button from "@/components/ui/Button";
 import DataTable from "@/components/DataTable";
 import EntityForm from "@/components/EntityForm";
-import EntityArtwork from "@/components/catalog/EntityArtwork";
+import EntityArtwork from "@/components/media/EntityArtwork";
 import { useAttachmentMap } from "@/hooks/useAttachment";
 import api from "@/lib/api";
 

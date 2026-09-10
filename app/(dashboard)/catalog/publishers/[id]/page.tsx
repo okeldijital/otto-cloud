@@ -6,8 +6,9 @@ import PageHeader from "@/components/ui/PageHeader";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
-import EntityArtwork from "@/components/catalog/EntityArtwork";
-import { invalidateEntityArtwork, optimizeImage } from "@/lib/catalog/attachment-utils";
+import EntityArtwork from "@/components/media/EntityArtwork";
+import { invalidateEntityArtwork } from "@/hooks/useAttachment";
+import { optimizeImage } from "@/lib/media/image-optimization";
 import api from "@/lib/api";
 import { ArrowLeft, Building, Edit, Hash, Link2, Loader, Music, Trash2, Upload } from "lucide-react";
 
@@ -56,9 +57,13 @@ export default function PublisherDetailPage() {
     try {
       const optimized = await optimizeImage(file, "avatar");
       const { data } = await api.post("/storage/upload-url", { entityType: "publisher", entityId: Number(id), fileName: optimized.name, mimeType: optimized.type, fileSize: optimized.size, folder: "publisher" });
-      await fetch(data.uploadUrl, { method: "PUT", body: optimized, headers: { "Content-Type": optimized.type } });
-      await api.post("/storage/complete", { entityType: "publisher", entityId: Number(id), fileName: optimized.name, mimeType: optimized.type, sizeBytes: optimized.size, storageKey: data.storageKey, storageBucket: data.storageBucket });
-      await invalidateEntityArtwork("publisher", Number(id));
+      const uploadUrl = data.uploadUrl;
+      const uploadKey = data.key ?? data.storageKey;
+      if (!uploadUrl || !uploadKey) throw new Error("Storage upload authorization was incomplete.");
+      const uploadResponse = await fetch(uploadUrl, { method: "PUT", body: optimized, headers: { "Content-Type": optimized.type } });
+      if (!uploadResponse.ok) throw new Error(`Logo upload failed (${uploadResponse.status})`);
+      await api.post("/storage/complete", { entityType: "publisher", entityId: Number(id), key: uploadKey, fileName: data.fileName, originalName: file.name, mimeType: optimized.type, fileSize: optimized.size });
+      invalidateEntityArtwork("publisher", Number(id));
       await fetchData();
     } catch (err) { alert(errorMessage(err, "Logo upload failed")); }
     finally { setUploading(false); }
