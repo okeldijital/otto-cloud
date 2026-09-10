@@ -11,6 +11,7 @@ import {
   currentIdentityService,
   type CurrentIdentityContext,
 } from "@/lib/platform/sdk";
+import { cookieService } from "@/lib/platform/identity";
 
 export type AuthSessionUser = {
   id: string;
@@ -62,9 +63,27 @@ export async function resolveIdentityFromHeaders(
     }
   }
 
-  // Better Auth is authoritative when its session cookie is present. An
-  // invalid Better Auth session must fail closed rather than falling through
-  // to the legacy/native session path.
+  // Native IAM credentials carry the canonical active organization in the
+  // signed access token. When present, they take precedence over Better Auth.
+  // If native credentials are present but invalid, fail closed instead of
+  // falling back to a stale Better Auth organization context.
+  const nativeCookies = cookieService.readFromRequest(cookie);
+  const hasNativeCredentials = !!(
+    nativeCookies.accessToken ||
+    nativeCookies.sessionToken ||
+    authorization
+  );
+
+  if (hasNativeCredentials) {
+    return currentIdentityService.resolveFromRequest({
+      cookieHeader: cookie,
+      authorizationHeader: authorization,
+      organizationIdHint: orgHint,
+    });
+  }
+
+  // Better Auth remains supported for requests that do not carry native IAM
+  // credentials. It is resolved into the authoritative IAM identity context.
   if (hasBetterAuthSessionCookie(cookie)) {
     const requestHeaders = new Headers();
     if (cookie) requestHeaders.set("cookie", cookie);
@@ -80,11 +99,7 @@ export async function resolveIdentityFromHeaders(
     }
   }
 
-  return currentIdentityService.resolveFromRequest({
-    cookieHeader: cookie,
-    authorizationHeader: authorization,
-    organizationIdHint: orgHint,
-  });
+  return null;
 }
 
 function hasBetterAuthSessionCookie(cookieHeader: string | null): boolean {
