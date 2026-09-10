@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth/session";
+import { organizationService } from "@/lib/platform/sdk";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
-import { v4 as uuidv4 } from "uuid";
 
 export async function GET() {
   const session = await getServerSession();
@@ -73,61 +73,41 @@ export async function POST(req: Request) {
   const session = await getServerSession();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const userId = parseInt((session.user as any).id);
-  if (isNaN(userId)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const creatorIdentityId = session.user.identityId;
+  if (!creatorIdentityId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
     const body = await req.json();
-    const { name, org_type } = body;
+    const name = typeof body?.name === "string" ? body.name.trim() : "";
+    const slug = typeof body?.slug === "string" ? body.slug.trim() : undefined;
 
-    if (!name || !name.trim()) {
+    if (!name) {
       return NextResponse.json({ error: "Organization name is required" }, { status: 400 });
     }
 
-    const tenantId = uuidv4();
-
-    const tenant = await prisma.tenants.create({
-      data: {
-        id: tenantId,
-        name: name.trim(),
-        display_name: body.display_name || null,
-        org_type: org_type || "record_label",
-        owner_id: userId,
-        is_active: true,
-      },
-    });
-
-    await prisma.tenant_users.create({
-      data: {
-        tenant_id: tenantId,
-        user_id: userId,
-        is_default: true,
-        invited_at: new Date(),
-        accepted_at: new Date(),
-      },
-    });
-
-    // Active org = new tenant; catalog scope = tenant id (empty catalog until data is created)
-    await prisma.user.update({
-      where: { id: userId },
-      data: {
-        tenant_id: tenantId,
-        organization_id: tenantId,
-      },
+    // OrganizationService is the canonical IAM boundary. Do not create a
+    // legacy tenants/tenant_users record here; legacy tenant linkage is an
+    // explicit compatibility concern and is intentionally omitted for new orgs.
+    const organization = await organizationService.createOrganization({
+      name,
+      slug,
+      creatorIdentityId,
     });
 
     return NextResponse.json(
       {
-        ...tenant,
-        organization_id: tenantId,
-        tenant_id: tenantId,
-        organizationId: tenantId,
-        tenantId,
+        ...organization,
+        organization_id: organization.id,
+        organizationId: organization.id,
       },
       { status: 201 }
     );
   } catch (error: any) {
     console.error("Error creating organization:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    const status = Number.isInteger(error?.statusCode) ? error.statusCode : 500;
+    return NextResponse.json(
+      { error: status === 500 ? "Internal Server Error" : error?.message || "Organization creation failed" },
+      { status }
+    );
   }
 }
