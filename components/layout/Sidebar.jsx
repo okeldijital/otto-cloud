@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import {
     LayoutDashboard, FolderOpen, FileText, BarChart3, Settings, Music, Calendar,
     ListTodo, StickyNote, ListMusic, ShieldCheck, ChevronDown, ChevronRight,
-    UserCircle, Building2, BookOpen, HardDrive, CreditCard, Inbox, Globe, Users,
+    UserCircle, Building2, BookOpen, HardDrive, Inbox, Users,
     Bot, Calculator, X, FileCheck, Scale, DollarSign,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -98,8 +98,6 @@ const Sidebar = () => {
                     {simpleLink('/systems', 'Systems', HardDrive, pathname.startsWith('/systems'))}
                     {simpleLink('/settings', 'Settings', Settings, pathname === '/settings')}
                     {simpleLink('/settings/organization', 'Organization', Building2, pathname.startsWith('/settings/organization'))}
-                    {simpleLink('/billing', 'Billing', CreditCard, pathname.startsWith('/billing'))}
-                    {simpleLink('/developers', 'Developers', Globe, pathname.startsWith('/developers'))}
                 </div>
             </nav>
         </div>
