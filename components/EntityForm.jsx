@@ -19,8 +19,75 @@ const EntityForm = ({ isOpen, onClose, title, children, onSubmit, isSubmitting, 
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0f1115]/80 backdrop-blur-md p-4 sm:p-6 overflow-y-auto">
+            <style>{`
+                .entity-form .form-group > label {
+                    display: block;
+                    margin-bottom: 0.5rem;
+                    color: var(--color-text-primary);
+                    font-weight: 500;
+                }
+                .entity-form .form-group > input:not([type="file"]),
+                .entity-form .form-group > select,
+                .entity-form .form-group > textarea {
+                    width: 100%;
+                    border: 1px solid var(--color-border);
+                    border-radius: 0.75rem;
+                    background: var(--color-surface-elevated);
+                    color: var(--color-text-primary);
+                    outline: none;
+                    transition: border-color 140ms ease, box-shadow 140ms ease;
+                    color-scheme: dark;
+                }
+                .entity-form .form-group > input:not([type="file"]),
+                .entity-form .form-group > select {
+                    min-height: 44px;
+                    padding: 0.65rem 0.8rem;
+                }
+                .entity-form .form-group > textarea {
+                    min-height: 100px;
+                    padding: 0.75rem 0.8rem;
+                    resize: vertical;
+                }
+                .entity-form .form-group > input::placeholder,
+                .entity-form .form-group > textarea::placeholder {
+                    color: var(--color-text-secondary);
+                }
+                .entity-form .form-group > input:not([type="file"]):focus,
+                .entity-form .form-group > select:focus,
+                .entity-form .form-group > textarea:focus {
+                    border-color: var(--color-accent);
+                    box-shadow: 0 0 0 2px rgba(0, 229, 255, 0.14);
+                }
+                .entity-form .form-group > input[type="file"] {
+                    width: 100%;
+                    padding: 0.45rem;
+                    border: 1px solid var(--color-border);
+                    border-radius: 0.75rem;
+                    background: var(--color-surface-elevated);
+                    color: var(--color-text-primary);
+                    color-scheme: dark;
+                    cursor: pointer;
+                }
+                .entity-form .form-group > input[type="file"]::file-selector-button {
+                    margin-right: 0.75rem;
+                    padding: 0.5rem 0.8rem;
+                    border: 0;
+                    border-radius: 0.5rem;
+                    background: var(--color-accent);
+                    color: #05080a;
+                    font-weight: 600;
+                    cursor: pointer;
+                }
+                .entity-form .form-group > input[type="file"]::file-selector-button:hover {
+                    filter: brightness(1.08);
+                }
+                .entity-form .form-group > select option {
+                    background: var(--color-surface-elevated);
+                    color: var(--color-text-primary);
+                }
+            `}</style>
             <div
-                className="bg-premium-glass border border-white/10 rounded-3xl shadow-glass w-full max-w-2xl overflow-hidden flex flex-col max-h-full animate-in fade-in zoom-in-95 duration-200"
+                className="entity-form bg-premium-glass border border-white/10 rounded-3xl shadow-glass w-full max-w-2xl overflow-hidden flex flex-col max-h-full animate-in fade-in zoom-in-95 duration-200"
                 onClick={e => e.stopPropagation()}
             >
                 <div className="flex items-center justify-between p-6 border-b border-white/5 bg-white/[0.02]">
@@ -36,7 +103,7 @@ const EntityForm = ({ isOpen, onClose, title, children, onSubmit, isSubmitting, 
 
                 <form
                     onSubmit={onSubmit}
-                    className="flex flex-col flex-1 overflow-hidden [&_.input]:border [&_.input]:border-border [&_.input]:bg-surface-elevated [&_.input]:text-text-primary [&_.input]:placeholder:text-text-secondary [&_.input]:outline-none [&_.input]:focus:border-accent [&_.input]:focus:ring-1 [&_.input]:focus:ring-accent/50 [&_.form-group>label]:text-text-primary [&_.form-group>label]:font-medium [&_.form-group>label]:mb-2 [&_.form-group>input]:w-full [&_.form-group>input]:rounded-xl [&_.form-group>input]:border [&_.form-group>input]:border-border [&_.form-group>input]:bg-surface-elevated [&_.form-group>input]:text-text-primary [&_.form-group>input]:placeholder:text-text-secondary [&_.form-group>input]:outline-none [&_.form-group>input]:transition-colors [&_.form-group>input]:focus:border-accent [&_.form-group>input]:focus:ring-1 [&_.form-group>input]:focus:ring-accent/30 [&_.form-group>select]:w-full [&_.form-group>select]:rounded-xl [&_.form-group>select]:border [&_.form-group>select]:border-border [&_.form-group>select]:bg-surface-elevated [&_.form-group>select]:text-text-primary [&_.form-group>select]:outline-none [&_.form-group>select]:focus:border-accent [&_.form-group>select]:focus:ring-1 [&_.form-group>select]:focus:ring-accent/30 [&_.form-group>textarea]:w-full [&_.form-group>textarea]:rounded-xl [&_.form-group>textarea]:border [&_.form-group>textarea]:border-border [&_.form-group>textarea]:bg-surface-elevated [&_.form-group>textarea]:text-text-primary [&_.form-group>textarea]:placeholder:text-text-secondary [&_.form-group>textarea]:outline-none [&_.form-group>textarea]:resize-y [&_.form-group>textarea]:focus:border-accent [&_.form-group>textarea]:focus:ring-1 [&_.form-group>textarea]:focus:ring-accent/30 [&_.form-group>input[type=file]]:cursor-pointer [&_.form-group>input[type=file]]:p-2 [&_.form-group>input[type=file]]:file:mr-3 [&_.form-group>input[type=file]]:file:rounded-lg [&_.form-group>input[type=file]]:file:border-0 [&_.form-group>input[type=file]]:file:bg-accent [&_.form-group>input[type=file]]:file:px-3 [&_.form-group>input[type=file]]:file:py-2 [&_.form-group>input[type=file]]:file:font-semibold [&_.form-group>input[type=file]]:file:text-black"
+                    className="flex flex-col flex-1 overflow-hidden"
                 >
                     <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
                         {error && (
