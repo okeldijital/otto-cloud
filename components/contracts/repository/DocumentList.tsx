@@ -6,22 +6,15 @@ import type { RepositoryDocument } from "./types";
 interface Props {
   items: RepositoryDocument[];
   actionBusyId?: string | null;
-  extractionStatusByDocId?: Record<string, string | null>;
-  extractionBusyId?: string | null;
   onView: (item: RepositoryDocument) => void;
   onDownload: (item: RepositoryDocument) => void;
   onReplace: (item: RepositoryDocument) => void;
   onDelete: (item: RepositoryDocument) => void;
-  onExtract?: (item: RepositoryDocument) => void;
-  onOpenIntelligence?: (item: RepositoryDocument) => void;
 }
 
 function SkeletonRow() {
   return (
-    <div
-      className="animate-pulse p-4 rounded-xl bg-white/5 space-y-3"
-      aria-hidden
-    >
+    <div className="animate-pulse p-4 rounded-xl bg-white/5 space-y-3" aria-hidden>
       <div className="flex gap-3">
         <div className="w-9 h-9 rounded-lg bg-white/10" />
         <div className="flex-1 space-y-2">
@@ -36,26 +29,13 @@ function SkeletonRow() {
 export function DocumentListSkeleton({ count = 4 }: { count?: number }) {
   return (
     <div className="space-y-2" role="status" aria-label="Loading documents">
-      {Array.from({ length: count }).map((_, i) => (
-        <SkeletonRow key={i} />
-      ))}
+      {Array.from({ length: count }).map((_, i) => <SkeletonRow key={i} />)}
       <span className="sr-only">Loading document list…</span>
     </div>
   );
 }
 
-export default function DocumentList({
-  items,
-  actionBusyId,
-  extractionStatusByDocId,
-  extractionBusyId,
-  onView,
-  onDownload,
-  onReplace,
-  onDelete,
-  onExtract,
-  onOpenIntelligence,
-}: Props) {
+export default function DocumentList({ items, actionBusyId, onView, onDownload, onReplace, onDelete }: Props) {
   return (
     <div className="space-y-2" role="list" aria-label="Document repository">
       {items.map((item) => (
@@ -63,14 +43,10 @@ export default function DocumentList({
           <DocumentRow
             item={item}
             actionBusyId={actionBusyId}
-            extractionStatus={extractionStatusByDocId?.[item.document.id]}
-            extractionBusy={extractionBusyId === item.document.id}
             onView={onView}
             onDownload={onDownload}
             onReplace={onReplace}
             onDelete={onDelete}
-            onExtract={onExtract}
-            onOpenIntelligence={onOpenIntelligence}
           />
         </div>
       ))}

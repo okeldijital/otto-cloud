@@ -8,8 +8,6 @@ import {
   type Dispatch,
   type SetStateAction,
 } from "react";
-import { useRouter } from "next/navigation";
-import { AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import Button from "@/components/ui/Button";
 import api from "@/lib/api";
 import DeleteDialog from "./DeleteDialog";
@@ -22,12 +20,7 @@ import UploadDialog from "./UploadDialog";
 import UploadDropzone from "./UploadDropzone";
 import UploadProgress from "./UploadProgress";
 import PDFViewerPanel from "@/components/documents/pdf/PDFViewerPanel";
-import {
-  filterDocuments,
-  friendlyUploadError,
-  paginate,
-  sortDocuments,
-} from "./repositoryUtils";
+import { filterDocuments, friendlyUploadError, paginate, sortDocuments } from "./repositoryUtils";
 import {
   DEFAULT_FILTERS,
   type RepositoryDocument,
@@ -47,20 +40,16 @@ function newUploadId() {
 }
 
 /**
- * Contract Center Document Repository (Milestone 2.2).
- * Consumes ContractDocumentService HTTP APIs only — never StorageProvider.
+ * Contract Center Document Repository.
+ * This is a deterministic source-document store: upload, view, download,
+ * replace and delete only. No OCR or automatic extraction is invoked here.
  */
 export default function DocumentRepository({ contractId }: Props) {
-  const router = useRouter();
   const [items, setItems] = useState<RepositoryDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
-  const [extractionStatusByDocId, setExtractionStatusByDocId] = useState<
-    Record<string, string | null>
-  >({});
-  const [extractionBusyId, setExtractionBusyId] = useState<string | null>(null);
 
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [sort, setSort] = useState<SortOption>("newest");
@@ -72,7 +61,6 @@ export default function DocumentRepository({ contractId }: Props) {
   const [replaceQueue, setReplaceQueue] = useState<UploadQueueItem[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<RepositoryDocument | null>(null);
   const [actionBusyId, setActionBusyId] = useState<string | null>(null);
-  /** Open PDF viewer — repository filters/list state preserved underneath. */
   const [viewing, setViewing] = useState<RepositoryDocument | null>(null);
 
   const load = useCallback(
@@ -81,17 +69,11 @@ export default function DocumentRepository({ contractId }: Props) {
         if (opts?.soft) setRefreshing(true);
         else setLoading(true);
         setError("");
-        const res = await api.get(
-          `/contracts/${contractId}/documents?includeDeleted=true`
-        );
+        const res = await api.get(`/contracts/${contractId}/documents?includeDeleted=true`);
         const list = res.data?.data?.items ?? res.data?.items ?? [];
         setItems(Array.isArray(list) ? list : []);
       } catch (err: any) {
-        setError(
-          err?.response?.data?.message ||
-            err?.response?.data?.error ||
-            "Unable to load repository."
-        );
+        setError(err?.response?.data?.message || err?.response?.data?.error || "Unable to load repository.");
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -101,59 +83,17 @@ export default function DocumentRepository({ contractId }: Props) {
   );
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
-
-  const loadExtractionStatuses = useCallback(
-    async (docs: RepositoryDocument[]) => {
-      const entries = await Promise.all(
-        docs
-          .filter((d) => d.document.status === "active")
-          .slice(0, 50)
-          .map(async (d) => {
-            try {
-              const res = await api.get(
-                `/contracts/${contractId}/documents/${d.document.id}/extractions`
-              );
-              const job = res.data?.data?.job;
-              const extStatus = res.data?.data?.extractionStatus;
-              const status = extStatus || job?.status || null;
-              return [d.document.id, status] as const;
-            } catch {
-              return [d.document.id, null] as const;
-            }
-          })
-      );
-      setExtractionStatusByDocId((prev) => {
-        const next = { ...prev };
-        for (const [id, status] of entries) next[id] = status;
-        return next;
-      });
-    },
-    [contractId]
-  );
-
-  useEffect(() => {
-    if (items.length) void loadExtractionStatuses(items);
-  }, [items, loadExtractionStatuses]);
-
-  // Poll active extractions
-  useEffect(() => {
-    const active = Object.values(extractionStatusByDocId).some((s) =>
-      s ? ["queued", "running", "retrying"].includes(s) : false
-    );
-    if (!active) return;
-    const t = setInterval(() => void loadExtractionStatuses(items), 3000);
-    return () => clearInterval(t);
-  }, [extractionStatusByDocId, items, loadExtractionStatuses]);
 
   useEffect(() => {
     setPage(1);
   }, [filters, sort]);
 
-  const filteredSorted = useMemo(() => {
-    return sortDocuments(filterDocuments(items, filters), sort);
-  }, [items, filters, sort]);
+  const filteredSorted = useMemo(
+    () => sortDocuments(filterDocuments(items, filters), sort),
+    [items, filters, sort]
+  );
 
   const pageCount = Math.max(1, Math.ceil(filteredSorted.length / PAGE_SIZE));
   const pageItems = useMemo(
@@ -187,35 +127,19 @@ export default function DocumentRepository({ contractId }: Props) {
         onUploadProgress: (evt: any) => {
           if (evt.total) {
             const pct = Math.min(95, Math.round((evt.loaded / evt.total) * 95));
-            setQueue((prev) =>
-              prev.map((q) => (q.id === item.id ? { ...q, progress: pct } : q))
-            );
+            setQueue((prev) => prev.map((q) => (q.id === item.id ? { ...q, progress: pct } : q)));
           }
         },
       });
-      setQueue((prev) =>
-        prev.map((q) =>
-          q.id === item.id ? { ...q, status: "success", progress: 100 } : q
-        )
-      );
+      setQueue((prev) => prev.map((q) => (q.id === item.id ? { ...q, status: "success", progress: 100 } : q)));
       setSuccessMsg("Document uploaded successfully.");
       await load({ soft: true });
     } catch (err: any) {
       if (err?.code === "ERR_CANCELED" || err?.name === "CanceledError") {
-        setQueue((prev) =>
-          prev.map((q) =>
-            q.id === item.id ? { ...q, status: "cancelled", error: "Upload cancelled." } : q
-          )
-        );
+        setQueue((prev) => prev.map((q) => q.id === item.id ? { ...q, status: "cancelled", error: "Upload cancelled." } : q));
         return;
       }
-      setQueue((prev) =>
-        prev.map((q) =>
-          q.id === item.id
-            ? { ...q, status: "error", error: friendlyUploadError(err) }
-            : q
-        )
-      );
+      setQueue((prev) => prev.map((q) => q.id === item.id ? { ...q, status: "error", error: friendlyUploadError(err) } : q));
     }
   };
 
@@ -230,11 +154,8 @@ export default function DocumentRepository({ contractId }: Props) {
       status: "queued" as const,
     }));
     setQueue((prev) => [...prev, ...next]);
-    // Sequential processing (future-ready for multiple)
     void (async () => {
-      for (const item of next) {
-        await runUpload(item, setQueue);
-      }
+      for (const item of next) await runUpload(item, setQueue);
     })();
   };
 
@@ -245,9 +166,7 @@ export default function DocumentRepository({ contractId }: Props) {
     setQueue((prev) => {
       const item = prev.find((q) => q.id === id);
       item?.abortController?.abort();
-      return prev.map((q) =>
-        q.id === id ? { ...q, status: "cancelled", error: "Upload cancelled." } : q
-      );
+      return prev.map((q) => q.id === id ? { ...q, status: "cancelled", error: "Upload cancelled." } : q);
     });
   };
 
@@ -257,17 +176,14 @@ export default function DocumentRepository({ contractId }: Props) {
     setQueue: Dispatch<SetStateAction<UploadQueueItem[]>>
   ) => {
     const item = queue.find((q) => q.id === id);
-    if (!item) return;
-    void runUpload(item, setQueue);
+    if (item) void runUpload(item, setQueue);
   };
 
   const onDownload = async (item: RepositoryDocument) => {
     setActionBusyId(item.document.id);
     setError("");
     try {
-      const res = await api.get(
-        `/contracts/${contractId}/documents/${item.document.id}/download`
-      );
+      const res = await api.get(`/contracts/${contractId}/documents/${item.document.id}/download`);
       const url = res.data?.data?.url;
       if (!url) throw new Error("No download URL");
       const a = document.createElement("a");
@@ -280,37 +196,9 @@ export default function DocumentRepository({ contractId }: Props) {
       a.remove();
       setSuccessMsg("Download started.");
     } catch (err: any) {
-      setError(
-        err?.response?.data?.message ||
-          err?.response?.data?.error ||
-          "Unable to download."
-      );
+      setError(err?.response?.data?.message || err?.response?.data?.error || "Unable to download.");
     } finally {
       setActionBusyId(null);
-    }
-  };
-
-  const onExtract = async (item: RepositoryDocument) => {
-    setExtractionBusyId(item.document.id);
-    setError("");
-    try {
-      await api.post(
-        `/contracts/${contractId}/documents/${item.document.id}/extractions`
-      );
-      setSuccessMsg("Extraction queued. Draft fields will appear when complete.");
-      setExtractionStatusByDocId((prev) => ({
-        ...prev,
-        [item.document.id]: "queued",
-      }));
-      await loadExtractionStatuses([item]);
-    } catch (err: any) {
-      setError(
-        err?.response?.data?.message ||
-          err?.response?.data?.error ||
-          "Unable to start extraction."
-      );
-    } finally {
-      setExtractionBusyId(null);
     }
   };
 
@@ -321,40 +209,25 @@ export default function DocumentRepository({ contractId }: Props) {
     setActionBusyId(target.document.id);
     setError("");
     try {
-      await api.delete(
-        `/contracts/${contractId}/documents/${target.document.id}`
-      );
+      await api.delete(`/contracts/${contractId}/documents/${target.document.id}`);
       setSuccessMsg("Document removed.");
       await load({ soft: true });
     } catch (err: any) {
-      setError(
-        err?.response?.data?.message ||
-          err?.response?.data?.error ||
-          "Unable to delete."
-      );
+      setError(err?.response?.data?.message || err?.response?.data?.error || "Unable to delete.");
     } finally {
       setActionBusyId(null);
     }
   };
 
   const hasActiveFilters =
-    filters.filename ||
-    filters.type ||
-    filters.status !== "active" ||
-    filters.uploadedFrom ||
-    filters.uploadedTo ||
-    filters.uploadedBy;
+    filters.filename || filters.type || filters.status !== "active" || filters.uploadedFrom || filters.uploadedTo || filters.uploadedBy;
 
   if (viewing) {
     return (
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-2">
-          <p className="text-xs text-text-secondary">
-            Viewing document · repository filters and list remain when you close
-          </p>
-          <Button variant="secondary" size="sm" onClick={() => setViewing(null)}>
-            Back to repository
-          </Button>
+          <p className="text-xs text-text-secondary">Viewing document · repository filters and list remain when you close</p>
+          <Button variant="secondary" size="sm" onClick={() => setViewing(null)}>Back to repository</Button>
         </div>
         <PDFViewerPanel
           contractId={contractId}
@@ -370,13 +243,8 @@ export default function DocumentRepository({ contractId }: Props) {
   return (
     <div className="space-y-5">
       <div className="flex flex-col gap-1">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-text-secondary">
-          Document Repository
-        </h2>
-        <p className="text-sm text-text-secondary">
-          Manage immutable signed agreements for this contract. Replace creates a new
-          document; originals are preserved.
-        </p>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-text-secondary">Document Repository</h2>
+        <p className="text-sm text-text-secondary">Manage immutable signed agreements for this contract. Replace creates a new document; originals are preserved.</p>
       </div>
 
       <UploadDropzone
@@ -392,47 +260,23 @@ export default function DocumentRepository({ contractId }: Props) {
           items={uploadQueue}
           onRetry={(id) => retryUpload(id, uploadQueue, setUploadQueue)}
           onCancel={(id) => cancelUpload(id, setUploadQueue)}
-          onDismiss={(id) =>
-            setUploadQueue((prev) => prev.filter((q) => q.id !== id))
-          }
+          onDismiss={(id) => setUploadQueue((prev) => prev.filter((q) => q.id !== id))}
         />
       )}
 
       {error && (
-        <div
-          className="flex items-start gap-2 rounded-xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger"
-          role="alert"
-        >
-          <AlertCircle size={16} className="mt-0.5 shrink-0" aria-hidden />
+        <div className="flex items-start gap-2 rounded-xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger" role="alert">
           <div className="flex-1">
             <p>{error}</p>
-            <button
-              type="button"
-              className="mt-1 underline text-xs"
-              onClick={() => {
-                setError("");
-                void load({ soft: true });
-              }}
-            >
-              Retry
-            </button>
+            <button type="button" className="mt-1 underline text-xs" onClick={() => { setError(""); void load({ soft: true }); }}>Retry</button>
           </div>
         </div>
       )}
 
       {successMsg && (
-        <div
-          className="rounded-xl border border-success/30 bg-success/10 px-4 py-3 text-sm text-success"
-          role="status"
-        >
+        <div className="rounded-xl border border-success/30 bg-success/10 px-4 py-3 text-sm text-success" role="status">
           {successMsg}
-          <button
-            type="button"
-            className="ml-3 underline text-xs"
-            onClick={() => setSuccessMsg("")}
-          >
-            Dismiss
-          </button>
+          <button type="button" className="ml-3 underline text-xs" onClick={() => setSuccessMsg("")}>Dismiss</button>
         </div>
       )}
 
@@ -446,67 +290,28 @@ export default function DocumentRepository({ contractId }: Props) {
         visible={filteredSorted.length}
       />
 
-      <RepositoryFilters
-        filters={filters}
-        onChange={setFilters}
-        onReset={() => setFilters(DEFAULT_FILTERS)}
-      />
+      <RepositoryFilters filters={filters} onChange={setFilters} onReset={() => setFilters(DEFAULT_FILTERS)} />
 
       {loading ? (
         <DocumentListSkeleton />
       ) : filteredSorted.length === 0 ? (
-        <RepositoryEmptyState
-          filtered={items.length > 0 || !!hasActiveFilters}
-          onUpload={() => setUploadOpen(true)}
-        />
+        <RepositoryEmptyState filtered={items.length > 0 || !!hasActiveFilters} onUpload={() => setUploadOpen(true)} />
       ) : (
         <>
           <DocumentList
             items={pageItems}
             actionBusyId={actionBusyId}
-            extractionStatusByDocId={extractionStatusByDocId}
-            extractionBusyId={extractionBusyId}
             onView={(item) => setViewing(item)}
             onDownload={onDownload}
-            onReplace={(item) => {
-              setReplaceTarget(item);
-              setReplaceQueue([]);
-            }}
+            onReplace={(item) => { setReplaceTarget(item); setReplaceQueue([]); }}
             onDelete={setDeleteTarget}
-            onExtract={onExtract}
-            onOpenIntelligence={(item) =>
-              router.push(
-                `/contracts/${contractId}/intelligence/${item.document.id}`
-              )
-            }
           />
 
           {pageCount > 1 && (
-            <nav
-              className="flex items-center justify-between gap-3 pt-2"
-              aria-label="Repository pagination"
-            >
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                aria-label="Previous page"
-              >
-                <ChevronLeft size={14} /> Previous
-              </Button>
-              <span className="text-xs text-text-secondary">
-                Page {Math.min(page, pageCount)} of {pageCount}
-              </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={page >= pageCount}
-                onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
-                aria-label="Next page"
-              >
-                Next <ChevronRight size={14} />
-              </Button>
+            <nav className="flex items-center justify-between gap-3 pt-2" aria-label="Repository pagination">
+              <Button variant="ghost" size="sm" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Previous</Button>
+              <span className="text-xs text-text-secondary">Page {Math.min(page, pageCount)} of {pageCount}</span>
+              <Button variant="ghost" size="sm" disabled={page >= pageCount} onClick={() => setPage((p) => Math.min(pageCount, p + 1))}>Next</Button>
             </nav>
           )}
         </>
@@ -520,38 +325,26 @@ export default function DocumentRepository({ contractId }: Props) {
         onFiles={(files) => enqueueUploads(files, setUploadQueue)}
         onRetry={(id) => retryUpload(id, uploadQueue, setUploadQueue)}
         onCancel={(id) => cancelUpload(id, setUploadQueue)}
-        onDismiss={(id) =>
-          setUploadQueue((prev) => prev.filter((q) => q.id !== id))
-        }
+        onDismiss={(id) => setUploadQueue((prev) => prev.filter((q) => q.id !== id))}
       />
 
       <ReplaceDialog
         document={replaceTarget}
         queue={replaceQueue}
-        busy={replaceQueue.some(
-          (q) => q.status === "uploading" || q.status === "queued"
-        )}
+        busy={replaceQueue.some((q) => q.status === "uploading" || q.status === "queued")}
         onClose={() => {
           if (!replaceQueue.some((q) => q.status === "uploading")) {
             setReplaceTarget(null);
             setReplaceQueue([]);
           }
         }}
-        onFile={(file) => {
-          enqueueUploads([file], setReplaceQueue);
-        }}
+        onFile={(file) => enqueueUploads([file], setReplaceQueue)}
         onRetry={(id) => retryUpload(id, replaceQueue, setReplaceQueue)}
         onCancel={(id) => cancelUpload(id, setReplaceQueue)}
-        onDismiss={(id) =>
-          setReplaceQueue((prev) => prev.filter((q) => q.id !== id))
-        }
+        onDismiss={(id) => setReplaceQueue((prev) => prev.filter((q) => q.id !== id))}
       />
 
-      <DeleteDialog
-        document={deleteTarget}
-        onConfirm={onDeleteConfirm}
-        onCancel={() => setDeleteTarget(null)}
-      />
+      <DeleteDialog document={deleteTarget} onConfirm={onDeleteConfirm} onCancel={() => setDeleteTarget(null)} />
     </div>
   );
 }

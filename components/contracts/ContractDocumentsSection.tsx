@@ -1,10 +1,9 @@
 "use client";
 
 /**
- * Contract detail Documents tab — Milestone 2.2 Repository UI.
- * Adds an explicit workflow handoff when extraction is ready for human review.
+ * Contract detail Documents tab — deterministic Core repository UI.
+ * Source documents are stored and managed manually; no extraction workflow is presented.
  */
-import ExtractionReviewHandoff from "./repository/ExtractionReviewHandoff";
 import { DocumentRepository } from "./repository";
 export type { RepositoryDocument as ContractDocumentItem } from "./repository";
 
@@ -13,10 +12,5 @@ interface Props {
 }
 
 export default function ContractDocumentsSection({ contractId }: Props) {
-  return (
-    <div className="space-y-5">
-      <ExtractionReviewHandoff contractId={contractId} />
-      <DocumentRepository contractId={contractId} />
-    </div>
-  );
+  return <DocumentRepository contractId={contractId} />;
 }

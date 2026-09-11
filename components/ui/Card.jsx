@@ -1,3 +1,5 @@
+"use client";
+
 import React from 'react';
 
 /** @type {import('react').FC<{ children?: any; title?: any; subtitle?: any; footer?: any; headerAction?: any; className?: string; contentClassName?: string; headerClassName?: string; noPadding?: boolean }>} */

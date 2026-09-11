@@ -2,22 +2,13 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import {
-  ChevronLeft, FileText, Upload, Edit3, Plus, Trash2,
-  Music, Users, DollarSign, PieChart, Link2, ShieldCheck, GitBranch,
-  CalendarRange, History, FilePlus2,
-} from "lucide-react";
+import { ChevronLeft, FileText, Edit3, Plus, Trash2, Users, Music } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import EntityForm from "@/components/EntityForm";
 import ContractDocumentsSection from "@/components/contracts/ContractDocumentsSection";
-import VerifiedContractSection from "@/components/contracts/VerifiedContractSection";
-import ContractRelationshipsSection from "@/components/contracts/ContractRelationshipsSection";
-import ContractLifecyclePanel from "@/components/contracts/lifecycle/ContractLifecyclePanel";
-import ContractTimelinePanel from "@/components/contracts/lifecycle/ContractTimelinePanel";
-import ContractAmendmentsPanel from "@/components/contracts/lifecycle/ContractAmendmentsPanel";
 import api from "@/lib/api";
 
 const STATUS_VARIANTS: Record<string, string> = {
@@ -27,84 +18,64 @@ const STATUS_VARIANTS: Record<string, string> = {
   Terminated: "critical",
 };
 
-const HEALTH_VARIANTS: Record<string, string> = {
-  GREEN: "success",
-  AMBER: "warn",
-  RED: "critical",
-};
-
-const ROLE_OPTIONS = ["Artist", "Label", "Publisher", "Licensee", "Licensor", "Producer", "Other"];
 const ASSET_TYPES = ["Track", "Work", "Release"];
-const SCOPE_TYPES = ["INCLUSION", "EXCLUSION"];
+const PARTY_TYPES = ["Artist", "Label", "Publisher", "PRO"];
+
 const TABS = [
   { key: "documents", label: "Documents", icon: FileText },
-  { key: "verified", label: "Verified", icon: ShieldCheck },
-  { key: "relationships", label: "Relationships", icon: GitBranch },
-  { key: "lifecycle", label: "Lifecycle", icon: CalendarRange },
-  { key: "timeline", label: "Timeline", icon: History },
-  { key: "amendments", label: "Amendments", icon: FilePlus2 },
   { key: "overview", label: "Overview", icon: Edit3 },
   { key: "parties", label: "Parties", icon: Users },
-  { key: "assets", label: "Assets", icon: Music },
-  { key: "financials", label: "Financials", icon: DollarSign },
-  { key: "splits", label: "Splits", icon: PieChart },
-  { key: "tracks", label: "Tracks", icon: Link2 },
-];
+  { key: "assets", label: "Linked Assets", icon: Music },
+] as const;
+
+type TabKey = (typeof TABS)[number]["key"];
+
+type PartyLookupItem = {
+  id: number;
+  name: string;
+  entity_type: string;
+};
+
+function normalizeCollection(data: any): any[] {
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.items)) return data.items;
+  return [];
+}
+
+function partyLookupItems(data: any, type: string): PartyLookupItem[] {
+  const key = type.toLowerCase() === "pro" ? "pros" : `${type.toLowerCase()}s`;
+  const items = Array.isArray(data?.[key]) ? data[key] : [];
+  return items.map((item: any) => ({
+    id: Number(item.id),
+    name: item.name,
+    entity_type: type,
+  }));
+}
 
 export default function ContractDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const requestedTab = searchParams.get("tab") as TabKey | null;
+  const initialTab: TabKey = TABS.some((tab) => tab.key === requestedTab)
+    ? (requestedTab as TabKey)
+    : "overview";
 
   const [contract, setContract] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "overview");
+  const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
 
-  // Modals
   const [metaModalOpen, setMetaModalOpen] = useState(false);
   const [metaForm, setMetaForm] = useState<any>({});
-  const [financialModalOpen, setFinancialModalOpen] = useState(false);
-  const [financialForm, setFinancialForm] = useState<any>({});
   const [partyModalOpen, setPartyModalOpen] = useState(false);
-  const [partyForm, setPartyForm] = useState<any>({
-    party_mode: "system",
-    entity_type: "artist",
-    role: "",
-    entity: null,
-    external_name: "",
-    split_percent: "",
-    notes: "",
-  });
+  const [partyForm, setPartyForm] = useState({ role: "", external_name: "", split_percent: "", notes: "" });
+  const [partyType, setPartyType] = useState("Artist");
+  const [partyQuery, setPartyQuery] = useState("");
+  const [partyResults, setPartyResults] = useState<PartyLookupItem[]>([]);
+  const [selectedParty, setSelectedParty] = useState<PartyLookupItem | null>(null);
   const [assetModalOpen, setAssetModalOpen] = useState(false);
-  const [assetForm, setAssetForm] = useState<any>({
-    asset_type: "Track",
-    scope_type: "INCLUSION",
-    query: "",
-    results: [],
-    selected: [],
-    notes: "",
-  });
-  // Track modal
-  const [trackModalOpen, setTrackModalOpen] = useState(false);
-  const [trackSearch, setTrackSearch] = useState("");
-  const [trackResults, setTrackResults] = useState<any[]>([]);
-
-  // Split modal
-  const [splitModalOpen, setSplitModalOpen] = useState(false);
-  const [splitForm, setSplitForm] = useState<any>({
-    group_name: "Primary Splits",
-    group_type: "Mechanical",
-    notes: "",
-  });
-  const [splitItemModalOpen, setSplitItemModalOpen] = useState(false);
-  const [splitItemForm, setSplitItemForm] = useState<any>({
-    group_id: null,
-    party_id: null,
-    external_party_name: "",
-    percent: "",
-    notes: "",
-  });
+  const [assetForm, setAssetForm] = useState<any>({ asset_type: "Track", query: "", results: [], selected: [], notes: "" });
 
   const fetchContract = useCallback(async () => {
     try {
@@ -122,17 +93,14 @@ export default function ContractDetailPage() {
         end_date: data.end_date || "",
         signed_date: data.signed_date || "",
         status: data.status || "Draft",
-        status_quo_override: data.status_quo_override || "",
         notes: data.notes || "",
-      });
-      setFinancialForm({
         royalty_description: data.royalty_description || "",
         advances_amount: data.advances_amount || "",
         advances_currency: data.advances_currency || "USD",
         recoupment_notes: data.recoupment_notes || "",
       });
       setError("");
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
       setError("Unable to load contract.");
     } finally {
@@ -140,14 +108,14 @@ export default function ContractDetailPage() {
     }
   }, [id]);
 
-  useEffect(() => { fetchContract(); }, [fetchContract]);
+  useEffect(() => { void fetchContract(); }, [fetchContract]);
 
   const saveMetadata = async (e: React.FormEvent) => {
     e.preventDefault();
     const payload: any = {};
-    for (const [key, val] of Object.entries(metaForm)) {
-      if (val === "" || val === null || typeof val === "undefined") continue;
-      payload[key] = val;
+    for (const [key, value] of Object.entries(metaForm)) {
+      if (value === "" || value === null || typeof value === "undefined") continue;
+      payload[key] = value;
     }
     if (payload.status === "Active" && (!contract.contract_documents || contract.contract_documents.length === 0)) {
       alert("Attach at least one PDF before marking Active.");
@@ -158,51 +126,43 @@ export default function ContractDetailPage() {
       setContract((prev: any) => ({ ...prev, ...res.data }));
       setMetaModalOpen(false);
     } catch (err: any) {
-      alert(err?.response?.data?.error || "Failed to save metadata");
+      alert(err?.response?.data?.error || "Failed to save contract details");
     }
   };
 
-  const saveFinancials = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const payload: any = { ...financialForm };
-    if (payload.advances_amount === "" || payload.advances_amount === null) delete payload.advances_amount;
-    if (payload.advances_amount) payload.advances_amount = Number(payload.advances_amount);
-    if (payload.advances_currency === "") delete payload.advances_currency;
-    if (payload.royalty_description === "") delete payload.royalty_description;
-    if (payload.recoupment_notes === "") delete payload.recoupment_notes;
+  const searchParties = async (query: string, type: string) => {
+    setPartyQuery(query);
+    if (query.trim().length < 2) {
+      setPartyResults([]);
+      return;
+    }
     try {
-      const res = await api.put(`/contracts?id=${id}`, payload);
-      setContract((prev: any) => ({ ...prev, ...res.data }));
-      setFinancialModalOpen(false);
-    } catch (err: any) {
-      alert(err?.response?.data?.error || "Failed to save financials");
+      const res = await api.get(`/contracts?action=party_lookup&q=${encodeURIComponent(query)}&limit=10`);
+      setPartyResults(partyLookupItems(res.data, type));
+    } catch {
+      setPartyResults([]);
     }
   };
 
   const addParty = async (e: React.FormEvent) => {
     e.preventDefault();
-    const payload: any = {};
-    if (partyForm.party_mode === "system") {
-      payload.entity_type = (partyForm.entity?.entity_type || partyForm.entity_type || "artist")
-        .toString()
-        .replace(/^./, (m: string) => m.toUpperCase());
-      payload.entity_id = partyForm.entity?.id;
-    } else {
-      payload.entity_type = "External";
-      payload.external_name = partyForm.external_name;
-    }
-    payload.role = partyForm.role;
-    payload.split_percent = Number(partyForm.split_percent) || null;
-    payload.notes = partyForm.notes || null;
-
     try {
-      await api.post("/contracts?action=add_party", { id: parseInt(id), ...payload });
+      await api.post("/contracts?action=add_party", {
+        id: parseInt(id),
+        entity_type: selectedParty?.entity_type || "External",
+        entity_id: selectedParty?.id || null,
+        external_name: selectedParty ? null : partyForm.external_name,
+        role: partyForm.role,
+        split_percent: partyForm.split_percent === "" ? null : Number(partyForm.split_percent),
+        notes: partyForm.notes || null,
+      });
       await fetchContract();
       setPartyModalOpen(false);
-      setPartyForm({
-        party_mode: "system", entity_type: "artist", role: "", entity: null,
-        external_name: "", split_percent: "", notes: "",
-      });
+      setPartyForm({ role: "", external_name: "", split_percent: "", notes: "" });
+      setPartyType("Artist");
+      setPartyQuery("");
+      setPartyResults([]);
+      setSelectedParty(null);
     } catch (err: any) {
       alert(err?.response?.data?.error || "Failed to add party");
     }
@@ -214,8 +174,44 @@ export default function ContractDetailPage() {
       await api.delete(`/contracts?id=${id}&partyId=${partyId}`);
       await fetchContract();
     } catch (err: any) {
-      alert("Failed to remove party");
+      alert(err?.response?.data?.error || "Failed to remove party");
     }
+  };
+
+  const loadAssets = async (type: string, query = "") => {
+    try {
+      const encoded = encodeURIComponent(query.trim());
+      const endpoint = type === "Track"
+        ? `/tracks?${query.trim() ? `q=${encoded}&` : ""}limit=100`
+        : type === "Work"
+          ? `/works?${query.trim() ? `q=${encoded}&` : ""}limit=100`
+          : `/releases?${query.trim() ? `q=${encoded}&` : ""}limit=100`;
+      const res = await api.get(endpoint);
+      setAssetForm((prev: any) => ({ ...prev, results: normalizeCollection(res.data) }));
+    } catch {
+      setAssetForm((prev: any) => ({ ...prev, results: [] }));
+    }
+  };
+
+  const openAssetModal = () => {
+    setAssetModalOpen(true);
+    setAssetForm((prev: any) => ({ ...prev, query: "", results: [], selected: [] }));
+    void loadAssets(assetForm.asset_type, "");
+  };
+
+  const handleAssetTypeChange = (type: string) => {
+    setAssetForm((prev: any) => ({ ...prev, asset_type: type, query: "", results: [], selected: [] }));
+    void loadAssets(type, "");
+  };
+
+  const handleAssetSearch = (query: string) => {
+    setAssetForm((prev: any) => ({ ...prev, query }));
+    if (query.trim().length === 0) {
+      void loadAssets(assetForm.asset_type, "");
+      return;
+    }
+    if (query.trim().length < 2) return;
+    void loadAssets(assetForm.asset_type, query);
   };
 
   const addAssets = async (e: React.FormEvent) => {
@@ -230,116 +226,26 @@ export default function ContractDetailPage() {
           id: parseInt(id),
           asset_type: assetForm.asset_type,
           asset_id: asset.id,
-          scope_type: assetForm.scope_type,
+          scope_type: "INCLUSION",
           notes: assetForm.notes || "",
         });
       }
       await fetchContract();
       setAssetModalOpen(false);
-      setAssetForm({ asset_type: "Track", scope_type: "INCLUSION", query: "", results: [], selected: [], notes: "" });
+      setAssetForm({ asset_type: "Track", query: "", results: [], selected: [], notes: "" });
     } catch (err: any) {
-      alert("Failed to add assets");
+      alert(err?.response?.data?.error || "Failed to link assets");
     }
   };
 
   const removeAsset = async (assetId: number) => {
-    if (!window.confirm("Remove this asset?")) return;
+    if (!window.confirm("Remove this linked asset?")) return;
     try {
       await api.delete(`/contracts?id=${id}&assetId=${assetId}`);
       await fetchContract();
     } catch (err: any) {
-      alert("Failed to remove asset");
+      alert(err?.response?.data?.error || "Failed to remove asset");
     }
-  };
-
-  const searchTracks = async (q: string) => {
-    if (!q || q.length < 2) { setTrackResults([]); return; }
-    try {
-      const res = await api.get(`/tracks?q=${encodeURIComponent(q)}&limit=10`);
-      setTrackResults(Array.isArray(res.data) ? res.data : []);
-    } catch { setTrackResults([]); }
-  };
-
-  const linkTrack = async (trackId: number) => {
-    try {
-      await api.post("/contracts?action=link_track", { id: parseInt(id), track_id: trackId });
-      await fetchContract();
-    } catch (err: any) {
-      alert(err?.response?.data?.error || "Failed to link track");
-    }
-  };
-
-  const unlinkTrack = async (trackId: number) => {
-    if (!window.confirm("Unlink this track?")) return;
-    try {
-      await api.delete(`/contracts?id=${id}&trackId=${trackId}`);
-      await fetchContract();
-    } catch (err: any) {
-      alert("Failed to unlink track");
-    }
-  };
-
-  const addSplitGroup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await api.post("/contracts?action=add_split_group", {
-        id: parseInt(id),
-        ...splitForm,
-      });
-      await fetchContract();
-      setSplitModalOpen(false);
-      setSplitForm({ group_name: "Primary Splits", group_type: "Mechanical", notes: "" });
-    } catch (err: any) {
-      alert(err?.response?.data?.error || "Failed to create split group");
-    }
-  };
-
-  const removeSplitGroup = async (groupId: number) => {
-    if (!window.confirm("Remove this split group?")) return;
-    try {
-      await api.delete(`/contracts?id=${id}&splitGroupId=${groupId}`);
-      await fetchContract();
-    } catch { alert("Failed to remove split group"); }
-  };
-
-  const addSplitItem = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await api.post("/contracts?action=add_split", {
-        id: parseInt(id),
-        group_id: splitItemForm.group_id,
-        party_id: splitItemForm.party_id || null,
-        external_party_name: splitItemForm.external_party_name || null,
-        percent: Number(splitItemForm.percent) || 0,
-        notes: splitItemForm.notes || "",
-      });
-      await fetchContract();
-      setSplitItemModalOpen(false);
-      setSplitItemForm({ group_id: null, party_id: null, external_party_name: "", percent: "", notes: "" });
-    } catch (err: any) {
-      alert(err?.response?.data?.error || "Failed to add split item");
-    }
-  };
-
-  const removeSplitItem = async (groupId: number, splitId: number) => {
-    if (!window.confirm("Remove this split item?")) return;
-    try {
-      await api.delete(`/contracts?id=${id}&splitGroupId=${groupId}&splitId=${splitId}`);
-      await fetchContract();
-    } catch { alert("Failed to remove split item"); }
-  };
-
-  const searchAssets = async (q: string, type: string) => {
-    if (!q || q.length < 2) { setAssetForm((prev: any) => ({ ...prev, results: [] })); return; }
-    try {
-      let endpoint = "";
-      if (type === "Track") endpoint = `/tracks?q=${encodeURIComponent(q)}&limit=10`;
-      else if (type === "Work") endpoint = `/works?q=${encodeURIComponent(q)}&limit=10`;
-      else if (type === "Release") endpoint = `/releases?q=${encodeURIComponent(q)}&limit=10`;
-      const res = await api.get(endpoint);
-      const items = Array.isArray(res.data) ? res.data : [];
-      setAssetForm((prev: any) => ({ ...prev, results: items }));
-    } catch { setAssetForm((prev: any) => ({ ...prev, results: [] })); }
   };
 
   const deleteContract = async () => {
@@ -355,8 +261,6 @@ export default function ContractDetailPage() {
   if (loading) return <div className="p-12 text-center text-text-secondary">Loading contract…</div>;
   if (error || !contract) return <div className="p-12 text-center text-danger">{error || "Contract not found"}</div>;
 
-  const completeness = contract.completeness || { score: 0, status: "RED" };
-
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -368,25 +272,11 @@ export default function ContractDetailPage() {
           subtitle={<span className="font-mono">{contract.contract_number}</span>}
           actions={
             <div className="flex gap-2 items-center">
-              {completeness.status && (
-                <Badge variant={HEALTH_VARIANTS[completeness.status] || "neutral"} size="sm">
-                  Health: {completeness.status}
-                  {contract.status_quo_override && " (Override)"}
-                </Badge>
-              )}
-              <Badge variant={STATUS_VARIANTS[contract.status] || "neutral"} size="sm">
-                {contract.status}
-              </Badge>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => setActiveTab("documents")}
-              >
-                <Upload size={14} /> Documents
+              <Badge variant={STATUS_VARIANTS[contract.status] || "neutral"} size="sm">{contract.status || "Draft"}</Badge>
+              <Button variant="secondary" size="sm" onClick={() => setActiveTab("documents")}>
+                <FileText size={14} /> Documents
               </Button>
-              <Button variant="danger" size="sm" onClick={deleteContract}>
-                <Trash2 size={14} />
-              </Button>
+              <Button variant="danger" size="sm" onClick={deleteContract}><Trash2 size={14} /></Button>
             </div>
           }
         />
@@ -400,9 +290,7 @@ export default function ContractDetailPage() {
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-                activeTab === tab.key
-                  ? "bg-primary text-white"
-                  : "text-text-secondary hover:text-white"
+                activeTab === tab.key ? "bg-primary text-white" : "text-text-secondary hover:text-white"
               }`}
             >
               <Icon size={16} />
@@ -412,70 +300,53 @@ export default function ContractDetailPage() {
         })}
       </div>
 
-      {activeTab === "documents" && (
-        <ContractDocumentsSection contractId={id} />
-      )}
-
-      {activeTab === "verified" && (
-        <VerifiedContractSection contractId={id} />
-      )}
-
-      {activeTab === "relationships" && (
-        <ContractRelationshipsSection contractId={id} />
-      )}
-
-      {activeTab === "lifecycle" && (
-        <ContractLifecyclePanel contractId={id} />
-      )}
-
-      {activeTab === "timeline" && (
-        <ContractTimelinePanel contractId={id} />
-      )}
-
-      {activeTab === "amendments" && (
-        <ContractAmendmentsPanel contractId={id} />
-      )}
+      {activeTab === "documents" && <ContractDocumentsSection contractId={id} />}
 
       {activeTab === "overview" && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card title="Key Terms">
+          <Card title="Contract Details" headerAction={<Button variant="ghost" size="sm" onClick={() => setMetaModalOpen(true)}><Edit3 size={14} /> Edit</Button>}>
             <div className="space-y-4">
               {[
-                { label: "Type", value: contract.type },
-                { label: "Status", value: contract.status },
-                { label: "Effective", value: contract.start_date ? new Date(contract.start_date).toLocaleDateString() : "—" },
-                { label: "End", value: contract.end_date ? new Date(contract.end_date).toLocaleDateString() : "—" },
-                { label: "Signed", value: contract.signed_date ? new Date(contract.signed_date).toLocaleDateString() : "—" },
-                { label: "Territory", value: contract.territory },
-                { label: "Exclusivity", value: contract.exclusivity ? "Yes" : "No" },
-                { label: "Completeness Score", value: `${completeness.score}%` },
-              ].map((item) => (
-                <div key={item.label} className="flex items-center justify-between">
-                  <span className="text-text-secondary text-sm">{item.label}</span>
-                  <span className="font-medium text-white">{String(item.value) || "—"}</span>
+                ["Type", contract.type],
+                ["Status", contract.status],
+                ["Effective", contract.start_date ? new Date(contract.start_date).toLocaleDateString() : "—"],
+                ["End", contract.end_date ? new Date(contract.end_date).toLocaleDateString() : "—"],
+                ["Signed", contract.signed_date ? new Date(contract.signed_date).toLocaleDateString() : "—"],
+                ["Territory", contract.territory],
+                ["Exclusivity", contract.exclusivity ? "Yes" : "No"],
+              ].map(([label, value]) => (
+                <div key={label} className="flex items-center justify-between gap-6">
+                  <span className="text-text-secondary text-sm">{label}</span>
+                  <span className="font-medium text-white text-right">{String(value || "—")}</span>
                 </div>
               ))}
             </div>
           </Card>
-          <Card title="Notes" headerAction={
-            <Button variant="ghost" size="sm" onClick={() => setMetaModalOpen(true)}>
-              <Edit3 size={14} /> Edit
-            </Button>
-          }>
-            <p className="text-sm">{contract.notes || "No notes captured yet."}</p>
+          <Card title="Financial Terms">
+            <div className="space-y-4">
+              <div>
+                <div className="text-xs uppercase tracking-wider text-text-secondary font-bold mb-1">Royalty Description</div>
+                <p className="text-sm">{contract.royalty_description || "—"}</p>
+              </div>
+              <div>
+                <div className="text-xs uppercase tracking-wider text-text-secondary font-bold mb-1">Advance</div>
+                <p className="text-sm">{contract.advances_amount ? `${contract.advances_currency || "USD"} ${Number(contract.advances_amount).toLocaleString()}` : "—"}</p>
+              </div>
+              <div>
+                <div className="text-xs uppercase tracking-wider text-text-secondary font-bold mb-1">Recoupment Notes</div>
+                <p className="text-sm">{contract.recoupment_notes || "—"}</p>
+              </div>
+              <div>
+                <div className="text-xs uppercase tracking-wider text-text-secondary font-bold mb-1">Notes</div>
+                <p className="text-sm">{contract.notes || "—"}</p>
+              </div>
+            </div>
           </Card>
         </div>
       )}
 
       {activeTab === "parties" && (
-        <Card
-          title="Parties"
-          headerAction={
-            <Button variant="orange" size="sm" onClick={() => setPartyModalOpen(true)}>
-              <Plus size={14} /> Add Party
-            </Button>
-          }
-        >
+        <Card title="Parties" headerAction={<Button variant="secondary" size="sm" onClick={() => setPartyModalOpen(true)}><Plus size={14} /> Add Party</Button>}>
           <table className="w-full" style={{ borderCollapse: "collapse" }}>
             <thead>
               <tr className="text-left text-xs uppercase tracking-wider text-text-secondary border-b border-white/5">
@@ -487,36 +358,23 @@ export default function ContractDetailPage() {
               </tr>
             </thead>
             <tbody>
-              {(contract.contract_parties || []).map((p: any) => (
-                <tr key={p.id} className="border-b border-white/5">
-                  <td className="p-3 text-sm">{p.role}</td>
-                  <td className="p-3 text-sm">{p.external_name || `${p.entity_type || ""} #${p.entity_id || ""}`}</td>
-                  <td className="p-3 text-sm">{p.split_percent ?? "—"}</td>
-                  <td className="p-3 text-sm text-text-secondary">{p.notes || "—"}</td>
-                  <td className="p-3">
-                    <button className="ghost-btn p-1.5 hover:bg-danger/20 rounded-lg text-danger" onClick={() => removeParty(p.id)}>
-                      <Trash2 size={14} />
-                    </button>
-                  </td>
+              {(contract.contract_parties || []).map((party: any) => (
+                <tr key={party.id} className="border-b border-white/5">
+                  <td className="p-3 text-sm">{party.role || "—"}</td>
+                  <td className="p-3 text-sm">{party.external_name || `${party.entity_type || "Entity"} #${party.entity_id || "—"}`}</td>
+                  <td className="p-3 text-sm">{party.split_percent ?? "—"}</td>
+                  <td className="p-3 text-sm text-text-secondary">{party.notes || "—"}</td>
+                  <td className="p-3 text-right"><button className="ghost-btn p-1.5 hover:bg-danger/20 rounded-lg text-danger" onClick={() => removeParty(party.id)}><Trash2 size={14} /></button></td>
                 </tr>
               ))}
-              {(!contract.contract_parties || contract.contract_parties.length === 0) && (
-                <tr><td colSpan={5} className="p-6 text-center text-text-secondary">No parties yet.</td></tr>
-              )}
+              {(!contract.contract_parties || contract.contract_parties.length === 0) && <tr><td colSpan={5} className="p-8 text-center text-text-secondary">No parties captured yet.</td></tr>}
             </tbody>
           </table>
         </Card>
       )}
 
       {activeTab === "assets" && (
-        <Card
-          title="Assets"
-          headerAction={
-            <Button variant="orange" size="sm" onClick={() => setAssetModalOpen(true)}>
-              <Plus size={14} /> Link Assets
-            </Button>
-          }
-        >
+        <Card title="Linked Assets" headerAction={<Button variant="secondary" size="sm" onClick={openAssetModal}><Plus size={14} /> Link Asset</Button>}>
           <table className="w-full" style={{ borderCollapse: "collapse" }}>
             <thead>
               <tr className="text-left text-xs uppercase tracking-wider text-text-secondary border-b border-white/5">
@@ -528,445 +386,102 @@ export default function ContractDetailPage() {
               </tr>
             </thead>
             <tbody>
-              {(contract.contract_assets || []).map((a: any) => (
-                <tr key={a.id} className="border-b border-white/5">
-                  <td className="p-3 text-sm">{a.asset_type}</td>
-                  <td className="p-3 text-sm font-mono">ID {a.asset_id}</td>
-                  <td className="p-3"><Badge variant="neutral" size="sm">{a.scope_type}</Badge></td>
-                  <td className="p-3 text-sm text-text-secondary">{a.notes || "—"}</td>
-                  <td className="p-3">
-                    <button className="ghost-btn p-1.5 hover:bg-danger/20 rounded-lg text-danger" onClick={() => removeAsset(a.id)}>
-                      <Trash2 size={14} />
-                    </button>
-                  </td>
+              {(contract.contract_assets || []).map((asset: any) => (
+                <tr key={asset.id} className="border-b border-white/5">
+                  <td className="p-3 text-sm">{asset.asset_type}</td>
+                  <td className="p-3 text-sm font-mono">ID {asset.asset_id}</td>
+                  <td className="p-3"><Badge variant="neutral" size="sm">{asset.scope_type}</Badge></td>
+                  <td className="p-3 text-sm text-text-secondary">{asset.notes || "—"}</td>
+                  <td className="p-3 text-right"><button className="ghost-btn p-1.5 hover:bg-danger/20 rounded-lg text-danger" onClick={() => removeAsset(asset.id)}><Trash2 size={14} /></button></td>
                 </tr>
               ))}
-              {(!contract.contract_assets || contract.contract_assets.length === 0) && (
-                <tr><td colSpan={5} className="p-6 text-center text-text-secondary">No assets linked.</td></tr>
-              )}
+              {(!contract.contract_assets || contract.contract_assets.length === 0) && <tr><td colSpan={5} className="p-8 text-center text-text-secondary">No linked assets yet.</td></tr>}
             </tbody>
           </table>
         </Card>
       )}
 
-      {activeTab === "financials" && (
-        <Card title="Financials" headerAction={
-          <Button variant="ghost" size="sm" onClick={() => setFinancialModalOpen(true)}>
-            <Edit3 size={14} /> Edit
-          </Button>
-        }>
-          <div className="grid grid-cols-2 gap-6">
-            <div>
-              <h4 className="text-xs uppercase tracking-wider text-text-secondary font-bold mb-2">Royalty Description</h4>
-              <p className="text-sm">{contract.royalty_description || "—"}</p>
-            </div>
-            <div>
-              <h4 className="text-xs uppercase tracking-wider text-text-secondary font-bold mb-2">Advances</h4>
-              <p className="text-sm">
-                {contract.advances_amount
-                  ? `${contract.advances_currency || "USD"} ${Number(contract.advances_amount).toLocaleString()}`
-                  : "—"}
-              </p>
-            </div>
-            <div className="col-span-2">
-              <h4 className="text-xs uppercase tracking-wider text-text-secondary font-bold mb-2">Recoupment Notes</h4>
-              <p className="text-sm">{contract.recoupment_notes || "—"}</p>
-            </div>
-          </div>
-        </Card>
-      )}
-
-      {activeTab === "splits" && (
-        <div className="space-y-4">
-          <div className="flex justify-end">
-            <Button variant="orange" size="sm" onClick={() => setSplitModalOpen(true)}>
-              <Plus size={14} /> Add Split Group
-            </Button>
-          </div>
-          {(contract.contract_split_groups || []).length === 0 ? (
-            <Card><p className="text-center text-text-secondary py-4">No split groups defined.</p></Card>
-          ) : (
-            (contract.contract_split_groups || []).map((group: any) => (
-              <Card
-                key={group.id}
-                title={group.group_name}
-                subtitle={`${group.group_type || ""} • ${(group.contract_splits || []).length} splits`}
-                headerAction={
-                  <div className="flex gap-2">
-                    <Button
-                      variant="ghost" size="sm"
-                      onClick={() => {
-                        setSplitItemForm((prev: any) => ({ ...prev, group_id: group.id }));
-                        setSplitItemModalOpen(true);
-                      }}
-                    >
-                      <Plus size={14} /> Add Split
-                    </Button>
-                    <button className="ghost-btn p-1.5 hover:bg-danger/20 rounded-lg text-danger" onClick={() => removeSplitGroup(group.id)}>
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                }
-              >
-                <table className="w-full" style={{ borderCollapse: "collapse" }}>
-                  <thead>
-                    <tr className="text-left text-xs uppercase tracking-wider text-text-secondary border-b border-white/5">
-                      <th className="p-3 font-bold">Party</th>
-                      <th className="p-3 font-bold">Percent</th>
-                      <th className="p-3 font-bold">Notes</th>
-                      <th className="p-3 font-bold"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(group.contract_splits || []).map((s: any) => (
-                      <tr key={s.id} className="border-b border-white/5">
-                        <td className="p-3 text-sm">{s.external_party_name || `Party #${s.party_id}`}</td>
-                        <td className="p-3 text-sm font-mono">{Number(s.percent).toFixed(1)}%</td>
-                        <td className="p-3 text-sm text-text-secondary">{s.notes || "—"}</td>
-                        <td className="p-3">
-                          <button className="ghost-btn p-1.5 hover:bg-danger/20 rounded-lg text-danger" onClick={() => removeSplitItem(group.id, s.id)}>
-                            <Trash2 size={14} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </Card>
-            ))
-          )}
-        </div>
-      )}
-
-      {activeTab === "tracks" && (
-        <Card
-          title="Linked Tracks"
-          headerAction={
-            <Button variant="orange" size="sm" onClick={() => setTrackModalOpen(true)}>
-              <Plus size={14} /> Link Track
-            </Button>
-          }
-        >
-          {(contract.contract_track_links || []).length === 0 ? (
-            <p className="text-center text-text-secondary py-4">No tracks linked to this contract.</p>
-          ) : (
-            <table className="w-full" style={{ borderCollapse: "collapse" }}>
-              <thead>
-                <tr className="text-left text-xs uppercase tracking-wider text-text-secondary border-b border-white/5">
-                  <th className="p-3 font-bold">Track</th>
-                  <th className="p-3 font-bold">ISRC</th>
-                  <th className="p-3 font-bold">Duration</th>
-                  <th className="p-3 font-bold"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {(contract.contract_track_links || []).map((link: any) => (
-                  <tr key={link.id} className="border-b border-white/5">
-                    <td className="p-3 text-sm font-medium">{link.tracks?.title || `Track #${link.track_id}`}</td>
-                    <td className="p-3 text-sm font-mono text-text-secondary">{link.tracks?.isrc_code || "—"}</td>
-                    <td className="p-3 text-sm text-text-secondary">{link.tracks?.duration || "—"}</td>
-                    <td className="p-3">
-                      <button className="ghost-btn p-1.5 hover:bg-danger/20 rounded-lg text-danger" onClick={() => unlinkTrack(link.track_id)}>
-                        <Trash2 size={14} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </Card>
-      )}
-
-      {/* Metadata Modal */}
-      <EntityForm title="Edit Contract Metadata" isOpen={metaModalOpen} onClose={() => setMetaModalOpen(false)} onSubmit={saveMetadata} isSubmitting={false} error={undefined}>
+      <EntityForm title="Edit Contract Details" isOpen={metaModalOpen} onClose={() => setMetaModalOpen(false)} onSubmit={saveMetadata} isSubmitting={false} error={undefined}>
         <div className="grid grid-cols-2 gap-4">
-          <div className="col-span-2">
-            <label className="text-xs text-text-secondary">Title</label>
-            <input className="input w-full" value={metaForm.title} onChange={(e) => setMetaForm({ ...metaForm, title: e.target.value })} required />
-          </div>
-          <div>
-            <label className="text-xs text-text-secondary">Contract Number</label>
-            <input className="input w-full" value={metaForm.contract_number} onChange={(e) => setMetaForm({ ...metaForm, contract_number: e.target.value })} required />
-          </div>
-          <div>
-            <label className="text-xs text-text-secondary">Status</label>
-            <select className="input w-full" value={metaForm.status} onChange={(e) => setMetaForm({ ...metaForm, status: e.target.value })}>
-              <option>Draft</option>
-              <option>Active</option>
-              <option>Expired</option>
-              <option>Terminated</option>
-            </select>
-          </div>
-          <div>
-            <label className="text-xs text-text-secondary">Type</label>
-            <input className="input w-full" value={metaForm.type} onChange={(e) => setMetaForm({ ...metaForm, type: e.target.value })} />
-          </div>
-          <div>
-            <label className="text-xs text-text-secondary">Health Override</label>
-            <select className="input w-full" value={metaForm.status_quo_override || ""} onChange={(e) => setMetaForm({ ...metaForm, status_quo_override: e.target.value || null })}>
-              <option value="">(Auto-Calculated)</option>
-              <option value="GREEN">Green</option>
-              <option value="AMBER">Amber</option>
-              <option value="RED">Red</option>
-            </select>
-          </div>
-          <div>
-            <label className="text-xs text-text-secondary">Territory</label>
-            <input className="input w-full" value={metaForm.territory} onChange={(e) => setMetaForm({ ...metaForm, territory: e.target.value })} />
-          </div>
-          <div>
-            <label className="text-xs text-text-secondary">Exclusivity</label>
-            <select className="input w-full" value={String(metaForm.exclusivity)} onChange={(e) => setMetaForm({ ...metaForm, exclusivity: e.target.value === "true" })}>
-              <option value="true">Yes</option>
-              <option value="false">No</option>
-            </select>
-          </div>
-          <div>
-            <label className="text-xs text-text-secondary">Effective Date</label>
-            <input type="date" className="input w-full" value={metaForm.start_date || ""} onChange={(e) => setMetaForm({ ...metaForm, start_date: e.target.value })} />
-          </div>
-          <div>
-            <label className="text-xs text-text-secondary">End Date</label>
-            <input type="date" className="input w-full" value={metaForm.end_date || ""} onChange={(e) => setMetaForm({ ...metaForm, end_date: e.target.value })} />
-          </div>
-          <div>
-            <label className="text-xs text-text-secondary">Signed Date</label>
-            <input type="date" className="input w-full" value={metaForm.signed_date || ""} onChange={(e) => setMetaForm({ ...metaForm, signed_date: e.target.value })} />
-          </div>
-          <div className="col-span-2">
-            <label className="text-xs text-text-secondary">Notes</label>
-            <textarea className="input w-full" rows={3} value={metaForm.notes} onChange={(e) => setMetaForm({ ...metaForm, notes: e.target.value })} />
-          </div>
+          <div className="col-span-2"><label className="text-xs text-text-secondary">Title</label><input className="input w-full" value={metaForm.title || ""} onChange={(e) => setMetaForm({ ...metaForm, title: e.target.value })} required /></div>
+          <div><label className="text-xs text-text-secondary">Contract Number</label><input className="input w-full" value={metaForm.contract_number || ""} onChange={(e) => setMetaForm({ ...metaForm, contract_number: e.target.value })} required /></div>
+          <div><label className="text-xs text-text-secondary">Status</label><select className="input w-full" value={metaForm.status || "Draft"} onChange={(e) => setMetaForm({ ...metaForm, status: e.target.value })}><option>Draft</option><option>Active</option><option>Expired</option><option>Terminated</option></select></div>
+          <div><label className="text-xs text-text-secondary">Type</label><input className="input w-full" value={metaForm.type || ""} onChange={(e) => setMetaForm({ ...metaForm, type: e.target.value })} /></div>
+          <div><label className="text-xs text-text-secondary">Territory</label><input className="input w-full" value={metaForm.territory || ""} onChange={(e) => setMetaForm({ ...metaForm, territory: e.target.value })} /></div>
+          <div><label className="text-xs text-text-secondary">Exclusivity</label><select className="input w-full" value={String(Boolean(metaForm.exclusivity))} onChange={(e) => setMetaForm({ ...metaForm, exclusivity: e.target.value === "true" })}><option value="true">Yes</option><option value="false">No</option></select></div>
+          <div><label className="text-xs text-text-secondary">Effective Date</label><input type="date" className="input w-full" value={metaForm.start_date || ""} onChange={(e) => setMetaForm({ ...metaForm, start_date: e.target.value })} /></div>
+          <div><label className="text-xs text-text-secondary">End Date</label><input type="date" className="input w-full" value={metaForm.end_date || ""} onChange={(e) => setMetaForm({ ...metaForm, end_date: e.target.value })} /></div>
+          <div><label className="text-xs text-text-secondary">Signed Date</label><input type="date" className="input w-full" value={metaForm.signed_date || ""} onChange={(e) => setMetaForm({ ...metaForm, signed_date: e.target.value })} /></div>
+          <div><label className="text-xs text-text-secondary">Advance Amount</label><input type="number" className="input w-full" value={metaForm.advances_amount || ""} onChange={(e) => setMetaForm({ ...metaForm, advances_amount: e.target.value })} /></div>
+          <div><label className="text-xs text-text-secondary">Advance Currency</label><input className="input w-full" value={metaForm.advances_currency || "USD"} onChange={(e) => setMetaForm({ ...metaForm, advances_currency: e.target.value })} /></div>
+          <div className="col-span-2"><label className="text-xs text-text-secondary">Royalty Description</label><textarea className="input w-full" rows={3} value={metaForm.royalty_description || ""} onChange={(e) => setMetaForm({ ...metaForm, royalty_description: e.target.value })} /></div>
+          <div className="col-span-2"><label className="text-xs text-text-secondary">Recoupment Notes</label><textarea className="input w-full" rows={3} value={metaForm.recoupment_notes || ""} onChange={(e) => setMetaForm({ ...metaForm, recoupment_notes: e.target.value })} /></div>
+          <div className="col-span-2"><label className="text-xs text-text-secondary">Notes</label><textarea className="input w-full" rows={3} value={metaForm.notes || ""} onChange={(e) => setMetaForm({ ...metaForm, notes: e.target.value })} /></div>
         </div>
       </EntityForm>
 
-      {/* Financials Modal */}
-      <EntityForm title="Edit Financials" isOpen={financialModalOpen} onClose={() => setFinancialModalOpen(false)} onSubmit={saveFinancials} isSubmitting={false} error={undefined}>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="col-span-2">
-            <label className="text-xs text-text-secondary">Royalty Description</label>
-            <textarea className="input w-full" rows={3} value={financialForm.royalty_description} onChange={(e) => setFinancialForm({ ...financialForm, royalty_description: e.target.value })} />
-          </div>
-          <div>
-            <label className="text-xs text-text-secondary">Advances Amount</label>
-            <input type="number" className="input w-full" value={financialForm.advances_amount} onChange={(e) => setFinancialForm({ ...financialForm, advances_amount: e.target.value })} />
-          </div>
-          <div>
-            <label className="text-xs text-text-secondary">Currency</label>
-            <input className="input w-full" value={financialForm.advances_currency} onChange={(e) => setFinancialForm({ ...financialForm, advances_currency: e.target.value })} />
-          </div>
-          <div className="col-span-2">
-            <label className="text-xs text-text-secondary">Recoupment Notes</label>
-            <textarea className="input w-full" rows={3} value={financialForm.recoupment_notes} onChange={(e) => setFinancialForm({ ...financialForm, recoupment_notes: e.target.value })} />
-          </div>
-        </div>
-      </EntityForm>
-
-      {/* Party Modal */}
       <EntityForm title="Add Party" isOpen={partyModalOpen} onClose={() => setPartyModalOpen(false)} onSubmit={addParty} isSubmitting={false} error={undefined}>
         <div className="space-y-4">
-          <div className="flex gap-4">
-            <label className="flex items-center gap-2">
-              <input type="radio" checked={partyForm.party_mode === "system"} onChange={() => setPartyForm({ ...partyForm, party_mode: "system" })} />
-              System entity
-            </label>
-            <label className="flex items-center gap-2">
-              <input type="radio" checked={partyForm.party_mode === "external"} onChange={() => setPartyForm({ ...partyForm, party_mode: "external" })} />
-              External
-            </label>
-          </div>
           <div>
-            <label className="text-xs text-text-secondary">Role</label>
-            <select className="input w-full" value={partyForm.role} required onChange={(e) => setPartyForm({ ...partyForm, role: e.target.value })}>
-              <option value="">Select role</option>
-              {ROLE_OPTIONS.map((r) => <option key={r}>{r}</option>)}
+            <label className="text-xs text-text-secondary">Party Type</label>
+            <select className="input w-full" value={partyType} onChange={(e) => { setPartyType(e.target.value); setPartyQuery(""); setPartyResults([]); setSelectedParty(null); }}>
+              {PARTY_TYPES.map((type) => <option key={type}>{type}</option>)}
             </select>
           </div>
-          {partyForm.party_mode === "system" ? (
-            <>
-              <div>
-                <label className="text-xs text-text-secondary">Entity Type</label>
-                <select className="input w-full" value={partyForm.entity_type} onChange={(e) => setPartyForm({ ...partyForm, entity_type: e.target.value, entity: null })}>
-                  <option value="artist">Artist</option>
-                  <option value="label">Label</option>
-                  <option value="publisher">Publisher</option>
-                  <option value="pro">PRO</option>
-                </select>
+          <div>
+            <label className="text-xs text-text-secondary">Find Existing {partyType}</label>
+            <input className="input w-full" value={partyQuery} onChange={(e) => void searchParties(e.target.value, partyType)} placeholder={`Search existing ${partyType.toLowerCase()}s`} />
+            {partyResults.length > 0 && (
+              <div className="mt-2 space-y-1 max-h-48 overflow-y-auto rounded-lg border border-white/10 p-1">
+                {partyResults.map((item) => {
+                  const selected = selectedParty?.id === item.id && selectedParty?.entity_type === item.entity_type;
+                  return (
+                    <button type="button" key={`${item.entity_type}-${item.id}`} className={`w-full flex items-center justify-between p-3 rounded-lg text-left ${selected ? "bg-primary/10" : "hover:bg-white/5"}`} onClick={() => setSelectedParty(selected ? null : item)}>
+                      <span className="text-sm">{item.name}</span>
+                      <span className="text-xs text-text-secondary">ID {item.id}</span>
+                    </button>
+                  );
+                })}
               </div>
-              <div>
-                <label className="text-xs text-text-secondary">Entity Lookup</label>
-                <input className="input w-full" placeholder="Search by name..." value={partyForm.entity ? partyForm.entity.name : ""}
-                  onChange={async (e) => {
-                    const q = e.target.value;
-                    if (q.length < 2) { setPartyForm((prev: any) => ({ ...prev, entity: null, entity_id: null })); return; }
-                    try {
-                      const res = await api.get(`/contracts?action=party_lookup&q=${encodeURIComponent(q)}&limit=5`);
-                      const data = res.data;
-                      const all = [...(data.artists || []), ...(data.labels || []), ...(data.publishers || []), ...(data.pros || [])];
-                      // Show simple dropdown in a datalist-like way using a select
-                    } catch {}
-                  }}
-                />
-              </div>
-            </>
-          ) : (
-            <div>
-              <label className="text-xs text-text-secondary">External Name</label>
-              <input className="input w-full" value={partyForm.external_name} required onChange={(e) => setPartyForm({ ...partyForm, external_name: e.target.value })} />
-            </div>
-          )}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs text-text-secondary">Split % (optional)</label>
-              <input type="number" className="input w-full" value={partyForm.split_percent} onChange={(e) => setPartyForm({ ...partyForm, split_percent: e.target.value })} />
-            </div>
-            <div>
-              <label className="text-xs text-text-secondary">Notes</label>
-              <input className="input w-full" value={partyForm.notes} onChange={(e) => setPartyForm({ ...partyForm, notes: e.target.value })} />
-            </div>
+            )}
           </div>
+          {selectedParty && <div className="text-sm text-primary">Selected: {selectedParty.name}</div>}
+          <div className="border-t border-white/10 pt-4">
+            <label className="text-xs text-text-secondary">External Party Name</label>
+            <input className="input w-full" value={partyForm.external_name} onChange={(e) => setPartyForm({ ...partyForm, external_name: e.target.value })} placeholder="Use this only if the party is not already in OTTO" disabled={!!selectedParty} />
+          </div>
+          <div><label className="text-xs text-text-secondary">Role</label><input className="input w-full" value={partyForm.role} onChange={(e) => setPartyForm({ ...partyForm, role: e.target.value })} required placeholder="e.g. Artist, Label, Publisher, Licensor" /></div>
+          <div className="grid grid-cols-2 gap-4"><div><label className="text-xs text-text-secondary">Split % (optional)</label><input type="number" className="input w-full" value={partyForm.split_percent} onChange={(e) => setPartyForm({ ...partyForm, split_percent: e.target.value })} /></div><div><label className="text-xs text-text-secondary">Notes</label><input className="input w-full" value={partyForm.notes} onChange={(e) => setPartyForm({ ...partyForm, notes: e.target.value })} /></div></div>
         </div>
       </EntityForm>
 
-      {/* Asset Modal */}
       <EntityForm title="Link Assets" isOpen={assetModalOpen} onClose={() => setAssetModalOpen(false)} onSubmit={addAssets} isSubmitting={false} error={undefined}>
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs text-text-secondary">Asset Type</label>
-              <select className="input w-full" value={assetForm.asset_type}
-                onChange={(e) => setAssetForm({ ...assetForm, asset_type: e.target.value, query: "", results: [], selected: [] })}
-              >
-                {ASSET_TYPES.map((t) => <option key={t}>{t}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs text-text-secondary">Scope</label>
-              <select className="input w-full" value={assetForm.scope_type} onChange={(e) => setAssetForm({ ...assetForm, scope_type: e.target.value })}>
-                {SCOPE_TYPES.map((t) => <option key={t}>{t}</option>)}
-              </select>
-            </div>
+          <div>
+            <label className="text-xs text-text-secondary">Asset Type</label>
+            <select className="input w-full" value={assetForm.asset_type} onChange={(e) => handleAssetTypeChange(e.target.value)}>
+              {ASSET_TYPES.map((type) => <option key={type}>{type}</option>)}
+            </select>
           </div>
           <div>
-            <label className="text-xs text-text-secondary">Search {assetForm.asset_type}s</label>
-            <input className="input w-full" placeholder={`Search by title or code...`} value={assetForm.query}
-              onChange={(e) => {
-                const q = e.target.value;
-                setAssetForm((prev: any) => ({ ...prev, query: q }));
-                searchAssets(q, assetForm.asset_type);
-              }}
-            />
+            <label className="text-xs text-text-secondary">Available {assetForm.asset_type}s</label>
+            <input className="input w-full" value={assetForm.query} onChange={(e) => handleAssetSearch(e.target.value)} placeholder="Search by title, name, code, or ID" />
           </div>
-          {assetForm.results.length > 0 && (
-            <div className="space-y-1 max-h-48 overflow-y-auto">
-              {assetForm.results.map((item: any) => {
-                const isSelected = assetForm.selected.some((s: any) => s.id === item.id);
-                return (
-                  <div key={item.id}
-                    className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors ${isSelected ? "bg-primary/10" : "hover:bg-white/5"}`}
-                    onClick={() => {
-                      setAssetForm((prev: any) => ({
-                        ...prev,
-                        selected: isSelected ? prev.selected.filter((s: any) => s.id !== item.id) : [...prev.selected, item],
-                      }));
-                    }}
-                  >
-                    <span className="text-sm">{item.title || item.name}</span>
-                    <span className="text-xs text-text-secondary">{item.isrc_code || item.upc_code || `ID ${item.id}`}</span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          {assetForm.selected.length > 0 && (
-            <div>
-              <label className="text-xs text-text-secondary">Selected ({assetForm.selected.length})</label>
-              <div className="flex flex-wrap gap-1 mt-1">
-                {assetForm.selected.map((s: any) => (
-                  <Badge key={s.id} variant="primary" size="sm">{s.title || s.name}</Badge>
-                ))}
-              </div>
-            </div>
-          )}
-          <div>
-            <label className="text-xs text-text-secondary">Notes</label>
-            <input className="input w-full" value={assetForm.notes} onChange={(e) => setAssetForm({ ...assetForm, notes: e.target.value })} />
+          <div className="space-y-1 max-h-64 overflow-y-auto rounded-lg border border-white/10 p-1">
+            {assetForm.results.length > 0 ? assetForm.results.map((item: any) => {
+              const selected = assetForm.selected.some((entry: any) => entry.id === item.id);
+              const label = item.title || item.name || item.display_name || `ID ${item.id}`;
+              const meta = item.isrc_code || item.upc_code || item.artist_id || item.catalog_number || `ID ${item.id}`;
+              return (
+                <button type="button" key={item.id} className={`w-full flex items-center justify-between p-3 rounded-lg text-left ${selected ? "bg-primary/10" : "hover:bg-white/5"}`} onClick={() => setAssetForm((prev: any) => ({ ...prev, selected: selected ? prev.selected.filter((entry: any) => entry.id !== item.id) : [...prev.selected, item] }))}>
+                  <span className="text-sm">{label}</span>
+                  <span className="text-xs text-text-secondary">{meta}</span>
+                </button>
+              );
+            }) : <div className="p-6 text-center text-sm text-text-secondary">No {assetForm.asset_type.toLowerCase()}s found.</div>}
           </div>
-        </div>
-      </EntityForm>
-
-      {/* Track Link Modal */}
-      <EntityForm title="Link Track" isOpen={trackModalOpen} onClose={() => { setTrackModalOpen(false); setTrackSearch(""); setTrackResults([]); }} isSubmitting={false} error={undefined}
-        onSubmit={async (e: React.FormEvent) => {
-          e.preventDefault();
-          if (trackResults.length > 0) {
-            await linkTrack(trackResults[0].id);
-            setTrackModalOpen(false);
-          }
-        }}
-      >
-        <div className="space-y-4">
-          <div>
-            <label className="text-xs text-text-secondary">Search Tracks</label>
-            <input className="input w-full" placeholder="Search by title or ISRC..." value={trackSearch}
-              onChange={(e) => {
-                const q = e.target.value;
-                setTrackSearch(q);
-                searchTracks(q);
-              }}
-            />
-          </div>
-          {trackResults.length > 0 && (
-            <div className="space-y-1 max-h-48 overflow-y-auto">
-              {trackResults.map((t: any) => (
-                <div key={t.id}
-                  className="flex items-center justify-between p-2 rounded-lg hover:bg-white/5 cursor-pointer transition-colors"
-                  onClick={() => { linkTrack(t.id); setTrackModalOpen(false); setTrackSearch(""); setTrackResults([]); }}
-                >
-                  <span className="text-sm font-medium">{t.title}</span>
-                  <span className="text-xs text-text-secondary font-mono">{t.isrc_code || `ID ${t.id}`}</span>
-                </div>
-              ))}
-            </div>
-          )}
-          <p className="text-xs text-text-secondary">Click a track to link it to this contract.</p>
-        </div>
-      </EntityForm>
-
-      {/* Split Group Modal */}
-      <EntityForm title="Add Split Group" isOpen={splitModalOpen} onClose={() => setSplitModalOpen(false)} onSubmit={addSplitGroup} isSubmitting={false} error={undefined}>
-        <div className="space-y-4">
-          <div>
-            <label className="text-xs text-text-secondary">Group Name</label>
-            <input className="input w-full" value={splitForm.group_name} onChange={(e) => setSplitForm({ ...splitForm, group_name: e.target.value })} required />
-          </div>
-          <div>
-            <label className="text-xs text-text-secondary">Group Type</label>
-            <input className="input w-full" value={splitForm.group_type} onChange={(e) => setSplitForm({ ...splitForm, group_type: e.target.value })} />
-          </div>
-          <div>
-            <label className="text-xs text-text-secondary">Notes</label>
-            <input className="input w-full" value={splitForm.notes} onChange={(e) => setSplitForm({ ...splitForm, notes: e.target.value })} />
-          </div>
-        </div>
-      </EntityForm>
-
-      {/* Split Item Modal */}
-      <EntityForm title="Add Split Item" isOpen={splitItemModalOpen} onClose={() => setSplitItemModalOpen(false)} onSubmit={addSplitItem} isSubmitting={false} error={undefined}>
-        <div className="space-y-4">
-          <div>
-            <label className="text-xs text-text-secondary">External Party Name</label>
-            <input className="input w-full" value={splitItemForm.external_party_name} onChange={(e) => setSplitItemForm({ ...splitItemForm, external_party_name: e.target.value })} />
-          </div>
-          <div>
-            <label className="text-xs text-text-secondary">Percent</label>
-            <input type="number" step="0.1" className="input w-full" value={splitItemForm.percent} onChange={(e) => setSplitItemForm({ ...splitItemForm, percent: e.target.value })} required />
-          </div>
-          <div>
-            <label className="text-xs text-text-secondary">Notes</label>
-            <input className="input w-full" value={splitItemForm.notes} onChange={(e) => setSplitItemForm({ ...splitItemForm, notes: e.target.value })} />
-          </div>
+          {assetForm.selected.length > 0 && <div><label className="text-xs text-text-secondary">Selected</label><div className="flex flex-wrap gap-2 mt-2">{assetForm.selected.map((item: any) => <Badge key={item.id} variant="primary" size="sm">{item.title || item.name || item.display_name}</Badge>)}</div></div>}
+          <div><label className="text-xs text-text-secondary">Notes</label><input className="input w-full" value={assetForm.notes} onChange={(e) => setAssetForm({ ...assetForm, notes: e.target.value })} /></div>
         </div>
       </EntityForm>
     </div>
