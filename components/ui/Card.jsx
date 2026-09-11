@@ -20,14 +20,15 @@ const Card = ({
 }) => {
     const pathname = usePathname();
     const artistMatch = pathname?.match(/^\/catalog\/artists\/(\d+)$/);
+    const isLegacyArtistPlaceholder = React.isValidElement(children) && children.type === 'p' && typeof children.props.children === 'string';
 
-    // The current Artist detail page predates these standalone capabilities and
-    // renders placeholder Card bodies. Replace only those two placeholders here
-    // while the detail page is simplified; all other Card usage is unchanged.
-    if (artistMatch && title === 'Documents') {
+    // The Artist detail page still contains legacy placeholder Card bodies.
+    // Replace only those exact placeholders. The real Documents/Financials panels
+    // also use Card internally and must render normally to avoid recursive renders.
+    if (artistMatch && title === 'Documents' && isLegacyArtistPlaceholder && children.props.children.includes('Document management coming')) {
         return <ArtistDocumentsPanel artistId={artistMatch[1]} />;
     }
-    if (artistMatch && title === 'Financials') {
+    if (artistMatch && title === 'Financials' && isLegacyArtistPlaceholder && children.props.children.includes('Artist financial history')) {
         return <ArtistFinancialsPanel artistId={artistMatch[1]} />;
     }
 
