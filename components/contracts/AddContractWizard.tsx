@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import { X, Upload, FileText, Check, Loader2, AlertCircle, Sparkles, ShieldCheck } from "lucide-react";
+import { X, Upload, FileText, Check, Loader2, AlertCircle } from "lucide-react";
 import Button from "@/components/ui/Button";
 import api from "@/lib/api";
 
@@ -12,99 +11,254 @@ interface AddContractWizardProps {
   onCreated: (contract: any) => void;
 }
 
-type Stage = "upload" | "extracting" | "review" | "error";
+type Stage = "upload" | "details" | "creating" | "complete" | "error";
+
+const CONTRACT_TYPES = ["Recording", "Publishing", "License", "Other"];
 
 export default function AddContractWizard({ isOpen, onClose, onCreated }: AddContractWizardProps) {
-  const router = useRouter();
   const [stage, setStage] = useState<Stage>("upload");
   const [file, setFile] = useState<File | null>(null);
   const [contract, setContract] = useState<any>(null);
-  const [job, setJob] = useState<any>(null);
-  const [extraction, setExtraction] = useState<any>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    setStage("upload"); setFile(null); setContract(null); setJob(null); setExtraction(null); setError(""); setBusy(false);
-  }, [isOpen]);
+  const [title, setTitle] = useState("");
+  const [contractNumber, setContractNumber] = useState("");
+  const [type, setType] = useState("Recording");
+  const [territory, setTerritory] = useState("Worldwide");
+  const [exclusivity, setExclusivity] = useState(false);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [signedDate, setSignedDate] = useState("");
+  const [notes, setNotes] = useState("");
 
   useEffect(() => {
-    if (stage !== "extracting" || !job?.id || !job?.documentId) return;
-    let cancelled = false;
-    const poll = async () => {
-      try {
-        const res = await api.get(`/ai/contracts?action=extraction_status&document_id=${encodeURIComponent(job.documentId)}&job_id=${encodeURIComponent(job.id)}`);
-        if (cancelled) return;
-        setJob(res.data.job);
-        if (res.data.job?.status === "completed" && res.data.extractionId) {
-          const result = await api.get(`/ai/contracts?action=extraction_result&document_id=${encodeURIComponent(job.documentId)}&extraction_id=${encodeURIComponent(res.data.extractionId)}`);
-          if (!cancelled) { setExtraction(result.data); setStage("review"); }
-        } else if (res.data.job?.status === "failed") {
-          setError(res.data.job.errorMessage || "Contract extraction failed."); setStage("error");
-        }
-      } catch (err: any) {
-        if (!cancelled) { setError(err?.response?.data?.error || "Unable to read extraction status."); setStage("error"); }
-      }
-    };
-    void poll();
-    const timer = window.setInterval(poll, 1500);
-    return () => { cancelled = true; window.clearInterval(timer); };
-  }, [stage, job?.id, job?.documentId]);
+    if (!isOpen) return;
+    setStage("upload");
+    setFile(null);
+    setContract(null);
+    setError("");
+    setBusy(false);
+    setTitle("");
+    setContractNumber("");
+    setType("Recording");
+    setTerritory("Worldwide");
+    setExclusivity(false);
+    setStartDate("");
+    setEndDate("");
+    setSignedDate("");
+    setNotes("");
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
   const handleFile = (selected: File | null) => {
     if (!selected) return;
-    if (selected.type !== "application/pdf") { setError("Please select a PDF contract."); return; }
-    setError(""); setFile(selected);
+    if (selected.type !== "application/pdf") {
+      setError("Please select a PDF contract.");
+      return;
+    }
+
+    setError("");
+    setFile(selected);
+    setTitle((current) => current || selected.name.replace(/\.pdf$/i, "").replace(/[_-]+/g, " ").trim());
   };
 
-  const startIntake = async () => {
-    if (!file) return;
-    setBusy(true); setError("");
+  const continueToDetails = () => {
+    if (!file) {
+      setError("Select the signed contract PDF before continuing.");
+      return;
+    }
+    setError("");
+    setStage("details");
+  };
+
+  const uploadDocument = async (contractId: number | string) => {
+    if (!file) throw new Error("No contract PDF selected.");
+    const formData = new FormData();
+    formData.append("file", file);
+    const response = await api.post(`/contracts?action=upload_document&id=${contractId}`, formData);
+    const documentId = response.data?.document_id || response.data?.document?.id;
+    if (!documentId) throw new Error("Contract upload did not return a document reference.");
+    return response.data;
+  };
+
+  const createContract = async () => {
+    if (!file || !title.trim()) {
+      setError("A contract title is required.");
+      return;
+    }
+
+    setBusy(true);
+    setError("");
+    setStage("creating");
+
     try {
-      const title = file.name.replace(/\.pdf$/i, "").replace(/[_-]+/g, " ").trim() || "Contract Intake";
-      const contractRes = await api.post("/contracts", { title, status: "Draft", type: "Unknown", territory: "Worldwide", exclusivity: false, notes: "Created by Contract Intelligence intake; metadata pending verification." });
-      const created = contractRes.data; setContract(created);
-      const fd = new FormData(); fd.append("file", file);
-      const documentRes = await api.post(`/contracts?action=upload_document&id=${created.id}`, fd);
-      const document = documentRes.data;
-      const documentId = document?.document_id || document?.document?.id;
-      if (!documentId || typeof documentId !== "string") throw new Error("Contract upload did not return a canonical document id.");
-      const extractionRes = await api.post("/ai/contracts/intake", { document_id: documentId, contract_id: created.id });
-      setJob(extractionRes.data); setStage("extracting");
+      let created = contract;
+
+      if (!created?.id) {
+        const contractRes = await api.post("/contracts", {
+          contract_number: contractNumber.trim() || undefined,
+          title: title.trim(),
+          status: "Draft",
+          type,
+          territory: territory.trim() || "Worldwide",
+          exclusivity,
+          start_date: startDate || undefined,
+          end_date: endDate || undefined,
+          signed_date: signedDate || undefined,
+          notes: notes.trim(),
+        });
+        created = contractRes.data;
+        setContract(created);
+      } else {
+        await api.put(`/contracts?id=${created.id}`, {
+          contract_number: contractNumber.trim() || undefined,
+          title: title.trim(),
+          type,
+          territory: territory.trim() || "Worldwide",
+          exclusivity,
+          start_date: startDate || null,
+          end_date: endDate || null,
+          signed_date: signedDate || null,
+          notes: notes.trim(),
+        });
+      }
+
+      await uploadDocument(created.id);
+      setStage("complete");
     } catch (err: any) {
-      setError(err?.response?.data?.error || err?.message || "Unable to start contract intake."); setStage("error");
-    } finally { setBusy(false); }
+      setError(err?.response?.data?.error || err?.message || "Unable to create the contract record.");
+      setStage("error");
+    } finally {
+      setBusy(false);
+    }
   };
 
-  const close = () => { if (contract) onCreated(contract); else onClose(); };
-  const openVerification = () => {
-    if (!contract?.id || !job?.documentId) return;
-    onCreated(contract);
-    onClose();
-    router.push(`/contracts/${contract.id}/intelligence/${job.documentId}`);
+  const finish = () => {
+    if (contract) onCreated(contract);
+    else onClose();
   };
-  const fields = Array.isArray(extraction?.fields) ? extraction.fields : [];
+
+  const stepIndex = stage === "upload" ? 1 : stage === "details" || stage === "creating" ? 2 : 3;
+  const steps = ["Upload PDF", "Contract Details", "Complete"];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0f1115]/80 backdrop-blur-md p-4 sm:p-6 overflow-y-auto">
       <div className="bg-premium-glass border border-white/10 rounded-3xl shadow-glass w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]">
         <div className="flex items-center justify-between p-6 border-b border-white/5 bg-white/[0.02]">
-          <div><h2 className="text-xl font-black text-white tracking-tight">Contract Intelligence</h2><p className="text-xs text-text-secondary mt-1">Upload a contract and let OTTO extract its terms.</p></div>
-          <button className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-text-secondary hover:text-white" onClick={onClose} aria-label="Close"><X size={16} /></button>
+          <div>
+            <h2 className="text-xl font-black text-white tracking-tight">Add Contract</h2>
+            <p className="text-xs text-text-secondary mt-1">Store the signed source document and capture its structured contract record.</p>
+          </div>
+          <button className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-text-secondary hover:text-white" onClick={onClose} aria-label="Close">
+            <X size={16} />
+          </button>
         </div>
+
         <div className="flex items-center gap-3 px-6 pt-6">
-          {["Upload", "Extract", "Verify"].map((label, index) => { const active = stage === "upload" ? index === 0 : stage === "extracting" ? index === 1 : index === 2; const complete = (stage === "extracting" && index === 0) || (stage === "review" && index < 2); return <div key={label} className="flex items-center gap-2"><div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${complete ? "bg-success/20 text-success" : active ? "bg-primary text-white" : "bg-white/5 text-text-secondary"}`}>{complete ? <Check size={14} /> : index + 1}</div><span className={`text-xs ${active ? "text-white" : "text-text-secondary"}`}>{label}</span>{index < 2 && <div className="w-8 h-px bg-white/10" />}</div>; })}
+          {steps.map((label, index) => {
+            const number = index + 1;
+            const complete = number < stepIndex;
+            const active = number === stepIndex;
+            return (
+              <div key={label} className="flex items-center gap-2">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${complete ? "bg-success/20 text-success" : active ? "bg-primary text-white" : "bg-white/5 text-text-secondary"}`}>
+                  {complete ? <Check size={14} /> : number}
+                </div>
+                <span className={`text-xs ${active ? "text-white" : "text-text-secondary"}`}>{label}</span>
+                {index < steps.length - 1 && <div className="w-8 h-px bg-white/10" />}
+              </div>
+            );
+          })}
         </div>
+
         <div className="p-6 overflow-y-auto flex-1">
-          {error && <div className="mb-5 flex gap-3 bg-danger/10 border border-danger/20 rounded-xl p-4 text-danger text-sm"><AlertCircle size={18} className="shrink-0" /><span>{error}</span></div>}
-          {stage === "upload" && <div className="space-y-5 py-6"><div className="text-center"><Sparkles size={42} className="mx-auto mb-4 text-primary" /><h3 className="text-lg font-semibold text-white">Start with the contract PDF</h3><p className="text-sm text-text-secondary mt-2 max-w-lg mx-auto">OTTO will create a draft contract record, store the PDF as the source document, and start Contract Intelligence extraction automatically.</p></div><div className="border-2 border-dashed border-white/10 rounded-2xl p-10 hover:border-primary/40 transition-colors cursor-pointer text-center" onClick={() => inputRef.current?.click()}><FileText size={30} className="mx-auto mb-3 text-text-secondary" /><p className="text-sm font-medium text-white">{file ? file.name : "Select contract PDF"}</p>{file && <p className="text-xs text-text-secondary mt-1">{(file.size / 1024 / 1024).toFixed(2)} MB</p>}<input ref={inputRef} type="file" accept="application/pdf" className="hidden" onChange={(e) => handleFile(e.target.files?.[0] || null)} /></div><div className="flex justify-end"><Button variant="primary" disabled={!file || busy} onClick={startIntake}>{busy ? "Starting…" : "Upload & Extract"} <Upload size={16} /></Button></div></div>}
-          {stage === "extracting" && <div className="py-12 text-center space-y-5"><div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto"><Loader2 size={30} className="text-primary animate-spin" /></div><div><h3 className="text-lg font-semibold text-white">Reading your contract</h3><p className="text-sm text-text-secondary mt-2">OTTO is extracting the document text and identifying contract fields.</p></div><div className="text-xs text-text-secondary">Status: {job?.status || "queued"}</div></div>}
-          {stage === "review" && extraction && <div className="space-y-6"><div className="flex items-start justify-between gap-4"><div><h3 className="text-lg font-semibold text-white">Extraction ready for verification</h3><p className="text-sm text-text-secondary mt-1">AI output is provisional. Review the source PDF and verify the extracted fields before promoting trusted contract data.</p></div><div className="text-right text-xs text-text-secondary"><div>Confidence</div><div className="text-white font-semibold text-base">{extraction.overallConfidence ?? "—"}%</div></div></div><div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{fields.map((field: any) => <div key={field.id || field.fieldKey} className="rounded-xl border border-white/5 bg-white/[0.03] p-4"><div className="flex items-center justify-between gap-3"><span className="text-xs text-text-secondary">{field.fieldLabel || field.fieldKey}</span><span className="text-[10px] text-text-secondary">{field.confidence ?? "—"}%</span></div><p className="mt-2 text-sm text-white whitespace-pre-wrap">{typeof field.value === "string" ? field.value : JSON.stringify(field.value)}</p></div>)}</div>{!fields.length && <div className="rounded-xl border border-white/5 bg-white/[0.03] p-5 text-sm text-text-secondary">Extraction completed, but no structured fields were returned. Open the verification workspace to inspect the raw text and source document.</div>}<div className="rounded-xl border border-white/5 bg-white/[0.02] p-4"><div className="flex items-center gap-2 text-sm font-semibold text-white mb-2"><FileText size={16} /> Source text preview</div><p className="text-xs text-text-secondary whitespace-pre-wrap max-h-40 overflow-y-auto">{extraction.rawTextPreview || "No text preview available."}</p></div><div className="rounded-xl border border-primary/20 bg-primary/5 p-4"><div className="flex items-start gap-3"><ShieldCheck size={18} className="text-primary mt-0.5 shrink-0" /><div><p className="text-sm font-medium text-white">Human verification required</p><p className="text-xs text-text-secondary mt-1">Catalogue links are not required here. Verify what the contract actually says; Artist and Release relationships can be established later.</p></div></div></div><div className="flex justify-end gap-3"><Button variant="secondary" onClick={close}>Close</Button><Button variant="primary" disabled={!contract?.id || !job?.documentId} onClick={openVerification}>Open Verification Workspace <ShieldCheck size={16} /></Button></div></div>}
-          {stage === "error" && <div className="py-10 text-center"><AlertCircle size={42} className="mx-auto mb-4 text-danger" /><h3 className="text-lg font-semibold text-white">Contract intake needs attention</h3><p className="text-sm text-text-secondary mt-2">The draft contract and uploaded document may already exist. Retry or inspect the contract record before creating another intake.</p><div className="mt-5 flex justify-center gap-3"><Button variant="secondary" onClick={onClose}>Close</Button><Button variant="primary" onClick={() => { setStage("upload"); setError(""); }}>Try Again</Button></div></div>}
+          {error && (
+            <div className="mb-5 flex gap-3 bg-danger/10 border border-danger/20 rounded-xl p-4 text-danger text-sm">
+              <AlertCircle size={18} className="shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {stage === "upload" && (
+            <div className="space-y-5 py-6">
+              <div className="text-center">
+                <FileText size={42} className="mx-auto mb-4 text-primary" />
+                <h3 className="text-lg font-semibold text-white">Start with the signed contract PDF</h3>
+                <p className="text-sm text-text-secondary mt-2 max-w-lg mx-auto">OTTO stores the original PDF as the source document. Contract terms are captured manually from the source; no OCR or automatic extraction is performed.</p>
+              </div>
+
+              <div className="border-2 border-dashed border-white/10 rounded-2xl p-10 hover:border-primary/40 transition-colors cursor-pointer text-center" onClick={() => inputRef.current?.click()}>
+                <FileText size={30} className="mx-auto mb-3 text-text-secondary" />
+                <p className="text-sm font-medium text-white">{file ? file.name : "Select contract PDF"}</p>
+                {file && <p className="text-xs text-text-secondary mt-1">{(file.size / 1024 / 1024).toFixed(2)} MB</p>}
+                <input ref={inputRef} type="file" accept="application/pdf" className="hidden" onChange={(e) => handleFile(e.target.files?.[0] || null)} />
+              </div>
+
+              <div className="flex justify-end">
+                <Button variant="primary" disabled={!file} onClick={continueToDetails}>Continue <Upload size={16} /></Button>
+              </div>
+            </div>
+          )}
+
+          {stage === "details" && (
+            <div className="space-y-6 py-4">
+              <div>
+                <h3 className="text-lg font-semibold text-white">Capture contract details</h3>
+                <p className="text-sm text-text-secondary mt-1">Enter what is known from the signed document. Additional parties, assets, rights, terms and splits can be added from the contract record.</p>
+              </div>
+
+              <div className="rounded-xl border border-white/5 bg-white/[0.03] p-4 flex items-center gap-3">
+                <FileText size={18} className="text-text-secondary shrink-0" />
+                <div className="min-w-0"><p className="text-sm text-white truncate">{file?.name}</p><p className="text-xs text-text-secondary mt-1">Source PDF ready to be stored</p></div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <label className="space-y-2"><span className="text-xs text-text-secondary">Contract title *</span><input className="input w-full" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Artist Recording Agreement" /></label>
+                <label className="space-y-2"><span className="text-xs text-text-secondary">Contract number</span><input className="input w-full" value={contractNumber} onChange={(e) => setContractNumber(e.target.value)} placeholder="Optional" /></label>
+                <label className="space-y-2"><span className="text-xs text-text-secondary">Contract type</span><select className="input w-full" value={type} onChange={(e) => setType(e.target.value)}>{CONTRACT_TYPES.map((option) => <option key={option}>{option}</option>)}</select></label>
+                <label className="space-y-2"><span className="text-xs text-text-secondary">Territory</span><input className="input w-full" value={territory} onChange={(e) => setTerritory(e.target.value)} placeholder="Worldwide" /></label>
+                <label className="space-y-2"><span className="text-xs text-text-secondary">Start date</span><input className="input w-full" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} /></label>
+                <label className="space-y-2"><span className="text-xs text-text-secondary">End date</span><input className="input w-full" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} /></label>
+                <label className="space-y-2"><span className="text-xs text-text-secondary">Signed date</span><input className="input w-full" type="date" value={signedDate} onChange={(e) => setSignedDate(e.target.value)} /></label>
+                <label className="flex items-center gap-3 pt-6"><input type="checkbox" checked={exclusivity} onChange={(e) => setExclusivity(e.target.checked)} /><span className="text-sm text-text-primary">Exclusive agreement</span></label>
+              </div>
+
+              <label className="space-y-2 block"><span className="text-xs text-text-secondary">Notes</span><textarea className="input w-full min-h-24" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional source or administrative notes" /></label>
+
+              <div className="flex justify-between gap-3">
+                <Button variant="secondary" onClick={() => setStage("upload")}>Back</Button>
+                <Button variant="primary" disabled={!title.trim() || busy} onClick={createContract}>{busy ? "Saving…" : "Create Contract"} <Check size={16} /></Button>
+              </div>
+            </div>
+          )}
+
+          {stage === "creating" && (
+            <div className="py-16 text-center space-y-5">
+              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto"><Loader2 size={30} className="text-primary animate-spin" /></div>
+              <div><h3 className="text-lg font-semibold text-white">Saving contract</h3><p className="text-sm text-text-secondary mt-2">Creating the contract record and storing the source PDF.</p></div>
+            </div>
+          )}
+
+          {stage === "complete" && (
+            <div className="py-12 text-center space-y-5">
+              <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center mx-auto"><Check size={30} className="text-success" /></div>
+              <div><h3 className="text-lg font-semibold text-white">Contract created</h3><p className="text-sm text-text-secondary mt-2 max-w-lg mx-auto">The signed PDF is stored as the source document. Continue to the contract record to add parties, assets, rights and terms, splits, and lifecycle information.</p></div>
+              <div className="rounded-xl border border-white/5 bg-white/[0.03] p-4 text-left max-w-lg mx-auto"><div className="text-sm text-white">{contract?.title || title}</div><div className="text-xs text-text-secondary mt-1">{contract?.contract_number || "Contract number pending"}</div></div>
+              <div className="flex justify-end"><Button variant="primary" onClick={finish}>Open Contract <FileText size={16} /></Button></div>
+            </div>
+          )}
+
+          {stage === "error" && (
+            <div className="py-10 text-center">
+              <AlertCircle size={42} className="mx-auto mb-4 text-danger" />
+              <h3 className="text-lg font-semibold text-white">Contract setup needs attention</h3>
+              <p className="text-sm text-text-secondary mt-2 max-w-lg mx-auto">The contract record may already exist as a draft. Retry to finish storing the source PDF, or close this window and inspect the draft from the Contracts list.</p>
+              <div className="mt-5 flex justify-center gap-3"><Button variant="secondary" onClick={onClose}>Close</Button><Button variant="primary" onClick={() => { setError(""); setStage(contract ? "details" : "upload"); }}>Retry</Button></div>
+            </div>
+          )}
         </div>
       </div>
     </div>
