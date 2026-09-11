@@ -57,12 +57,10 @@ a {
   box-shadow: var(--ring-accent);
 }
 
-/* OTTO dark-first application surface. No decorative background gradient. */
 .bg-app-default {
   background-color: var(--color-background);
 }
 
-/* Compatibility layer for legacy utility classes while screens are refactored. */
 .bg-premium-glass {
   background-image: none !important;
   background-color: var(--color-surface) !important;
@@ -80,7 +78,6 @@ a {
   border-color: var(--color-border) !important;
 }
 
-/* Remaining legacy white variants resolve to Signal tokens during migration. */
 [class~="border-white/5"] {
   border-color: var(--color-border) !important;
 }
@@ -105,7 +102,6 @@ a {
   color: var(--color-text-primary) !important;
 }
 
-/* Brand accent replaces the previous generic sky-blue utility treatment. */
 .text-sky-500,
 .text-sky-400,
 .text-blue-500 {
@@ -132,15 +128,10 @@ a {
   }
 }
 
-/* -------------------------------------------------------------------------- */
-/* OTTO Signal application shell                                             */
-/* -------------------------------------------------------------------------- */
-
 .otto-shell {
   background: var(--color-background) !important;
 }
 
-/* Sidebar: fixed 280px Signal surface, no glass, blur or decorative shadow. */
 .otto-shell > .fixed.left-0 {
   width: 280px !important;
   background: var(--color-surface) !important;
@@ -151,7 +142,6 @@ a {
   -webkit-backdrop-filter: none !important;
 }
 
-/* Sidebar brand area follows the 64px shell header specification. */
 .otto-shell > .fixed.left-0 > div:first-child {
   min-height: 64px;
   height: 64px;
@@ -159,13 +149,11 @@ a {
   border-bottom: 1px solid var(--color-border);
 }
 
-/* Keep the existing logo asset but constrain it to the Signal header scale. */
 .otto-shell > .fixed.left-0 .logo-container img {
   height: 28px !important;
   width: auto !important;
 }
 
-/* Sidebar navigation: compact, precise, low-radius controls. */
 .otto-shell > .fixed.left-0 nav {
   padding: 12px 12px 20px !important;
 }
@@ -183,7 +171,6 @@ a {
   background: var(--color-surface-elevated) !important;
 }
 
-/* Existing active utility is retained as the semantic marker; presentation is Signal. */
 .otto-shell > .fixed.left-0 nav a[class*="bg-white\\/10"] {
   background: rgba(0, 229, 255, 0.08) !important;
   border-color: transparent !important;
@@ -202,14 +189,12 @@ a {
   background: var(--color-accent);
 }
 
-/* Section labels use the specification's restrained secondary hierarchy. */
 .otto-shell > .fixed.left-0 nav button {
   color: var(--color-text-secondary) !important;
   padding: 8px 12px !important;
   letter-spacing: 0.08em !important;
 }
 
-/* Main content remains offset by the fixed sidebar, with controlled spacing. */
 .otto-main {
   background: var(--color-background) !important;
 }
@@ -219,7 +204,6 @@ a {
   padding: 24px 32px !important;
 }
 
-/* Top bar: 56px, surface, single bottom divider. */
 .otto-main > div:first-child {
   height: 56px !important;
   min-height: 56px !important;
@@ -244,13 +228,11 @@ a {
   transition: color 140ms ease, background-color 140ms ease !important;
 }
 
-/* Eliminate legacy white/glass treatment inside the shell without changing behaviour. */
 .otto-shell .shadow-glow,
 .otto-shell .shadow-glass {
   box-shadow: none !important;
 }
 
-/* Mobile overlay stays functional but uses the Signal surface language. */
 .otto-shell .bg-black\/50 {
   background: rgba(0, 0, 0, 0.64) !important;
 }
@@ -270,4 +252,57 @@ a {
     padding-left: 12px !important;
     padding-right: 12px !important;
   }
+}
+
+/* Legacy attachment panel: keep its existing upload/preview behaviour, but bring
+   the presentation into the Signal shell so PRO registrations and other rights
+   documents are readable on the dark application surface. */
+.otto-shell section[style*="background: white"][style*="border-radius: 16px"] {
+  background: var(--color-surface) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 10px !important;
+  box-shadow: none !important;
+  color: var(--color-text-primary) !important;
+}
+
+.otto-shell section[style*="background: white"][style*="border-radius: 16px"] h3 {
+  color: var(--color-text-primary) !important;
+}
+
+.otto-shell section[style*="background: white"][style*="border-radius: 16px"] h3 svg {
+  color: var(--color-accent) !important;
+}
+
+.otto-shell section[style*="background: white"][style*="border-radius: 16px"] .attachment-item {
+  background: var(--color-surface-elevated) !important;
+  border-color: var(--color-border) !important;
+}
+
+.otto-shell section[style*="background: white"][style*="border-radius: 16px"] .attachment-item > div:nth-child(1) > div:nth-child(2) > div:first-child {
+  color: var(--color-text-primary) !important;
+}
+
+.otto-shell section[style*="background: white"][style*="border-radius: 16px"] .attachment-item > div:nth-child(1) > div:nth-child(2) > div:nth-child(2) {
+  color: var(--color-text-secondary) !important;
+}
+
+.otto-shell section[style*="background: white"][style*="border-radius: 16px"] > div:nth-child(2) > div[style*="border: 2px dashed"] {
+  color: var(--color-text-secondary) !important;
+  border-color: var(--color-border) !important;
+  background: var(--color-surface-elevated) !important;
+}
+
+.otto-shell section[style*="background: white"][style*="border-radius: 16px"] > div:nth-child(2) > div[style*="border: 2px dashed"] p {
+  color: var(--color-text-secondary) !important;
+}
+
+.otto-shell section[style*="background: white"][style*="border-radius: 16px"] .btn-secondary {
+  color: var(--color-text-primary) !important;
+  background: var(--color-surface-elevated) !important;
+  border-color: var(--color-border) !important;
+}
+
+.otto-shell section[style*="background: white"][style*="border-radius: 16px"] .btn-secondary:hover {
+  background: rgba(0, 229, 255, 0.08) !important;
+  border-color: rgba(0, 229, 255, 0.35) !important;
 }
