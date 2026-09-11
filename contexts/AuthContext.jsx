@@ -7,12 +7,13 @@ import {
   useState,
 } from "react";
 
+const CORE_FEATURES = new Set(["catalog", "contracts.core", "office", "workspace"]);
+
 /**
  * AuthContext — IAM + organization-scoped commercial entitlements.
  * Session state from GET /api/auth/session; product access from
  * GET /api/auth/product-entitlements.
  */
-
 const AuthContext = createContext({
   user: null,
   loading: true,
@@ -21,12 +22,8 @@ const AuthContext = createContext({
   session: null,
   productEntitlements: { planKeys: [], features: [], entitlements: [] },
   hasProductFeature: /** @type {(feature: string) => boolean} */ (() => false),
-  login: /** @type {(email: string, password: string, opts?: { rememberMe?: boolean }) => Promise<any>} */ (
-    () => {}
-  ),
-  completeMfa: /** @type {(mfaToken: string, code: string, opts?: any) => Promise<any>} */ (
-    () => {}
-  ),
+  login: /** @type {(email: string, password: string, opts?: { rememberMe?: boolean }) => Promise<any>} */ (() => {}),
+  completeMfa: /** @type {(mfaToken: string, code: string, opts?: any) => Promise<any>} */ (() => {}),
   register: /** @type {(data: any) => Promise<any>} */ (() => {}),
   logout: () => {},
   refreshUser: () => Promise.resolve(null),
@@ -53,12 +50,14 @@ function mapIamUser(sessionPayload) {
 
 export const AuthProvider = ({ children }) => {
   const [iamSession, setIamSession] = useState(null);
-  const [productEntitlements, setProductEntitlements] = useState({
-    planKeys: [],
-    features: [],
-    entitlements: [],
-  });
+  const [productEntitlements, setProductEntitlements] = useState({ planKeys: [], features: [], entitlements: [] });
+  const [productEntitlementsAvailable, setProductEntitlementsAvailable] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  const clearProductEntitlements = useCallback(() => {
+    setProductEntitlements({ planKeys: [], features: [], entitlements: [] });
+    setProductEntitlementsAvailable(false);
+  }, []);
 
   const loadProductEntitlements = useCallback(async () => {
     try {
@@ -67,7 +66,7 @@ export const AuthProvider = ({ children }) => {
         cache: "no-store",
       });
       if (!res.ok) {
-        setProductEntitlements({ planKeys: [], features: [], entitlements: [] });
+        clearProductEntitlements();
         return null;
       }
       const data = await res.json();
@@ -77,67 +76,55 @@ export const AuthProvider = ({ children }) => {
         entitlements: Array.isArray(data.entitlements) ? data.entitlements : [],
       };
       setProductEntitlements(next);
+      setProductEntitlementsAvailable(true);
       return next;
     } catch {
-      setProductEntitlements({ planKeys: [], features: [], entitlements: [] });
+      clearProductEntitlements();
       return null;
     }
-  }, []);
+  }, [clearProductEntitlements]);
 
   const loadIamSession = useCallback(async () => {
     try {
-      const res = await fetch("/api/auth/session", {
-        credentials: "include",
-        cache: "no-store",
-      });
+      const res = await fetch("/api/auth/session", { credentials: "include", cache: "no-store" });
       if (!res.ok) {
         setIamSession(null);
-        setProductEntitlements({ planKeys: [], features: [], entitlements: [] });
+        clearProductEntitlements();
         return null;
       }
       const data = await res.json();
       setIamSession(data);
       if (data?.authenticated) await loadProductEntitlements();
-      else setProductEntitlements({ planKeys: [], features: [], entitlements: [] });
+      else clearProductEntitlements();
       return data;
     } catch {
       setIamSession(null);
-      setProductEntitlements({ planKeys: [], features: [], entitlements: [] });
+      clearProductEntitlements();
       return null;
     } finally {
       setLoading(false);
     }
-  }, [loadProductEntitlements]);
+  }, [clearProductEntitlements, loadProductEntitlements]);
 
-  useEffect(() => {
-    loadIamSession();
-  }, [loadIamSession]);
+  useEffect(() => { loadIamSession(); }, [loadIamSession]);
 
   const user = mapIamUser(iamSession);
   const isAuthenticated = !!user;
-  const hasProductFeature = (feature) => productEntitlements.features.includes(feature);
+  const hasProductFeature = (feature) =>
+    productEntitlementsAvailable
+      ? productEntitlements.features.includes(feature)
+      : CORE_FEATURES.has(feature);
 
   const login = async (email, password, opts = {}) => {
     const res = await fetch("/api/auth/login", {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email,
-        password,
-        rememberMe: Boolean(opts.rememberMe),
-      }),
+      body: JSON.stringify({ email, password, rememberMe: Boolean(opts.rememberMe) }),
     });
     const data = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-      throw new Error(data.error || "Login failed");
-    }
-
-    if (data.requiresMfa && data.mfaToken) {
-      return data;
-    }
-
+    if (!res.ok) throw new Error(data.error || "Login failed");
+    if (data.requiresMfa && data.mfaToken) return data;
     await loadIamSession();
     return data;
   };
@@ -147,12 +134,7 @@ export const AuthProvider = ({ children }) => {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        mfaToken,
-        code,
-        rememberMe: Boolean(opts.rememberMe),
-        trustDevice: Boolean(opts.trustDevice),
-      }),
+      body: JSON.stringify({ mfaToken, code, rememberMe: Boolean(opts.rememberMe), trustDevice: Boolean(opts.trustDevice) }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || "MFA verification failed");
@@ -181,35 +163,28 @@ export const AuthProvider = ({ children }) => {
       body: JSON.stringify({}),
     }).catch(() => undefined);
     setIamSession(null);
-    setProductEntitlements({ planKeys: [], features: [], entitlements: [] });
-    if (typeof window !== "undefined") {
-      window.location.href = "/auth/login";
-    }
+    clearProductEntitlements();
+    if (typeof window !== "undefined") window.location.href = "/auth/login";
   };
 
-  const refreshUser = async () => {
-    const data = await loadIamSession();
-    return mapIamUser(data);
-  };
+  const refreshUser = async () => mapIamUser(await loadIamSession());
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        loading,
-        statusMessage: loading ? "Authenticating..." : "",
-        authSource: user ? "iam" : null,
-        session: iamSession,
-        productEntitlements,
-        hasProductFeature,
-        login,
-        completeMfa,
-        register,
-        logout,
-        refreshUser,
-        isAuthenticated,
-      }}
-    >
+    <AuthContext.Provider value={{
+      user,
+      loading,
+      statusMessage: loading ? "Authenticating..." : "",
+      authSource: user ? "iam" : null,
+      session: iamSession,
+      productEntitlements,
+      hasProductFeature,
+      login,
+      completeMfa,
+      register,
+      logout,
+      refreshUser,
+      isAuthenticated,
+    }}>
       {children}
     </AuthContext.Provider>
   );
@@ -217,8 +192,6 @@ export const AuthProvider = ({ children }) => {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within AuthProvider");
-  }
+  if (!context) throw new Error("useAuth must be used within AuthProvider");
   return context;
 };
