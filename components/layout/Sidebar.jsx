@@ -2,12 +2,7 @@
 import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import {
-    LayoutDashboard, FolderOpen, FileText, BarChart3, Settings, Music, Calendar,
-    ListTodo, StickyNote, ListMusic, ShieldCheck, ChevronDown, ChevronRight,
-    UserCircle, Building2, BookOpen, HardDrive, Inbox, Users,
-    Bot, Calculator, X, FileCheck, Scale, DollarSign,
-} from 'lucide-react';
+import { LayoutDashboard, FolderOpen, FileText, BarChart3, Settings, Music, Calendar, ListTodo, StickyNote, ListMusic, ShieldCheck, ChevronDown, ChevronRight, UserCircle, Building2, BookOpen, HardDrive, Inbox, Users, Bot, Calculator, X, FileCheck, Scale, DollarSign } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSidebar } from '../../contexts/SidebarContext';
 import { useIsMobile } from '../../hooks/useIsMobile';
@@ -59,7 +54,7 @@ const Sidebar = () => {
         ] },
         { label: 'Administration of Works', items: [
             { icon: FileText, label: 'Contracts', path: '/admin-of-works/contracts', feature: 'contracts.core' },
-            { icon: Inbox, label: 'Bulk Processing', path: '/contracts/bulk', feature: 'contracts.ocr' },
+            { icon: Inbox, label: 'Bulk Processing', path: '/contracts/bulk', feature: 'contracts.core' },
             { icon: Scale, label: 'Rights', path: '/rights', feature: 'rights' },
             { icon: FileCheck, label: 'Rights Review', path: '/rights/review', feature: 'rights' },
             { icon: ShieldCheck, label: 'Works Administration', path: '/admin-of-works/works', feature: 'contracts.core' },
