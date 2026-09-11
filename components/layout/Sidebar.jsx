@@ -6,7 +6,7 @@ import {
     LayoutDashboard, FolderOpen, FileText, BarChart3, Settings, Music, Calendar,
     ListTodo, StickyNote, ListMusic, ShieldCheck, ChevronDown, ChevronRight,
     UserCircle, Building2, BookOpen, HardDrive, CreditCard, Inbox, Globe, Users,
-    Bot, Calculator, X, Layout, FileCheck, Scale, DollarSign,
+    Bot, Calculator, X, FileCheck, Scale, DollarSign,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSidebar } from '../../contexts/SidebarContext';
@@ -41,7 +41,6 @@ const Sidebar = () => {
     const handleNav = () => { if (isMobile) closeSidebar(); };
 
     const sections = useMemo(() => [
-        { label: 'Workspaces', items: [{ icon: Layout, label: 'All Workspaces', path: '/workspaces', feature: 'workspace' }] },
         { label: 'Catalog Management', items: [
             { icon: Music, label: 'Overview', path: '/catalog', feature: 'catalog' },
             { icon: UserCircle, label: 'Artists', path: '/catalog/artists', feature: 'catalog' },
