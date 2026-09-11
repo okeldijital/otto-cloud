@@ -19,6 +19,7 @@ const STATUS_VARIANTS: Record<string, string> = {
 };
 
 const ASSET_TYPES = ["Track", "Work", "Release"];
+const PARTY_TYPES = ["Artist", "Label", "Publisher", "PRO"];
 
 const TABS = [
   { key: "documents", label: "Documents", icon: FileText },
@@ -28,6 +29,28 @@ const TABS = [
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
+
+type PartyLookupItem = {
+  id: number;
+  name: string;
+  entity_type: string;
+};
+
+function normalizeCollection(data: any): any[] {
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.items)) return data.items;
+  return [];
+}
+
+function partyLookupItems(data: any, type: string): PartyLookupItem[] {
+  const key = type.toLowerCase() === "pro" ? "pros" : `${type.toLowerCase()}s`;
+  const items = Array.isArray(data?.[key]) ? data[key] : [];
+  return items.map((item: any) => ({
+    id: Number(item.id),
+    name: item.name,
+    entity_type: type,
+  }));
+}
 
 export default function ContractDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -47,6 +70,10 @@ export default function ContractDetailPage() {
   const [metaForm, setMetaForm] = useState<any>({});
   const [partyModalOpen, setPartyModalOpen] = useState(false);
   const [partyForm, setPartyForm] = useState({ role: "", external_name: "", split_percent: "", notes: "" });
+  const [partyType, setPartyType] = useState("Artist");
+  const [partyQuery, setPartyQuery] = useState("");
+  const [partyResults, setPartyResults] = useState<PartyLookupItem[]>([]);
+  const [selectedParty, setSelectedParty] = useState<PartyLookupItem | null>(null);
   const [assetModalOpen, setAssetModalOpen] = useState(false);
   const [assetForm, setAssetForm] = useState<any>({ asset_type: "Track", query: "", results: [], selected: [], notes: "" });
 
@@ -103,13 +130,28 @@ export default function ContractDetailPage() {
     }
   };
 
+  const searchParties = async (query: string, type: string) => {
+    setPartyQuery(query);
+    if (query.trim().length < 2) {
+      setPartyResults([]);
+      return;
+    }
+    try {
+      const res = await api.get(`/contracts?action=party_lookup&q=${encodeURIComponent(query)}&limit=10`);
+      setPartyResults(partyLookupItems(res.data, type));
+    } catch {
+      setPartyResults([]);
+    }
+  };
+
   const addParty = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       await api.post("/contracts?action=add_party", {
         id: parseInt(id),
-        entity_type: "External",
-        external_name: partyForm.external_name,
+        entity_type: selectedParty?.entity_type || "External",
+        entity_id: selectedParty?.id || null,
+        external_name: selectedParty ? null : partyForm.external_name,
         role: partyForm.role,
         split_percent: partyForm.split_percent === "" ? null : Number(partyForm.split_percent),
         notes: partyForm.notes || null,
@@ -117,6 +159,10 @@ export default function ContractDetailPage() {
       await fetchContract();
       setPartyModalOpen(false);
       setPartyForm({ role: "", external_name: "", split_percent: "", notes: "" });
+      setPartyType("Artist");
+      setPartyQuery("");
+      setPartyResults([]);
+      setSelectedParty(null);
     } catch (err: any) {
       alert(err?.response?.data?.error || "Failed to add party");
     }
@@ -132,22 +178,40 @@ export default function ContractDetailPage() {
     }
   };
 
-  const searchAssets = async (query: string, type: string) => {
-    if (query.trim().length < 2) {
-      setAssetForm((prev: any) => ({ ...prev, results: [] }));
-      return;
-    }
+  const loadAssets = async (type: string, query = "") => {
     try {
+      const encoded = encodeURIComponent(query.trim());
       const endpoint = type === "Track"
-        ? `/tracks?q=${encodeURIComponent(query)}&limit=10`
+        ? `/tracks?${query.trim() ? `q=${encoded}&` : ""}limit=100`
         : type === "Work"
-          ? `/works?q=${encodeURIComponent(query)}&limit=10`
-          : `/releases?q=${encodeURIComponent(query)}&limit=10`;
+          ? `/works?${query.trim() ? `q=${encoded}&` : ""}limit=100`
+          : `/releases?${query.trim() ? `q=${encoded}&` : ""}limit=100`;
       const res = await api.get(endpoint);
-      setAssetForm((prev: any) => ({ ...prev, results: Array.isArray(res.data) ? res.data : [] }));
+      setAssetForm((prev: any) => ({ ...prev, results: normalizeCollection(res.data) }));
     } catch {
       setAssetForm((prev: any) => ({ ...prev, results: [] }));
     }
+  };
+
+  const openAssetModal = () => {
+    setAssetModalOpen(true);
+    setAssetForm((prev: any) => ({ ...prev, query: "", results: [], selected: [] }));
+    void loadAssets(assetForm.asset_type, "");
+  };
+
+  const handleAssetTypeChange = (type: string) => {
+    setAssetForm((prev: any) => ({ ...prev, asset_type: type, query: "", results: [], selected: [] }));
+    void loadAssets(type, "");
+  };
+
+  const handleAssetSearch = (query: string) => {
+    setAssetForm((prev: any) => ({ ...prev, query }));
+    if (query.trim().length === 0) {
+      void loadAssets(assetForm.asset_type, "");
+      return;
+    }
+    if (query.trim().length < 2) return;
+    void loadAssets(assetForm.asset_type, query);
   };
 
   const addAssets = async (e: React.FormEvent) => {
@@ -310,7 +374,7 @@ export default function ContractDetailPage() {
       )}
 
       {activeTab === "assets" && (
-        <Card title="Linked Assets" headerAction={<Button variant="secondary" size="sm" onClick={() => setAssetModalOpen(true)}><Plus size={14} /> Link Asset</Button>}>
+        <Card title="Linked Assets" headerAction={<Button variant="secondary" size="sm" onClick={openAssetModal}><Plus size={14} /> Link Asset</Button>}>
           <table className="w-full" style={{ borderCollapse: "collapse" }}>
             <thead>
               <tr className="text-left text-xs uppercase tracking-wider text-text-secondary border-b border-white/5">
@@ -358,7 +422,34 @@ export default function ContractDetailPage() {
 
       <EntityForm title="Add Party" isOpen={partyModalOpen} onClose={() => setPartyModalOpen(false)} onSubmit={addParty} isSubmitting={false} error={undefined}>
         <div className="space-y-4">
-          <div><label className="text-xs text-text-secondary">Party Name</label><input className="input w-full" value={partyForm.external_name} onChange={(e) => setPartyForm({ ...partyForm, external_name: e.target.value })} required placeholder="Enter the party name" /></div>
+          <div>
+            <label className="text-xs text-text-secondary">Party Type</label>
+            <select className="input w-full" value={partyType} onChange={(e) => { setPartyType(e.target.value); setPartyQuery(""); setPartyResults([]); setSelectedParty(null); }}>
+              {PARTY_TYPES.map((type) => <option key={type}>{type}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs text-text-secondary">Find Existing {partyType}</label>
+            <input className="input w-full" value={partyQuery} onChange={(e) => void searchParties(e.target.value, partyType)} placeholder={`Search existing ${partyType.toLowerCase()}s`} />
+            {partyResults.length > 0 && (
+              <div className="mt-2 space-y-1 max-h-48 overflow-y-auto rounded-lg border border-white/10 p-1">
+                {partyResults.map((item) => {
+                  const selected = selectedParty?.id === item.id && selectedParty?.entity_type === item.entity_type;
+                  return (
+                    <button type="button" key={`${item.entity_type}-${item.id}`} className={`w-full flex items-center justify-between p-3 rounded-lg text-left ${selected ? "bg-primary/10" : "hover:bg-white/5"}`} onClick={() => setSelectedParty(selected ? null : item)}>
+                      <span className="text-sm">{item.name}</span>
+                      <span className="text-xs text-text-secondary">ID {item.id}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          {selectedParty && <div className="text-sm text-primary">Selected: {selectedParty.name}</div>}
+          <div className="border-t border-white/10 pt-4">
+            <label className="text-xs text-text-secondary">External Party Name</label>
+            <input className="input w-full" value={partyForm.external_name} onChange={(e) => setPartyForm({ ...partyForm, external_name: e.target.value })} placeholder="Use this only if the party is not already in OTTO" disabled={!!selectedParty} />
+          </div>
           <div><label className="text-xs text-text-secondary">Role</label><input className="input w-full" value={partyForm.role} onChange={(e) => setPartyForm({ ...partyForm, role: e.target.value })} required placeholder="e.g. Artist, Label, Publisher, Licensor" /></div>
           <div className="grid grid-cols-2 gap-4"><div><label className="text-xs text-text-secondary">Split % (optional)</label><input type="number" className="input w-full" value={partyForm.split_percent} onChange={(e) => setPartyForm({ ...partyForm, split_percent: e.target.value })} /></div><div><label className="text-xs text-text-secondary">Notes</label><input className="input w-full" value={partyForm.notes} onChange={(e) => setPartyForm({ ...partyForm, notes: e.target.value })} /></div></div>
         </div>
@@ -366,10 +457,30 @@ export default function ContractDetailPage() {
 
       <EntityForm title="Link Assets" isOpen={assetModalOpen} onClose={() => setAssetModalOpen(false)} onSubmit={addAssets} isSubmitting={false} error={undefined}>
         <div className="space-y-4">
-          <div><label className="text-xs text-text-secondary">Asset Type</label><select className="input w-full" value={assetForm.asset_type} onChange={(e) => setAssetForm({ ...assetForm, asset_type: e.target.value, query: "", results: [], selected: [] })}>{ASSET_TYPES.map((type) => <option key={type}>{type}</option>)}</select></div>
-          <div><label className="text-xs text-text-secondary">Search</label><input className="input w-full" value={assetForm.query} onChange={(e) => { const query = e.target.value; setAssetForm((prev: any) => ({ ...prev, query })); void searchAssets(query, assetForm.asset_type); }} placeholder="Search by title or code" /></div>
-          {assetForm.results.length > 0 && <div className="space-y-1 max-h-48 overflow-y-auto">{assetForm.results.map((item: any) => { const selected = assetForm.selected.some((entry: any) => entry.id === item.id); return <button type="button" key={item.id} className={`w-full flex items-center justify-between p-3 rounded-lg text-left ${selected ? "bg-primary/10" : "hover:bg-white/5"}`} onClick={() => setAssetForm((prev: any) => ({ ...prev, selected: selected ? prev.selected.filter((entry: any) => entry.id !== item.id) : [...prev.selected, item] }))}><span className="text-sm">{item.title || item.name}</span><span className="text-xs text-text-secondary">{item.isrc_code || item.upc_code || `ID ${item.id}`}</span></button>; })}</div>}
-          {assetForm.selected.length > 0 && <div><label className="text-xs text-text-secondary">Selected</label><div className="flex flex-wrap gap-2 mt-2">{assetForm.selected.map((item: any) => <Badge key={item.id} variant="primary" size="sm">{item.title || item.name}</Badge>)}</div></div>}
+          <div>
+            <label className="text-xs text-text-secondary">Asset Type</label>
+            <select className="input w-full" value={assetForm.asset_type} onChange={(e) => handleAssetTypeChange(e.target.value)}>
+              {ASSET_TYPES.map((type) => <option key={type}>{type}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs text-text-secondary">Available {assetForm.asset_type}s</label>
+            <input className="input w-full" value={assetForm.query} onChange={(e) => handleAssetSearch(e.target.value)} placeholder="Search by title, name, code, or ID" />
+          </div>
+          <div className="space-y-1 max-h-64 overflow-y-auto rounded-lg border border-white/10 p-1">
+            {assetForm.results.length > 0 ? assetForm.results.map((item: any) => {
+              const selected = assetForm.selected.some((entry: any) => entry.id === item.id);
+              const label = item.title || item.name || item.display_name || `ID ${item.id}`;
+              const meta = item.isrc_code || item.upc_code || item.artist_id || item.catalog_number || `ID ${item.id}`;
+              return (
+                <button type="button" key={item.id} className={`w-full flex items-center justify-between p-3 rounded-lg text-left ${selected ? "bg-primary/10" : "hover:bg-white/5"}`} onClick={() => setAssetForm((prev: any) => ({ ...prev, selected: selected ? prev.selected.filter((entry: any) => entry.id !== item.id) : [...prev.selected, item] }))}>
+                  <span className="text-sm">{label}</span>
+                  <span className="text-xs text-text-secondary">{meta}</span>
+                </button>
+              );
+            }) : <div className="p-6 text-center text-sm text-text-secondary">No {assetForm.asset_type.toLowerCase()}s found.</div>}
+          </div>
+          {assetForm.selected.length > 0 && <div><label className="text-xs text-text-secondary">Selected</label><div className="flex flex-wrap gap-2 mt-2">{assetForm.selected.map((item: any) => <Badge key={item.id} variant="primary" size="sm">{item.title || item.name || item.display_name}</Badge>)}</div></div>}
           <div><label className="text-xs text-text-secondary">Notes</label><input className="input w-full" value={assetForm.notes} onChange={(e) => setAssetForm({ ...assetForm, notes: e.target.value })} /></div>
         </div>
       </EntityForm>
