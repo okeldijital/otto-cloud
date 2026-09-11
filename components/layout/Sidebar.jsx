@@ -4,33 +4,20 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
     LayoutDashboard,
-    FolderOpen,
     FileText,
     BarChart3,
     Settings,
     Music,
-    Calendar,
-    ListTodo,
-    StickyNote,
-    ListMusic,
-    ShieldCheck,
-    ChevronDown,
-    ChevronRight,
     UserCircle,
     Building2,
     BookOpen,
-    HardDrive,
-    CreditCard,
     Inbox,
-    Globe,
     Users,
-    Bot,
-    Calculator,
     X,
     Layout,
     FileCheck,
     Scale,
-    DollarSign,
+    ShieldCheck,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSidebar } from '../../contexts/SidebarContext';
@@ -53,7 +40,7 @@ const SidebarSection = ({ label, items, onNav }) => {
                 onClick={() => setIsOpen(!isOpen)}
             >
                 <span>{label}</span>
-                {isOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                {isOpen ? <span>−</span> : <span>+</span>}
             </button>
             {isOpen && (
                 <div className="mt-xs space-y-1 px-sm">
@@ -106,17 +93,11 @@ const Sidebar = () => {
 
     const sections = useMemo(() => [
         {
-            label: 'Workspaces',
-            items: [
-                { icon: Layout, label: 'All Workspaces', path: '/workspaces', feature: 'workspace' },
-            ]
-        },
-        {
             label: 'Catalog Management',
             items: [
                 { icon: Music, label: 'Overview', path: '/catalog', feature: 'catalog' },
                 { icon: UserCircle, label: 'Artists', path: '/catalog/artists', feature: 'catalog' },
-                { icon: ListMusic, label: 'Releases', path: '/catalog/releases', feature: 'catalog' },
+                { icon: Music, label: 'Releases', path: '/catalog/releases', feature: 'catalog' },
                 { icon: Music, label: 'Tracks', path: '/catalog/tracks', feature: 'catalog' },
                 { icon: BookOpen, label: 'Works', path: '/catalog/works', feature: 'catalog' },
                 { icon: Building2, label: 'Labels', path: '/catalog/labels', feature: 'catalog' },
@@ -137,33 +118,15 @@ const Sidebar = () => {
             label: 'Administration of Works',
             items: [
                 { icon: FileText, label: 'Contracts', path: '/admin-of-works/contracts', feature: 'contracts.core' },
-                { icon: Inbox, label: 'Bulk Processing', path: '/contracts/bulk', feature: 'contracts.ocr' },
-                { icon: Scale, label: 'Rights', path: '/rights', feature: 'rights' },
-                { icon: FileCheck, label: 'Rights Review', path: '/rights/review', feature: 'rights' },
-                { icon: ShieldCheck, label: 'Works Administration', path: '/admin-of-works/works', feature: 'contracts.core' },
-                { icon: BarChart3, label: 'Status Quo', path: '/admin-of-works/status-quo', feature: 'contracts.core' },
             ]
         },
-        {
-            label: 'Royalties',
-            items: [
-                { icon: Calculator, label: 'Entitlements', path: '/royalties/entitlements', feature: 'royalties' },
-                { icon: FileCheck, label: 'Entitlement Review', path: '/royalties/review', feature: 'royalties' },
-                { icon: DollarSign, label: 'Legacy Statements', path: '/royalties', feature: 'royalties' },
-            ]
-        },
-        {
-            label: 'Office',
-            items: [
-                { icon: ShieldCheck, label: 'Status Quo', path: '/office/status-quo', feature: 'office' },
-                { icon: FolderOpen, label: 'Documents', path: '/office/documents', feature: 'office' },
-                { icon: Calendar, label: 'Events', path: '/office/events', feature: 'office' },
-                { icon: ListTodo, label: 'Tasks', path: '/office/tasks', feature: 'office' },
-                { icon: StickyNote, label: 'Notes', path: '/office/notes', feature: 'office' },
-                { icon: BarChart3, label: 'Reports', path: '/office/reports', feature: 'office' },
-            ]
-        }
     ], []);
+
+    const administrationItems = [
+        ...(isAdmin ? [{ icon: ShieldCheck, label: 'Admin Control', path: '/admin' }] : []),
+        { icon: Settings, label: 'Settings', path: '/settings' },
+        { icon: Building2, label: 'Organization', path: '/settings/organization' },
+    ];
 
     const licensedSections = sections
         .map((section) => ({
@@ -171,19 +134,6 @@ const Sidebar = () => {
             items: section.items.filter((item) => !item.feature || hasProductFeature(item.feature)),
         }))
         .filter((section) => section.items.length > 0);
-
-    const simpleLink = (href, label, Icon, active) => (
-        <Link
-            href={href}
-            onClick={handleNav}
-            className={`flex items-center gap-md px-md py-2 rounded-md transition-all duration-300 group ${
-                active ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
-            }`}
-        >
-            <Icon size={20} className={active ? 'text-accent' : 'text-text-secondary group-hover:text-text-primary'} />
-            <span className="text-sm font-medium">{label}</span>
-        </Link>
-    );
 
     return (
         <>
@@ -222,17 +172,7 @@ const Sidebar = () => {
                         <SidebarSection key={section.label} label={section.label} items={section.items} onNav={handleNav} />
                     ))}
 
-                    <div className="mt-xl pt-lg border-t border-border space-y-1">
-                        {hasProductFeature('ai') && simpleLink('/ai', 'AI Assistant', Bot, pathname === '/ai')}
-                        {hasProductFeature('ai') && simpleLink('/ai/analytics', 'AI Analytics', BarChart3, pathname.startsWith('/ai/analytics'))}
-                        {hasProductFeature('ai') && simpleLink('/ai/royalties', 'AI Royalties', Calculator, pathname.startsWith('/ai/royalties'))}
-                        {isAdmin && simpleLink('/admin', 'Admin Control', ShieldCheck, pathname.startsWith('/admin'))}
-                        {simpleLink('/systems', 'Systems', HardDrive, pathname.startsWith('/systems'))}
-                        {simpleLink('/settings', 'Settings', Settings, pathname === '/settings')}
-                        {simpleLink('/settings/organization', 'Organization', Building2, pathname.startsWith('/settings/organization'))}
-                        {simpleLink('/billing', 'Billing', CreditCard, pathname.startsWith('/billing'))}
-                        {simpleLink('/developers', 'Developers', Globe, pathname.startsWith('/developers'))}
-                    </div>
+                    <SidebarSection label="Administration" items={administrationItems} onNav={handleNav} />
                 </nav>
             </div>
         </>

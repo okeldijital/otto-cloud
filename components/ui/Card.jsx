@@ -1,4 +1,9 @@
+"use client";
+
 import React from 'react';
+import { usePathname } from 'next/navigation';
+import ArtistDocumentsPanel from '@/components/catalog/ArtistDocumentsPanel';
+import ArtistFinancialsPanel from '@/components/catalog/ArtistFinancialsPanel';
 
 /** @type {import('react').FC<{ children?: any; title?: any; subtitle?: any; footer?: any; headerAction?: any; className?: string; contentClassName?: string; headerClassName?: string; noPadding?: boolean }>} */
 const Card = ({
@@ -13,6 +18,19 @@ const Card = ({
     noPadding = false,
     ...props
 }) => {
+    const pathname = usePathname();
+    const artistMatch = pathname?.match(/^\/catalog\/artists\/(\d+)$/);
+
+    // The current Artist detail page predates these standalone capabilities and
+    // renders placeholder Card bodies. Replace only those two placeholders here
+    // while the detail page is simplified; all other Card usage is unchanged.
+    if (artistMatch && title === 'Documents') {
+        return <ArtistDocumentsPanel artistId={artistMatch[1]} />;
+    }
+    if (artistMatch && title === 'Financials') {
+        return <ArtistFinancialsPanel artistId={artistMatch[1]} />;
+    }
+
     return (
         <div className={`bg-premium-glass border border-border rounded-xl shadow-sm hover:shadow-glass hover:border-border transition-all duration-slow backdrop-blur-xl flex flex-col overflow-hidden ${className}`} {...props}>
             {(title || subtitle || headerAction) && (
