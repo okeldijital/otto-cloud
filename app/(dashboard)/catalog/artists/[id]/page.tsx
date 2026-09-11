@@ -9,6 +9,8 @@ import Button from "@/components/ui/Button";
 import EntityForm from "@/components/EntityForm";
 import Badge from "@/components/ui/Badge";
 import GroupMembersManager from "@/components/catalog/GroupMembersManager";
+import ArtistDocumentsPanel from "@/components/catalog/ArtistDocumentsPanel";
+import ArtistFinancialsPanel from "@/components/catalog/ArtistFinancialsPanel";
 import EntityArtwork from "@/components/media/EntityArtwork";
 import { invalidateEntityArtwork } from "@/hooks/useAttachment";
 import { optimizeImage } from "@/lib/media/image-optimization";
@@ -225,8 +227,8 @@ export default function ArtistDetailPage() {
 
       {activeTab === "releases" && <Card title="Releases">{releases.length === 0 ? <p className="text-text-secondary py-4 text-center">No releases yet.</p> : <div className="space-y-2">{releases.map((release) => <button key={release.id} className="w-full flex items-center justify-between p-3 rounded-lg bg-white/5 hover:bg-white/10 text-left" onClick={() => router.push(`/catalog/releases/${release.id}`)}><span className="font-medium">{release.title}</span><span className="text-text-secondary text-sm">{release.release_date ? new Date(release.release_date).toLocaleDateString() : ""}</span></button>)}</div>}</Card>}
       {activeTab === "works" && <Card title="Works">{works.length === 0 ? <p className="text-text-secondary py-4 text-center">No works yet.</p> : <div className="space-y-2">{works.map((work) => <button key={work.id} className="w-full flex items-center justify-between p-3 rounded-lg bg-white/5 hover:bg-white/10 text-left" onClick={() => router.push(`/catalog/works/${work.id}`)}><span className="font-medium">{work.title}</span><span className="text-text-secondary text-sm">{work.iswc_code ? `ISWC: ${work.iswc_code}` : ""}</span></button>)}</div>}</Card>}
-      {activeTab === "documents" && <Card title="Documents"><p className="text-text-secondary text-sm">Document management coming in Office Suite milestone.</p></Card>}
-      {activeTab === "financials" && <Card title="Financials"><div className="py-10 text-center"><p className="font-medium">Artist financial history</p><p className="text-text-secondary text-sm mt-2">No authoritative payment or advance history is currently exposed to the Artist workspace.</p><p className="text-text-secondary text-xs mt-1">Financial transaction mapping will be added only after the existing contracts/finance data model is audited.</p></div></Card>}
+      {activeTab === "documents" && <ArtistDocumentsPanel artistId={String(id)} />}
+      {activeTab === "financials" && <ArtistFinancialsPanel artistId={String(id)} />}
 
       <EntityForm title="Edit Artist" isOpen={editOpen} onClose={() => setEditOpen(false)} onSubmit={handleUpdate} isSubmitting={submitting} error={undefined}>
         <div className="grid grid-cols-2 gap-4">

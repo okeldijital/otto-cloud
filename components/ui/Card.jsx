@@ -1,9 +1,6 @@
 "use client";
 
 import React from 'react';
-import { usePathname } from 'next/navigation';
-import ArtistDocumentsPanel from '@/components/catalog/ArtistDocumentsPanel';
-import ArtistFinancialsPanel from '@/components/catalog/ArtistFinancialsPanel';
 
 /** @type {import('react').FC<{ children?: any; title?: any; subtitle?: any; footer?: any; headerAction?: any; className?: string; contentClassName?: string; headerClassName?: string; noPadding?: boolean }>} */
 const Card = ({
@@ -18,25 +15,6 @@ const Card = ({
     noPadding = false,
     ...props
 }) => {
-    const pathname = usePathname();
-    const artistMatch = pathname?.match(/^\/catalog\/artists\/(\d+)$/);
-    const childText = React.Children.toArray(children)
-        .map((child) => {
-            if (!React.isValidElement(child)) return typeof child === 'string' ? child : '';
-            return typeof child.props?.children === 'string' ? child.props.children : '';
-        })
-        .join(' ');
-
-    // The Artist detail page still contains legacy placeholder Card bodies.
-    // Replace only those exact placeholders. The real Documents/Financials panels
-    // also use Card internally and must render normally to avoid recursive renders.
-    if (artistMatch && title === 'Documents' && childText.includes('Document management coming')) {
-        return <ArtistDocumentsPanel artistId={artistMatch[1]} />;
-    }
-    if (artistMatch && title === 'Financials' && childText.includes('Artist financial history')) {
-        return <ArtistFinancialsPanel artistId={artistMatch[1]} />;
-    }
-
     return (
         <div className={`bg-premium-glass border border-border rounded-xl shadow-sm hover:shadow-glass hover:border-border transition-all duration-slow backdrop-blur-xl flex flex-col overflow-hidden ${className}`} {...props}>
             {(title || subtitle || headerAction) && (
