@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Clock, Disc, ExternalLink, Hash, Loader2, Music, Save, Trash2, User, X } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
@@ -37,7 +37,7 @@ function unwrapMany<T = any>(value: any): T[] {
   return value ? [value as T] : [];
 }
 
-function Field({ label, children, className = "" }: { label: string; children: React.ReactNode; className?: string }) {
+function Field({ label, children, className = "" }: { label: string; children: ReactNode; className?: string }) {
   return <label className={`block min-w-0 ${className}`}><span className={labelClass}>{label}</span>{children}</label>;
 }
 
@@ -77,15 +77,11 @@ export default function TrackDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
-  const [form, setForm] = useState<any>({
-    title: "", isrc_code: "", genre: "", duration: "", release_date: "", streaming_link: "",
-    release_id: "", work_id: "", artist_ids: [], secondary_release_ids: [], credits: "",
-  });
+  const [form, setForm] = useState<any>({ title: "", isrc_code: "", genre: "", duration: "", release_date: "", streaming_link: "", release_id: "", work_id: "", artist_ids: [], secondary_release_ids: [], credits: "" });
 
   const loadTrack = async () => {
     const { data: trackData } = await api.get(`/tracks?id=${id}`);
     setTrack(trackData);
-
     const [artistRes, releaseRes, workRes, releaseListRes, workListRes] = await Promise.all([
       api.get(`/artists`),
       trackData.release_id ? api.get(`/releases?id=${trackData.release_id}`) : Promise.resolve({ data: null }),
@@ -93,14 +89,12 @@ export default function TrackDetailPage() {
       api.get(`/releases?limit=100`),
       api.get(`/works?limit=100`),
     ]);
-
     const allArtists = unwrapMany(artistRes.data);
     const primaryRelease = unwrap(releaseRes.data);
     const linkedWork = unwrap(workRes.data);
     const allReleases = unwrapMany(releaseListRes.data);
     const allWorks = unwrapMany(workListRes.data);
     const secondaryIds = Array.isArray(trackData.secondary_release_ids) ? trackData.secondary_release_ids : [];
-
     setArtists(allArtists);
     setRelease(primaryRelease);
     setWork(linkedWork);
@@ -132,7 +126,6 @@ export default function TrackDetailPage() {
 
   const selectedArtists = useMemo(() => artists.filter((artist) => form.artist_ids.includes(artist.id)), [artists, form.artist_ids]);
   const selectedSecondary = useMemo(() => releases.filter((item) => form.secondary_release_ids.includes(item.id)), [releases, form.secondary_release_ids]);
-
   const toggleArtist = (artistId: number) => setForm((current: any) => ({ ...current, artist_ids: current.artist_ids.includes(artistId) ? current.artist_ids.filter((value: number) => value !== artistId) : [...current.artist_ids, artistId] }));
   const toggleSecondaryRelease = (releaseId: number) => setForm((current: any) => ({ ...current, secondary_release_ids: current.secondary_release_ids.includes(releaseId) ? current.secondary_release_ids.filter((value: number) => value !== releaseId) : [...current.secondary_release_ids, releaseId] }));
 
@@ -146,29 +139,19 @@ export default function TrackDetailPage() {
         if (!Array.isArray(credits)) throw new Error("Credits must be a JSON array.");
       }
       await api.put(`/tracks?id=${id}`, {
-        title: form.title.trim(),
-        isrc_code: form.isrc_code.trim() || null,
-        genre: form.genre.trim() || null,
-        duration: form.duration.trim() || null,
-        release_date: form.release_date || null,
-        streaming_link: form.streaming_link.trim() || null,
-        release_id: form.release_id ? Number(form.release_id) : null,
-        work_id: form.work_id ? Number(form.work_id) : null,
-        artist_ids: form.artist_ids,
+        title: form.title.trim(), isrc_code: form.isrc_code.trim() || null, genre: form.genre.trim() || null, duration: form.duration.trim() || null,
+        release_date: form.release_date || null, streaming_link: form.streaming_link.trim() || null, release_id: form.release_id ? Number(form.release_id) : null,
+        work_id: form.work_id ? Number(form.work_id) : null, artist_ids: form.artist_ids,
         secondary_release_ids: form.secondary_release_ids.filter((releaseId: number) => releaseId !== Number(form.release_id)),
         ...(credits !== undefined ? { credits } : { credits: null }),
       });
       await loadTrack();
       setIsEditing(false);
-    } catch (err: any) {
-      setError(err?.response?.data?.error || err?.message || "Failed to save track.");
-    } finally { setIsSaving(false); }
+    } catch (err: any) { setError(err?.response?.data?.error || err?.message || "Failed to save track."); }
+    finally { setIsSaving(false); }
   };
 
-  const cancelEdit = async () => {
-    setIsEditing(false); setError(""); await loadTrack();
-  };
-
+  const cancelEdit = async () => { setIsEditing(false); setError(""); await loadTrack(); };
   const handleDelete = async () => {
     if (!window.confirm(`Delete "${track.title}"? This cannot be undone.`)) return;
     try { await api.delete(`/tracks?id=${id}`); router.push("/catalog/tracks"); }
@@ -184,22 +167,11 @@ export default function TrackDetailPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title={track.title}
-        subtitle={`Track #${id}`}
-        breadcrumb="Catalog / Tracks"
-        actions={
-          <div className="flex items-center gap-2">
-            {isEditing ? <>
-              <Button variant="secondary" size="sm" onClick={cancelEdit} disabled={isSaving}><X size={14} />Cancel</Button>
-              <Button variant="primary" size="sm" onClick={handleSave} disabled={isSaving}>{isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}{isSaving ? "Saving..." : "Save changes"}</Button>
-            </> : <>
-              <Button variant="primary" size="sm" onClick={() => setIsEditing(true)}><span className="text-base leading-none">Edit</span></Button>
-              <Button variant="danger" size="sm" onClick={handleDelete}><Trash2 size={14} />Delete</Button>
-            </>}
-          </div>
-        }
-      />
+      <PageHeader title={track.title} subtitle={`Track #${id}`} breadcrumb="Catalog / Tracks" actions={
+        <div className="flex items-center gap-2">
+          {isEditing ? <><Button variant="secondary" size="sm" onClick={cancelEdit} disabled={isSaving}><X size={14} />Cancel</Button><Button variant="primary" size="sm" onClick={handleSave} disabled={isSaving}>{isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}{isSaving ? "Saving..." : "Save changes"}</Button></> : <><Button variant="primary" size="sm" onClick={() => setIsEditing(true)}>Edit</Button><Button variant="danger" size="sm" onClick={handleDelete}><Trash2 size={14} />Delete</Button></>}
+        </div>
+      } />
 
       {error && <div className="rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">{error}</div>}
 
@@ -248,10 +220,7 @@ export default function TrackDetailPage() {
           </Card>
 
           <Card title="Quick stats" subtitle="Current catalog relationships">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between"><span className="text-sm text-text-primary">Artists</span><Badge variant="primary">{(track.artist_ids || []).length}</Badge></div>
-              <div className="flex items-center justify-between"><span className="text-sm text-text-primary">Secondary releases</span><Badge variant="primary">{(track.secondary_release_ids || []).length}</Badge></div>
-            </div>
+            <div className="space-y-3"><div className="flex items-center justify-between"><span className="text-sm text-text-primary">Artists</span><Badge variant="primary">{(track.artist_ids || []).length}</Badge></div><div className="flex items-center justify-between"><span className="text-sm text-text-primary">Secondary releases</span><Badge variant="primary">{(track.secondary_release_ids || []).length}</Badge></div></div>
           </Card>
         </div>
       </div>
