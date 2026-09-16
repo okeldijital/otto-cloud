@@ -44,9 +44,6 @@
     "test:documents": "tsx lib/documents/__tests__/checksum.test.ts && tsx lib/documents/__tests__/document-service.test.ts",
     "test:repository": "tsx components/contracts/repository/__tests__/repositoryUtils.test.ts",
     "test:pdf": "tsx lib/documents/pdf/__tests__/pdfError.test.ts",
-    "test:intelligence": "tsx lib/document-intelligence/__tests__/intelligence.test.ts",
-    "test:verification": "tsx lib/document-intelligence/__tests__/verification.test.ts",
-    "test:verified-contract": "tsx lib/verified-contract/__tests__/promotion.test.ts",
     "test:relationships": "tsx lib/contract-relationships/__tests__/matching.test.ts",
     "test:lifecycle": "tsx lib/contract-lifecycle/__tests__/lifecycle.test.ts",
     "test:contract-deletion": "tsx lib/contract-lifecycle/__tests__/deletion-policy.test.ts",
@@ -64,7 +61,6 @@
     "link:attachments": "tsx scripts/migrate-data/link-attachments/engine.ts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.104.1",
     "@aws-sdk/client-s3": "^3.1089.0",
     "@aws-sdk/s3-request-presigner": "^3.1089.0",
     "@node-rs/argon2": "^2.0.0",
@@ -82,7 +78,6 @@
     "jose": "^6.2.3",
     "lucide-react": "^0.577.0",
     "next": "^16.2.7",
-    "openai": "^6.42.1",
     "papaparse": "^5.5.3",
     "pg": "^8.16.3",
     "react": "^18.3.1",

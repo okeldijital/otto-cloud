@@ -2,7 +2,7 @@
 import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, FolderOpen, FileText, BarChart3, Settings, Music, Calendar, ListTodo, StickyNote, ListMusic, ShieldCheck, ChevronDown, ChevronRight, UserCircle, Building2, BookOpen, HardDrive, Inbox, Users, Bot, Calculator, X, FileCheck, Scale, DollarSign } from 'lucide-react';
+import { LayoutDashboard, FolderOpen, FileText, BarChart3, Settings, Music, Calendar, ListTodo, StickyNote, ListMusic, ShieldCheck, ChevronDown, ChevronRight, UserCircle, Building2, BookOpen, HardDrive, Inbox, Users, Calculator, X, FileCheck, Scale, DollarSign } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSidebar } from '../../contexts/SidebarContext';
 import { useIsMobile } from '../../hooks/useIsMobile';
@@ -86,9 +86,6 @@ const Sidebar = () => {
                 <Link href="/dashboard" onClick={handleNav} className={`flex items-center gap-md px-md py-2.5 rounded-md transition-all duration-300 mb-6 group ${pathname === '/dashboard' ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'}`}><LayoutDashboard size={20} className={pathname === '/dashboard' ? 'text-accent' : 'text-text-secondary group-hover:text-text-primary'} /><span className="text-sm font-medium">Dashboard</span></Link>
                 {licensedSections.map((section) => <SidebarSection key={section.label} label={section.label} items={section.items} onNav={handleNav} />)}
                 <div className="mt-xl pt-lg border-t border-border space-y-1">
-                    {hasProductFeature('ai') && simpleLink('/ai', 'AI Assistant', Bot, pathname === '/ai')}
-                    {hasProductFeature('ai') && simpleLink('/ai/analytics', 'AI Analytics', BarChart3, pathname.startsWith('/ai/analytics'))}
-                    {hasProductFeature('ai') && simpleLink('/ai/royalties', 'AI Royalties', Calculator, pathname.startsWith('/ai/royalties'))}
                     {isAdmin && simpleLink('/admin', 'Admin Control', ShieldCheck, pathname.startsWith('/admin'))}
                     {simpleLink('/systems', 'Systems', HardDrive, pathname.startsWith('/systems'))}
                     {simpleLink('/settings', 'Settings', Settings, pathname === '/settings')}
