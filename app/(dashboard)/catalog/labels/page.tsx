@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import Button from "@/components/ui/Button";
 import DataTable from "@/components/DataTable";
 import EntityForm from "@/components/EntityForm";
+import EntityArtwork from "@/components/media/EntityArtwork";
+import { useAttachmentMap } from "@/hooks/useAttachment";
 import api from "@/lib/api";
 
 const emptyLabel = () => ({
@@ -20,11 +22,6 @@ const emptyLabel = () => ({
   logo_url: "",
 });
 
-const columns = [
-  { key: "name", label: "Name", sortable: true },
-  { key: "label_id", label: "Label ID", render: (row: any) => row.label_id || "—" },
-];
-
 export default function LabelsPage() {
   const router = useRouter();
   const [data, setData] = useState<any[]>([]);
@@ -32,6 +29,29 @@ export default function LabelsPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [newLabel, setNewLabel] = useState<any>(emptyLabel());
+  const ids = useMemo(() => data.map((label) => label.id), [data]);
+  const { urls: logoUrls } = useAttachmentMap("label", ids);
+
+  const columns = useMemo(() => [
+    {
+      key: "avatar",
+      label: "",
+      render: (row: any) => (
+        <EntityArtwork
+          entityType="label"
+          entityId={row.id}
+          src={logoUrls[String(row.id)] ?? null}
+          alt={row.name}
+          size={40}
+          placeholder="label"
+          className="rounded-lg"
+          style={{ borderRadius: 8 }}
+        />
+      ),
+    },
+    { key: "name", label: "Name", sortable: true },
+    { key: "label_id", label: "Label ID", render: (row: any) => row.label_id || "—" },
+  ], [logoUrls]);
 
   const fetchData = async () => {
     try {
@@ -90,12 +110,7 @@ export default function LabelsPage() {
       <PageHeader
         title="Labels"
         subtitle="Manage label identity, contacts and catalogue relationships"
-        actions={
-          <Button variant="primary" size="sm" onClick={() => setShowAddModal(true)}>
-            <Plus size={16} />
-            Add Label
-          </Button>
-        }
+        actions={<Button variant="primary" size="sm" onClick={() => setShowAddModal(true)}><Plus size={16} />Add Label</Button>}
       />
       <DataTable
         columns={columns}
@@ -129,22 +144,10 @@ export default function LabelsPage() {
           <div>
             <div className="mb-3 text-xs font-bold uppercase tracking-wide text-text-secondary">Contact</div>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div>
-                <label className="text-xs text-text-secondary font-bold">Contact Person</label>
-                <input className="input w-full" value={newLabel.contact_person} onChange={(e) => setNewLabel({ ...newLabel, contact_person: e.target.value })} />
-              </div>
-              <div>
-                <label className="text-xs text-text-secondary font-bold">Email</label>
-                <input className="input w-full" type="email" value={newLabel.contact_email} onChange={(e) => setNewLabel({ ...newLabel, contact_email: e.target.value })} />
-              </div>
-              <div>
-                <label className="text-xs text-text-secondary font-bold">Phone</label>
-                <input className="input w-full" value={newLabel.contact_phone} onChange={(e) => setNewLabel({ ...newLabel, contact_phone: e.target.value })} />
-              </div>
-              <div>
-                <label className="text-xs text-text-secondary font-bold">Website</label>
-                <input className="input w-full" value={newLabel.website} onChange={(e) => setNewLabel({ ...newLabel, website: e.target.value })} placeholder="https://..." />
-              </div>
+              <div><label className="text-xs text-text-secondary font-bold">Contact Person</label><input className="input w-full" value={newLabel.contact_person} onChange={(e) => setNewLabel({ ...newLabel, contact_person: e.target.value })} /></div>
+              <div><label className="text-xs text-text-secondary font-bold">Email</label><input className="input w-full" type="email" value={newLabel.contact_email} onChange={(e) => setNewLabel({ ...newLabel, contact_email: e.target.value })} /></div>
+              <div><label className="text-xs text-text-secondary font-bold">Phone</label><input className="input w-full" value={newLabel.contact_phone} onChange={(e) => setNewLabel({ ...newLabel, contact_phone: e.target.value })} /></div>
+              <div><label className="text-xs text-text-secondary font-bold">Website</label><input className="input w-full" value={newLabel.website} onChange={(e) => setNewLabel({ ...newLabel, website: e.target.value })} placeholder="https://..." /></div>
             </div>
           </div>
 
