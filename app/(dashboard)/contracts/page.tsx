@@ -12,7 +12,7 @@ import AddContractWizard from "@/components/contracts/AddContractWizard";
 
 const STATUS_VARIANTS: Record<string, string> = { Draft: "neutral", Active: "success", Expired: "warn", Terminated: "critical", Archived: "critical", pending_verification: "warn" };
 const COMPLETENESS_VARIANTS: Record<string, string> = { GREEN: "success", AMBER: "warn", RED: "critical" };
-const CONTRACT_TYPES = ["Recording", "Publishing", "License", "Other", "Unknown"];
+const CONTRACT_TYPES = ["Recording", "Publishing", "License", "Remix", "Other", "Unknown"];
 const EXPIRING_BUCKETS = [{ label: "Any time", value: 0 }, { label: "Expiring ≤30 days", value: 30 }, { label: "Expiring ≤60 days", value: 60 }, { label: "Expiring ≤90 days", value: 90 }];
 function formatDate(d: string | null | undefined): string { if (!d) return "—"; return new Date(d).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }); }
 
@@ -56,7 +56,7 @@ export default function ContractsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Contracts" subtitle="Upload signed PDFs, then capture parties, assets, and terms." actions={<Button variant="primary" size="sm" onClick={() => setShowWizard(true)}><Plus size={16} /> Add New Contract</Button>} />
+      <PageHeader title="Contracts" subtitle="Upload signed PDFs, then capture parties, tracks, and terms." actions={<Button variant="primary" size="sm" onClick={() => setShowWizard(true)}><Plus size={16} /> Add New Contract</Button>} />
       <Card noPadding>
         <div className="p-4 border-b border-border flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2 flex-wrap"><Filter size={16} className="text-text-secondary" />
@@ -67,7 +67,7 @@ export default function ContractsPage() {
           <div className="flex items-center gap-2 ml-auto"><Search size={16} className="text-text-secondary" /><input className="input" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search contracts or CTR number..." /></div>
         </div>
         {loading ? <div className="p-12 text-center text-text-secondary">Loading contracts…</div> : error ? <div className="p-12 text-center text-danger">{error}</div> : filtered.length === 0 ? <div className="p-12 text-center text-text-secondary">{contracts.length === 0 ? <div className="space-y-4"><h3 className="text-lg font-semibold text-text-primary">Upload a signed contract PDF to begin.</h3><p className="text-sm">OTTO does not create contracts — it organizes them.</p><Button variant="primary" size="sm" onClick={() => setShowWizard(true)}><Plus size={16} /> Upload Contract (PDF)</Button></div> : <p>No contracts match your filters.</p>}</div> :
-          <div className="overflow-x-auto"><table className="w-full" style={{ borderCollapse: "collapse" }}><thead><tr className="text-left text-xs uppercase tracking-wider text-text-secondary border-b border-border"><th className="p-4 font-bold">Status</th><th className="p-4 font-bold">Title</th><th className="p-4 font-bold">Parties</th><th className="p-4 font-bold">Assets</th><th className="p-4 font-bold">Document</th><th className="p-4 font-bold">Term</th><th className="p-4 font-bold"></th></tr></thead>
+          <div className="overflow-x-auto"><table className="w-full" style={{ borderCollapse: "collapse" }}><thead><tr className="text-left text-xs uppercase tracking-wider text-text-secondary border-b border-border"><th className="p-4 font-bold">Status</th><th className="p-4 font-bold">Title</th><th className="p-4 font-bold">Parties</th><th className="p-4 font-bold">Tracks</th><th className="p-4 font-bold">Document</th><th className="p-4 font-bold">Term</th><th className="p-4 font-bold"></th></tr></thead>
             <tbody>{filtered.map((c) => { const completeness = c.completeness || { score: 0, status: "RED", missing: [] }; const partyCount = c._count?.parties ?? c.contract_parties?.length ?? 0; const docCount = c._count?.documents ?? c.contract_documents?.length ?? 0; const endsSoon = c.end_date && isExpiredSoon(c.end_date, 30); const deletable = ["draft", "pending_verification"].includes(String(c.status || "").toLowerCase()); return <tr key={c.id} className="border-b border-border hover:bg-surface-elevated cursor-pointer transition-colors" onClick={() => router.push(`/contracts/${c.id}`)}>
               <td className="p-4"><Badge variant={STATUS_VARIANTS[c.status] || "neutral"} size="sm">{c.status || "Draft"}</Badge></td>
               <td className="p-4"><div className="font-medium text-text-primary">{c.title || "Untitled contract"}</div><div className="text-xs text-text-secondary font-mono mt-0.5">{c.contract_number || "—"}</div></td>

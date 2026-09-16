@@ -13,7 +13,7 @@ interface AddContractWizardProps {
 
 type Stage = "upload" | "details" | "creating" | "complete" | "error";
 
-const CONTRACT_TYPES = ["Recording", "Publishing", "License", "Other"];
+const CONTRACT_TYPES = ["Recording", "Publishing", "License", "Remix", "Other"];
 
 export default function AddContractWizard({ isOpen, onClose, onCreated }: AddContractWizardProps) {
   const [stage, setStage] = useState<Stage>("upload");
@@ -207,7 +207,7 @@ export default function AddContractWizard({ isOpen, onClose, onCreated }: AddCon
             <div className="space-y-6 py-4">
               <div>
                 <h3 className="text-lg font-semibold text-white">Capture contract details</h3>
-                <p className="text-sm text-text-secondary mt-1">Enter what is known from the signed document. Additional parties, assets, rights, terms and splits can be added from the contract record.</p>
+                <p className="text-sm text-text-secondary mt-1">Enter what is known from the signed document. Additional parties, tracks, rights, terms and splits can be added from the contract record.</p>
               </div>
 
               <div className="rounded-xl border border-white/5 bg-white/[0.03] p-4 flex items-center gap-3">
@@ -245,7 +245,7 @@ export default function AddContractWizard({ isOpen, onClose, onCreated }: AddCon
           {stage === "complete" && (
             <div className="py-12 text-center space-y-5">
               <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center mx-auto"><Check size={30} className="text-success" /></div>
-              <div><h3 className="text-lg font-semibold text-white">Contract created</h3><p className="text-sm text-text-secondary mt-2 max-w-lg mx-auto">The signed PDF is stored as the source document. Continue to the contract record to add parties, assets, rights and terms, splits, and lifecycle information.</p></div>
+              <div><h3 className="text-lg font-semibold text-white">Contract created</h3><p className="text-sm text-text-secondary mt-2 max-w-lg mx-auto">The signed PDF is stored as the source document. Continue to the contract record to add parties, tracks, rights and terms, splits, and lifecycle information.</p></div>
               <div className="rounded-xl border border-white/5 bg-white/[0.03] p-4 text-left max-w-lg mx-auto"><div className="text-sm text-white">{contract?.title || title}</div><div className="text-xs text-text-secondary mt-1">{contract?.contract_number || "Contract number pending"}</div></div>
               <div className="flex justify-end"><Button variant="primary" onClick={finish}>Open Contract <FileText size={16} /></Button></div>
             </div>
