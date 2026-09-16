@@ -7,6 +7,7 @@ import PageHeader from "@/components/ui/PageHeader";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import EntityArtwork from "@/components/media/EntityArtwork";
+import ReleaseCoreWorkspace from "@/components/releases/ReleaseCoreWorkspace";
 import api from "@/lib/api";
 import { invalidateEntityArtwork } from "@/hooks/useAttachment";
 import { optimizeImage } from "@/lib/media/image-optimization";
@@ -48,6 +49,7 @@ export default function ReleaseDetailPage() {
       </div>
       <div className="space-y-6"><Card title="Artwork" subtitle="Replace artwork without leaving the release"><div className="overflow-hidden rounded-lg border border-border bg-white/[0.03]"><EntityArtwork key={artworkKey} entityType="release" entityId={release.id} alt={release.title} size={320} placeholder="release" className="aspect-square w-full object-cover" style={{ width: "100%", height: "auto", aspectRatio: "1 / 1" }} /></div><label className="mt-3 flex h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border border-border bg-surface px-3 text-sm font-medium text-text-primary transition hover:border-primary/50 hover:bg-surface-elevated">{uploading ? <Loader2 size={15} className="animate-spin" /> : <ImageIcon size={15} />}{uploading ? "Uploading..." : "Change artwork"}<input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={uploadArtwork} disabled={uploading} /></label></Card><Card title="Publishing & PRO" subtitle="Current catalog relationship boundary"><p className="text-sm leading-6 text-text-secondary">Publisher and PRO relationships are authoritative at Work level in the current catalog model. They are not duplicated onto Releases without a canonical Release ↔ Publisher/PRO relationship.</p><Button type="button" variant="secondary" size="sm" className="mt-3" onClick={() => router.push("/catalog/works")}><Link2 size={14} />Open Works</Button></Card><Card title="Status"><div className="flex items-center justify-between"><span className="text-sm text-text-secondary">Current status</span><span className="rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-xs font-semibold capitalize text-primary">{release.status || "draft"}</span></div></Card></div>
     </form>
+    <ReleaseCoreWorkspace releaseId={Number(id)} artistIds={selectedArtistIds} artists={artists} />
   </div>;
 }
 
