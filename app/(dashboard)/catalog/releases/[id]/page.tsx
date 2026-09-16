@@ -9,7 +9,7 @@ import api from "@/lib/api";
 import EntityArtwork from "@/components/media/EntityArtwork";
 import { invalidateEntityArtwork } from "@/hooks/useAttachment";
 import { optimizeImage } from "@/lib/media/image-optimization";
-import { ChevronLeft, Disc, Music, User, Calendar, Tag, FileText, Trash2, ExternalLink, Upload, Loader } from "lucide-react";
+import { ChevronLeft, Disc, Music, User, Calendar, Tag, FileText, Trash2, ExternalLink, Upload, Loader, Paperclip } from "lucide-react";
 
 function formatDuration(d: string | null): string {
   if (!d) return "";
@@ -24,12 +24,29 @@ function formatDuration(d: string | null): string {
   return d;
 }
 
+function formatFileSize(bytes: number): string {
+  if (!bytes) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  return `${(bytes / Math.pow(1024, index)).toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
+}
+
 function errorMessage(err: any, fallback: string): string {
   const value = err?.response?.data?.error ?? err?.message;
   if (typeof value === "string" && value.trim()) return value;
   if (Array.isArray(err?.response?.data?.details)) return err.response.data.details.join(", ");
   return fallback;
 }
+
+type ReleaseAttachment = {
+  id: string;
+  originalName: string;
+  mimeType: string;
+  category: string;
+  fileSize: number;
+  createdAt: string;
+  downloadUrl: string;
+};
 
 export default function ReleaseDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -39,10 +56,26 @@ export default function ReleaseDetailPage() {
   const [labels, setLabels] = useState<any[]>([]);
   const [artists, setArtists] = useState<any[]>([]);
   const [distributors, setDistributors] = useState<any[]>([]);
+  const [attachments, setAttachments] = useState<ReleaseAttachment[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-
+  const [attachmentsLoading, setAttachmentsLoading] = useState(false);
   const [artworkKey, setArtworkKey] = useState(0);
+
+  const loadAttachments = async () => {
+    setAttachmentsLoading(true);
+    try {
+      const { data } = await api.get("/storage/entity", {
+        params: { entityType: "release", entityId: String(id), includeAttachments: "true" },
+      });
+      setAttachments(Array.isArray(data?.attachments) ? data.attachments : []);
+    } catch (err) {
+      console.error("Failed to load release attachments:", err);
+      setAttachments([]);
+    } finally {
+      setAttachmentsLoading(false);
+    }
+  };
 
   const handleArtworkUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -76,12 +109,67 @@ export default function ReleaseDetailPage() {
       });
       invalidateEntityArtwork("release", id);
       setArtworkKey((k) => k + 1);
+      await loadAttachments();
     } catch (err: any) {
       console.error("Upload failed:", err);
       alert(errorMessage(err, "Failed to upload artwork"));
     } finally {
       setUploading(false);
       e.target.value = "";
+    }
+  };
+
+  const handleAttachmentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    setUploading(true);
+    try {
+      for (const file of files) {
+        const uploadResponse = await api.post("/storage/upload-url", {
+          entityType: "release",
+          entityId: String(id),
+          fileName: file.name,
+          mimeType: file.type || "application/octet-stream",
+          fileSize: file.size,
+          folder: "releases/attachments",
+        });
+        const upload = uploadResponse.data;
+        const r2Response = await fetch(upload.uploadUrl, {
+          method: "PUT",
+          headers: { "Content-Type": file.type || "application/octet-stream" },
+          body: file,
+        });
+        if (!r2Response.ok) throw new Error(`R2 upload failed for ${file.name} (${r2Response.status})`);
+        await api.post("/storage/complete", {
+          entityType: "release",
+          entityId: String(id),
+          key: upload.key,
+          fileName: upload.fileName,
+          originalName: file.name,
+          mimeType: file.type || "application/octet-stream",
+          fileSize: file.size,
+        });
+      }
+      await loadAttachments();
+    } catch (err: any) {
+      console.error("Attachment upload failed:", err);
+      alert(errorMessage(err, "Failed to upload attachment"));
+      await loadAttachments();
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  };
+
+  const handleDeleteAttachment = async (attachment: ReleaseAttachment) => {
+    if (!window.confirm(`Delete "${attachment.originalName}"?`)) return;
+    try {
+      await api.delete(`/storage/${attachment.id}`);
+      setAttachments((current) => current.filter((item) => item.id !== attachment.id));
+      invalidateEntityArtwork("release", id);
+      setArtworkKey((k) => k + 1);
+    } catch (err: any) {
+      alert(errorMessage(err, "Failed to delete attachment"));
     }
   };
 
@@ -99,6 +187,7 @@ export default function ReleaseDetailPage() {
         setArtists(Array.isArray(artistsRes.data) ? artistsRes.data : []);
         setDistributors(Array.isArray(orgsRes.data) ? orgsRes.data : []);
         setTracks(releaseData._tracks || releaseData.tracks || []);
+        await loadAttachments();
       } catch (err) { console.error(err); }
       finally { setLoading(false); }
     };
@@ -113,7 +202,6 @@ export default function ReleaseDetailPage() {
   const releaseArtists = (release.artist_ids || (release.artist_id ? [release.artist_id] : []))
     .map((aid: number) => artists.find((a: any) => a.id === aid))
     .filter(Boolean);
-
   const artistNames = releaseArtists.length > 0 ? releaseArtists.map((a: any) => a.name).join(", ") : "Unknown Artist";
 
   return (
@@ -176,6 +264,42 @@ export default function ReleaseDetailPage() {
             </div>
           </div>
 
+          <Card title={`Attachments (${attachments.length})`}>
+            <div className="flex items-center justify-between gap-4 mb-4">
+              <div>
+                <p className="text-sm font-medium">Release documents and files</p>
+                <p className="text-xs text-text-secondary mt-1">Upload contracts, metadata, artwork masters, PDFs, spreadsheets, and other release-related files.</p>
+              </div>
+              <label className="shrink-0 inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-primary text-white text-sm font-medium cursor-pointer hover:opacity-90 transition-opacity">
+                {uploading ? <Loader size={14} className="animate-spin" /> : <Upload size={14} />}
+                Add files
+                <input type="file" multiple style={{ display: "none" }} disabled={uploading} onChange={handleAttachmentUpload} />
+              </label>
+            </div>
+            {attachmentsLoading ? (
+              <div className="py-8 flex items-center justify-center text-text-secondary"><Loader size={20} className="animate-spin" /></div>
+            ) : attachments.length === 0 ? (
+              <div className="py-10 text-center border border-dashed border-white/10 rounded-xl">
+                <Paperclip size={30} className="mx-auto mb-3 opacity-30" />
+                <p className="text-sm text-text-secondary">No attachments yet.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {attachments.map((attachment) => (
+                  <div key={attachment.id} className="flex items-center gap-3 p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
+                    <div className="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center shrink-0"><FileText size={17} /></div>
+                    <div className="min-w-0 flex-1">
+                      <a href={attachment.downloadUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-medium hover:text-primary truncate block" title={attachment.originalName}>{attachment.originalName}</a>
+                      <div className="text-xs text-text-secondary mt-1">{attachment.mimeType} · {formatFileSize(Number(attachment.fileSize))}</div>
+                    </div>
+                    <a href={attachment.downloadUrl} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg text-text-secondary hover:text-white hover:bg-white/10" aria-label={`Open ${attachment.originalName}`}><ExternalLink size={15} /></a>
+                    <button onClick={() => handleDeleteAttachment(attachment)} className="p-2 rounded-lg text-text-secondary hover:text-red-400 hover:bg-white/10" aria-label={`Delete ${attachment.originalName}`}><Trash2 size={15} /></button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+
           <Card title={`Tracklist (${tracks.length} tracks)`}>
             {tracks.length === 0 ? (
               <div className="text-center py-8 text-text-secondary">
@@ -195,8 +319,7 @@ export default function ReleaseDetailPage() {
                 </thead>
                 <tbody>
                   {tracks.map((track: any, index: number) => (
-                    <tr key={track.id} className="cursor-pointer hover:bg-white/5 transition-colors" style={{ borderBottom: "1px solid rgba(255,255,255,0.04)", cursor: "pointer" }}
-                      onClick={() => router.push(`/catalog/tracks/${track.id}`)}>
+                    <tr key={track.id} className="cursor-pointer hover:bg-white/5 transition-colors" style={{ borderBottom: "1px solid rgba(255,255,255,0.04)", cursor: "pointer" }} onClick={() => router.push(`/catalog/tracks/${track.id}`)}>
                       <td style={{ padding: "0.75rem 1rem", color: "#94a3b8" }}>{index + 1}</td>
                       <td style={{ padding: "0.75rem 1rem", fontWeight: 600 }}>{track.title}</td>
                       <td style={{ padding: "0.75rem 1rem", color: "#94a3b8", fontSize: "0.875rem" }}>{track.isrc_code || "—"}</td>
@@ -239,6 +362,7 @@ export default function ReleaseDetailPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between"><span>Tracks</span><Badge variant="primary">{tracks.length}</Badge></div>
               <div className="flex items-center justify-between"><span>Artists</span><Badge variant="primary">{releaseArtists.length}</Badge></div>
+              <div className="flex items-center justify-between"><span>Attachments</span><Badge variant="primary">{attachments.length}</Badge></div>
             </div>
           </Card>
         </div>
