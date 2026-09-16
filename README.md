@@ -11,9 +11,13 @@ OTTO Cloud is the governed cloud implementation of OTTO for record-label operati
 - **Application:** Next.js App Router + TypeScript
 - **ORM:** Prisma
 - **Database:** PostgreSQL / Neon
+- **Object storage:** Cloudflare R2 via S3-compatible APIs
 - **Authentication & authorization:** server-side session and organization-scoped resource authorization
+- **Optional intelligence:** OpenAI and Anthropic integrations; Core workflows do not depend on AI availability
 - **Deployment/testing acceptance:** Vercel
 - **Repository:** GitHub
+
+> **Infrastructure boundary:** OCR is not part of the current OTTO Cloud architecture. There is no OCR worker, OCR container, Vercel OCR service, or OCR environment contract.
 
 ## Development model
 
@@ -29,13 +33,14 @@ The current delivery stream is **Release & Rights Management (RRM)**, with organ
 
 ## Repository documentation
 
-- `ARCHITECTURE_AUDIT.md` — architecture and migration audit
+- `ARCHITECTURE_AUDIT.md` — historical architecture and migration audit
+- `docs/INFRASTRUCTURE_ARCHITECTURE.md` — current infrastructure topology, readiness and operational controls
 - `docs/archive/` — historical V1 material retained for provenance only
-- `.env.example` — environment configuration reference
+- `.env.example` — current environment configuration reference
 
 ## Source of truth
 
-For implementation truth, use **`main`**. For deployment acceptance, use Vercel. For project governance and operational decisions, use the OTTO Cloud Notion project record.
+For implementation truth, use **`main`**. For deployment acceptance, use Vercel. For project governance and operational decisions, use the OTTO Cloud Notion project record. The current infrastructure baseline is maintained in `docs/INFRASTRUCTURE_ARCHITECTURE.md`.
 
 ## License
 
