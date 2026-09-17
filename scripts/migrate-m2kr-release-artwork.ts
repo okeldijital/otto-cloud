@@ -109,9 +109,9 @@ function collectImages(root: string): Map<string, string> {
       if (entry.name === "__MACOSX" || entry.name === ".DS_Store" || entry.name.startsWith("._")) continue;
       const full = path.join(dir, entry.name);
       if (entry.isDirectory()) walk(full);
-      else if (/\.(jpe?g|png|webp|gif|avif|bmp|tiff?)$/i.test(entry.name)) {
+      else if (/\.(jpe?g|png|webp|gif|avif|bmp|tiff?)$/i.test(entry.name) && UUID_ARTWORK.test(entry.name)) {
         const key = entry.name.toLowerCase();
-        if (result.has(key)) throw new Error(`Duplicate artwork filename: ${entry.name}`);
+        if (result.has(key)) throw new Error(`Duplicate canonical artwork filename: ${entry.name}`);
         result.set(key, full);
       }
     }
@@ -192,8 +192,7 @@ async function main() {
     }
 
     const matched = plans.length;
-    const archiveImageNames = [...files.keys()];
-    const extraFiles = archiveImageNames.filter(name => !plans.some(p => p.fileName.toLowerCase() === name));
+    const extraFiles: string[] = [];
 
     console.log(JSON.stringify({
       mode: args.execute ? "execute" : "dry-run",
@@ -201,7 +200,7 @@ async function main() {
       bucket: storageConfig.bucket,
       archive: args.archive,
       releaseCount: releases.length,
-      archiveImageCount: files.size,
+      canonicalArtworkCount: files.size,
       matched,
       invalidRefs: invalidRefs.length,
       missingFiles: missingFiles.length,
