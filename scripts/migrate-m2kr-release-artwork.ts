@@ -8,14 +8,15 @@
  * - --execute is required for R2/DB writes
  * - release -> filename mapping comes only from releases.cover_art_url
  * - filenames must exist exactly in the supplied assets directory/archive
- * - storage keys are deterministic
+ * - storage keys are deterministic and organization-scoped
  * - existing release artwork attachments are reused/updated, never blindly duplicated
  * - release metadata is never changed
+ * - contracts and non-release entities are never touched
  *
  * Usage:
  *   npx tsx scripts/migrate-m2kr-release-artwork.ts --assets ./assets
  *   npx tsx scripts/migrate-m2kr-release-artwork.ts --assets ./assets.zip --dry-run
- *   npx tsx scripts/migrate-m2kr-release-artwork.ts --assets ./assets.zip --execute
+ *   npx tsx scripts/migrate-m2kr-release-artwork.ts --assets ./assets.zip --execute --actor-user-id 123
  */
 
 import { execFileSync } from "node:child_process";
@@ -37,66 +38,140 @@ import {
 const prisma = new PrismaClient();
 const DEFAULT_ORG_ID = "6e3b659b-f14e-484e-8ee4-a020cd4c502a";
 const IMAGE_EXTENSIONS = new Map<string, string>([
-  [".jpg", "image/jpeg"], [".jpeg", "image/jpeg"], [".png", "image/png"],
-  [".webp", "image/webp"], [".gif", "image/gif"], [".avif", "image/avif"],
-  [".bmp", "image/bmp"], [".tif", "image/tiff"], [".tiff", "image/tiff"],
+  [".jpg", "image/jpeg"],
+  [".jpeg", "image/jpeg"],
+  [".png", "image/png"],
+  [".webp", "image/webp"],
+  [".gif", "image/gif"],
+  [".avif", "image/avif"],
+  [".bmp", "image/bmp"],
+  [".tif", "image/tiff"],
+  [".tiff", "image/tiff"],
 ]);
 
-type Args = { assetsPath: string; execute: boolean; orgId: string; actorUserId?: number };
-type Release = { id: number; title: string | null; cover_art_url: string | null };
-type Plan = Release & { filePath: string; fileName: string; mimeType: string; fileSize: number; sha256: string; storageKey: string; existing: Attachment | null };
+type Args = {
+  assetsPath: string;
+  execute: boolean;
+  orgId: string;
+  actorUserId?: number;
+};
 
-type Summary = { releases: number; matched: number; missingFiles: number; invalidRefs: number; existingAttachments: number; uploaded: number; attachmentsCreated: number; attachmentsUpdated: number; skippedExistingObjects: number; failures: number };
+type Release = {
+  id: number;
+  title: string | null;
+  cover_art_url: string | null;
+};
+
+type Plan = Release & {
+  filePath: string;
+  fileName: string;
+  mimeType: string;
+  fileSize: number;
+  sha256: string;
+  storageKey: string;
+  existing: Attachment | null;
+};
+
+type Summary = {
+  releases: number;
+  matched: number;
+  missingFiles: number;
+  invalidRefs: number;
+  existingAttachments: number;
+  uploaded: number;
+  attachmentsCreated: number;
+  attachmentsUpdated: number;
+  skippedExistingObjects: number;
+  failures: number;
+};
 
 function parseArgs(): Args {
   const argv = process.argv.slice(2);
   let assetsPath = "";
   let execute = false;
   let orgId = process.env.OTTO_M2KR_ORG_ID || DEFAULT_ORG_ID;
-  let actorUserId = process.env.OTTO_MIGRATION_ACTOR_USER_ID ? Number(process.env.OTTO_MIGRATION_ACTOR_USER_ID) : undefined;
+  let actorUserId = process.env.OTTO_MIGRATION_ACTOR_USER_ID
+    ? Number(process.env.OTTO_MIGRATION_ACTOR_USER_ID)
+    : undefined;
+
   for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    if (a === "--assets" && argv[i + 1]) assetsPath = path.resolve(argv[++i]);
-    else if (a === "--execute") execute = true;
-    else if (a === "--dry-run") execute = false;
-    else if (a === "--org-id" && argv[i + 1]) orgId = argv[++i];
-    else if (a === "--actor-user-id" && argv[i + 1]) actorUserId = Number(argv[++i]);
-    else if (a === "--help" || a === "-h") { printUsage(); process.exit(0); }
-    else throw new Error(`Unknown argument: ${a}`);
+    const arg = argv[i];
+    if (arg === "--assets" && argv[i + 1]) assetsPath = path.resolve(argv[++i]);
+    else if (arg === "--execute") execute = true;
+    else if (arg === "--dry-run") execute = false;
+    else if (arg === "--org-id" && argv[i + 1]) orgId = argv[++i];
+    else if (arg === "--actor-user-id" && argv[i + 1]) actorUserId = Number(argv[++i]);
+    else if (arg === "--help" || arg === "-h") {
+      printUsage();
+      process.exit(0);
+    } else {
+      throw new Error(`Unknown argument: ${arg}`);
+    }
   }
+
   if (!assetsPath) throw new Error("--assets <directory|zip> is required");
   if (!orgId) throw new Error("M2KR organization id is required");
-  if (execute && (!Number.isInteger(actorUserId) || (actorUserId ?? 0) <= 0)) throw new Error("--actor-user-id or OTTO_MIGRATION_ACTOR_USER_ID is required for --execute");
+  if (
+    execute &&
+    (!Number.isInteger(actorUserId) || (actorUserId ?? 0) <= 0)
+  ) {
+    throw new Error(
+      "--actor-user-id or OTTO_MIGRATION_ACTOR_USER_ID is required for --execute"
+    );
+  }
+
   return { assetsPath, execute, orgId, actorUserId };
 }
 
 function printUsage() {
-  console.log(`M2KR release artwork recovery\n\nUsage: npx tsx scripts/migrate-m2kr-release-artwork.ts --assets <directory|zip> [--dry-run|--execute] [--org-id <uuid>] [--actor-user-id <id>]`);
+  console.log(
+    "M2KR release artwork recovery\n\nUsage: npx tsx scripts/migrate-m2kr-release-artwork.ts --assets <directory|zip> [--dry-run|--execute] [--org-id <uuid>] [--actor-user-id <id>]"
+  );
 }
 
 function resolveAssetsRoot(input: string): { root: string; cleanup?: () => void } {
   const stat = fs.statSync(input);
   if (stat.isDirectory()) return { root: input };
-  if (!stat.isFile() || path.extname(input).toLowerCase() !== ".zip") throw new Error("--assets must point to a directory or .zip archive");
+  if (!stat.isFile() || path.extname(input).toLowerCase() !== ".zip") {
+    throw new Error("--assets must point to a directory or .zip archive");
+  }
+
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), "otto-m2kr-assets-"));
-  try { execFileSync("unzip", ["-q", input, "-d", temp], { stdio: "inherit" }); }
-  catch (e) { fs.rmSync(temp, { recursive: true, force: true }); throw new Error(`Failed to extract archive: ${String(e)}`); }
-  return { root: temp, cleanup: () => fs.rmSync(temp, { recursive: true, force: true }) };
+  try {
+    execFileSync("unzip", ["-q", input, "-d", temp], { stdio: "inherit" });
+  } catch (error) {
+    fs.rmSync(temp, { recursive: true, force: true });
+    throw new Error(`Failed to extract archive: ${String(error)}`);
+  }
+
+  return {
+    root: temp,
+    cleanup: () => fs.rmSync(temp, { recursive: true, force: true }),
+  };
 }
 
 function collectFiles(root: string): Map<string, string> {
   const result = new Map<string, string>();
+
   const walk = (dir: string) => {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
       if (entry.name === "__MACOSX" || entry.name === ".DS_Store") continue;
+
       const full = path.join(dir, entry.name);
-      if (entry.isDirectory()) walk(full);
-      else if (entry.isFile() && IMAGE_EXTENSIONS.has(path.extname(entry.name).toLowerCase())) {
-        if (result.has(entry.name)) throw new Error(`Duplicate canonical artwork filename: ${entry.name}`);
+      if (entry.isDirectory()) {
+        walk(full);
+      } else if (
+        entry.isFile() &&
+        IMAGE_EXTENSIONS.has(path.extname(entry.name).toLowerCase())
+      ) {
+        if (result.has(entry.name)) {
+          throw new Error(`Duplicate canonical artwork filename: ${entry.name}`);
+        }
         result.set(entry.name, full);
       }
     }
   };
+
   walk(root);
   return result;
 }
@@ -111,58 +186,226 @@ function checksum(filePath: string): string {
   return createHash("sha256").update(fs.readFileSync(filePath)).digest("hex");
 }
 
-function storageKeyFor(releaseId: number, fileName: string): string {
-  return generateStorageKey("releases", String(releaseId), sanitizeFilename(fileName));
+function storageKeyFor(fileName: string): string {
+  const safeFileName = sanitizeFilename(fileName);
+  const extension = path.extname(safeFileName);
+  const canonicalId = path.basename(safeFileName, extension);
+
+  return generateStorageKey({
+    organizationId: DEFAULT_ORG_ID,
+    folder: "releases",
+    fileName: safeFileName,
+    uuid: canonicalId,
+  });
+}
+
+function isNotFoundStorageError(error: unknown): boolean {
+  const candidate = error as { name?: string; Code?: string; $metadata?: { httpStatusCode?: number } };
+  return (
+    candidate?.name === "NotFound" ||
+    candidate?.Code === "NotFound" ||
+    candidate?.$metadata?.httpStatusCode === 404
+  );
 }
 
 async function main() {
   const args = parseArgs();
   const assets = resolveAssetsRoot(args.assetsPath);
+
   try {
     const files = collectFiles(assets.root);
-    const releases = await prisma.releases.findMany({ where: { organization_id: args.orgId, cover_art_url: { not: null } }, select: { id: true, title: true, cover_art_url: true }, orderBy: { id: "asc" } });
-    const summary: Summary = { releases: releases.length, matched: 0, missingFiles: 0, invalidRefs: 0, existingAttachments: 0, uploaded: 0, attachmentsCreated: 0, attachmentsUpdated: 0, skippedExistingObjects: 0, failures: 0 };
+    const releases = await prisma.releases.findMany({
+      where: {
+        organization_id: args.orgId,
+        cover_art_url: { not: null },
+      },
+      select: { id: true, title: true, cover_art_url: true },
+      orderBy: { id: "asc" },
+    });
+
+    const summary: Summary = {
+      releases: releases.length,
+      matched: 0,
+      missingFiles: 0,
+      invalidRefs: 0,
+      existingAttachments: 0,
+      uploaded: 0,
+      attachmentsCreated: 0,
+      attachmentsUpdated: 0,
+      skippedExistingObjects: 0,
+      failures: 0,
+    };
+
     const plans: Plan[] = [];
-    const allAttachments = await prisma.attachment.findMany({ where: { organizationId: args.orgId, entityType: "release" } });
-    const byEntity = new Map(allAttachments.map(a => [`${a.entityType}:${a.entityId}`, a]));
+    const allAttachments = await prisma.attachment.findMany({
+      where: { organizationId: args.orgId, entityType: "release" },
+    });
+    const byEntity = new Map(
+      allAttachments.map((attachment) => [
+        `${attachment.entityType}:${attachment.entityId}`,
+        attachment,
+      ])
+    );
 
     for (const release of releases) {
       const fileName = basenameFromUrl(release.cover_art_url);
-      if (!fileName || !/^([0-9a-f]{8}-[0-9a-f-]+)\.(jpe?g|png|webp|gif|avif|bmp|tiff?)$/i.test(fileName)) { summary.invalidRefs++; continue; }
+      if (
+        !fileName ||
+        !/^([0-9a-f]{8}-[0-9a-f-]+)\.(jpe?g|png|webp|gif|avif|bmp|tiff?)$/i.test(
+          fileName
+        )
+      ) {
+        summary.invalidRefs++;
+        continue;
+      }
+
       const filePath = files.get(fileName);
-      if (!filePath) { summary.missingFiles++; continue; }
+      if (!filePath) {
+        summary.missingFiles++;
+        continue;
+      }
+
       const stat = fs.statSync(filePath);
       const mimeType = IMAGE_EXTENSIONS.get(path.extname(fileName).toLowerCase());
-      if (!mimeType) { summary.invalidRefs++; continue; }
+      if (!mimeType) {
+        summary.invalidRefs++;
+        continue;
+      }
+
       const existing = byEntity.get(`release:${release.id}`) || null;
       if (existing) summary.existingAttachments++;
-      plans.push({ ...release, filePath, fileName, mimeType, fileSize: stat.size, sha256: checksum(filePath), storageKey: storageKeyFor(release.id, fileName), existing });
+
+      plans.push({
+        ...release,
+        filePath,
+        fileName,
+        mimeType,
+        fileSize: stat.size,
+        sha256: checksum(filePath),
+        storageKey: storageKeyFor(fileName).replace(
+          DEFAULT_ORG_ID,
+          args.orgId
+        ),
+        existing,
+      });
       summary.matched++;
     }
 
-    console.log(JSON.stringify({ mode: args.execute ? "execute" : "dry-run", orgId: args.orgId, archiveFiles: files.size, summary }, null, 2));
+    console.log(
+      JSON.stringify(
+        {
+          mode: args.execute ? "execute" : "dry-run",
+          orgId: args.orgId,
+          archiveFiles: files.size,
+          summary,
+        },
+        null,
+        2
+      )
+    );
+
     if (!args.execute) return;
-    if (summary.missingFiles || summary.invalidRefs || summary.matched !== 81 || releases.length !== 81) throw new Error("Preflight gate failed: expected exactly 81 M2KR releases and 81 valid artwork matches before execute.");
+
+    if (
+      files.size !== 81 ||
+      summary.missingFiles ||
+      summary.invalidRefs ||
+      summary.matched !== 81 ||
+      releases.length !== 81
+    ) {
+      throw new Error(
+        "Preflight gate failed: expected exactly 81 M2KR releases and exactly 81 valid canonical artwork files before execute."
+      );
+    }
 
     for (const plan of plans) {
       try {
         let objectExists = false;
-        try { await storageClient.send(new HeadObjectCommand({ Bucket: storageConfig.bucketName, Key: plan.storageKey })); objectExists = true; }
-        catch { /* object absent */ }
-        if (!objectExists) {
-          await uploadFile(plan.filePath, { key: plan.storageKey, contentType: plan.mimeType });
-          summary.uploaded++;
-        } else summary.skippedExistingObjects++;
+        try {
+          await storageClient.send(
+            new HeadObjectCommand({
+              Bucket: storageConfig.bucket,
+              Key: plan.storageKey,
+            })
+          );
+          objectExists = true;
+        } catch (error) {
+          if (!isNotFoundStorageError(error)) throw error;
+        }
 
-        const data = { organizationId: args.orgId, entityType: "release", entityId: String(plan.id), fileName: plan.fileName, originalName: plan.fileName, mimeType: plan.mimeType, category: detectMimeCategory(plan.mimeType), fileSize: plan.fileSize, bucket: storageConfig.bucketName, storageKey: plan.storageKey, checksum: plan.sha256, version: 1, uploadedBy: String(args.actorUserId), updatedAt: new Date() };
-        if (plan.existing) { await prisma.attachment.update({ where: { id: plan.existing.id }, data }); summary.attachmentsUpdated++; }
-        else { await prisma.attachment.create({ data: { id: `${args.orgId}:release:${plan.id}:cover`, createdAt: new Date(), ...data } }); summary.attachmentsCreated++; }
-      } catch (error) { summary.failures++; console.error(`[release ${plan.id}] ${String(error)}`); }
+        if (!objectExists) {
+          await uploadFile({
+            body: fs.readFileSync(plan.filePath),
+            organizationId: args.orgId,
+            folder: "releases",
+            fileName: plan.fileName,
+            mimeType: plan.mimeType,
+            key: plan.storageKey,
+            contentDisposition: "inline",
+            metadata: {
+              entityType: "release",
+              entityId: String(plan.id),
+              checksum: plan.sha256,
+            },
+          });
+          summary.uploaded++;
+        } else {
+          summary.skippedExistingObjects++;
+        }
+
+        const data = {
+          organizationId: args.orgId,
+          entityType: "release",
+          entityId: String(plan.id),
+          fileName: plan.fileName,
+          originalName: plan.fileName,
+          mimeType: plan.mimeType,
+          category: detectMimeCategory(plan.mimeType),
+          fileSize: plan.fileSize,
+          bucket: storageConfig.bucket,
+          storageKey: plan.storageKey,
+          checksum: plan.sha256,
+          version: 1,
+          uploadedBy: String(args.actorUserId),
+        };
+
+        if (plan.existing) {
+          await prisma.attachment.update({
+            where: { id: plan.existing.id },
+            data,
+          });
+          summary.attachmentsUpdated++;
+        } else {
+          await prisma.attachment.create({ data });
+          summary.attachmentsCreated++;
+        }
+      } catch (error) {
+        summary.failures++;
+        console.error(`[release ${plan.id}] ${String(error)}`);
+      }
     }
-    const verify = await prisma.attachment.count({ where: { organizationId: args.orgId, entityType: "release" } });
-    console.log(JSON.stringify({ finalSummary: summary, releaseAttachmentCount: verify }, null, 2));
+
+    const verify = await prisma.attachment.count({
+      where: { organizationId: args.orgId, entityType: "release" },
+    });
+
+    console.log(
+      JSON.stringify(
+        { finalSummary: summary, releaseAttachmentCount: verify },
+        null,
+        2
+      )
+    );
+
     if (summary.failures || verify < 81) process.exitCode = 1;
-  } finally { assets.cleanup?.(); await prisma.$disconnect(); }
+  } finally {
+    assets.cleanup?.();
+    await prisma.$disconnect();
+  }
 }
 
-main().catch(async e => { console.error(e); await prisma.$disconnect(); process.exit(1); });
+main().catch(async (error) => {
+  console.error(error);
+  await prisma.$disconnect();
+  process.exit(1);
+});
