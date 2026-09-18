@@ -55,7 +55,7 @@ export async function getStatusQueue(organizationId: string): Promise<StatusQueu
       SELECT c.id, COUNT(cr.id)::int AS link_count
       FROM contracts c
       LEFT JOIN contract_relationships cr
-        ON cr.contractId = c.id
+        ON cr."contractId" = c.id
        AND cr."organizationId" = ${organizationId}::uuid
        AND cr.status = 'active'
       WHERE c.tenant_id = ${organizationId}::uuid
