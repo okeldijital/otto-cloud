@@ -55,14 +55,13 @@ export default function OfficeReportsPage() {
         setCounts((c) => ({ ...c, upcomingEvents: events.length }));
       }
       if (sqRes.status === "fulfilled") {
-        const statusQueue = sqRes.value.data;
-        const summary = statusQueue?.summary;
-        const items = Array.isArray(statusQueue?.items) ? statusQueue.items : [];
-        setCounts((c) => ({ ...c, activeStatusQuo: summary?.total ?? items.length }));
+        const sq = Array.isArray(sqRes.value.data) ? sqRes.value.data : sqRes.value.data?.items || [];
+        const activeSq = sq.filter((s: any) => !s.resolved_at);
+        setCounts((c) => ({ ...c, activeStatusQuo: activeSq.length }));
         setStatusQuoCounts({
-          red: summary?.critical ?? items.filter((s: any) => s.severity === "critical").length,
-          amber: summary?.warning ?? items.filter((s: any) => s.severity === "warning").length,
-          green: 0,
+          red: sq.filter((s: any) => s.severity === "RED" && !s.resolved_at).length,
+          amber: sq.filter((s: any) => s.severity === "AMBER" && !s.resolved_at).length,
+          green: sq.filter((s: any) => s.severity === "GREEN" && !s.resolved_at).length,
         });
       }
       if (runsRes.status === "fulfilled") {
@@ -123,7 +122,7 @@ export default function OfficeReportsPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <div className="flex items-start justify-between mb-3">
-            <div className="p-3 bg-white/5 rounded-xl text-accent"><ListTodo size={20} /></div>
+            <div className="p-3 bg-white/5 rounded-xl text-amber-400"><ListTodo size={20} /></div>
           </div>
           <p className="text-2xl font-extrabold text-white">{counts.totalTasks}</p>
           <p className="text-sm text-text-secondary mt-1">Total Tasks</p>
@@ -131,14 +130,14 @@ export default function OfficeReportsPage() {
         </Card>
         <Card>
           <div className="flex items-start justify-between mb-3">
-            <div className="p-3 bg-white/5 rounded-xl text-accent"><Calendar size={20} /></div>
+            <div className="p-3 bg-white/5 rounded-xl text-purple-400"><Calendar size={20} /></div>
           </div>
           <p className="text-2xl font-extrabold text-white">{counts.upcomingEvents}</p>
           <p className="text-sm text-text-secondary mt-1">Upcoming Events</p>
         </Card>
         <Card>
           <div className="flex items-start justify-between mb-3">
-            <div className="p-3 bg-white/5 rounded-xl text-accent"><AlertTriangle size={20} /></div>
+            <div className="p-3 bg-white/5 rounded-xl text-blue-400"><AlertTriangle size={20} /></div>
           </div>
           <p className="text-2xl font-extrabold text-white">{counts.activeStatusQuo}</p>
           <p className="text-sm text-text-secondary mt-1">Active Status Quo</p>
@@ -150,7 +149,7 @@ export default function OfficeReportsPage() {
         </Card>
         <Card>
           <div className="flex items-start justify-between mb-3">
-            <div className="p-3 bg-white/5 rounded-xl text-accent"><TrendingUp size={20} /></div>
+            <div className="p-3 bg-white/5 rounded-xl text-cyan-400"><TrendingUp size={20} /></div>
           </div>
           <p className="text-2xl font-extrabold text-white">{counts.pendingTasks}</p>
           <p className="text-sm text-text-secondary mt-1">Pending Tasks</p>

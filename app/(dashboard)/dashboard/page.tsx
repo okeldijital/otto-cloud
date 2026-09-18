@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Music, Users, FileText } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, Music, Users, FileText } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import api from "@/lib/api";
 
@@ -30,6 +30,8 @@ function ChartCard({ title, children }: { title: string; children: React.ReactNo
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<any>(null);
+  const [statusQuo, setStatusQuo] = useState({ total: 0, critical: 0, warning: 0, entities: 0 });
+  const [statusQuoLoading, setStatusQuoLoading] = useState(true);
 
   useEffect(() => {
     Promise.allSettled([
@@ -38,6 +40,7 @@ export default function DashboardPage() {
       api.get("/contracts?limit=1"),
       api.get("/tracks?limit=1"),
       api.get("/works?limit=1"),
+      api.get("/office/status-quo"),
     ]).then((results) => {
       const valueAt = (index: number) => results[index]?.status === "fulfilled" ? results[index].value.data : null;
       const artists = valueAt(0);
@@ -45,6 +48,17 @@ export default function DashboardPage() {
       const contracts = valueAt(2);
       const tracks = valueAt(3);
       const works = valueAt(4);
+      const status = valueAt(5);
+
+      if (status) {
+        setStatusQuo({
+          total: status?.summary?.total ?? 0,
+          critical: status?.summary?.critical ?? 0,
+          warning: status?.summary?.warning ?? 0,
+          entities: status?.summary?.entities ?? 0,
+        });
+      }
+      setStatusQuoLoading(false);
 
       setStats({
         artists: Array.isArray(artists) ? artists.length : artists?.total || 0,
@@ -75,6 +89,45 @@ export default function DashboardPage() {
         <StatsCard title="Artists" value={stats ? String(stats.artists) : "—"} icon={<Users size={24} />} />
         <StatsCard title="Releases" value={stats ? String(stats.releases) : "—"} icon={<Music size={24} />} />
         <StatsCard title="Contracts" value={stats ? String(stats.contracts) : "—"} icon={<FileText size={24} />} />
+      </div>
+
+      <div className="bg-surface border border-border rounded-xl p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-danger/30 bg-danger/10 text-danger">
+              <AlertTriangle size={19} />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-text-primary">Status Quo</h2>
+              <p className="text-xs text-text-secondary mt-0.5">Current operational issues requiring attention</p>
+            </div>
+          </div>
+          <a
+            href="/office/status-quo"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
+          >
+            View Status Quo <ArrowUpRight size={14} />
+          </a>
+        </div>
+
+        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="rounded-lg border border-border bg-surface-elevated p-3">
+            <p className="text-xl font-semibold text-text-primary">{statusQuoLoading ? "—" : statusQuo.total}</p>
+            <p className="mt-1 text-xs text-text-secondary">Open issues</p>
+          </div>
+          <div className="rounded-lg border border-danger/20 bg-danger/5 p-3">
+            <p className="text-xl font-semibold text-danger">{statusQuoLoading ? "—" : statusQuo.critical}</p>
+            <p className="mt-1 text-xs text-text-secondary">Blocking</p>
+          </div>
+          <div className="rounded-lg border border-warning/20 bg-warning/5 p-3">
+            <p className="text-xl font-semibold text-warning">{statusQuoLoading ? "—" : statusQuo.warning}</p>
+            <p className="mt-1 text-xs text-text-secondary">Warnings</p>
+          </div>
+          <div className="rounded-lg border border-border bg-surface-elevated p-3">
+            <p className="text-xl font-semibold text-text-primary">{statusQuoLoading ? "—" : statusQuo.entities}</p>
+            <p className="mt-1 text-xs text-text-secondary">Entities affected</p>
+          </div>
+        </div>
       </div>
 
       <ChartCard title="Catalog Overview">
