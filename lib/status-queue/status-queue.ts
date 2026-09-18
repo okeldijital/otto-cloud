@@ -60,7 +60,8 @@ export async function getStatusQueue(organizationId: string): Promise<StatusQueu
        AND cr.status = 'active'
       WHERE c.tenant_id = ${organizationId}::uuid
       GROUP BY c.id
-    )
+    ),
+    queue AS (
     SELECT
       'release.missing_tracks' AS issue_type,
       'critical'::text AS severity,
@@ -132,7 +133,16 @@ export async function getStatusQueue(organizationId: string): Promise<StatusQueu
     JOIN contract_link_counts clc ON clc.id = c.id
     WHERE c.tenant_id = ${organizationId}::uuid
       AND clc.link_count = 0
-
+    )
+    SELECT
+      issue_type,
+      severity,
+      entity_type,
+      entity_id,
+      entity_title,
+      summary,
+      href
+    FROM queue
     ORDER BY
       CASE severity WHEN 'critical' THEN 0 ELSE 1 END,
       entity_type,
