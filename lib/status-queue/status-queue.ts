@@ -29,14 +29,14 @@ export async function getStatusQueue(organizationId: string): Promise<StatusQueu
       SELECT r.id, COUNT(t.id)::int AS track_count
       FROM releases r
       LEFT JOIN tracks t ON t.release_id = r.id
-      WHERE r.organization_id = ${organizationId}
+      WHERE r.organization_id = ${organizationId}::uuid
       GROUP BY r.id
     ),
     release_artist_counts AS (
       SELECT r.id, COUNT(ra.artist_id)::int AS artist_count
       FROM releases r
       LEFT JOIN release_artists ra ON ra.release_id = r.id
-      WHERE r.organization_id = ${organizationId}
+      WHERE r.organization_id = ${organizationId}::uuid
       GROUP BY r.id
     ),
     release_contract_counts AS (
@@ -48,7 +48,7 @@ export async function getStatusQueue(organizationId: string): Promise<StatusQueu
        AND cr."relationshipType" = 'applies_to'
        AND cr.status = 'active'
        AND cr."organizationId" = r.organization_id::uuid
-      WHERE r.organization_id = ${organizationId}
+      WHERE r.organization_id = ${organizationId}::uuid
       GROUP BY r.id
     ),
     contract_link_counts AS (
@@ -71,7 +71,7 @@ export async function getStatusQueue(organizationId: string): Promise<StatusQueu
       '/catalog/releases/' || r.id::text AS href
     FROM releases r
     JOIN release_track_counts rtc ON rtc.id = r.id
-    WHERE r.organization_id = ${organizationId}
+    WHERE r.organization_id = ${organizationId}::uuid
       AND rtc.track_count = 0
 
     UNION ALL
@@ -86,7 +86,7 @@ export async function getStatusQueue(organizationId: string): Promise<StatusQueu
       '/catalog/releases/' || r.id::text
     FROM releases r
     JOIN release_artist_counts rac ON rac.id = r.id
-    WHERE r.organization_id = ${organizationId}
+    WHERE r.organization_id = ${organizationId}::uuid
       AND rac.artist_count = 0
 
     UNION ALL
@@ -101,7 +101,7 @@ export async function getStatusQueue(organizationId: string): Promise<StatusQueu
       '/catalog/releases/' || r.id::text
     FROM releases r
     JOIN release_contract_counts rcc ON rcc.id = r.id
-    WHERE r.organization_id = ${organizationId}
+    WHERE r.organization_id = ${organizationId}::uuid
       AND rcc.contract_count = 0
 
     UNION ALL
@@ -115,7 +115,7 @@ export async function getStatusQueue(organizationId: string): Promise<StatusQueu
       'Track has no primary release relationship.',
       '/catalog/tracks/' || t.id::text
     FROM tracks t
-    WHERE t.organization_id = ${organizationId}
+    WHERE t.tenant_id = ${organizationId}::uuid
       AND t.release_id IS NULL
 
     UNION ALL
@@ -130,7 +130,7 @@ export async function getStatusQueue(organizationId: string): Promise<StatusQueu
       '/contracts/' || c.id::text
     FROM contracts c
     JOIN contract_link_counts clc ON clc.id = c.id
-    WHERE c.organization_id = ${organizationId}
+    WHERE c.tenant_id = ${organizationId}::uuid
       AND clc.link_count = 0
 
     ORDER BY
