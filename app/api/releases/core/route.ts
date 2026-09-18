@@ -19,7 +19,7 @@ export async function GET(req: Request) {
     const releaseId = idFrom(req);
     await requireReleaseInOrg(releaseId, ctx);
     const [documents, financials, media, artistRoles, contract] = await Promise.all([
-      prisma.$queryRaw<any[]>`SELECT id, file_name, original_name, mime_type, file_size, category, created_at FROM release_documents WHERE organization_id = ${ctx.organizationId}::uuid AND release_id = ${releaseId} ORDER BY created_at DESC`,
+      prisma.$queryRaw<any[]>`SELECT id, file_name, original_name, mime_type, file_size, category, description, created_at FROM release_documents WHERE organization_id = ${ctx.organizationId}::uuid AND release_id = ${releaseId} ORDER BY created_at DESC`,
       prisma.$queryRaw<any[]>`SELECT id, entry_type, description, amount, currency, entry_date, notes, created_at FROM release_financial_entries WHERE organization_id = ${ctx.organizationId}::uuid AND release_id = ${releaseId} ORDER BY entry_date DESC NULLS LAST, created_at DESC`,
       prisma.$queryRaw<any[]>`SELECT provider, label, url, updated_at FROM release_media_links WHERE organization_id = ${ctx.organizationId}::uuid AND release_id = ${releaseId} LIMIT 1`,
       prisma.$queryRaw<any[]>`SELECT artist_id, role FROM release_artist_roles WHERE organization_id = ${ctx.organizationId}::uuid AND release_id = ${releaseId} ORDER BY artist_id`,
@@ -53,7 +53,10 @@ export async function POST(req: Request) {
       await prisma.$executeRaw`INSERT INTO release_media_links (organization_id, release_id, provider, label, url, updated_by, updated_at) VALUES (${ctx.organizationId}::uuid, ${releaseId}, ${provider}, ${label}, ${url}, ${userId}, NOW()) ON CONFLICT (release_id) DO UPDATE SET provider = EXCLUDED.provider, label = EXCLUDED.label, url = EXCLUDED.url, updated_by = EXCLUDED.updated_by, updated_at = NOW()`;
     } else if (action === "document") {
       if (!body.storage_key || !body.original_name) return NextResponse.json({ error: "Document storage key and name are required." }, { status: 400 });
-      await prisma.$executeRaw`INSERT INTO release_documents (organization_id, release_id, storage_key, file_name, original_name, mime_type, file_size, category, created_by) VALUES (${ctx.organizationId}::uuid, ${releaseId}, ${String(body.storage_key)}, ${String(body.file_name || body.original_name)}, ${String(body.original_name)}, ${body.mime_type ? String(body.mime_type) : null}, ${body.file_size ? Number(body.file_size) : null}, ${String(body.category || "Other")}, ${userId})`;
+      const category = String(body.category || "Other").trim().slice(0, 100) || "Other";
+      const description = body.description ? String(body.description).trim().slice(0, 120) : null;
+      if (category === "Other" && !description) return NextResponse.json({ error: "A short description is required for Other documents." }, { status: 400 });
+      await prisma.$executeRaw`INSERT INTO release_documents (organization_id, release_id, storage_key, file_name, original_name, mime_type, file_size, category, description, created_by) VALUES (${ctx.organizationId}::uuid, ${releaseId}, ${String(body.storage_key)}, ${String(body.file_name || body.original_name)}, ${String(body.original_name)}, ${body.mime_type ? String(body.mime_type) : null}, ${body.file_size ? Number(body.file_size) : null}, ${category}, ${description}, ${userId})`;
     } else if (action === "financial") {
       const type = String(body.entry_type || "Expense");
       if (!financialTypes.includes(type as any)) return NextResponse.json({ error: "Invalid financial entry type." }, { status: 400 });

@@ -22,6 +22,8 @@ export default function ReleaseCoreWorkspace({ releaseId, artistIds, artists }: 
   const [financial, setFinancial] = useState({ entry_type: "Expense", description: "", amount: "", currency: "ZAR", entry_date: "", notes: "" });
   const [contract, setContract] = useState({ contract_id: "", signed_at: "" });
   const [documentCategory, setDocumentCategory] = useState("Other");
+  const [documentDescription, setDocumentDescription] = useState("");
+  const [documentProgress, setDocumentProgress] = useState("");
 
   const refresh = async () => {
     const [core, contractRes] = await Promise.all([api.get(`/releases/core?id=${releaseId}`), api.get(`/contracts?limit=100`)]);
@@ -50,18 +52,77 @@ export default function ReleaseCoreWorkspace({ releaseId, artistIds, artists }: 
   };
 
   const uploadDocument = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    setBusy("document"); setError("");
+    const files = Array.from(event.target.files || []);
+    if (!files.length) return;
+    const description = documentDescription.trim();
+    if (documentCategory === "Other" && !description) {
+      setError("A short description is required for Other documents.");
+      event.target.value = "";
+      return;
+    }
+
+    setBusy("document");
+    setError("");
+    const failures: string[] = [];
+    let completed = 0;
+
     try {
-      const uploadRes = await api.post("/storage/upload-url", { entityType: "release", entityId: String(releaseId), fileName: file.name, mimeType: file.type, fileSize: file.size, folder: "release-documents" });
-      const upload = uploadRes.data;
-      const result = await fetch(upload.uploadUrl, { method: "PUT", headers: { "Content-Type": file.type || "application/octet-stream" }, body: file });
-      if (!result.ok) throw new Error(`Upload failed (${result.status})`);
-      await api.post("/storage/complete", { entityType: "release", entityId: String(releaseId), key: upload.key, fileName: upload.fileName, originalName: file.name, mimeType: file.type, fileSize: file.size });
-      await saveAction("document", { storage_key: upload.key, file_name: upload.fileName, original_name: file.name, mime_type: file.type, file_size: file.size, category: documentCategory });
-    } catch (err: any) { setError(err?.response?.data?.error || err?.message || "Unable to upload document."); }
-    finally { setBusy(""); event.target.value = ""; }
+      for (const file of files) {
+        setDocumentProgress(`Uploading ${completed + 1} of ${files.length}: ${file.name}`);
+        try {
+          const uploadRes = await api.post("/storage/upload-url", {
+            entityType: "release",
+            entityId: String(releaseId),
+            fileName: file.name,
+            mimeType: file.type || "application/octet-stream",
+            fileSize: file.size,
+            folder: "release-documents",
+          });
+          const upload = uploadRes.data;
+          const result = await fetch(upload.uploadUrl, {
+            method: "PUT",
+            headers: { "Content-Type": file.type || "application/octet-stream" },
+            body: file,
+          });
+          if (!result.ok) throw new Error(`Upload failed (${result.status})`);
+
+          await api.post("/storage/complete", {
+            entityType: "release",
+            entityId: String(releaseId),
+            key: upload.key,
+            fileName: upload.fileName,
+            originalName: file.name,
+            mimeType: file.type || "application/octet-stream",
+            fileSize: file.size,
+          });
+
+          await api.post(`/releases/core?id=${releaseId}`, {
+            action: "document",
+            storage_key: upload.key,
+            file_name: upload.fileName,
+            original_name: file.name,
+            mime_type: file.type || "application/octet-stream",
+            file_size: file.size,
+            category: documentCategory,
+            description: description || null,
+          });
+          completed += 1;
+        } catch (err: any) {
+          failures.push(file.name);
+        }
+      }
+
+      await refresh();
+      if (failures.length) {
+        setError(`${completed} of ${files.length} files uploaded. Failed: ${failures.join(", ")}`);
+      }
+    } catch (err: any) {
+      setError(err?.response?.data?.error || err?.message || "Unable to upload documents.");
+    } finally {
+      setBusy("");
+      setDocumentProgress("");
+      event.target.value = "";
+    }
   };
 
   const roleByArtist = useMemo(() => Object.fromEntries((data.artistRoles || []).map((item: any) => [item.artist_id, item.role])), [data.artistRoles]);
@@ -72,11 +133,13 @@ export default function ReleaseCoreWorkspace({ releaseId, artistIds, artists }: 
   return <div className="space-y-6">
     {error && <div className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{error}</div>}
     <Card title="Documents" subtitle="Attach release paperwork such as advances, proofs of payment and delivery documents.">
-      <div className="flex flex-wrap items-center gap-2">
-        <select className={`${fieldClass} max-w-[180px]`} value={documentCategory} onChange={(e) => setDocumentCategory(e.target.value)}><option>Other</option><option>Advance</option><option>Proof of Payment</option><option>Delivery</option><option>Legal</option><option>Artwork</option></select>
-        <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-lg border border-border bg-surface px-3 text-sm font-medium text-text-primary transition hover:border-primary/50 hover:bg-surface-elevated">{busy === "document" ? <Loader2 size={15} className="animate-spin" /> : <Upload size={15} />}Attach document<input type="file" className="hidden" onChange={uploadDocument} disabled={busy === "document"} /></label>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-[180px_minmax(0,1fr)_auto] items-end">
+        <label><span className={labelClass}>Document type</span><select className={fieldClass} value={documentCategory} onChange={(e) => setDocumentCategory(e.target.value)}><option>Other</option><option>Advance</option><option>Proof of Payment</option><option>Delivery</option><option>Legal</option><option>Artwork</option></select></label>
+        <label><span className={labelClass}>Short description {documentCategory === "Other" ? "*" : ""}</span><input className={fieldClass} value={documentDescription} onChange={(e) => setDocumentDescription(e.target.value.slice(0, 120))} placeholder={documentCategory === "Other" ? "e.g. Proton label documents" : "Optional folder description"} maxLength={120} /></label>
+        <label className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border border-border bg-surface px-3 text-sm font-medium text-text-primary transition hover:border-primary/50 hover:bg-surface-elevated">{busy === "document" ? <Loader2 size={15} className="animate-spin" /> : <Upload size={15} />}{busy === "document" ? "Uploading..." : "Attach files"}<input type="file" multiple className="hidden" onChange={uploadDocument} disabled={busy === "document"} /></label>
       </div>
-      <div className="mt-4 divide-y divide-border rounded-lg border border-border">{data.documents.length ? data.documents.map((doc: any) => <div key={doc.id} className="flex items-center justify-between gap-3 px-3 py-3"><div className="flex min-w-0 items-center gap-3"><FileText size={16} className="shrink-0 text-primary" /><div className="min-w-0"><p className="truncate text-sm text-text-primary">{doc.original_name}</p><p className="text-xs text-text-secondary">{doc.category} · {doc.mime_type || "document"}</p></div></div><Button variant="secondary" size="sm" onClick={() => remove("document", doc.id)} disabled={busy === `document:${doc.id}`}><Trash2 size={14} /></Button></div>) : <p className="px-3 py-5 text-sm text-text-secondary">No documents attached.</p>}</div>
+      {documentProgress && <p className="mt-2 text-xs text-text-secondary">{documentProgress}</p>}
+      <div className="mt-4 divide-y divide-border rounded-lg border border-border">{data.documents.length ? data.documents.map((doc: any) => <div key={doc.id} className="flex items-center justify-between gap-3 px-3 py-3"><div className="flex min-w-0 items-center gap-3"><FileText size={16} className="shrink-0 text-primary" /><div className="min-w-0"><p className="truncate text-sm text-text-primary">{doc.original_name}</p><p className="text-xs text-text-secondary">{doc.category}{doc.description ? ` · ${doc.description}` : ""} · {doc.mime_type || "document"}</p></div></div><Button variant="secondary" size="sm" onClick={() => remove("document", doc.id)} disabled={busy === `document:${doc.id}`}><Trash2 size={14} /></Button></div>) : <p className="px-3 py-5 text-sm text-text-secondary">No documents attached.</p>}</div>
     </Card>
     <Card title="Financial" subtitle="Release-level financial records, following the deterministic financial pattern used elsewhere in OTTO.">
       <div className="grid grid-cols-1 gap-3 md:grid-cols-6"><select className={fieldClass} value={financial.entry_type} onChange={(e) => setFinancial({ ...financial, entry_type: e.target.value })}>{financialTypes.map((item) => <option key={item}>{item}</option>)}</select><input className={fieldClass} placeholder="Description" value={financial.description} onChange={(e) => setFinancial({ ...financial, description: e.target.value })} /><input className={fieldClass} type="number" step="0.01" placeholder="Amount" value={financial.amount} onChange={(e) => setFinancial({ ...financial, amount: e.target.value })} /><input className={fieldClass} placeholder="Currency" value={financial.currency} onChange={(e) => setFinancial({ ...financial, currency: e.target.value.toUpperCase() })} /><input className={fieldClass} type="date" value={financial.entry_date} onChange={(e) => setFinancial({ ...financial, entry_date: e.target.value })} /><Button variant="primary" size="sm" onClick={() => { saveAction("financial", financial); setFinancial({ ...financial, description: "", amount: "", notes: "" }); }} disabled={busy === "financial"}><Plus size={14} />Add</Button></div>
