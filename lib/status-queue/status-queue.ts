@@ -58,7 +58,7 @@ export async function getStatusQueue(organizationId: string): Promise<StatusQueu
         ON cr.contractId = c.id
        AND cr."organizationId" = ${organizationId}::uuid
        AND cr.status = 'active'
-      WHERE c.organization_id = ${organizationId}
+      WHERE c.tenant_id = ${organizationId}::uuid
       GROUP BY c.id
     )
     SELECT
