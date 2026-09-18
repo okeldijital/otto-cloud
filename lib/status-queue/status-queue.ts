@@ -140,8 +140,14 @@ export async function getStatusQueue(organizationId: string): Promise<StatusQueu
   `;
 
   return rows.map((row) => ({
-    ...row,
     id: `${row.issue_type}:${row.entity_type}:${row.entity_id}`,
+    severity: row.severity,
+    entityType: row.entity_type,
+    entityId: row.entity_id,
+    entityTitle: row.entity_title,
+    issueType: row.issue_type,
+    summary: row.summary,
+    href: row.href,
   }));
 }
 
