@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, ArrowUpRight, RefreshCw, Search, ShieldAlert } from "lucide-react";
+import { ArrowUpRight, RefreshCw, Search, ShieldAlert } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
@@ -47,6 +47,8 @@ export default function OfficeStatusQuoPage() {
   const [severity, setSeverity] = useState<"all" | "critical" | "warning">("all");
   const [entityType, setEntityType] = useState("all");
   const [query, setQuery] = useState("");
+
+  const controlClass = "h-10 rounded-lg border border-border bg-surface-elevated px-3 text-sm text-text-primary placeholder:text-text-secondary/70 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20";
 
   const fetchQueue = async () => {
     setLoading(true);
@@ -130,22 +132,16 @@ export default function OfficeStatusQuoPage() {
           >
             {summary.warning} warnings
           </button>
-          <button
-            type="button"
-            onClick={() => setSeverity("all")}
-            className={`rounded-md border px-3 py-2 text-xs font-semibold transition ${
-              severity === "all" ? "border-primary/40 bg-primary/10 text-primary" : "border-border text-text-secondary hover:bg-surface-elevated hover:text-text-primary"
-            }`}
-          >
+          <div className="rounded-md border border-border px-3 py-2 text-xs font-semibold text-text-secondary">
             {summary.entities} entities affected
-          </button>
+          </div>
         </div>
       </Card>
 
       <Card noPadding>
         <div className="flex flex-wrap items-center gap-3 border-b border-border p-4">
           <select
-            className="input w-auto"
+            className={`${controlClass} w-auto min-w-[150px]`}
             aria-label="Filter status queue by entity"
             value={entityType}
             onChange={(event) => setEntityType(event.target.value)}
@@ -159,7 +155,7 @@ export default function OfficeStatusQuoPage() {
           <div className="ml-auto flex min-w-[260px] items-center gap-2">
             <Search size={15} className="text-text-secondary" />
             <input
-              className="input w-full"
+              className={`${controlClass} w-full`}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search issues, entities..."
@@ -188,8 +184,7 @@ export default function OfficeStatusQuoPage() {
                   <th className="p-4 font-semibold">Issue</th>
                   <th className="p-4 font-semibold">Entity</th>
                   <th className="p-4 font-semibold">Severity</th>
-                  <th className="p-4 font-semibold">Relationship state</th>
-                  <th className="p-4 font-semibold"><span className="sr-only">Action</span></th>
+                  <th className="p-4 font-semibold">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -211,12 +206,6 @@ export default function OfficeStatusQuoPage() {
                       <Badge variant={SEVERITY_VARIANTS[item.severity]} size="sm">
                         {item.severity === "critical" ? "Blocking" : "Warning"}
                       </Badge>
-                    </td>
-                    <td className="p-4">
-                      <div className="flex items-center gap-2 text-xs text-text-secondary">
-                        <AlertTriangle size={14} className={item.severity === "critical" ? "text-danger" : "text-warning"} />
-                        Requires source relationship update
-                      </div>
                     </td>
                     <td className="p-4 text-right">
                       <a href={item.href} className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline">
