@@ -135,7 +135,7 @@ export default function OfficeTasksPage() {
         title="Tasks"
         subtitle="Manage tasks and track progress."
         actions={
-          <Button variant="orange" size="sm" onClick={openCreate}>
+          <Button variant="primary" size="sm" onClick={openCreate}>
             <Plus size={16} /> New Task
           </Button>
         }
@@ -169,7 +169,7 @@ export default function OfficeTasksPage() {
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-white">No tasks yet</h3>
                 <p className="text-sm">Create your first task to get started.</p>
-                <Button variant="orange" size="sm" onClick={openCreate}><Plus size={16} /> New Task</Button>
+                <Button variant="primary" size="sm" onClick={openCreate}><Plus size={16} /> New Task</Button>
               </div>
             ) : (
               <p>No tasks match your filters.</p>

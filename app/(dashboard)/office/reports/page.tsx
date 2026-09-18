@@ -13,12 +13,12 @@ import ReportVisualizer from "@/components/office/ReportVisualizer";
 import api from "@/lib/api";
 
 const REPORT_TYPES = [
-  { type: "status_quo", icon: ShieldCheck, label: "Status Quo Analysis", desc: "Active issues by severity", color: "text-blue-400" },
-  { type: "contracts_audit", icon: FileText, label: "Contracts Audit", desc: "Contract completeness & health", color: "text-emerald-400" },
-  { type: "catalog_summary", icon: BarChart3, label: "Catalog Summary", desc: "All catalog entities overview", color: "text-purple-400" },
-  { type: "royalties_summary", icon: TrendingUp, label: "Royalties Summary", desc: "Revenue by source & artist", color: "text-amber-400" },
-  { type: "tasks_progress", icon: ListTodo, label: "Task Progress", desc: "Task status distribution", color: "text-cyan-400" },
-  { type: "activity_log", icon: Activity, label: "Activity Log", desc: "Recent activity history", color: "text-pink-400" },
+  { type: "status_quo", icon: ShieldCheck, label: "Status Quo Analysis", desc: "Active issues by severity", color: "text-accent" },
+  { type: "contracts_audit", icon: FileText, label: "Contracts Audit", desc: "Contract completeness & health", color: "text-accent" },
+  { type: "catalog_summary", icon: BarChart3, label: "Catalog Summary", desc: "All catalog entities overview", color: "text-accent" },
+  { type: "royalties_summary", icon: TrendingUp, label: "Royalties Summary", desc: "Revenue by source & artist", color: "text-accent" },
+  { type: "tasks_progress", icon: ListTodo, label: "Task Progress", desc: "Task status distribution", color: "text-accent" },
+  { type: "activity_log", icon: Activity, label: "Activity Log", desc: "Recent activity history", color: "text-accent" },
 ];
 
 function formatDate(d: string | null) {
@@ -55,13 +55,14 @@ export default function OfficeReportsPage() {
         setCounts((c) => ({ ...c, upcomingEvents: events.length }));
       }
       if (sqRes.status === "fulfilled") {
-        const sq = Array.isArray(sqRes.value.data) ? sqRes.value.data : sqRes.value.data?.items || [];
-        const activeSq = sq.filter((s: any) => !s.resolved_at);
-        setCounts((c) => ({ ...c, activeStatusQuo: activeSq.length }));
+        const statusQueue = sqRes.value.data;
+        const summary = statusQueue?.summary;
+        const items = Array.isArray(statusQueue?.items) ? statusQueue.items : [];
+        setCounts((c) => ({ ...c, activeStatusQuo: summary?.total ?? items.length }));
         setStatusQuoCounts({
-          red: sq.filter((s: any) => s.severity === "RED" && !s.resolved_at).length,
-          amber: sq.filter((s: any) => s.severity === "AMBER" && !s.resolved_at).length,
-          green: sq.filter((s: any) => s.severity === "GREEN" && !s.resolved_at).length,
+          red: summary?.critical ?? items.filter((s: any) => s.severity === "critical").length,
+          amber: summary?.warning ?? items.filter((s: any) => s.severity === "warning").length,
+          green: 0,
         });
       }
       if (runsRes.status === "fulfilled") {
@@ -113,7 +114,7 @@ export default function OfficeReportsPage() {
         title="Reports"
         subtitle="Run, view, and manage organization reports"
         actions={
-          <Button variant="orange" size="sm" onClick={fetchData} disabled={loading}>
+          <Button variant="primary" size="sm" onClick={fetchData} disabled={loading}>
             <RefreshCw size={16} className={loading ? "animate-spin" : ""} /> Refresh
           </Button>
         }
@@ -122,7 +123,7 @@ export default function OfficeReportsPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <div className="flex items-start justify-between mb-3">
-            <div className="p-3 bg-white/5 rounded-xl text-amber-400"><ListTodo size={20} /></div>
+            <div className="p-3 bg-white/5 rounded-xl text-accent"><ListTodo size={20} /></div>
           </div>
           <p className="text-2xl font-extrabold text-white">{counts.totalTasks}</p>
           <p className="text-sm text-text-secondary mt-1">Total Tasks</p>
@@ -130,14 +131,14 @@ export default function OfficeReportsPage() {
         </Card>
         <Card>
           <div className="flex items-start justify-between mb-3">
-            <div className="p-3 bg-white/5 rounded-xl text-purple-400"><Calendar size={20} /></div>
+            <div className="p-3 bg-white/5 rounded-xl text-accent"><Calendar size={20} /></div>
           </div>
           <p className="text-2xl font-extrabold text-white">{counts.upcomingEvents}</p>
           <p className="text-sm text-text-secondary mt-1">Upcoming Events</p>
         </Card>
         <Card>
           <div className="flex items-start justify-between mb-3">
-            <div className="p-3 bg-white/5 rounded-xl text-blue-400"><AlertTriangle size={20} /></div>
+            <div className="p-3 bg-white/5 rounded-xl text-accent"><AlertTriangle size={20} /></div>
           </div>
           <p className="text-2xl font-extrabold text-white">{counts.activeStatusQuo}</p>
           <p className="text-sm text-text-secondary mt-1">Active Status Quo</p>
@@ -149,7 +150,7 @@ export default function OfficeReportsPage() {
         </Card>
         <Card>
           <div className="flex items-start justify-between mb-3">
-            <div className="p-3 bg-white/5 rounded-xl text-cyan-400"><TrendingUp size={20} /></div>
+            <div className="p-3 bg-white/5 rounded-xl text-accent"><TrendingUp size={20} /></div>
           </div>
           <p className="text-2xl font-extrabold text-white">{counts.pendingTasks}</p>
           <p className="text-sm text-text-secondary mt-1">Pending Tasks</p>

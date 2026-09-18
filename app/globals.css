@@ -306,3 +306,22 @@ a {
   background: rgba(0, 229, 255, 0.08) !important;
   border-color: rgba(0, 229, 255, 0.35) !important;
 }
+
+
+/* Signal compatibility for legacy Office controls. */
+.input {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-elevated);
+  color: var(--color-text-primary);
+  padding: 0.5rem 0.75rem;
+  outline: none;
+  transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+}
+
+.input::placeholder { color: var(--color-text-secondary); }
+.input:focus { border-color: var(--color-accent); box-shadow: 0 0 0 2px rgba(0, 229, 255, 0.14); }
+.input:hover { border-color: var(--border-strong); }
+select.input { appearance: auto; cursor: pointer; }
