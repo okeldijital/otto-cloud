@@ -103,7 +103,7 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const action = searchParams.get("action");
-    const ctx = await requireOrganization();
+    const ctx = await requireProductOrganization("ai");
     const orgId = ctx.organizationId;
     if (action === "list") {
       const drafts = await prisma.ai_contract_drafts.findMany({

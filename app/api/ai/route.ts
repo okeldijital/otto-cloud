@@ -82,7 +82,7 @@ export async function POST(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const action = searchParams.get("action");
-    const ctx = await requireOrganization();
+    const ctx = await requireProductOrganization("ai");
     const orgId = ctx.organizationId;
     const userId = parseInt((session.user as any).id) || 1;
 
