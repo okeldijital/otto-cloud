@@ -10,7 +10,7 @@ import { bootstrapPlatformEvents } from "@/lib/platform/events";
 /** POST /api/royalties/promote { rightId } — from approved Rights only */
 export async function POST(req: NextRequest) {
   try {
-    const ctx = await requireOrganization();
+    const ctx = await requireProductOrganization("royalties");
     await bootstrapPlatformEvents();
     const body = await req.json();
     if (!body.rightId) {

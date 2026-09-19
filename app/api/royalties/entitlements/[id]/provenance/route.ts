@@ -12,7 +12,7 @@ export async function GET(
   context: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
-    const ctx = await requireOrganization();
+    const ctx = await requireProductOrganization("royalties");
     const params = await Promise.resolve(context.params);
     const provenance = await entitlementRegistryService.getProvenance({
       organizationId: ctx.organizationId,

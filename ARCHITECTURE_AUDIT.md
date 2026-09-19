@@ -97,3 +97,10 @@ Before merging a meaningful architecture slice:
 4. audit the production/preview runtime where possible;
 5. update this document and the corresponding Notion architectural decision;
 6. only then merge.
+
+
+## Server-side product entitlement boundary
+
+Optional product modules are now enforced at both the customer-facing route boundary and the API boundary. The centralized `requireProductOrganization(feature)` resolver authenticates the organization, resolves active commercial licenses from `organization_product_licenses`, and fails closed with `403 PRODUCT_FEATURE_REQUIRED` when the requested capability is not licensed.
+
+Current Core organizations therefore cannot gain access to deferred AI, Royalties, Rights, or Network functionality by navigating directly to a route or calling its API. Platform authority remains distinct from commercial entitlement: administrative authority does not implicitly grant an unlicensed product capability.

@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  orgContextErrorResponse,
-  requireOrganization,
-} from "@/lib/auth/organization-context";
+import { orgContextErrorResponse } from "@/lib/auth/organization-context";
+import { requireProductOrganization } from "@/lib/platform/productization";
 import { rightsTimelineService } from "@/lib/rights";
 import { IntelligenceError } from "@/lib/document-intelligence";
 
@@ -12,7 +10,7 @@ export async function GET(
   context: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
-    const ctx = await requireOrganization();
+    const ctx = await requireProductOrganization("rights");
     const params = await Promise.resolve(context.params);
     const limit = parseInt(
       new URL(req.url).searchParams.get("limit") || "100",

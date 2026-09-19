@@ -11,7 +11,7 @@ import { bootstrapPlatformEvents } from "@/lib/platform/events";
 /** POST /api/royalties/replay { rightId } — re-run promotion candidates (no auto-approve) */
 export async function POST(req: NextRequest) {
   try {
-    const ctx = await requireOrganization();
+    const ctx = await requireProductOrganization("royalties");
     assertCanReplay(ctx);
     await bootstrapPlatformEvents();
     const body = await req.json();

@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  orgContextErrorResponse,
-  requireOrganization,
-} from "@/lib/auth/organization-context";
+import { orgContextErrorResponse } from "@/lib/auth/organization-context";
+import { requireProductOrganization } from "@/lib/platform/productization";
 import { rightsSearchService } from "@/lib/rights";
 import { bootstrapPlatformEvents } from "@/lib/platform/events";
 
 /** GET /api/rights/search?q=&category=&status=&territory=&owner= */
 export async function GET(req: NextRequest) {
   try {
-    const ctx = await requireOrganization();
+    const ctx = await requireProductOrganization("rights");
     await bootstrapPlatformEvents();
     const sp = new URL(req.url).searchParams;
     const items = await rightsSearchService.search({

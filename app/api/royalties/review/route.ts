@@ -10,7 +10,7 @@ import { bootstrapPlatformEvents } from "@/lib/platform/events";
 /** GET /api/royalties/review */
 export async function GET(req: NextRequest) {
   try {
-    const ctx = await requireOrganization();
+    const ctx = await requireProductOrganization("royalties");
     await bootstrapPlatformEvents();
     const sp = new URL(req.url).searchParams;
     const candidates = await entitlementReviewService.listCandidates({
@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
 /** POST /api/royalties/review { candidateId, decision, notes?, edits? } */
 export async function POST(req: NextRequest) {
   try {
-    const ctx = await requireOrganization();
+    const ctx = await requireProductOrganization("royalties");
     await bootstrapPlatformEvents();
     const body = await req.json();
     if (!body.candidateId || !["approve", "reject"].includes(body.decision)) {

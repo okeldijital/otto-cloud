@@ -2,11 +2,13 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth/session";
 import { platformAuthorityFromSession } from "@/lib/auth/privilege-authorization";
 import { prisma } from "@/lib/prisma";
+import { requireProductOrganization } from "@/lib/platform/productization";
 
 export async function GET(req: Request) {
   try {
     const session = await getServerSession();
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    await requireProductOrganization("network");
 
     const { searchParams } = new URL(req.url);
     const idStr = searchParams.get("id");

@@ -15,7 +15,7 @@ import { bootstrapPlatformEvents } from "@/lib/platform/events";
 /** GET /api/royalties/entitlements  (?q= for search) */
 export async function GET(req: NextRequest) {
   try {
-    const ctx = await requireOrganization();
+    const ctx = await requireProductOrganization("royalties");
     await bootstrapPlatformEvents();
     const sp = new URL(req.url).searchParams;
     const q = sp.get("q");

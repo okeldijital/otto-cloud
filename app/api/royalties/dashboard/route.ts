@@ -12,7 +12,7 @@ import { bootstrapPlatformEvents } from "@/lib/platform/events";
  */
 export async function GET() {
   try {
-    const ctx = await requireOrganization();
+    const ctx = await requireProductOrganization("royalties");
     await bootstrapPlatformEvents();
     const dashboard = await entitlementDashboardService.getSummary({
       organizationId: ctx.organizationId,

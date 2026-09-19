@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth/session";
 import { platformAuthorityFromSession } from "@/lib/auth/privilege-authorization";
 import { prisma } from "@/lib/prisma";
+import { requireProductOrganization } from "@/lib/platform/productization";
 
 function platformOnly(session: Awaited<ReturnType<typeof getServerSession>>): NextResponse | null {
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -16,8 +17,10 @@ function platformOnly(session: Awaited<ReturnType<typeof getServerSession>>): Ne
 
 export async function GET(req: Request) {
   try {
-    const denied = platformOnly(await getServerSession());
+    const session = await getServerSession();
+    const denied = platformOnly(session);
     if (denied) return denied;
+    await requireProductOrganization("network");
 
     const relationships = await prisma.network_relationships.findMany({
       orderBy: { created_at: "desc" },
