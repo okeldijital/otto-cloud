@@ -7,6 +7,12 @@ import { prisma } from "@/lib/prisma";
 const roles = ["Main Artist", "Featured Artist", "Remixer", "Composer", "Other"] as const;
 const financialTypes = ["Income", "Expense", "Advance", "Royalty", "Other"] as const;
 
+function jsonSafe<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value, (_key, item) =>
+    typeof item === "bigint" ? Number(item) : item
+  ));
+}
+
 function idFrom(req: Request) {
   const value = Number(new URL(req.url).searchParams.get("id"));
   if (!Number.isInteger(value) || value <= 0) throw new Error("Invalid release ID");
@@ -25,7 +31,7 @@ export async function GET(req: Request) {
       prisma.$queryRaw<any[]>`SELECT artist_id, role FROM release_artist_roles WHERE organization_id = ${ctx.organizationId}::uuid AND release_id = ${releaseId} ORDER BY artist_id`,
       prisma.$queryRaw<any[]>`SELECT contract_id, signed_at FROM release_contract_links WHERE organization_id = ${ctx.organizationId}::uuid AND release_id = ${releaseId} LIMIT 1`,
     ]);
-    return NextResponse.json({ documents, financials, media: media[0] || null, artistRoles, contract: contract[0] || null });
+    return NextResponse.json(jsonSafe({ documents, financials, media: media[0] || null, artistRoles, contract: contract[0] || null }));
   } catch (err: any) {
     const status = err?.status === 404 ? 404 : err?.status === 403 ? 403 : err?.message === "Invalid release ID" ? 400 : 500;
     console.error("[GET /api/releases/core]", err);
