@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
+import { orgContextErrorResponse } from "@/lib/auth/organization-context";
 import { prisma } from "@/lib/prisma";
 import { requireProductOrganization } from "@/lib/platform/productization";
-import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
 
 export async function GET(req: Request) {
   try {
