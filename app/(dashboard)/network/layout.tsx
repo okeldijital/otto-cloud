@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { requireProductOrganization } from "@/lib/platform/productization";
 
 export default async function NetworkLayout({ children }: { children: React.ReactNode }) {
