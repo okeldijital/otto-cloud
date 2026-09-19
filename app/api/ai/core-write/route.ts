@@ -72,7 +72,7 @@ export async function POST(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const action = searchParams.get("action");
-    const ctx = await requireOrganization();
+    const ctx = await requireProductOrganization("ai");
     const orgIdStr = ctx.organizationId;
     const orgId = requireLegacyIntOrgId(ctx);
     const userId = requireActorUserId(ctx);
