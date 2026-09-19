@@ -75,7 +75,7 @@ Network, Rights, Contracts OCR, and future optional capabilities remain separate
 
 AI and Royalties are not part of the current Core customer surface.
 
-The product entitlement database migration must be applied in production before the entitlement resolver can be considered operationally green.
+The production entitlement schema is live and the current Core licenses have been verified. The client entitlement boundary must fail closed: if the entitlement resolver is unavailable, the client must not substitute a default Core feature set.
 
 ## Documents
 
