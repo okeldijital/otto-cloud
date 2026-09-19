@@ -76,7 +76,7 @@ export default function ReleaseCoreWorkspace({ releaseId, artistIds, artists }: 
             fileName: file.name,
             mimeType: file.type || "application/octet-stream",
             fileSize: file.size,
-            folder: "release-documents",
+            folder: "release",
           });
           const upload = uploadRes.data;
           const result = await fetch(upload.uploadUrl, {
