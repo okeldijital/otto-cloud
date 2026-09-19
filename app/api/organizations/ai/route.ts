@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
-import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
+import { orgContextErrorResponse } from "@/lib/auth/organization-context";
+import { requireProductOrganization } from "@/lib/platform/productization";
 
 export async function GET() {
   const session = await getServerSession();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const ctx = await requireOrganization();
+  const ctx = await requireProductOrganization("ai");
 
   const tenantId = ctx.tenantId;
   if (!tenantId) return NextResponse.json({ error: "No organization context" }, { status: 400 });
@@ -32,7 +33,7 @@ export async function PUT(req: Request) {
   const session = await getServerSession();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const ctx = await requireOrganization();
+  const ctx = await requireProductOrganization("ai");
 
   const tenantId = ctx.tenantId;
   if (!tenantId) return NextResponse.json({ error: "No organization context" }, { status: 400 });

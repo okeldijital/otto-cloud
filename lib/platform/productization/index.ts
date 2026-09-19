@@ -147,7 +147,8 @@ export async function hasProductFeature(
 }
 
 export function featureForPermission(permission: string): ProductFeature | null {
-  const prefix = permission.split(".")[0];
+  const normalized = permission.replace(":", ".");
+  const prefix = normalized.split(".")[0];
   switch (prefix) {
     case "contracts":
       return permission === "contracts.ocr" ? "contracts.ocr" : "contracts.core";

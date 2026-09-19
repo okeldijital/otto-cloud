@@ -1,6 +1,7 @@
 import { NextResponse, NextRequest } from "next/server";
 import { validateApiKey, keyHasScope, type ApiScope } from "@/lib/api-keys";
 import { checkRateLimit, getRateLimitHeaders } from "@/lib/rate-limit";
+import { featureForPermission, hasProductFeature } from "@/lib/platform/productization";
 
 export async function withApiAuth(
   req: NextRequest,
@@ -30,6 +31,14 @@ export async function withApiAuth(
   }
 
   const orgId = result.key.organization_id;
+  const productFeature = featureForPermission(requiredScope);
+  if (productFeature && !(await hasProductFeature(orgId, productFeature))) {
+    return NextResponse.json(
+      { error: `Product feature "${productFeature}" is not licensed for this organization`, code: "PRODUCT_FEATURE_REQUIRED" },
+      { status: 403 }
+    );
+  }
+
   const response = await handler(orgId);
 
   for (const [key, value] of Object.entries(getRateLimitHeaders(rateResult))) {
