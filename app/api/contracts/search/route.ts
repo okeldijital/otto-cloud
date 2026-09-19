@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireProductOrganization } from "@/lib/platform/productization";
 import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
 
 export async function GET(req: Request) {
   try {
-    const ctx = await requireOrganization();
+    const ctx = await requireProductOrganization("contracts.core");
     const { searchParams } = new URL(req.url);
     const q = (searchParams.get("q") || "").trim();
     const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "20"), 1), 50);

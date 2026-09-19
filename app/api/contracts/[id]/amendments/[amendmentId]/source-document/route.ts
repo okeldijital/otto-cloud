@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireOrganization, orgContextErrorResponse } from "@/lib/auth/organization-context";
+import { requireProductOrganization } from "@/lib/platform/productization";
 import { DocumentServiceError, documentService } from "@/lib/documents";
 import { IntelligenceError } from "@/lib/document-intelligence";
 import { contractDocumentService } from "@/lib/contract-center";
@@ -23,7 +24,7 @@ function failure(error: unknown, fallback: string) {
 /** GET source-document: returns a short-lived authenticated URL for the immutable amendment PDF. */
 export async function GET(_req: NextRequest, context: { params: Promise<{ id: string; amendmentId: string }> | { id: string; amendmentId: string } }) {
   try {
-    const ctx = await requireOrganization();
+    const ctx = await requireProductOrganization("contracts.core");
     const p = await Promise.resolve(context.params);
     const contractId = parseId(p.id);
     if (!contractId) return NextResponse.json({ success: false, data: null, message: "Invalid contract id", errors: ["Invalid contract id"], code: "INVALID_CONTRACT_ID" }, { status: 400 });
@@ -53,7 +54,7 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
 /** POST source-document: attaches the finalized amendment PDF as a new immutable Contract Document. */
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string; amendmentId: string }> | { id: string; amendmentId: string } }) {
   try {
-    const ctx = await requireOrganization();
+    const ctx = await requireProductOrganization("contracts.core");
     const p = await Promise.resolve(context.params);
     const contractId = parseId(p.id);
     if (!contractId) return NextResponse.json({ success: false, data: null, message: "Invalid contract id", errors: ["Invalid contract id"], code: "INVALID_CONTRACT_ID" }, { status: 400 });

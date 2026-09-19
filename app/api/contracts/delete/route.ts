@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireProductOrganization } from "@/lib/platform/productization";
 import { documentService } from "@/lib/documents";
-import { requireOrgAuth, requireContractInOrg, resourceAuthErrorResponse } from "@/lib/auth/resource-authorization";
+import { requireContractInOrg, resourceAuthErrorResponse } from "@/lib/auth/resource-authorization";
 import { assertCanManageLifecycle } from "@/lib/contract-lifecycle/permissions";
 import { evaluateContractDeletion } from "@/lib/contract-lifecycle/delete-policy";
 
 export async function DELETE(req: Request) {
   try {
-    const ctx = await requireOrgAuth();
+    const ctx = await requireProductOrganization("contracts.core");
     assertCanManageLifecycle(ctx);
 
     const { searchParams } = new URL(req.url);

@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireOrgAuth, requireContractInOrg, requireReleaseInOrg, resourceAuthErrorResponse } from "@/lib/auth/resource-authorization";
+import { requireProductOrganization } from "@/lib/platform/productization";
+import { requireContractInOrg, requireReleaseInOrg, resourceAuthErrorResponse } from "@/lib/auth/resource-authorization";
 
 export async function POST(req: Request) {
   try {
-    const ctx = await requireOrgAuth();
+    const ctx = await requireProductOrganization("contracts.core");
     const body = await req.json();
     const contractId = Number(body.contract_id);
     const releaseId = Number(body.release_id);
