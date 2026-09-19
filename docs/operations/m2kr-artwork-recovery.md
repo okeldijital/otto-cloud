@@ -1,10 +1,12 @@
-# M2KR Artwork Recovery
+# M2KR Artwork Recovery — Completed
 
-`recover-m2kr-artwork.ts` links already-uploaded M2KR release artwork in Cloudflare R2 to the existing release records.
+**Status: CLOSED.** M2KR catalogue and artwork recovery was completed earlier and the recovered data is already present in the production database.
+
+This document is retained as the deterministic recovery procedure and historical operational reference. It is **not** an outstanding migration or production recovery task. Do not rerun it against production unless a new, explicitly approved recovery operation is opened.
 
 ## Contract
 
-The recovery is deterministic:
+The recovery procedure is deterministic:
 
 1. Read the release spreadsheet.
 2. Resolve each row to an existing M2KR release by exact `Release ID` first, then exact `Release Name`/`Release Title`/`Title`.
@@ -24,15 +26,15 @@ Use the same storage/database environment already used by Otto Cloud:
 - `R2_ACCESS_KEY_ID`
 - `R2_SECRET_ACCESS_KEY`
 
-## Dry run
+## Historical dry run
 
 ```bash
 npx tsx scripts/recover-m2kr-artwork.ts --spreadsheet ./M2KR.xlsx
 ```
 
-The script must report a complete deterministic plan with zero skipped/unresolved rows before it can write anything.
+The script reports a deterministic plan and refuses to write when any row is unresolved.
 
-## Apply
+## Historical apply
 
 ```bash
 npx tsx scripts/recover-m2kr-artwork.ts --spreadsheet ./M2KR.xlsx --apply
@@ -50,6 +52,12 @@ npx tsx scripts/recover-m2kr-artwork.ts \
 
 Use `--prefix` when the artwork objects are stored under a known R2 prefix. Use `--replace-existing` only when an existing release attachment has been independently verified as the record to replace.
 
-## Current database observation
+## Completion record
 
-The production Neon database currently contains **81 non-deleted releases** under the M2KR IAM organization `6e3b659b-f14e-484e-8ee4-a020cd4c502a`. Those releases currently have no release-scoped rows in the `attachments` table, while their legacy `cover_art_url` values point at older `assets/<uuid>.<ext>` keys. This makes the new attachment link the appropriate recovery target.
+The production M2KR recovery has already been executed and the resulting catalogue/artwork data is present in OTTO Cloud.
+
+- Recovery is closed.
+- No new production recovery write is required by this document.
+- Future contract recapture, Work reconciliation, new releases, or new assets are separate controlled work items.
+- This procedure remains available for auditability and for any future, separately approved recovery operation.
+
