@@ -41,6 +41,7 @@ export async function POST(req: Request) {
   try {
     const denied = platformOnly(await getServerSession());
     if (denied) return denied;
+    await requireProductOrganization("network");
 
     const body = await req.json();
     if (!body.relationship_type || !body.source_type || !body.target_type) {
@@ -70,6 +71,7 @@ export async function DELETE(req: Request) {
   try {
     const denied = platformOnly(await getServerSession());
     if (denied) return denied;
+    await requireProductOrganization("network");
 
     const { searchParams } = new URL(req.url);
     const idStr = searchParams.get("id");
