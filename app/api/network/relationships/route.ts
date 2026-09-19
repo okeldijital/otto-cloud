@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth/session";
+import { orgContextErrorResponse } from "@/lib/auth/organization-context";
 import { platformAuthorityFromSession } from "@/lib/auth/privilege-authorization";
 import { prisma } from "@/lib/prisma";
+import { requireProductOrganization } from "@/lib/platform/productization";
 
 function platformOnly(session: Awaited<ReturnType<typeof getServerSession>>): NextResponse | null {
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -16,14 +18,20 @@ function platformOnly(session: Awaited<ReturnType<typeof getServerSession>>): Ne
 
 export async function GET(req: Request) {
   try {
-    const denied = platformOnly(await getServerSession());
+    const session = await getServerSession();
+    const denied = platformOnly(session);
     if (denied) return denied;
+    await requireProductOrganization("network");
 
     const relationships = await prisma.network_relationships.findMany({
       orderBy: { created_at: "desc" },
     });
     return NextResponse.json(relationships);
   } catch (err: any) {
+    const mapped = orgContextErrorResponse(err);
+    if (mapped.status === 401 || mapped.status === 403) {
+      return NextResponse.json(mapped.body, { status: mapped.status });
+    }
     console.error("[GET /api/network/relationships]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

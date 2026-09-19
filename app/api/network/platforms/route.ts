@@ -1,12 +1,15 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth/session";
+import { orgContextErrorResponse } from "@/lib/auth/organization-context";
 import { platformAuthorityFromSession } from "@/lib/auth/privilege-authorization";
 import { prisma } from "@/lib/prisma";
+import { requireProductOrganization } from "@/lib/platform/productization";
 
 export async function GET(req: Request) {
   try {
     const session = await getServerSession();
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    await requireProductOrganization("network");
 
     const { searchParams } = new URL(req.url);
     const idStr = searchParams.get("id");
@@ -21,6 +24,10 @@ export async function GET(req: Request) {
     const platforms = await prisma.platforms.findMany({ orderBy: { name: "asc" } });
     return NextResponse.json(platforms);
   } catch (err: any) {
+    const mapped = orgContextErrorResponse(err);
+    if (mapped.status === 401 || mapped.status === 403) {
+      return NextResponse.json(mapped.body, { status: mapped.status });
+    }
     console.error("[GET /api/network/platforms]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { complete } from "@/lib/ai-provider";
-import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
+import { orgContextErrorResponse } from "@/lib/auth/organization-context";
+import { requireProductOrganization } from "@/lib/platform/productization";
 
 export async function GET(req: Request) {
   try {
@@ -10,7 +11,7 @@ export async function GET(req: Request) {
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
-    const ctx = await requireOrganization();
+    const ctx = await requireProductOrganization("ai");
     const orgId = ctx.organizationId;
     const action = searchParams.get("action");
 
@@ -65,6 +66,10 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ error: "Unknown action" }, { status: 400 });
   } catch (err: any) {
+    const mapped = orgContextErrorResponse(err);
+    if (mapped.status === 401 || mapped.status === 403) {
+      return NextResponse.json(mapped.body, { status: mapped.status });
+    }
     console.error("[GET /api/ai]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
@@ -77,7 +82,7 @@ export async function POST(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const action = searchParams.get("action");
-    const ctx = await requireOrganization();
+    const ctx = await requireProductOrganization("ai");
     const orgId = ctx.organizationId;
     const userId = parseInt((session.user as any).id) || 1;
 
@@ -152,6 +157,10 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ error: "Unknown action" }, { status: 400 });
   } catch (err: any) {
+    const mapped = orgContextErrorResponse(err);
+    if (mapped.status === 401 || mapped.status === 403) {
+      return NextResponse.json(mapped.body, { status: mapped.status });
+    }
     console.error("[POST /api/ai]", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

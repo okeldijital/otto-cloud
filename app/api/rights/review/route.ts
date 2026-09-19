@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  orgContextErrorResponse,
-  requireOrganization,
-} from "@/lib/auth/organization-context";
+import { orgContextErrorResponse } from "@/lib/auth/organization-context";
+import { requireProductOrganization } from "@/lib/platform/productization";
 import { rightsReviewService } from "@/lib/rights";
 import { IntelligenceError } from "@/lib/document-intelligence";
 import { bootstrapPlatformEvents } from "@/lib/platform/events";
@@ -10,7 +8,7 @@ import { bootstrapPlatformEvents } from "@/lib/platform/events";
 /** GET /api/rights/review — list candidates */
 export async function GET(req: NextRequest) {
   try {
-    const ctx = await requireOrganization();
+    const ctx = await requireProductOrganization("rights");
     await bootstrapPlatformEvents();
     const sp = new URL(req.url).searchParams;
     const candidates = await rightsReviewService.listCandidates({
@@ -40,7 +38,7 @@ export async function GET(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
   try {
-    const ctx = await requireOrganization();
+    const ctx = await requireProductOrganization("rights");
     await bootstrapPlatformEvents();
     const body = await req.json();
     if (!body.candidateId || !body.decision) {

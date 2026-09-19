@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  orgContextErrorResponse,
-  requireOrganization,
-} from "@/lib/auth/organization-context";
+import { orgContextErrorResponse } from "@/lib/auth/organization-context";
+import { requireProductOrganization } from "@/lib/platform/productization";
 import {
   canManageEntitlements,
   canReviewEntitlements,
@@ -15,7 +13,7 @@ import { bootstrapPlatformEvents } from "@/lib/platform/events";
 /** GET /api/royalties/entitlements  (?q= for search) */
 export async function GET(req: NextRequest) {
   try {
-    const ctx = await requireOrganization();
+    const ctx = await requireProductOrganization("royalties");
     await bootstrapPlatformEvents();
     const sp = new URL(req.url).searchParams;
     const q = sp.get("q");

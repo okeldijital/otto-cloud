@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireProductOrganization } from "@/lib/platform/productization";
 import {
   requireContractInOrg,
   requireOrgAuth,
@@ -48,7 +49,7 @@ function buildWhere(searchParams: URLSearchParams, ctx: OrganizationContext) {
 
 export async function GET(req: Request) {
   try {
-    const ctx = await requireOrgAuth();
+    const ctx = await requireProductOrganization("royalties");
 
     const { searchParams } = new URL(req.url);
     const action = searchParams.get("action");
@@ -241,7 +242,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const ctx = await requireOrgAuth();
+    const ctx = await requireProductOrganization("royalties");
 
     const body = await req.json();
 
@@ -275,7 +276,7 @@ export async function POST(req: Request) {
 
 export async function PUT(req: Request) {
   try {
-    const ctx = await requireOrgAuth();
+    const ctx = await requireProductOrganization("royalties");
 
     const { searchParams } = new URL(req.url);
     const idStr = searchParams.get("id");
@@ -316,7 +317,7 @@ export async function PUT(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
-    const ctx = await requireOrgAuth();
+    const ctx = await requireProductOrganization("royalties");
 
     const { searchParams } = new URL(req.url);
     const idStr = searchParams.get("id");

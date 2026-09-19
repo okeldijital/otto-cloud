@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  orgContextErrorResponse,
-  requireOrganization,
-} from "@/lib/auth/organization-context";
+import { orgContextErrorResponse } from "@/lib/auth/organization-context";
+import { requireProductOrganization } from "@/lib/platform/productization";
 import { entitlementPromotionService } from "@/lib/royalties";
 import { IntelligenceError } from "@/lib/document-intelligence";
 import { bootstrapPlatformEvents } from "@/lib/platform/events";
@@ -10,7 +8,7 @@ import { bootstrapPlatformEvents } from "@/lib/platform/events";
 /** POST /api/royalties/promote { rightId } — from approved Rights only */
 export async function POST(req: NextRequest) {
   try {
-    const ctx = await requireOrganization();
+    const ctx = await requireProductOrganization("royalties");
     await bootstrapPlatformEvents();
     const body = await req.json();
     if (!body.rightId) {

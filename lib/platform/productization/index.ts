@@ -1,4 +1,8 @@
 import { prisma } from "@/lib/prisma";
+import {
+  OrganizationContextError,
+  requireOrganization,
+} from "@/lib/auth/organization-context";
 
 export const PRODUCT_PLAN_KEYS = {
   CORE: "OTTO_CORE",
@@ -119,6 +123,19 @@ export async function resolveProductEntitlements(
         : PLAN_FEATURES[row.planKey] ?? [],
     })),
   };
+}
+
+export async function requireProductOrganization(feature: ProductFeature): Promise<import("@/lib/auth/organization-context").OrganizationContext> {
+  const ctx = await requireOrganization();
+  const entitled = await hasProductFeature(ctx.organizationId, feature);
+  if (!entitled) {
+    throw new OrganizationContextError(
+      `Product feature "${feature}" is not licensed for this organization`,
+      403,
+      "PRODUCT_FEATURE_REQUIRED"
+    );
+  }
+  return ctx;
 }
 
 export async function hasProductFeature(

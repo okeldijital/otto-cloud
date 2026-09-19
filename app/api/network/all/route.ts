@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth/session";
-import { requireOrganization } from "@/lib/auth/organization-context";
+import { requireProductOrganization } from "@/lib/platform/productization";
 import {
   requireLegacyIntOrgId,
   resourceAuthErrorResponse,
@@ -12,7 +12,7 @@ export async function GET() {
     const session = await getServerSession();
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const ctx = await requireOrganization();
+    const ctx = await requireProductOrganization("network");
     const intOrg = requireLegacyIntOrgId(ctx);
 
     const [orgs, individuals, platforms] = await Promise.all([

@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
+import { requireProductOrganization } from "@/lib/platform/productization";
 import { prisma } from "@/lib/prisma";
 import { runAllAudits, postFindingsToStatusQuo, type AuditFinding } from "@/lib/ai-audit";
 import {
   requireActorUserId,
-  requireOrgAuth,
   requirePositiveIntId,
   resourceAuthErrorResponse,
 } from "@/lib/auth/resource-authorization";
@@ -13,7 +13,7 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const action = searchParams.get("action");
     const scope = searchParams.get("scope") || "all";
-    const ctx = await requireOrgAuth();
+    const ctx = await requireProductOrganization("ai");
     const audits = await runAllAudits(ctx);
 
     if (action === "summary") {
@@ -43,7 +43,7 @@ export async function POST(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const action = searchParams.get("action");
-    const ctx = await requireOrgAuth();
+    const ctx = await requireProductOrganization("ai");
 
     if (action === "run") {
       const body = await req.json();

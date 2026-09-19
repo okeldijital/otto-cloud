@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
-import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
+import { orgContextErrorResponse } from "@/lib/auth/organization-context";
+import { requireProductOrganization } from "@/lib/platform/productization";
 
 export async function GET(req: Request) {
   try {
@@ -9,7 +10,7 @@ export async function GET(req: Request) {
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
-    const ctx = await requireOrganization();
+    const ctx = await requireProductOrganization("network");
     const intOrgId = ctx.legacyIntOrgId;
     const idStr = searchParams.get("id");
 
@@ -54,7 +55,7 @@ export async function POST(req: Request) {
     const session = await getServerSession();
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const ctx = await requireOrganization();
+    const ctx = await requireProductOrganization("network");
 
     const intOrgId = ctx.legacyIntOrgId;
     const body = await req.json();
@@ -99,7 +100,7 @@ export async function PUT(req: Request) {
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
-    const ctx = await requireOrganization();
+    const ctx = await requireProductOrganization("network");
     const intOrgId = ctx.legacyIntOrgId;
     const idStr = searchParams.get("id");
     if (!idStr) return NextResponse.json({ error: "Missing id" }, { status: 400 });
@@ -147,7 +148,7 @@ export async function DELETE(req: Request) {
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
-    const ctx = await requireOrganization();
+    const ctx = await requireProductOrganization("network");
     const intOrgId = ctx.legacyIntOrgId;
     const idStr = searchParams.get("id");
     if (!idStr) return NextResponse.json({ error: "Missing id" }, { status: 400 });

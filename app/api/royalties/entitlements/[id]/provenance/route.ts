@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  orgContextErrorResponse,
-  requireOrganization,
-} from "@/lib/auth/organization-context";
+import { orgContextErrorResponse } from "@/lib/auth/organization-context";
+import { requireProductOrganization } from "@/lib/platform/productization";
 import { entitlementRegistryService } from "@/lib/royalties";
 import { IntelligenceError } from "@/lib/document-intelligence";
 
@@ -12,7 +10,7 @@ export async function GET(
   context: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
-    const ctx = await requireOrganization();
+    const ctx = await requireProductOrganization("royalties");
     const params = await Promise.resolve(context.params);
     const provenance = await entitlementRegistryService.getProvenance({
       organizationId: ctx.organizationId,

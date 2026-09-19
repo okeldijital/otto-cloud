@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  orgContextErrorResponse,
-  requireOrganization,
-} from "@/lib/auth/organization-context";
+import { orgContextErrorResponse } from "@/lib/auth/organization-context";
+import { requireProductOrganization } from "@/lib/platform/productization";
 import { assertCanReplay } from "@/lib/platform/events/permissions";
 import { rightsPromotionService } from "@/lib/rights";
 import { IntelligenceError } from "@/lib/document-intelligence";
@@ -15,7 +13,7 @@ import { bootstrapPlatformEvents } from "@/lib/platform/events";
  */
 export async function POST(req: NextRequest) {
   try {
-    const ctx = await requireOrganization();
+    const ctx = await requireProductOrganization("rights");
     assertCanReplay(ctx);
     await bootstrapPlatformEvents();
     const body = await req.json();

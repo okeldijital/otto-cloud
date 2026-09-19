@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
-import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
+import { orgContextErrorResponse } from "@/lib/auth/organization-context";
+import { requireProductOrganization } from "@/lib/platform/productization";
 import {
   requireLegacyIntOrgId,
   requireActorUserId,
@@ -16,7 +17,7 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const idStr = searchParams.get("id");
 
-    const ctx = await requireOrganization();
+    const ctx = await requireProductOrganization("network");
     const intOrg = requireLegacyIntOrgId(ctx);
 
     if (idStr) {
@@ -66,7 +67,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     if (!body.name) return NextResponse.json({ error: "Name is required" }, { status: 400 });
 
-    const ctx = await requireOrganization();
+    const ctx = await requireProductOrganization("network");
 
     const orgIdStr = ctx.organizationId;
     const orgId = requireLegacyIntOrgId(ctx);
@@ -105,7 +106,7 @@ export async function PUT(req: Request) {
     if (!idStr) return NextResponse.json({ error: "Missing id" }, { status: 400 });
     const id = parseInt(idStr);
 
-    const ctx = await requireOrganization();
+    const ctx = await requireProductOrganization("network");
     const intOrg = requireLegacyIntOrgId(ctx);
 
     const existing = await prisma.organizations.findFirst({
@@ -148,7 +149,7 @@ export async function DELETE(req: Request) {
     if (!idStr) return NextResponse.json({ error: "Missing id" }, { status: 400 });
     const id = parseInt(idStr);
 
-    const ctx = await requireOrganization();
+    const ctx = await requireProductOrganization("network");
     const intOrg = requireLegacyIntOrgId(ctx);
 
     const existing = await prisma.organizations.findFirst({

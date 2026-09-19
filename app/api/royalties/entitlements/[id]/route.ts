@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  orgContextErrorResponse,
-  requireOrganization,
-} from "@/lib/auth/organization-context";
+import { orgContextErrorResponse } from "@/lib/auth/organization-context";
+import { requireProductOrganization } from "@/lib/platform/productization";
 import {
   canManageEntitlements,
   canReviewEntitlements,
@@ -17,7 +15,7 @@ export async function GET(
   context: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
-    const ctx = await requireOrganization();
+    const ctx = await requireProductOrganization("royalties");
     await bootstrapPlatformEvents();
     const params = await Promise.resolve(context.params);
     const entitlement = await entitlementRegistryService.getById({
@@ -58,7 +56,7 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
-    const ctx = await requireOrganization();
+    const ctx = await requireProductOrganization("royalties");
     await bootstrapPlatformEvents();
     const params = await Promise.resolve(context.params);
     const body = await req.json();

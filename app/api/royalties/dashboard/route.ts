@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-import {
-  orgContextErrorResponse,
-  requireOrganization,
-} from "@/lib/auth/organization-context";
+import { orgContextErrorResponse } from "@/lib/auth/organization-context";
+import { requireProductOrganization } from "@/lib/platform/productization";
 import { entitlementDashboardService } from "@/lib/royalties";
 import { bootstrapPlatformEvents } from "@/lib/platform/events";
 
@@ -12,7 +10,7 @@ import { bootstrapPlatformEvents } from "@/lib/platform/events";
  */
 export async function GET() {
   try {
-    const ctx = await requireOrganization();
+    const ctx = await requireProductOrganization("royalties");
     await bootstrapPlatformEvents();
     const dashboard = await entitlementDashboardService.getSummary({
       organizationId: ctx.organizationId,

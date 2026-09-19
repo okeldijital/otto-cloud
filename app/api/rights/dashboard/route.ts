@@ -1,15 +1,13 @@
 import { NextResponse } from "next/server";
-import {
-  orgContextErrorResponse,
-  requireOrganization,
-} from "@/lib/auth/organization-context";
+import { orgContextErrorResponse } from "@/lib/auth/organization-context";
+import { requireProductOrganization } from "@/lib/platform/productization";
 import { rightsDashboardService } from "@/lib/rights";
 import { bootstrapPlatformEvents } from "@/lib/platform/events";
 
 /** GET /api/rights/dashboard */
 export async function GET() {
   try {
-    const ctx = await requireOrganization();
+    const ctx = await requireProductOrganization("rights");
     await bootstrapPlatformEvents();
     const dashboard = await rightsDashboardService.getSummary({
       organizationId: ctx.organizationId,
