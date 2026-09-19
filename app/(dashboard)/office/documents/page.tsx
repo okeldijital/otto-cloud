@@ -114,7 +114,7 @@ export default function OfficeDocumentsPage() {
        folders.length === 0 ? <div className="p-12 text-center"><FileText size={28} className="mx-auto mb-3 text-text-secondary" /><h2 className="text-base font-semibold text-text-primary">No documents found</h2><p className="mt-1 text-sm text-text-secondary">Documents attached through OTTO entity workflows will appear here.</p></div> :
        <div className="divide-y divide-border">
          {folders.map(([name, items]) => {
-           const open = openFolders[name] ?? true;
+           const open = openFolders[name] ?? false;
            return <div key={name}>
              <button type="button" className="flex w-full items-center gap-3 px-4 py-4 text-left hover:bg-surface-elevated" onClick={() => toggleFolder(name)}>
                {open ? <ChevronDown size={16} className="text-text-secondary" /> : <ChevronRight size={16} className="text-text-secondary" />}
