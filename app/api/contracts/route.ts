@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth/session";
+import { requireProductOrganization } from "@/lib/platform/productization";
 import { prisma } from "@/lib/prisma";
 import { documentService } from "@/lib/documents";
 import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
 import {
   requireContractInOrg,
-  requireOrgAuth,
   resourceAuthErrorResponse,
 } from "@/lib/auth/resource-authorization";
 
@@ -70,7 +70,7 @@ export async function GET(req: Request) {
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
-    const ctx = await requireOrganization();
+    const ctx = await requireProductOrganization("contracts.core");
     const orgId = ctx.legacyIntOrgId;
 
     const action = searchParams.get("action");
@@ -169,7 +169,7 @@ export async function POST(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const action = searchParams.get("action");
-    const ctx = await requireOrganization();
+    const ctx = await requireProductOrganization("contracts.core");
     const orgId = ctx.legacyIntOrgId;
     const orgUuid = ctx.organizationId;
     const userId = parseInt((session.user as any).id) || 1;
@@ -380,7 +380,7 @@ export async function POST(req: Request) {
 
 export async function PUT(req: Request) {
   try {
-    const ctx = await requireOrgAuth();
+    const ctx = await requireProductOrganization("contracts.core");
     const { searchParams } = new URL(req.url);
     const idStr = searchParams.get("id");
     if (!idStr) return NextResponse.json({ error: "Missing contract ID" }, { status: 400 });
@@ -424,7 +424,7 @@ export async function PUT(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
-    const ctx = await requireOrgAuth();
+    const ctx = await requireProductOrganization("contracts.core");
     const { searchParams } = new URL(req.url);
     const idStr = searchParams.get("id");
     if (!idStr) return NextResponse.json({ error: "Missing contract ID" }, { status: 400 });

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireOrganization, orgContextErrorResponse } from "@/lib/auth/organization-context";
+import { requireProductOrganization } from "@/lib/platform/productization";
 import { IntelligenceError } from "@/lib/document-intelligence";
 import {
   createAmendmentDraft,
@@ -29,7 +30,7 @@ function failure(error: unknown) {
 
 export async function GET(_req: NextRequest, context: { params: Promise<{ id: string; amendmentId: string }> | { id: string; amendmentId: string } }) {
   try {
-    const ctx = await requireOrganization();
+    const ctx = await requireProductOrganization("contracts.core");
     const p = await Promise.resolve(context.params);
     const contractId = parseId(p.id);
     if (!contractId) return response({ error: "Invalid contract id" }, 400);
@@ -41,7 +42,7 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
 
 export async function POST(_req: NextRequest, context: { params: Promise<{ id: string; amendmentId: string }> | { id: string; amendmentId: string } }) {
   try {
-    const ctx = await requireOrganization();
+    const ctx = await requireProductOrganization("contracts.core");
     const p = await Promise.resolve(context.params);
     const contractId = parseId(p.id);
     if (!contractId) return response({ error: "Invalid contract id" }, 400);
@@ -53,7 +54,7 @@ export async function POST(_req: NextRequest, context: { params: Promise<{ id: s
 
 export async function PATCH(req: NextRequest, context: { params: Promise<{ id: string; amendmentId: string }> | { id: string; amendmentId: string } }) {
   try {
-    const ctx = await requireOrganization();
+    const ctx = await requireProductOrganization("contracts.core");
     const p = await Promise.resolve(context.params);
     const contractId = parseId(p.id);
     if (!contractId) return response({ error: "Invalid contract id" }, 400);

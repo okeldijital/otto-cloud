@@ -1,17 +1,11 @@
 import { NextResponse } from "next/server";
-import {
-  orgContextErrorResponse,
-  requireOrganization,
-} from "@/lib/auth/organization-context";
+import { orgContextErrorResponse } from "@/lib/auth/organization-context";
 import { contractLifecycleService } from "@/lib/contract-lifecycle";
+import { requireProductOrganization } from "@/lib/platform/productization";
 
-/**
- * GET /api/contracts/lifecycle-summary
- * Dashboard widgets for contract lifecycle.
- */
 export async function GET() {
   try {
-    const ctx = await requireOrganization();
+    const ctx = await requireProductOrganization("contracts.core");
     const summary = await contractLifecycleService.getDashboardSummary({
       organizationId: ctx.organizationId,
     });

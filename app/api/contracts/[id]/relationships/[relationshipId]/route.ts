@@ -4,6 +4,7 @@ import {
   requireOrganization,
 } from "@/lib/auth/organization-context";
 import { prisma } from "@/lib/prisma";
+import { requireProductOrganization } from "@/lib/platform/productization";
 import { IntelligenceError } from "@/lib/document-intelligence";
 import { relationshipService } from "@/lib/contract-relationships";
 
@@ -46,7 +47,7 @@ export async function PATCH(
   }
 ) {
   try {
-    const ctx = await requireOrganization();
+    const ctx = await requireProductOrganization("contracts.core");
     const params = await Promise.resolve(context.params);
     const contractId = parseContractId(params.id);
     if (!contractId) return fail("Invalid contract id", 400, "INVALID_CONTRACT_ID");
@@ -84,7 +85,7 @@ export async function DELETE(
   }
 ) {
   try {
-    const ctx = await requireOrganization();
+    const ctx = await requireProductOrganization("contracts.core");
     const params = await Promise.resolve(context.params);
     const contractId = parseContractId(params.id);
     if (!contractId) return fail("Invalid contract id", 400, "INVALID_CONTRACT_ID");

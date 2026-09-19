@@ -4,6 +4,7 @@ import {
   requireOrganization,
 } from "@/lib/auth/organization-context";
 import { DocumentServiceError } from "@/lib/documents";
+import { requireProductOrganization } from "@/lib/platform/productization";
 import { contractDocumentService } from "@/lib/contract-center";
 
 function apiError(
@@ -46,7 +47,7 @@ export async function GET(
   }
 ) {
   try {
-    const ctx = await requireOrganization();
+    const ctx = await requireProductOrganization("contracts.core");
     const params = await Promise.resolve(context.params);
     const contractId = parseContractId(params.id);
     if (!contractId) {

@@ -4,6 +4,7 @@ import {
   requireOrganization,
 } from "@/lib/auth/organization-context";
 import { IntelligenceError } from "@/lib/document-intelligence";
+import { requireProductOrganization } from "@/lib/platform/productization";
 import { contractReadinessService } from "@/lib/contract-readiness";
 
 function fail(message: string, status: number, code?: string) {
@@ -18,7 +19,7 @@ export async function GET(
   context: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
-    const ctx = await requireOrganization();
+    const ctx = await requireProductOrganization("contracts.core");
     const params = await Promise.resolve(context.params);
     const contractId = Number.parseInt(params.id, 10);
 

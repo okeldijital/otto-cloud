@@ -4,6 +4,7 @@ import {
   requireOrganization,
 } from "@/lib/auth/organization-context";
 import { prisma } from "@/lib/prisma";
+import { requireProductOrganization } from "@/lib/platform/productization";
 import { verifiedContractService } from "@/lib/verified-contract";
 
 function ok<T>(data: T) {
@@ -33,7 +34,7 @@ export async function GET(
   context: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
-    const ctx = await requireOrganization();
+    const ctx = await requireProductOrganization("contracts.core");
     const params = await Promise.resolve(context.params);
     const contractId = parseContractId(params.id);
     if (!contractId) return fail("Invalid contract id", 400, "INVALID_CONTRACT_ID");
