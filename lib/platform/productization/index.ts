@@ -5,8 +5,6 @@ export const PRODUCT_PLAN_KEYS = {
   NETWORK: "OTTO_NETWORK",
   RIGHTS: "OTTO_RIGHTS",
   ROYALTIES: "OTTO_ROYALTIES",
-  OFFICE: "OTTO_OFFICE",
-  WORKSPACE: "OTTO_WORKSPACE",
   AI: "OTTO_AI",
   CONTRACTS_OCR: "OTTO_CONTRACTS_OCR",
 } as const;
@@ -18,8 +16,7 @@ export type ProductFeature =
   | "network"
   | "rights"
   | "royalties"
-  | "office"
-  | "workspace"
+  | "documents"
   | "ai";
 
 export type ProductEntitlement = {
@@ -41,16 +38,13 @@ export type ProductEntitlementContext = {
 const CORE_FEATURES: ProductFeature[] = [
   "catalog",
   "contracts.core",
-  "office",
-  "workspace",
+  "documents",
 ];
 const PLAN_FEATURES: Record<string, ProductFeature[]> = {
   [PRODUCT_PLAN_KEYS.CORE]: CORE_FEATURES,
   [PRODUCT_PLAN_KEYS.NETWORK]: ["network"],
   [PRODUCT_PLAN_KEYS.RIGHTS]: ["rights"],
   [PRODUCT_PLAN_KEYS.ROYALTIES]: ["royalties"],
-  [PRODUCT_PLAN_KEYS.OFFICE]: ["office"],
-  [PRODUCT_PLAN_KEYS.WORKSPACE]: ["workspace"],
   [PRODUCT_PLAN_KEYS.AI]: ["ai"],
   [PRODUCT_PLAN_KEYS.CONTRACTS_OCR]: ["contracts.ocr"],
 };
@@ -146,11 +140,8 @@ export function featureForPermission(permission: string): ProductFeature | null 
       return "rights";
     case "royalties":
       return "royalties";
-    case "office":
     case "documents":
-      return "office";
-    case "workspace":
-      return "workspace";
+      return "documents";
     case "ai":
       return "ai";
     default:

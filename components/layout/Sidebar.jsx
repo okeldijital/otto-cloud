@@ -2,7 +2,7 @@
 import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, FolderOpen, FileText, BarChart3, Settings, Music, Calendar, ListTodo, StickyNote, ListMusic, ShieldCheck, ChevronDown, ChevronRight, UserCircle, Building2, BookOpen, HardDrive, Inbox, Users, Bot, Calculator, X, FileCheck, Scale, DollarSign } from 'lucide-react';
+import { LayoutDashboard, FolderOpen, FileText, BarChart3, Settings, Music, ListMusic, ShieldCheck, ChevronDown, ChevronRight, UserCircle, Building2, BookOpen, HardDrive, Inbox, Users, Bot, Calculator, X, FileCheck, Scale, DollarSign } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSidebar } from '../../contexts/SidebarContext';
 import { useIsMobile } from '../../hooks/useIsMobile';
@@ -46,6 +46,9 @@ const Sidebar = () => {
             { icon: Building2, label: 'Publishers', path: '/catalog/publishers', feature: 'catalog' },
             { icon: ShieldCheck, label: 'PROs', path: '/catalog/pros', feature: 'catalog' },
         ] },
+        { label: 'Documents', items: [
+            { icon: FolderOpen, label: 'Documents', path: '/documents', feature: 'documents' },
+        ] },
         { label: 'Network', items: [
             { icon: Inbox, label: 'Overview', path: '/network', feature: 'network' },
             { icon: Users, label: 'All Contacts', path: '/network/contacts', feature: 'network' },
@@ -64,14 +67,6 @@ const Sidebar = () => {
             { icon: Calculator, label: 'Entitlements', path: '/royalties/entitlements', feature: 'royalties' },
             { icon: FileCheck, label: 'Entitlement Review', path: '/royalties/review', feature: 'royalties' },
             { icon: DollarSign, label: 'Legacy Statements', path: '/royalties', feature: 'royalties' },
-        ] },
-        { label: 'Office', items: [
-            { icon: ShieldCheck, label: 'Status Quo', path: '/office/status-quo', feature: 'office' },
-            { icon: FolderOpen, label: 'Documents', path: '/office/documents', feature: 'office' },
-            { icon: Calendar, label: 'Events', path: '/office/events', feature: 'office' },
-            { icon: ListTodo, label: 'Tasks', path: '/office/tasks', feature: 'office' },
-            { icon: StickyNote, label: 'Notes', path: '/office/notes', feature: 'office' },
-            { icon: BarChart3, label: 'Reports', path: '/office/reports', feature: 'office' },
         ] },
     ], []);
 
