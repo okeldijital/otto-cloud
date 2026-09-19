@@ -63,11 +63,6 @@ const Sidebar = () => {
             { icon: ShieldCheck, label: 'Works Administration', path: '/admin-of-works/works', feature: 'contracts.core' },
             { icon: BarChart3, label: 'Status Quo', path: '/admin-of-works/status-quo', feature: 'contracts.core' },
         ] },
-        { label: 'Royalties', items: [
-            { icon: Calculator, label: 'Entitlements', path: '/royalties/entitlements', feature: 'royalties' },
-            { icon: FileCheck, label: 'Entitlement Review', path: '/royalties/review', feature: 'royalties' },
-            { icon: DollarSign, label: 'Legacy Statements', path: '/royalties', feature: 'royalties' },
-        ] },
     ], []);
 
     const licensedSections = sections.map((section) => ({ ...section, items: section.items.filter((item) => !item.feature || hasProductFeature(item.feature)) })).filter((section) => section.items.length > 0);
