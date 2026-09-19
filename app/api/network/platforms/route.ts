@@ -43,6 +43,7 @@ export async function POST(req: Request) {
         { status: 403 }
       );
     }
+    await requireProductOrganization("network");
 
     const body = await req.json();
     if (!body.name) return NextResponse.json({ error: "Name is required" }, { status: 400 });
@@ -73,6 +74,7 @@ export async function PUT(req: Request) {
         { status: 403 }
       );
     }
+    await requireProductOrganization("network");
 
     const { searchParams } = new URL(req.url);
     const idStr = searchParams.get("id");
@@ -110,6 +112,7 @@ export async function DELETE(req: Request) {
         { status: 403 }
       );
     }
+    await requireProductOrganization("network");
 
     const { searchParams } = new URL(req.url);
     const idStr = searchParams.get("id");
