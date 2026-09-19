@@ -2,7 +2,7 @@
 import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, FolderOpen, FileText, BarChart3, Settings, Music, ListMusic, ShieldCheck, ChevronDown, ChevronRight, UserCircle, Building2, BookOpen, HardDrive, Inbox, Users, Bot, Calculator, X, FileCheck, Scale, DollarSign } from 'lucide-react';
+import { LayoutDashboard, FolderOpen, FileText, BarChart3, Settings, Music, ListMusic, ShieldCheck, ChevronDown, ChevronRight, UserCircle, Building2, BookOpen, HardDrive, Inbox, Users, X, FileCheck, Scale } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSidebar } from '../../contexts/SidebarContext';
 import { useIsMobile } from '../../hooks/useIsMobile';
@@ -19,7 +19,9 @@ const SidebarSection = ({ label, items, onNav }) => {
             </button>
             {isOpen && <div className="mt-xs space-y-1 px-sm">{items.map((item) => {
                 const Icon = item.icon; const active = isActive(item.path);
-                return <Link key={item.path} href={item.path} onClick={onNav} className={`flex items-center gap-md px-md py-2 rounded-md transition-all duration-300 group ${active ? 'text-text-primary bg-white/10 font-bold shadow-glow border border-border' : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated border border-transparent'}`} title={item.label}>
+                return <Link key={item.path} href={item.path} onClick={onNav} className={`flex items-center gap-md px-md py-2 rounded-md transition-all duration-300 group ${
+                    active ? 'text-text-primary bg-white/10 font-bold shadow-glow border border-border' : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated border border-transparent'
+                }`} title={item.label}>
                     <Icon size={18} className={active ? 'text-accent' : 'text-text-secondary group-hover:text-text-primary'} /><span className="text-sm font-medium">{item.label}</span>
                 </Link>;
             })}</div>}
@@ -32,7 +34,11 @@ const Sidebar = () => {
     const { user, hasProductFeature } = useAuth();
     const { sidebarOpen, closeSidebar } = useSidebar();
     const isMobile = useIsMobile();
-    const isAdmin = user?.is_superuser || user?.isSuperAdmin || (Array.isArray(user?.permissions) && (user.permissions.includes('security.manage') || user.permissions.includes('users.manage') || user.permissions.includes('organizations.manage') || user.permissions.includes('platform.admin'))) || user?.role === 'org_admin' || user?.role === 'platform_admin' || user?.role === 'admin';
+    const isPlatformAdmin = user?.is_superuser ||
+        user?.role === 'platform_admin' ||
+        user?.role === 'super_admin' ||
+        (Array.isArray(user?.permissions) && user.permissions.includes('platform.admin')) ||
+        (Array.isArray(user?.roles) && (user.roles.includes('platform_admin') || user.roles.includes('super_admin')));
     const handleNav = () => { if (isMobile) closeSidebar(); };
 
     const sections = useMemo(() => [
@@ -65,22 +71,34 @@ const Sidebar = () => {
         ] },
     ], []);
 
-    const licensedSections = sections.map((section) => ({ ...section, items: section.items.filter((item) => !item.feature || hasProductFeature(item.feature)) })).filter((section) => section.items.length > 0);
-    const simpleLink = (href, label, Icon, active) => <Link href={href} onClick={handleNav} className={`flex items-center gap-md px-md py-2 rounded-md transition-all duration-300 group ${active ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'}`}><Icon size={20} className={active ? 'text-accent' : 'text-text-secondary group-hover:text-text-primary'} /><span className="text-sm font-medium">{label}</span></Link>;
+    const licensedSections = sections
+        .map((section) => ({ ...section, items: section.items.filter((item) => !item.feature || hasProductFeature(item.feature)) }))
+        .filter((section) => section.items.length > 0);
+    const simpleLink = (href, label, Icon, active) => (
+        <Link href={href} onClick={handleNav} className={`flex items-center gap-md px-md py-2 rounded-md transition-all duration-300 group ${
+            active ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
+        }`}>
+            <Icon size={20} className={active ? 'text-accent' : 'text-text-secondary group-hover:text-text-primary'} />
+            <span className="text-sm font-medium">{label}</span>
+        </Link>
+    );
 
     return <>
         {isMobile && sidebarOpen && <div className="fixed inset-0 bg-black/50 z-sticky" onClick={closeSidebar} />}
-        <div className={`fixed top-0 left-0 h-screen w-[280px] bg-premium-glass border-r border-border flex flex-col z-dropdown shadow-glass backdrop-blur-2xl transition-transform duration-300 ease-in-out ${isMobile ? (sidebarOpen ? 'translate-x-0' : '-translate-x-full') : ''}`}>
+        <div className={`fixed top-0 left-0 h-screen w-[280px] bg-premium-glass border-r border-border flex flex-col z-dropdown shadow-glass backdrop-blur-2xl transition-transform duration-300 ease-in-out ${
+            isMobile ? (sidebarOpen ? 'translate-x-0' : '-translate-x-full') : ''
+        }`}>
             <div className="p-xl flex justify-between items-center"><Logo size="xl" />{isMobile && <button onClick={closeSidebar} className="p-1 text-text-secondary hover:text-white transition-colors"><X size={20} /></button>}</div>
             <nav className="flex-1 overflow-y-auto px-sm pb-xl">
-                <Link href="/dashboard" onClick={handleNav} className={`flex items-center gap-md px-md py-2.5 rounded-md transition-all duration-300 mb-6 group ${pathname === '/dashboard' ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'}`}><LayoutDashboard size={20} className={pathname === '/dashboard' ? 'text-accent' : 'text-text-secondary group-hover:text-text-primary'} /><span className="text-sm font-medium">Dashboard</span></Link>
+                <Link href="/dashboard" onClick={handleNav} className={`flex items-center gap-md px-md py-2.5 rounded-md transition-all duration-300 mb-6 group ${
+                    pathname === '/dashboard' ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
+                }`}>
+                    <LayoutDashboard size={20} className={pathname === '/dashboard' ? 'text-accent' : 'text-text-secondary group-hover:text-text-primary'} />
+                    <span className="text-sm font-medium">Dashboard</span>
+                </Link>
                 {licensedSections.map((section) => <SidebarSection key={section.label} label={section.label} items={section.items} onNav={handleNav} />)}
                 <div className="mt-xl pt-lg border-t border-border space-y-1">
-                    {hasProductFeature('ai') && simpleLink('/ai', 'AI Assistant', Bot, pathname === '/ai')}
-                    {hasProductFeature('ai') && simpleLink('/ai/analytics', 'AI Analytics', BarChart3, pathname.startsWith('/ai/analytics'))}
-                    {hasProductFeature('ai') && simpleLink('/ai/royalties', 'AI Royalties', Calculator, pathname.startsWith('/ai/royalties'))}
-                    {isAdmin && simpleLink('/admin', 'Admin Control', ShieldCheck, pathname.startsWith('/admin'))}
-                    {simpleLink('/systems', 'Systems', HardDrive, pathname.startsWith('/systems'))}
+                    {isPlatformAdmin && simpleLink('/admin', 'Admin Control', ShieldCheck, pathname.startsWith('/admin'))}
                     {simpleLink('/settings', 'Settings', Settings, pathname === '/settings')}
                     {simpleLink('/settings/organization', 'Organization', Building2, pathname.startsWith('/settings/organization'))}
                 </div>
