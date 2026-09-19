@@ -1076,6 +1076,8 @@ model pros {
   updated_at    DateTime? @db.Timestamptz(6)
   artists       artists[]
   works         works[]
+  work_contributors work_contributors[]
+  work_pro_registrations work_pro_registrations[]
 
   @@index([id], map: "ix_pros_id")
   @@index([name], map: "ix_pros_name")
@@ -1095,6 +1097,8 @@ model publishers {
   contact_person String?   @db.VarChar(255)
   artists        artists[]
   works          works[]
+  work_contributors work_contributors[]
+  work_publishers work_publishers[]
 
   @@index([id], map: "ix_publishers_id")
   @@index([name], map: "ix_publishers_name")
@@ -1556,17 +1560,93 @@ model works {
   updated_at      DateTime?    @db.Timestamptz(6)
   organization_id String       @default(dbgenerated("'00000000-0000-0000-0000-000000000001'::uuid")) @db.Uuid
   tenant_id String? @db.Uuid
+  work_type       String?      @db.VarChar(50)
+  status          String?      @db.VarChar(50)
+  original_work_title String?   @db.VarChar(255)
+  first_release_date DateTime?  @db.Date
+  notes           String?
   is_deleted      Boolean      @default(false)
   royalties       royalties[]
   tracks          tracks[]
   pros            pros?        @relation(fields: [pro_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   publishers      publishers?  @relation(fields: [publisher_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   works_admin     works_admin?
+  work_contributors work_contributors[]
+  work_publishers work_publishers[]
+  work_pro_registrations work_pro_registrations[]
 
   @@index([id], map: "ix_works_id")
   @@index([organization_id], map: "ix_works_organization_id")
   @@index([title], map: "ix_works_title")
 }
+model work_contributors {
+  id String @id @default(uuid()) @db.Uuid
+  work_id Int
+  organization_id String @db.Uuid
+  tenant_id String? @db.Uuid
+  party_type String @db.VarChar(50)
+  party_entity_id String? @db.VarChar(255)
+  name String
+  role String @db.VarChar(50)
+  share_percent Float?
+  controlled_share_percent Float?
+  contact_email String? @db.VarChar(255)
+  contact_phone String? @db.VarChar(50)
+  ipi_number String? @db.VarChar(100)
+  pro_id Int?
+  publisher_id Int?
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @db.Timestamptz(6)
+  works works @relation(fields: [work_id], references: [id], onDelete: Cascade)
+  pros pros? @relation(fields: [pro_id], references: [id], onDelete: Restrict)
+  publishers publishers? @relation(fields: [publisher_id], references: [id], onDelete: Restrict)
+  @@index([work_id], map: "ix_work_contributors_work_id")
+  @@index([organization_id], map: "ix_work_contributors_organization_id")
+  @@index([party_type, party_entity_id], map: "ix_work_contributors_party")
+  @@index([pro_id], map: "ix_work_contributors_pro_id")
+  @@index([publisher_id], map: "ix_work_contributors_publisher_id")
+  @@unique([work_id, party_type, party_entity_id, role], map: "uq_work_contributors_participant_role")
+}
+model work_publishers {
+  id String @id @default(uuid()) @db.Uuid
+  work_id Int
+  publisher_id Int
+  organization_id String @db.Uuid
+  tenant_id String? @db.Uuid
+  share_percent Float?
+  controlled_share_percent Float?
+  is_administrator Boolean @default(false)
+  administration_notes String?
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @db.Timestamptz(6)
+  works works @relation(fields: [work_id], references: [id], onDelete: Cascade)
+  publishers publishers @relation(fields: [publisher_id], references: [id], onDelete: Restrict)
+  @@unique([work_id, publisher_id], map: "uq_work_publishers_work_publisher")
+  @@index([work_id], map: "ix_work_publishers_work_id")
+  @@index([publisher_id], map: "ix_work_publishers_publisher_id")
+  @@index([organization_id], map: "ix_work_publishers_organization_id")
+}
+model work_pro_registrations {
+  id String @id @default(uuid()) @db.Uuid
+  work_id Int
+  pro_id Int
+  organization_id String @db.Uuid
+  tenant_id String? @db.Uuid
+  pro_work_number String? @db.VarChar(255)
+  registration_status String @default("pending") @db.VarChar(50)
+  registration_date DateTime? @db.Date
+  registration_reference String? @db.VarChar(255)
+  notes String?
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @db.Timestamptz(6)
+  works works @relation(fields: [work_id], references: [id], onDelete: Cascade)
+  pros pros @relation(fields: [pro_id], references: [id], onDelete: Restrict)
+  @@unique([work_id, pro_id], map: "uq_work_pro_registrations_work_pro")
+  @@index([work_id], map: "ix_work_pro_registrations_work_id")
+  @@index([pro_id], map: "ix_work_pro_registrations_pro_id")
+  @@index([organization_id], map: "ix_work_pro_registrations_organization_id")
+}
+
 
 model works_admin {
   id                     String                  @id @db.Uuid
