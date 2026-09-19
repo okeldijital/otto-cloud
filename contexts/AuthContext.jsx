@@ -7,7 +7,7 @@ import {
   useState,
 } from "react";
 
-const CORE_FEATURES = new Set(["catalog", "contracts.core", "office", "workspace"]);
+const CORE_FEATURES = new Set(["catalog", "contracts.core", "documents"]);
 
 /**
  * AuthContext — IAM + organization-scoped commercial entitlements.
