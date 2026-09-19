@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth/session";
 import { platformAuthorityFromSession } from "@/lib/auth/privilege-authorization";
 import { prisma } from "@/lib/prisma";
+import { requireProductOrganization } from "@/lib/platform/productization";
 
 export async function GET() {
   try {
@@ -13,6 +14,7 @@ export async function GET() {
         { status: 403 }
       );
     }
+    await requireProductOrganization("network");
 
     const [orgCount, individualCount, platformCount, relationshipCount] = await Promise.all([
       prisma.organizations.count(),
