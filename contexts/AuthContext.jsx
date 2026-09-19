@@ -7,12 +7,13 @@ import {
   useState,
 } from "react";
 
-const CORE_FEATURES = new Set(["catalog", "contracts.core", "documents"]);
-
 /**
  * AuthContext — IAM + organization-scoped commercial entitlements.
  * Session state from GET /api/auth/session; product access from
  * GET /api/auth/product-entitlements.
+ *
+ * Commercial entitlements fail closed: if the entitlement service is
+ * unavailable, no licensed product feature is exposed by the client.
  */
 const AuthContext = createContext({
   user: null,
@@ -113,7 +114,7 @@ export const AuthProvider = ({ children }) => {
   const hasProductFeature = (feature) =>
     productEntitlementsAvailable
       ? productEntitlements.features.includes(feature)
-      : CORE_FEATURES.has(feature);
+      : false;
 
   const login = async (email, password, opts = {}) => {
     const res = await fetch("/api/auth/login", {
