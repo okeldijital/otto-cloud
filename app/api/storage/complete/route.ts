@@ -36,8 +36,25 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (!["attachment", "artwork"].includes(uploadPurpose)) {
+      return NextResponse.json(
+        { error: "uploadPurpose must be attachment or artwork" },
+        { status: 400 }
+      );
+    }
+
+    if (uploadPurpose === "artwork" && entityType !== "release" && entityType !== "artist") {
+      return NextResponse.json(
+        { error: "Artwork uploads are only supported for releases and artists" },
+        { status: 400 }
+      );
+    }
+
     const bound = await requireUploadEntityInOrg(entityType, entityId, ctx);
-    const maxImageBytes = getMediaImageMaxBytes(entityType, mimeType);
+    const maxImageBytes =
+      uploadPurpose === "artwork"
+        ? getMediaImageMaxBytes(entityType, mimeType)
+        : null;
     const validation = validateUpload({
       fileName,
       mimeType,
