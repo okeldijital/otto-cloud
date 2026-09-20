@@ -24,6 +24,7 @@ export default function ReleaseCoreWorkspace({ releaseId, artistIds, artists }: 
   const [documentCategory, setDocumentCategory] = useState("Other");
   const [documentDescription, setDocumentDescription] = useState("");
   const [documentProgress, setDocumentProgress] = useState("");
+  const [isMobileFilePicker, setIsMobileFilePicker] = useState(false);
 
   const refresh = async () => {
     const [core, contractRes] = await Promise.all([api.get(`/releases/core?id=${releaseId}`), api.get(`/contracts?limit=100`)]);
@@ -34,6 +35,11 @@ export default function ReleaseCoreWorkspace({ releaseId, artistIds, artists }: 
     const items = Array.isArray(contractRes.data) ? contractRes.data : Array.isArray(contractRes.data?.items) ? contractRes.data.items : [];
     setContracts(items);
   };
+
+  useEffect(() => {
+    const mobile = /Android|iPhone|iPad|iPod/i.test(window.navigator.userAgent) && window.navigator.maxTouchPoints > 0;
+    setIsMobileFilePicker(mobile);
+  }, []);
 
   useEffect(() => { refresh().catch((err: any) => setError(err?.response?.data?.error || "Unable to load release workspace data.")).finally(() => setLoading(false)); }, [releaseId]);
 
@@ -136,8 +142,9 @@ export default function ReleaseCoreWorkspace({ releaseId, artistIds, artists }: 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-[180px_minmax(0,1fr)_auto] items-end">
         <label><span className={labelClass}>Document type</span><select className={fieldClass} value={documentCategory} onChange={(e) => setDocumentCategory(e.target.value)}><option>Other</option><option>Advance</option><option>Proof of Payment</option><option>Delivery</option><option>Legal</option><option>Artwork</option></select></label>
         <label><span className={labelClass}>Short description {documentCategory === "Other" ? "*" : ""}</span><input className={fieldClass} value={documentDescription} onChange={(e) => setDocumentDescription(e.target.value.slice(0, 120))} placeholder={documentCategory === "Other" ? "e.g. Proton label documents" : "Optional folder description"} maxLength={120} /></label>
-        <label className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border border-border bg-surface px-3 text-sm font-medium text-text-primary transition hover:border-primary/50 hover:bg-surface-elevated">{busy === "document" ? <Loader2 size={15} className="animate-spin" /> : <Upload size={15} />}{busy === "document" ? "Uploading..." : "Attach files"}<input type="file" multiple className="hidden" onChange={uploadDocument} disabled={busy === "document"} /></label>
+        <label className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border border-border bg-surface px-3 text-sm font-medium text-text-primary transition hover:border-primary/50 hover:bg-surface-elevated">{busy === "document" ? <Loader2 size={15} className="animate-spin" /> : <Upload size={15} />}{busy === "document" ? "Uploading..." : "Attach files"}<input type="file" multiple={!isMobileFilePicker} className="hidden" onChange={uploadDocument} disabled={busy === "document"} aria-label={isMobileFilePicker ? "Attach one release document" : "Attach release documents"} /></label>
       </div>
+      {isMobileFilePicker && <p className="mt-2 text-xs text-text-secondary">On mobile, attach one file at a time to reduce pressure on the Android file picker.</p>}
       {documentProgress && <p className="mt-2 text-xs text-text-secondary">{documentProgress}</p>}
       <div className="mt-4 divide-y divide-border rounded-lg border border-border">{data.documents.length ? data.documents.map((doc: any) => <div key={doc.id} className="flex items-center justify-between gap-3 px-3 py-3"><div className="flex min-w-0 items-center gap-3"><FileText size={16} className="shrink-0 text-primary" /><div className="min-w-0"><p className="truncate text-sm text-text-primary">{doc.original_name}</p><p className="text-xs text-text-secondary">{doc.category}{doc.description ? ` · ${doc.description}` : ""} · {doc.mime_type || "document"}</p></div></div><Button variant="secondary" size="sm" onClick={() => remove("document", doc.id)} disabled={busy === `document:${doc.id}`}><Trash2 size={14} /></Button></div>) : <p className="px-3 py-5 text-sm text-text-secondary">No documents attached.</p>}</div>
     </Card>
