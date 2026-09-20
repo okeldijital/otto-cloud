@@ -47,7 +47,7 @@ export async function getPrimaryAttachment(
       entityId: id,
       category: "image",
     },
-    orderBy: { createdAt: "asc" },
+    orderBy: { createdAt: "desc" },
   });
   if (image) return image;
 
@@ -135,7 +135,7 @@ export async function getEntityArtworkBatch(
       entityType: type,
       entityId: { in: ids },
     },
-    orderBy: [{ category: "asc" }, { createdAt: "asc" }],
+    orderBy: [{ category: "asc" }, { createdAt: "desc" }],
   });
 
   // Prefer first image per entityId
