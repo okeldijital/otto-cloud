@@ -27,7 +27,8 @@ export async function POST(req: NextRequest) {
     const fileName = String(body?.fileName || "").trim();
     const originalName = String(body?.originalName || fileName).trim();
     const mimeType = String(body?.mimeType || "").trim();
-    const expectedSize = Number(body?.fileSize);\n    const uploadPurpose = String(body?.uploadPurpose || "attachment").trim().toLowerCase();
+    const expectedSize = Number(body?.fileSize);
+    const uploadPurpose = String(body?.uploadPurpose || "attachment").trim().toLowerCase();
 
     if (!entityType || !entityId || !key || !fileName || !mimeType) {
       return NextResponse.json(
