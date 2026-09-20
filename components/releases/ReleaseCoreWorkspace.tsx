@@ -114,7 +114,12 @@ export default function ReleaseCoreWorkspace({ releaseId, artistIds, artists }: 
           });
           completed += 1;
         } catch (err: any) {
-          failures.push(file.name);
+          const detail =
+            err?.response?.data?.details?.join?.("; ") ||
+            err?.response?.data?.error ||
+            err?.message ||
+            "Upload failed";
+          failures.push(`${file.name} — ${detail}`);
         }
       }
 
