@@ -239,14 +239,24 @@ export async function DELETE(req: Request) {
     const id = parseInt(idStr);
     if (!Number.isFinite(id)) return NextResponse.json({ error: "Invalid release ID" }, { status: 400 });
     await requireReleaseInOrg(id, ctx);
-    await prisma.tracks.updateMany({ where: { release_id: id, ...(trackOrgScopeWhere(ctx) as object) }, data: { release_id: null } });
-    await prisma.releases.delete({ where: { id } });
+
+    // Release-track junctions are secondary catalog relationships and must be
+    // detached before deleting the release. The FK is intentionally NO ACTION
+    // because a junction row must never silently disappear with its release.
+    await prisma.$transaction(async (tx) => {
+      await tx.tracks.updateMany({
+        where: { release_id: id, ...(trackOrgScopeWhere(ctx) as object) },
+        data: { release_id: null },
+      });
+      await tx.track_releases.deleteMany({ where: { release_id: id } });
+      await tx.releases.delete({ where: { id } });
+    });
     return new NextResponse(null, { status: 204 });
   } catch (err: any) {
     const mapped = resourceAuthErrorResponse(err);
     if (mapped.status === 401 || mapped.status === 403 || mapped.status === 404) return NextResponse.json(mapped.body, { status: mapped.status });
     console.error("[DELETE /api/releases]", err);
-    if (err.code === "P2003" || err.code === "P2014") return NextResponse.json({ error: "Cannot delete release because it is linked to contracts or other strict dependencies." }, { status: 409 });
+    if (err.code === "P2003" || err.code === "P2014") return NextResponse.json({ error: "Cannot delete release because it is linked to a strict dependency." }, { status: 409 });
     return NextResponse.json({ error: `Could not delete release: ${err.message}` }, { status: 400 });
   }
 }
