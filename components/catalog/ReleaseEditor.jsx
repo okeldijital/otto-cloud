@@ -121,11 +121,11 @@ export default function ReleaseEditor({ releaseId, release, artists, labels, dis
     setUploading(true); setError("");
     try {
       const optimized = await optimizeImage(file, "artwork");
-      const response = await api.post("/storage/upload-url", { entityType: "release", entityId: String(releaseId), fileName: optimized.name, mimeType: optimized.type, fileSize: optimized.size, folder: "releases" });
+      const response = await api.post("/storage/upload-url", { uploadPurpose: "artwork", entityType: "release", entityId: String(releaseId), fileName: optimized.name, mimeType: optimized.type, fileSize: optimized.size, folder: "releases" });
       const upload = response.data;
       const r2 = await fetch(upload.uploadUrl, { method: "PUT", headers: { "Content-Type": optimized.type }, body: optimized });
       if (!r2.ok) throw new Error(`Artwork upload failed (${r2.status})`);
-      await api.post("/storage/complete", { entityType: "release", entityId: String(releaseId), key: upload.key, fileName: upload.fileName, originalName: file.name, mimeType: optimized.type, fileSize: optimized.size });
+      await api.post("/storage/complete", { uploadPurpose: "artwork", entityType: "release", entityId: String(releaseId), key: upload.key, fileName: upload.fileName, originalName: file.name, mimeType: optimized.type, fileSize: optimized.size });
       invalidateEntityArtwork("release", releaseId);
       await onSaved();
     } catch (err) {

@@ -158,7 +158,7 @@ export default function ReleaseCreationWizard({ isOpen, onClose, onCreated }) {
       const upload = uploadResponse.data;
       const r2Response = await fetch(upload.uploadUrl, { method: "PUT", headers: { "Content-Type": optimized.type }, body: optimized });
       if (!r2Response.ok) throw new Error(`R2 upload failed (${r2Response.status})`);
-      await api.post("/storage/complete", { entityType: "release", entityId: String(releaseId), key: upload.key, fileName: upload.fileName, originalName: artwork.name, mimeType: optimized.type, fileSize: optimized.size });
+      await api.post("/storage/complete", { uploadPurpose: "artwork", entityType: "release", entityId: String(releaseId), key: upload.key, fileName: upload.fileName, originalName: artwork.name, mimeType: optimized.type, fileSize: optimized.size });
       invalidateEntityArtwork("release", releaseId);
       return true;
     } catch (err) {

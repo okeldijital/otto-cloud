@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { HeadObjectCommand } from "@aws-sdk/client-s3";
 import { prisma } from "@/lib/prisma";
-import { detectMimeCategory, storageClient, storageConfig, sanitizeFilename, validateUpload } from "@/lib/storage";
+import { deleteFile, detectMimeCategory, storageClient, storageConfig, sanitizeFilename, validateUpload } from "@/lib/storage";
 import { getMediaImageMaxBytes } from "@/lib/storage/image-policy";
 import { logAttachmentActivity } from "@/lib/storage";
 import { orgContextErrorResponse } from "@/lib/auth/organization-context";
@@ -85,23 +85,63 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Uploaded object MIME type does not match" }, { status: 400 });
     }
 
-    const attachment = await prisma.attachment.create({
-      data: {
-        organizationId: ctx.organizationId,
-        entityType: bound.entityType,
-        entityId: bound.entityId,
-        fileName: sanitizeFilename(fileName),
-        originalName,
-        mimeType,
-        category: detectMimeCategory(mimeType),
-        fileSize: actualSize,
-        bucket: storageConfig.bucket,
-        storageKey: key,
-        checksum: head.ETag ?? null,
-        version: 1,
-        uploadedBy: String(userId),
-      },
+    const previousArtwork = uploadPurpose === "artwork"
+      ? await prisma.attachment.findMany({
+          where: {
+            organizationId: ctx.organizationId,
+            entityType: bound.entityType,
+            entityId: bound.entityId,
+            purpose: "artwork",
+          },
+          orderBy: { createdAt: "desc" },
+        })
+      : [];
+
+    const attachment = await prisma.$transaction(async (tx) => {
+      const created = await tx.attachment.create({
+        data: {
+          organizationId: ctx.organizationId,
+          entityType: bound.entityType,
+          entityId: bound.entityId,
+          fileName: sanitizeFilename(fileName),
+          originalName,
+          mimeType,
+          category: detectMimeCategory(mimeType),
+          purpose: uploadPurpose,
+          fileSize: actualSize,
+          bucket: storageConfig.bucket,
+          storageKey: key,
+          checksum: head.ETag ?? null,
+          version: 1,
+          uploadedBy: String(userId),
+        },
+      });
+      if (uploadPurpose === "artwork" && previousArtwork.length) {
+        await tx.attachment.deleteMany({
+          where: { id: { in: previousArtwork.map((item) => item.id) }, organizationId: ctx.organizationId },
+        });
+      }
+      return created;
     });
+
+    if (previousArtwork.length) {
+      await Promise.all(previousArtwork.map(async (previous) => {
+        try {
+          await deleteFile({ key: previous.storageKey, bucket: previous.bucket });
+        } catch (error) {
+          console.error("[POST /api/storage/complete] Failed to remove replaced artwork object", {
+            attachmentId: previous.id, storageKey: previous.storageKey, error,
+          });
+        }
+      }));
+      await Promise.all(previousArtwork.map((previous) => logAttachmentActivity({
+        event: "attachment.deleted", attachmentId: previous.id, organizationId: ctx.organizationId, userId,
+        entityType: bound.entityType, entityId: bound.entityId,
+        fileName: previous.originalName || previous.fileName,
+        ipAddress: req.headers.get("x-forwarded-for") || undefined,
+        userAgent: req.headers.get("user-agent") || undefined,
+      })));
+    }
 
     await logAttachmentActivity({
       event: "attachment.created",

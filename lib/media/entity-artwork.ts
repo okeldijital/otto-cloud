@@ -32,7 +32,14 @@ export type EntityArtwork = {
   expiresIn: number;
 };
 
-/** Prefer image category when multiple attachments exist for an entity. */
+function isLegacyImageCandidate(attachment: { category: string; purpose: string; fileName: string; originalName: string }): boolean {
+  if (attachment.purpose === "artwork") return true;
+  if (attachment.category !== "image") return false;
+  const name = `${attachment.originalName} ${attachment.fileName}`.toLowerCase();
+  return !/(^|[\s_\-])screenshot([\s_\-.]|$)/i.test(name);
+}
+
+/** Prefer explicit artwork attachments; retain a conservative legacy fallback for pre-purpose rows. */
 export async function getPrimaryAttachment(
   entityType: MediaEntityType | string,
   entityId: string | number
@@ -40,21 +47,11 @@ export async function getPrimaryAttachment(
   const id = String(entityId);
   const type = String(entityType).toLowerCase();
 
-  // Prefer image attachments (cover/profile/logo)
-  const image = await prisma.attachment.findFirst({
-    where: {
-      entityType: type,
-      entityId: id,
-      category: "image",
-    },
+  const attachments = await prisma.attachment.findMany({
+    where: { entityType: type, entityId: id },
     orderBy: { createdAt: "desc" },
   });
-  if (image) return image;
-
-  return prisma.attachment.findFirst({
-    where: { entityType: type, entityId: id },
-    orderBy: { createdAt: "asc" },
-  });
+  return attachments.find(isLegacyImageCandidate) ?? null;
 }
 
 /**
@@ -135,26 +132,20 @@ export async function getEntityArtworkBatch(
       entityType: type,
       entityId: { in: ids },
     },
-    orderBy: [{ category: "asc" }, { createdAt: "desc" }],
+    orderBy: { createdAt: "desc" },
   });
 
-  // Prefer first image per entityId
+  // Prefer explicit artwork. For legacy rows, use only non-screenshot images.
   const primary = new Map<string, (typeof attachments)[0]>();
   for (const att of attachments) {
+    if (!isLegacyImageCandidate(att)) continue;
     if (
       options?.sessionOrganizationId !== undefined &&
       !canAccessAttachment(att.organizationId, options.sessionOrganizationId)
     ) {
       continue;
     }
-    const existing = primary.get(att.entityId);
-    if (!existing) {
-      primary.set(att.entityId, att);
-      continue;
-    }
-    if (existing.category !== "image" && att.category === "image") {
-      primary.set(att.entityId, att);
-    }
+    if (!primary.has(att.entityId)) primary.set(att.entityId, att);
   }
 
   const out: Record<string, EntityArtwork> = {};

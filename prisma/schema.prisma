@@ -2293,6 +2293,7 @@ model Attachment {
 
   mimeType       String
   category       String
+  purpose        String   @default("attachment")
 
   fileSize       Int
 
@@ -2311,6 +2312,7 @@ model Attachment {
   @@index([organizationId], map: "ix_attachments_organization")
   @@index([workspaceId], map: "ix_attachments_workspace")
   @@index([entityType, entityId], map: "ix_attachments_entity")
+  @@index([entityType, entityId, purpose], map: "ix_attachments_entity_purpose")
   @@index([createdAt], map: "ix_attachments_created")
   @@map("attachments")
 }
