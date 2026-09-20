@@ -100,6 +100,7 @@ export default function ReleaseCoreWorkspace({ releaseId, artistIds, artists }: 
             originalName: file.name,
             mimeType: file.type || "application/octet-stream",
             fileSize: file.size,
+            uploadPurpose: "attachment",
           });
 
           await api.post(`/releases/core?id=${releaseId}`, {
