@@ -28,7 +28,60 @@ export default function ReleaseDetailPage() {
   const [release, setRelease] = useState<any>(null); const [artists, setArtists] = useState<any[]>([]); const [tracks, setTracks] = useState<any[]>([]); const [labels, setLabels] = useState<any[]>([]); const [distributors, setDistributors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false); const [uploading, setUploading] = useState(false); const [error, setError] = useState(""); const [saved, setSaved] = useState(false); const [artistQuery, setArtistQuery] = useState(""); const [trackQuery, setTrackQuery] = useState(""); const [artworkKey, setArtworkKey] = useState(0); const [form, setForm] = useState<any>(null); const [selectedArtistIds, setSelectedArtistIds] = useState<number[]>([]); const [selectedTrackIds, setSelectedTrackIds] = useState<number[]>([]);
 
-  const load = async () => { if (!id) return; setLoading(true); try { const [releaseRes, artistsRes, tracksRes, labelsRes] = await Promise.all([api.get(`/releases?id=${id}`), api.get(`/artists?limit=1000`), api.get(`/tracks?limit=1000`), api.get(`/labels`)]); let distributors: any[] = []; try { const distributorsRes = await api.get(`/network/organizations`); distributors = listItems(distributorsRes); } catch (distributorErr) { console.warn("Unable to load distributor organisations; continuing without Network data.", distributorErr); } const data = releaseRes.data; setRelease(data); setForm({ title: data.title || "", release_type: data.release_type || "Single", release_date: data.release_date ? String(data.release_date).slice(0, 10) : "", catalog_number: data.catalog_number || "", upc_code: data.upc_code || "", streaming_link: data.streaming_link || "", label_id: data.label_id ? String(data.label_id) : "", distributor_id: data.distributor_id ? String(data.distributor_id) : "" }); setSelectedArtistIds(Array.isArray(data.artist_ids) ? data.artist_ids : data.artist_id ? [data.artist_id] : []); setSelectedTrackIds(Array.isArray(data._tracks) ? data._tracks.map((track: any) => track.id) : []); setArtists(listItems(artistsRes)); setTracks(listItems(tracksRes)); setLabels(listItems(labelsRes)); setDistributors(distributors); setError(""); } catch (err: any) { setError(err?.response?.data?.error || "Unable to load release."); } finally { setLoading(false); } };
+  const load = async () => {
+    if (!id) return;
+    setLoading(true);
+    setError("");
+
+    try {
+      // The release record is the critical path. Render it as soon as it is available;
+      // large picker/catalog datasets must not be allowed to keep the whole page in
+      // the loading state.
+      const releaseRes = await api.get(`/releases?id=${id}`);
+      const data = releaseRes.data;
+
+      setRelease(data);
+      setForm({
+        title: data.title || "",
+        release_type: data.release_type || "Single",
+        release_date: data.release_date ? String(data.release_date).slice(0, 10) : "",
+        catalog_number: data.catalog_number || "",
+        upc_code: data.upc_code || "",
+        streaming_link: data.streaming_link || "",
+        label_id: data.label_id ? String(data.label_id) : "",
+        distributor_id: data.distributor_id ? String(data.distributor_id) : "",
+      });
+      setSelectedArtistIds(Array.isArray(data.artist_ids) ? data.artist_ids : data.artist_id ? [data.artist_id] : []);
+      setSelectedTrackIds(Array.isArray(data._tracks) ? data._tracks.map((track: any) => track.id) : []);
+      setLoading(false);
+
+      // Supporting catalog data is non-critical. Load it after the release so a
+      // slow/failed picker request cannot leave the release page on "Loading release...".
+      const [artistsRes, tracksRes, labelsRes, distributorsRes] = await Promise.allSettled([
+        api.get(`/artists?limit=1000`),
+        api.get(`/tracks?limit=1000`),
+        api.get(`/labels`),
+        api.get(`/network/organizations`),
+      ]);
+
+      if (artistsRes.status === "fulfilled") setArtists(listItems(artistsRes.value));
+      else console.warn("Unable to load release artists; continuing without artist picker data.", artistsRes.reason);
+
+      if (tracksRes.status === "fulfilled") setTracks(listItems(tracksRes.value));
+      else console.warn("Unable to load release tracks; continuing without track picker data.", tracksRes.reason);
+
+      if (labelsRes.status === "fulfilled") setLabels(listItems(labelsRes.value));
+      else console.warn("Unable to load release labels; continuing without label picker data.", labelsRes.reason);
+
+      if (distributorsRes.status === "fulfilled") setDistributors(listItems(distributorsRes.value));
+      else console.warn("Unable to load distributor organisations; continuing without Network data.", distributorsRes.reason);
+    } catch (err: any) {
+      setError(err?.response?.data?.error || "Unable to load release.");
+      setRelease(null);
+      setForm(null);
+      setLoading(false);
+    }
+  };
   useEffect(() => { load(); }, [id]);
   const toggle = (setter: any) => (value: number) => setter((ids: number[]) => ids.includes(value) ? ids.filter((current) => current !== value) : [...ids, value]);
   const selectedArtists = useMemo(() => artists.filter((artist) => selectedArtistIds.includes(artist.id)), [artists, selectedArtistIds]); const selectedTracks = useMemo(() => tracks.filter((track) => selectedTrackIds.includes(track.id)), [tracks, selectedTrackIds]);
@@ -37,8 +90,9 @@ export default function ReleaseDetailPage() {
   const uploadArtwork = async (event: React.ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; if (!file) return; setUploading(true); setError(""); try { const optimized = await optimizeImage(file, "artwork"); const response = await api.post("/storage/upload-url", { entityType: "release", entityId: String(id), fileName: optimized.name, mimeType: optimized.type, fileSize: optimized.size, folder: "release" }); const upload = response.data; const result = await fetch(upload.uploadUrl, { method: "PUT", headers: { "Content-Type": optimized.type }, body: optimized }); if (!result.ok) throw new Error(`Artwork upload failed (${result.status})`); await api.post("/storage/complete", { entityType: "release", entityId: String(id), key: upload.key, fileName: upload.fileName, originalName: file.name, mimeType: optimized.type, fileSize: optimized.size }); invalidateEntityArtwork("release", id); setArtworkKey((value) => value + 1); setSaved(true); } catch (err: any) { setError(err?.response?.data?.error || err?.message || "Unable to update artwork."); } finally { setUploading(false); event.target.value = ""; } };
   const deleteRelease = async () => { if (!window.confirm(`Delete release \"${release?.title}\"? This cannot be undone.`)) return; try { await api.delete(`/releases?id=${id}`); router.push("/catalog/releases"); } catch (err: any) { setError(err?.response?.data?.error || "Unable to delete release."); } };
 
-  if (loading || !form) return <div className="p-12 text-center text-text-secondary">Loading release...</div>;
-  if (!release) return <div className="p-12 text-center text-text-secondary">Release not found</div>;
+  if (loading) return <div className="p-12 text-center text-text-secondary">Loading release...</div>;
+  if (error && !release) return <div className="p-12 text-center text-text-secondary">{error}</div>;
+  if (!release || !form) return <div className="p-12 text-center text-text-secondary">Release not found</div>;
 
   return <div className="space-y-6"><div className="flex items-center gap-3"><button onClick={() => router.push("/catalog/releases")} className="text-text-secondary transition hover:text-text-primary"><ChevronLeft size={20} /></button><PageHeader title={release.title} subtitle="Release" actions={<div className="flex items-center gap-2">{saved && <span className="text-xs text-primary">Saved</span>}<Button variant="primary" size="sm" onClick={() => save()} disabled={saving}>{saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}Save changes</Button><Button variant="danger" size="sm" onClick={deleteRelease}><Trash2 size={14} />Delete</Button></div>} /></div>
     {error && <div className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{error}</div>}
