@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Users, Building2, Globe, Search, Trash2 } from "lucide-react";
+import { Users, Building2, Search, Trash2 } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
+import EntityArtwork from "@/components/media/EntityArtwork";
 import api from "@/lib/api";
 
 export default function AllContactsPage() {
@@ -92,6 +93,7 @@ export default function AllContactsPage() {
             <table className="w-full" style={{ borderCollapse: "collapse" }}>
               <thead>
                 <tr className="text-left text-xs uppercase tracking-wider text-text-secondary border-b border-border">
+                  <th className="p-4 font-bold"></th>
                   <th className="p-4 font-bold">Name</th>
                   <th className="p-4 font-bold">Type</th>
                   <th className="p-4 font-bold">Role / Category</th>
@@ -110,6 +112,16 @@ export default function AllContactsPage() {
                       className="border-b border-border hover:bg-surface-elevated cursor-pointer transition-colors"
                       onClick={() => router.push(`/network/${contact.item_type.toLowerCase()}s/${contact.id}`)}
                     >
+                      <td className="p-4">
+                        <EntityArtwork
+                          entityType={contact.item_type === "Individual" ? "individual" : "organization"}
+                          entityId={contact.id}
+                          alt={name}
+                          placeholder={contact.item_type === "Individual" ? "user" : "label"}
+                          size={40}
+                          className={contact.item_type === "Individual" ? "w-10 h-10 rounded-full border border-border" : "w-10 h-10 rounded-lg border border-border"}
+                        />
+                      </td>
                       <td className="p-4 font-medium text-text-primary">{name}</td>
                       <td className="p-4">
                         <Badge variant={getTypeBadgeVariant(contact.item_type)} size="sm">
