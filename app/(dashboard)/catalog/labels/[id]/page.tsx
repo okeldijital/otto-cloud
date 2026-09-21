@@ -10,7 +10,6 @@ import Badge from "@/components/ui/Badge";
 import EntityForm from "@/components/EntityForm";
 import EntityProfileImageField from "@/components/media/EntityProfileImageField";
 import EntityArtwork from "@/components/media/EntityArtwork";
-import EntityArtwork from "@/components/media/EntityArtwork";
 import api from "@/lib/api";
 
 function asList(payload: any): any[] {
