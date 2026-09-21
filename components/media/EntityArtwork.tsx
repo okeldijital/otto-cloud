@@ -67,9 +67,9 @@ export default function EntityArtwork({
     placeholder ||
     (entityType === "artist"
       ? "artist"
-      : entityType === "label" || entityType === "publisher"
+      : entityType === "label" || entityType === "publisher" || entityType === "organization"
         ? "label"
-        : entityType === "user"
+        : entityType === "user" || entityType === "individual"
           ? "user"
           : "release");
 

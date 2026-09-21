@@ -7,7 +7,7 @@ export const MEDIA_IMAGE_LIMITS: Record<MediaImageKind, number> = {
 
 export function getMediaImageKind(entityType: string): MediaImageKind | null {
   const normalized = entityType.trim().toLowerCase();
-  if (["artist", "label", "publisher", "pro"].includes(normalized)) return "avatar";
+  if (["artist", "label", "publisher", "pro", "individual", "organization"].includes(normalized)) return "avatar";
   if (normalized === "release") return "artwork";
   return null;
 }

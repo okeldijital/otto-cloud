@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const artworkEntityTypes = new Set(["release", "artist", "label", "publisher", "pro"]);
+    const artworkEntityTypes = new Set(["release", "artist", "label", "publisher", "pro", "individual", "organization"]);
     if (uploadPurpose === "artwork" && !artworkEntityTypes.has(entityType)) {
       return NextResponse.json(
         { error: "Artwork uploads are not supported for this entity type" },

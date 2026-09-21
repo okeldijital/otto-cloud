@@ -8,7 +8,7 @@ import { optimizeImage } from "@/lib/media/image-optimization";
 import api from "@/lib/api";
 
 export async function uploadEntityProfileImage(
-  entityType: "label" | "publisher" | "pro",
+  entityType: "label" | "publisher" | "pro" | "individual" | "organization",
   entityId: string | number,
   file: File
 ) {
@@ -54,7 +54,7 @@ export default function EntityProfileImageField({ entityType, entityId, name, on
 
   return (
     <div className="flex items-center gap-4">
-      <EntityArtwork entityType={entityType} entityId={entityId} alt={name} placeholder="label" size={88} className="shrink-0 rounded-xl border border-border" />
+      <EntityArtwork entityType={entityType} entityId={entityId} alt={name} placeholder={entityType === "individual" ? "user" : "label"} size={88} className="shrink-0 rounded-xl border border-border" />
       <div className="min-w-0">
         <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-border bg-surface-elevated px-3 py-2 text-sm font-medium text-text-primary transition-colors hover:bg-surface">
           {uploading ? <Loader2 size={15} className="animate-spin" /> : <ImagePlus size={15} />}

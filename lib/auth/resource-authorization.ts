@@ -226,6 +226,18 @@ export function notFound(entity = "Resource"): never {
 
 // ── Catalog (UUID organization_id) ─────────────────────────────────────────
 
+export async function requireIndividualInOrg(id: number, ctx: OrganizationContext) {
+  const row = await prisma.individuals.findFirst({ where: { id, organization_id: ctx.legacyIntOrgId }, select: { id: true } });
+  if (!row) notFound("Individual");
+  return row;
+}
+
+export async function requireNetworkOrganizationInOrg(id: number, ctx: OrganizationContext) {
+  const row = await prisma.organizations.findFirst({ where: { id, organization_id: ctx.legacyIntOrgId }, select: { id: true } });
+  if (!row) notFound("Organization");
+  return row;
+}
+
 export async function requireLabelInOrg(id: number, ctx: OrganizationContext) {
   const rows = await prisma.$queryRaw<Array<{ id: number }>>`
     SELECT id FROM labels

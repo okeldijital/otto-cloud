@@ -7,6 +7,7 @@ import PageHeader from "@/components/ui/PageHeader";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import EntityForm from "@/components/EntityForm";
+import EntityArtwork from "@/components/media/EntityArtwork";
 import api from "@/lib/api";
 
 const ORG_TYPES = ["Distributor", "Publisher", "Label", "PRO", "Legal", "Studio", "Accounting", "Other"];
@@ -102,7 +103,7 @@ export default function OrganizationsPage() {
                   <tr key={org.id} className="border-b border-border hover:bg-surface-elevated cursor-pointer transition-colors" onClick={() => router.push(`/network/organizations/${org.id}`)}>
                     <td className="p-4">
                       <div className="flex items-center gap-3">
-                        <div className="p-2 bg-surface-elevated rounded-lg text-accent border border-border"><Building2 size={18} /></div>
+                        <EntityArtwork entityType="organization" entityId={org.id} alt={org.name} placeholder="label" size={40} className="w-10 h-10 rounded-lg border border-border" />
                         <div className="font-medium text-text-primary">{org.name}</div>
                       </div>
                     </td>

@@ -8,6 +8,8 @@ import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import EntityForm from "@/components/EntityForm";
+import EntityProfileImageField from "@/components/media/EntityProfileImageField";
+import EntityArtwork from "@/components/media/EntityArtwork";
 import api from "@/lib/api";
 
 const ORG_TYPES = ["Distributor", "Publisher", "Label", "PRO", "Legal", "Studio", "Accounting", "Other"];
@@ -113,9 +115,7 @@ export default function OrganizationDetailPage() {
 
         <div className="space-y-6">
           <div className="bg-surface border border-border rounded-2xl p-6 backdrop-blur-xl text-center">
-            <div className="w-20 h-20 rounded-2xl bg-surface-elevated flex items-center justify-center mx-auto mb-4 text-accent">
-              <Building2 size={40} />
-            </div>
+            <EntityArtwork entityType="organization" entityId={id} alt={org.name} placeholder="label" size={80} className="w-20 h-20 rounded-2xl mx-auto mb-4" />
             <h2 className="text-xl font-bold text-text-accent mb-1">{org.name}</h2>
             <Badge variant="primary" size="sm">{org.org_type || "Organization"}</Badge>
             {org.address && (
@@ -148,6 +148,7 @@ export default function OrganizationDetailPage() {
       </div>
 
       <EntityForm title="Edit Organization" isOpen={editOpen} onClose={() => setEditOpen(false)} onSubmit={handleUpdate} isSubmitting={submitting} error={undefined}>
+        <div className="mb-6"><EntityProfileImageField entityType="organization" entityId={id} name={org.name} /></div>
         <div className="space-y-4">
           <div>
             <label className="text-xs text-text-secondary font-bold">Name</label>

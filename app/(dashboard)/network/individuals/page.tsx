@@ -8,6 +8,7 @@ import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import EntityForm from "@/components/EntityForm";
+import EntityArtwork from "@/components/media/EntityArtwork";
 import api from "@/lib/api";
 
 const STRENGTH_VARIANTS: Record<string, string> = {
@@ -112,7 +113,7 @@ export default function IndividualsPage() {
                     <tr key={ind.id} className="border-b border-border hover:bg-surface-elevated cursor-pointer transition-colors" onClick={() => router.push(`/network/individuals/${ind.id}`)}>
                       <td className="p-4">
                         <div className="w-10 h-10 rounded-full bg-surface-elevated border border-border flex items-center justify-center overflow-hidden">
-                          {ind.image_url ? <img src={ind.image_url} alt="" className="w-full h-full object-cover" /> : <UserCircle size={24} className="text-text-secondary" />}
+                          <EntityArtwork entityType="individual" entityId={ind.id} alt={ind.first_name + " " + ind.last_name} placeholder="user" size={40} className="w-10 h-10 rounded-full border border-border" />
                         </div>
                       </td>
                       <td className="p-4 font-medium text-text-primary">{ind.first_name} {ind.last_name}</td>

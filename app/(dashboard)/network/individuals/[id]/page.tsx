@@ -8,6 +8,8 @@ import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import EntityForm from "@/components/EntityForm";
+import EntityProfileImageField from "@/components/media/EntityProfileImageField";
+import EntityArtwork from "@/components/media/EntityArtwork";
 import api from "@/lib/api";
 
 export default function IndividualDetailPage() {
@@ -123,11 +125,7 @@ export default function IndividualDetailPage() {
         <div className="space-y-6">
           <div className="bg-surface border border-border rounded-2xl p-6 backdrop-blur-xl text-center">
             <div className="w-24 h-24 rounded-full bg-surface-elevated flex items-center justify-center mx-auto mb-4 overflow-hidden">
-              {individual.image_url ? (
-                <img src={individual.image_url} alt={fullName} className="w-full h-full object-cover" />
-              ) : (
-                <UserCircle size={48} className="text-text-secondary" />
-              )}
+              <EntityArtwork entityType="individual" entityId={id} alt={fullName} placeholder="user" size={96} className="w-24 h-24 rounded-full" />
             </div>
             <h2 className="text-xl font-bold text-text-accent mb-1">{fullName}</h2>
             <div className="text-accent text-sm font-medium mb-3">{individual.role || "Contributor"}</div>
@@ -166,6 +164,7 @@ export default function IndividualDetailPage() {
       </div>
 
       <EntityForm title="Edit Individual" isOpen={editOpen} onClose={() => setEditOpen(false)} onSubmit={handleUpdate} isSubmitting={submitting} error={undefined}>
+        <div className="mb-6"><EntityProfileImageField entityType="individual" entityId={id} name={fullName} /></div>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="text-xs text-text-secondary font-bold">First Name</label>
