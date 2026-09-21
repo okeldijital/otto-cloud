@@ -3,6 +3,7 @@ import { getSignedUploadUrl, generateStorageKey, validateUpload } from "@/lib/st
 import { getMediaImageMaxBytes } from "@/lib/storage/image-policy";
 import { DEFAULT_SIGNED_URL_EXPIRY } from "@/lib/storage/constants";
 import { orgContextErrorResponse } from "@/lib/auth/organization-context";
+import { isGlobalReferenceDataAuthority } from "@/lib/auth/privilege-authorization";
 import {
   requireOrgAuth,
   requireUploadEntityInOrg,
@@ -39,10 +40,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (uploadPurpose === "artwork" && entityType !== "release" && entityType !== "artist") {
+    const artworkEntityTypes = new Set(["release", "artist", "label", "publisher", "pro"]);
+    if (uploadPurpose === "artwork" && !artworkEntityTypes.has(entityType)) {
       return NextResponse.json(
-        { error: "Artwork uploads are only supported for releases and artists" },
+        { error: "Artwork uploads are not supported for this entity type" },
         { status: 400 }
+      );
+    }
+    if (uploadPurpose === "artwork" && ["publisher", "pro"].includes(entityType) && !isGlobalReferenceDataAuthority(ctx)) {
+      return NextResponse.json(
+        { error: "Global reference-data authority required", code: "GLOBAL_REFERENCE_DATA_AUTHORITY_REQUIRED" },
+        { status: 403 }
       );
     }
 
