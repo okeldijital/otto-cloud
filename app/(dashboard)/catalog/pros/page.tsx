@@ -82,7 +82,7 @@ export default function ProsPage() {
         data={data}
         isLoading={loading}
         onRowClick={(row: any) => router.push(`/catalog/pros/${row.id}`)}
-        onEdit={(row: any) => router.push(`/catalog/pros/${row.id}`)}
+        onEdit={isPlatformAuthority ? ((row: any) => router.push(`/catalog/pros/${row.id}`)) : undefined}
         onDelete={isPlatformAuthority ? handleDelete : undefined}
       />
 

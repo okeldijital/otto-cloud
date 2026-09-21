@@ -91,7 +91,7 @@ export default function PublishersPage() {
         data={data}
         isLoading={loading}
         onRowClick={(row: any) => router.push(`/catalog/publishers/${row.id}`)}
-        onEdit={(row: any) => router.push(`/catalog/publishers/${row.id}`)}
+        onEdit={isPlatformAuthority ? ((row: any) => router.push(`/catalog/publishers/${row.id}`)) : undefined}
         onDelete={isPlatformAuthority ? handleDelete : undefined}
       />
 
