@@ -7,6 +7,7 @@ import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import EntityForm from "@/components/EntityForm";
+import EntityProfileImageField from "@/components/media/EntityProfileImageField";
 import api from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { ArrowLeft, Building, Edit, Globe, Hash, Mail, MapPin, Music, Phone, Trash2, User } from "lucide-react";
@@ -130,6 +131,7 @@ export default function ProDetailPage() {
       </div>
 
       <EntityForm title="Edit PRO" isOpen={editOpen} onClose={() => setEditOpen(false)} onSubmit={handleUpdate} isSubmitting={isSubmitting} error={undefined}>
+        <div className="mb-6"><EntityProfileImageField entityType="pro" entityId={id} name={pro.name || "pro" } /></div>
         <div className="space-y-8">
           <section><div className="mb-4 border-b border-border pb-2"><h3 className="text-xs font-bold uppercase tracking-widest text-text-primary">Identity</h3></div><div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2"><label className="mb-1.5 block text-xs font-medium text-text-secondary">PRO Name *</label><input className={inputClass} value={editData.name || ""} onChange={(e) => setEditData({ ...editData, name: e.target.value })} required /></div>
