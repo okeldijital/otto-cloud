@@ -10,6 +10,7 @@ import Badge from "@/components/ui/Badge";
 import EntityForm from "@/components/EntityForm";
 import EntityProfileImageField from "@/components/media/EntityProfileImageField";
 import EntityArtwork from "@/components/media/EntityArtwork";
+import EntityArtwork from "@/components/media/EntityArtwork";
 import api from "@/lib/api";
 
 function asList(payload: any): any[] {
@@ -188,6 +189,9 @@ export default function LabelDetailPage() {
         </div>
 
         <div className="space-y-6">
+          <Card title="Profile">
+            <EntityArtwork entityType="label" entityId={id} alt={label.name || "Label"} placeholder="label" size={220} className="w-full rounded-xl" />
+          </Card>
           <Card title="Catalog context">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
