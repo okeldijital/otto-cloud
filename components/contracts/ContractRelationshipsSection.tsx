@@ -1,160 +1,76 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import {
-  Check,
-  Link2,
-  Loader2,
-  RefreshCw,
-  Search,
-  Trash2,
-  X,
-} from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link2, Loader2, Plus, Search, Trash2, X } from "lucide-react";
 import Card from "@/components/ui/Card";
-import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import api from "@/lib/api";
 
-interface Props {
-  contractId: string | number;
-}
+interface Props { contractId: string | number; }
 
-/**
- * Relationships tab — suggestions + linked entities + manual link (Milestone 4.0).
- * AI suggests; only users create links.
- */
+const TYPES = [
+  { key: "artist", label: "Artist" },
+  { key: "label", label: "Label" },
+  { key: "publisher", label: "Publisher" },
+  { key: "release", label: "Release" },
+  { key: "work", label: "Works" },
+  { key: "track", label: "Tracks" },
+] as const;
+
+const TYPE_LABELS = Object.fromEntries(TYPES.map((item) => [item.key, item.label]));
+
 export default function ContractRelationshipsSection({ contractId }: Props) {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [relationships, setRelationships] = useState<any[]>([]);
-  const [suggestions, setSuggestions] = useState<any[]>([]);
-  const [history, setHistory] = useState<any[]>([]);
-  const [meta, setMeta] = useState<any>(null);
-  const [canManage, setCanManage] = useState(true);
-  const [busyId, setBusyId] = useState<string | null>(null);
-  const [discovering, setDiscovering] = useState(false);
-
-  // Manual link form
-  const [searchQ, setSearchQ] = useState("");
-  const [searchType, setSearchType] = useState("artist");
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchType, setSearchType] = useState<(typeof TYPES)[number]["key"]>("artist");
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
-  const [relType, setRelType] = useState("represents");
-  const [showHistory, setShowHistory] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const [adding, setAdding] = useState(false);
 
   const load = useCallback(async () => {
     try {
+      setLoading(true);
       setError("");
-      const [relRes, sugRes] = await Promise.all([
-        api.get(`/contracts/${contractId}/relationships?includeHistory=true`),
-        api.get(`/contracts/${contractId}/relationship-suggestions`),
-      ]);
-      setRelationships(relRes.data?.data?.relationships || []);
-      setHistory(relRes.data?.data?.history || []);
-      setMeta(relRes.data?.data?.meta || null);
-      setCanManage(relRes.data?.data?.permissions?.canManage !== false);
-      setSuggestions(sugRes.data?.data?.suggestions || []);
-      if (relRes.data?.data?.meta?.relationshipTypes?.[0] && !relType) {
-        setRelType(relRes.data.data.meta.relationshipTypes[0].value);
-      }
+      const res = await api.get(`/contracts/${contractId}/relationships`);
+      setRelationships(res.data?.data?.relationships || []);
     } catch (err: any) {
-      setError(
-        err?.response?.data?.message || "Unable to load relationships."
-      );
+      setError(err?.response?.data?.message || "Unable to load contract connections.");
     } finally {
       setLoading(false);
     }
-  }, [contractId, relType]);
+  }, [contractId]);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
-  const discover = async () => {
-    setDiscovering(true);
-    setError("");
-    try {
-      const res = await api.post(
-        `/contracts/${contractId}/relationship-suggestions`,
-        {}
-      );
-      setSuccess(
-        res.data?.data?.message ||
-          `Generated ${(res.data?.data?.suggestions || []).length} suggestion(s).`
-      );
-      await load();
-    } catch (err: any) {
-      setError(
-        err?.response?.data?.message ||
-          "Unable to generate suggestions. Ensure a verified contract exists."
-      );
-    } finally {
-      setDiscovering(false);
+  const visibleRelationships = useMemo(
+    () => relationships.filter((item) => TYPES.some((type) => type.key === String(item.targetEntityType).toLowerCase())),
+    [relationships]
+  );
+
+  const grouped = useMemo(() => {
+    const map: Record<string, any[]> = {};
+    for (const type of TYPES) map[type.key] = [];
+    for (const item of visibleRelationships) {
+      const key = String(item.targetEntityType || "").toLowerCase();
+      if (map[key]) map[key].push(item);
     }
-  };
+    return map;
+  }, [visibleRelationships]);
 
-  const accept = async (suggestionId: string) => {
-    setBusyId(suggestionId);
-    setError("");
+  const search = async () => {
+    if (query.trim().length < 2) return;
     try {
-      await api.post(`/contracts/${contractId}/relationships`, {
-        action: "accept_suggestion",
-        suggestionId,
+      setSearching(true);
+      setError("");
+      const res = await api.post(`/contracts/${contractId}/relationship-suggestions`, {
+        action: "search",
+        q: query.trim(),
+        entityType: searchType,
       });
-      setSuccess("Relationship created from suggestion.");
-      await load();
-    } catch (err: any) {
-      setError(err?.response?.data?.message || "Unable to accept suggestion.");
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  const reject = async (suggestionId: string) => {
-    setBusyId(suggestionId);
-    setError("");
-    try {
-      await api.post(`/contracts/${contractId}/relationships`, {
-        action: "reject_suggestion",
-        suggestionId,
-      });
-      setSuccess("Suggestion rejected.");
-      await load();
-    } catch (err: any) {
-      setError(err?.response?.data?.message || "Unable to reject suggestion.");
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  const remove = async (relationshipId: string) => {
-    if (!window.confirm("Remove this relationship?")) return;
-    setBusyId(relationshipId);
-    setError("");
-    try {
-      await api.delete(
-        `/contracts/${contractId}/relationships/${relationshipId}`
-      );
-      setSuccess("Relationship removed.");
-      await load();
-    } catch (err: any) {
-      setError(err?.response?.data?.message || "Unable to remove relationship.");
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  const runSearch = async () => {
-    if (!searchQ.trim()) return;
-    setSearching(true);
-    setError("");
-    try {
-      const res = await api.post(
-        `/contracts/${contractId}/relationship-suggestions`,
-        { action: "search", q: searchQ.trim(), entityType: searchType }
-      );
-      setSearchResults(res.data?.data?.results || []);
+      setResults(res.data?.data?.results || []);
     } catch (err: any) {
       setError(err?.response?.data?.message || "Search failed.");
     } finally {
@@ -162,335 +78,155 @@ export default function ContractRelationshipsSection({ contractId }: Props) {
     }
   };
 
-  const createManual = async (target: any) => {
-    setBusyId(`${target.entityType}:${target.entityId}`);
-    setError("");
+  const link = async (target: any) => {
+    const key = `${target.entityType}:${target.entityId}`;
     try {
+      setBusy(key);
+      setError("");
       await api.post(`/contracts/${contractId}/relationships`, {
-        relationshipType: relType,
+        relationshipType: "references",
         targetEntityType: target.entityType,
         targetEntityId: target.entityId,
         targetEntityName: target.entityName,
       });
-      setSuccess(`Linked ${target.entityName}.`);
-      setSearchResults([]);
-      setSearchQ("");
+      setResults([]);
+      setQuery("");
+      setAdding(false);
       await load();
     } catch (err: any) {
-      setError(err?.response?.data?.message || "Unable to create link.");
+      setError(err?.response?.data?.message || "Unable to connect record.");
     } finally {
-      setBusyId(null);
+      setBusy(null);
     }
   };
 
-  const pending = suggestions.filter((s) => s.status === "pending");
-  const decided = suggestions.filter((s) => s.status !== "pending");
+  const remove = async (relationshipId: string) => {
+    if (!window.confirm("Remove this connection from the contract?")) return;
+    try {
+      setBusy(relationshipId);
+      setError("");
+      await api.delete(`/contracts/${contractId}/relationships/${relationshipId}`);
+      await load();
+    } catch (err: any) {
+      setError(err?.response?.data?.message || "Unable to remove connection.");
+    } finally {
+      setBusy(null);
+    }
+  };
 
   if (loading) {
-    return (
-      <div className="flex justify-center py-12 text-text-secondary gap-2 items-center">
-        <Loader2 className="animate-spin" size={18} /> Loading relationships…
-      </div>
-    );
+    return <div className="flex items-center justify-center gap-2 py-10 text-text-secondary"><Loader2 size={17} className="animate-spin" /> Loading connections…</div>;
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-text-secondary">
-            Relationships
-          </h2>
-          <p className="text-sm text-text-secondary mt-1">
-            Suggestions come from the verified contract. Only users create links.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={discover}
-            disabled={discovering}
-          >
-            {discovering ? (
-              <Loader2 size={14} className="animate-spin" />
-            ) : (
-              <RefreshCw size={14} />
-            )}{" "}
-            Discover
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowHistory((v) => !v)}
-          >
-            {showHistory ? "Hide history" : "History"}
-          </Button>
-        </div>
-      </div>
+    <Card
+      title="Connected Records"
+      subtitle="Connect this contract to the catalogue and network records it governs or references."
+      headerAction={
+        <Button variant="primary" size="sm" onClick={() => setAdding((current) => !current)}>
+          {adding ? <X size={14} /> : <Plus size={14} />}
+          {adding ? "Close" : "Add Connection"}
+        </Button>
+      }
+    >
+      <div className="space-y-5">
+        {error && <div className="rounded-xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">{error}</div>}
 
-      {!canManage && (
-        <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-text-secondary">
-          View-only: you can inspect relationships but cannot create or remove them.
-        </div>
-      )}
-
-      {error && (
-        <div className="rounded-xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
-          {error}
-        </div>
-      )}
-      {success && (
-        <div className="rounded-xl border border-success/30 bg-success/10 px-4 py-3 text-sm text-success">
-          {success}
-          <button
-            type="button"
-            className="ml-3 underline text-xs"
-            onClick={() => setSuccess("")}
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
-
-      {/* Suggestions */}
-      <Card title="Suggested relationships">
-        {pending.length === 0 ? (
-          <p className="text-sm text-text-secondary">
-            No pending suggestions. Run Discover after a verified contract exists, or
-            link manually below.
-          </p>
-        ) : (
-          <ul className="space-y-3">
-            {pending.map((s) => (
-              <li
-                key={s.id}
-                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 p-3"
+        {adding && (
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-[180px_minmax(0,1fr)_auto] gap-2">
+              <select
+                className="input w-full"
+                value={searchType}
+                onChange={(e) => { setSearchType(e.target.value as typeof searchType); setResults([]); }}
               >
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-medium text-sm text-white">
-                      {s.targetEntityName || s.targetEntityId}
-                    </span>
-                    <Badge variant="neutral" size="sm">
-                      {s.targetEntityType}
-                    </Badge>
-                    <Badge variant="primary" size="sm">
-                      {s.relationshipType}
-                    </Badge>
-                    <Badge
-                      variant={
-                        s.confidence >= 0.9
-                          ? "success"
-                          : s.confidence >= 0.8
-                            ? "warn"
-                            : "critical"
-                      }
-                      size="sm"
-                    >
-                      {Math.round((s.confidence || 0) * 100)}%
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-text-secondary mt-1">
-                    {s.reason || s.matchStrategy} · source “{s.sourceText}”
-                  </p>
-                </div>
-                {canManage && (
-                  <div className="flex gap-2 shrink-0">
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      disabled={busyId === s.id}
-                      onClick={() => accept(s.id)}
-                    >
-                      <Check size={14} /> Accept
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      disabled={busyId === s.id}
-                      onClick={() => reject(s.id)}
-                    >
-                      <X size={14} /> Reject
-                    </Button>
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-        {decided.length > 0 && (
-          <p className="text-xs text-text-secondary mt-3">
-            {decided.filter((s) => s.status === "accepted").length} accepted ·{" "}
-            {decided.filter((s) => s.status === "rejected").length} rejected earlier
-          </p>
-        )}
-      </Card>
-
-      {/* Linked */}
-      <Card title="Linked entities">
-        {relationships.length === 0 ? (
-          <p className="text-sm text-text-secondary">No active relationships.</p>
-        ) : (
-          <ul className="space-y-2">
-            {relationships.map((r) => (
-              <li
-                key={r.id}
-                className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-xl border border-success/20 bg-success/5 p-3"
-              >
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Link2 size={14} className="text-success" />
-                    <span className="font-medium text-sm">
-                      {r.targetEntityName || r.targetEntityId}
-                    </span>
-                    <Badge variant="success" size="sm">
-                      {r.targetEntityType}
-                    </Badge>
-                    <Badge variant="neutral" size="sm">
-                      {r.relationshipTypeLabel || r.relationshipType}
-                    </Badge>
-                    <Badge variant="ghost" size="sm">
-                      {r.source}
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-text-secondary mt-1">
-                    {r.createdAt
-                      ? new Date(r.createdAt).toLocaleString()
-                      : ""}
-                    {r.confidence != null
-                      ? ` · was ${Math.round(r.confidence * 100)}% suggestion`
-                      : ""}
-                  </p>
-                </div>
-                {canManage && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={busyId === r.id}
-                    onClick={() => remove(r.id)}
-                  >
-                    <Trash2 size={14} /> Remove
-                  </Button>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
-
-      {/* Manual link */}
-      {canManage && (
-        <Card title="Search & link manually">
-          <div className="flex flex-col sm:flex-row gap-2 mb-3">
-            <select
-              value={searchType}
-              onChange={(e) => setSearchType(e.target.value)}
-              className="rounded-lg bg-white/5 border border-white/10 px-2 py-1.5 text-sm text-white"
-              aria-label="Entity type"
-            >
-              {(meta?.targetEntityTypes || [
-                "artist",
-                "release",
-                "track",
-                "work",
-                "label",
-                "publisher",
-                "organization",
-                "person",
-              ]).map((t: string) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
-            <select
-              value={relType}
-              onChange={(e) => setRelType(e.target.value)}
-              className="rounded-lg bg-white/5 border border-white/10 px-2 py-1.5 text-sm text-white"
-              aria-label="Relationship type"
-            >
-              {(meta?.relationshipTypes || []).map((t: any) => (
-                <option key={t.value} value={t.value}>
-                  {t.label}
-                </option>
-              ))}
-              {!meta?.relationshipTypes?.length && (
-                <>
-                  <option value="represents">Represents</option>
-                  <option value="applies_to">Applies To</option>
-                  <option value="governs">Governs</option>
-                  <option value="licenses">Licenses</option>
-                  <option value="references">References</option>
-                </>
-              )}
-            </select>
-            <div className="relative flex-1">
-              <Search
-                size={14}
-                className="absolute left-2 top-1/2 -translate-y-1/2 text-text-secondary"
-              />
-              <input
-                type="search"
-                value={searchQ}
-                onChange={(e) => setSearchQ(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && void runSearch()}
-                placeholder="Search entities…"
-                className="w-full pl-7 pr-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary"
-              />
+                {TYPES.map((type) => <option key={type.key} value={type.key}>{type.label}</option>)}
+              </select>
+              <div className="relative">
+                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
+                <input
+                  className="input w-full pl-9"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") void search(); }}
+                  placeholder={`Search ${TYPE_LABELS[searchType].toLowerCase()}…`}
+                />
+              </div>
+              <Button variant="secondary" size="sm" onClick={() => void search()} disabled={searching || query.trim().length < 2}>
+                {searching ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
+                Search
+              </Button>
             </div>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={runSearch}
-              disabled={searching}
-            >
-              {searching ? <Loader2 size={14} className="animate-spin" /> : "Search"}
-            </Button>
-          </div>
-          {searchResults.length > 0 && (
-            <ul className="space-y-2">
-              {searchResults.map((r) => (
-                <li
-                  key={`${r.entityType}:${r.entityId}`}
-                  className="flex items-center justify-between gap-2 rounded-lg border border-white/10 px-3 py-2"
-                >
-                  <div className="text-sm">
-                    <span className="text-white font-medium">{r.entityName}</span>
-                    <span className="text-text-secondary text-xs ml-2">
-                      {r.entityType} · {r.strategy} ·{" "}
-                      {Math.round(r.confidence * 100)}%
-                    </span>
-                  </div>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    disabled={busyId === `${r.entityType}:${r.entityId}`}
-                    onClick={() => createManual(r)}
-                  >
-                    Link
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
-      )}
 
-      {showHistory && history.length > 0 && (
-        <Card title="Relationship history">
-          <ul className="space-y-1.5 text-xs text-text-secondary max-h-48 overflow-y-auto">
-            {history.map((h) => (
-              <li key={h.id}>
-                <span className="text-white">{h.action}</span>
-                {h.createdAt
-                  ? ` · ${new Date(h.createdAt).toLocaleString()}`
-                  : ""}
-              </li>
+            {results.length > 0 && (
+              <div className="divide-y divide-white/5 rounded-xl border border-white/10 overflow-hidden">
+                {results.map((result) => {
+                  const key = `${result.entityType}:${result.entityId}`;
+                  const alreadyLinked = visibleRelationships.some(
+                    (item) => String(item.targetEntityType).toLowerCase() === String(result.entityType).toLowerCase()
+                      && String(item.targetEntityId) === String(result.entityId)
+                  );
+                  return (
+                    <div key={key} className="flex items-center justify-between gap-3 px-4 py-3 bg-white/[0.02]">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-white truncate">{result.entityName}</p>
+                        <p className="text-xs text-text-secondary mt-0.5">{TYPE_LABELS[String(result.entityType).toLowerCase()] || result.entityType}</p>
+                      </div>
+                      <Button
+                        variant={alreadyLinked ? "secondary" : "primary"}
+                        size="sm"
+                        disabled={alreadyLinked || busy === key}
+                        onClick={() => void link(result)}
+                      >
+                        {busy === key ? <Loader2 size={14} className="animate-spin" /> : alreadyLinked ? "Connected" : "Connect"}
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {visibleRelationships.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-white/10 px-5 py-10 text-center">
+            <Link2 size={24} className="mx-auto text-text-secondary mb-3" />
+            <p className="text-sm text-text-secondary">No catalogue or network records are connected yet.</p>
+            <p className="text-xs text-text-secondary/70 mt-1">Add the artist, label, publisher, release, works and tracks related to this contract.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {TYPES.map((type) => (
+              <div key={type.key} className="rounded-xl border border-white/10 overflow-hidden">
+                <div className="px-4 py-3 bg-white/[0.02] border-b border-white/5 flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-text-secondary">{type.label}</span>
+                  <span className="text-xs text-text-secondary">{grouped[type.key].length}</span>
+                </div>
+                <div className="divide-y divide-white/5">
+                  {grouped[type.key].length === 0 ? (
+                    <div className="px-4 py-4 text-sm text-text-secondary/60">None connected.</div>
+                  ) : grouped[type.key].map((item) => (
+                    <div key={item.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                      <div className="min-w-0">
+                        <p className="text-sm text-white truncate">{item.targetEntityName || `#${item.targetEntityId}`}</p>
+                      </div>
+                      <button
+                        type="button"
+                        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-text-secondary hover:text-danger hover:bg-danger/10"
+                        aria-label={`Remove ${item.targetEntityName || "connection"}`}
+                        onClick={() => void remove(item.id)}
+                        disabled={busy === item.id}
+                      >
+                        {busy === item.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
             ))}
-          </ul>
-        </Card>
-      )}
-    </div>
+          </div>
+        )}
+      </div>
+    </Card>
   );
 }

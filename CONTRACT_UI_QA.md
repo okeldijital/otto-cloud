@@ -1,13 +1,13 @@
-# Contracts UI Regression Checklist
+# Contracts UI QA
 
-- [ ] Sidebar shows “Contracts” nav item routing to `/contracts`; no legacy items remain.
-- [ ] `/contracts` list: filters (status/type/expiring) and search work client-side; row click opens detail.
-- [ ] New contract creation modal creates CTR and navigates to detail.
-- [ ] `/contracts/:id` detail: tabs switch without losing state; metadata edit saves via `/api/contracts/:id`.
-- [ ] Parties tab: add system entity (typeahead) and external party; duplicate protection; remove party works.
-- [ ] Assets tab: add multiple assets in one submit; scope preserved; remove asset works.
-- [ ] Terms & Splits tab: add split group, add/remove splits, totals render.
-- [ ] Financials tab: modal saves royalty/advances/recoupment.
-- [ ] Documents tab: file upload (via `/api/contracts/:id/documents`), preview opens inline, download works; primary badge shows newest version; make primary gracefully handles missing endpoint.
-- [ ] Audit tab renders read-only placeholder (no crashes).
-- [ ] Dark-mode/global theme toggle (if enabled) keeps legibility; orange CTAs remain visible.
+- [ ] Contracts list loads and searches by title / contract number.
+- [ ] New Contract accepts a PDF and creates a contract record.
+- [ ] Contract detail opens the stored PDF and supports replacement through the document repository.
+- [ ] Contract detail connects Artist, Label, Publisher, Release, Work and Track records.
+- [ ] Existing connections remain visible after reload.
+- [ ] Connections can be removed without deleting the underlying catalogue record.
+- [ ] Optional notes can be edited.
+- [ ] Contract deletion follows the existing protected deletion rules.
+- [ ] No legacy tabs for verification, lifecycle, timeline, amendments, financials or splits are exposed.
+- [ ] No AI extraction, discovery or suggestion controls are exposed.
+- [ ] Dark mode remains legible and uses the established OTTO contract styling.
