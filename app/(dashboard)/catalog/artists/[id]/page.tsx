@@ -13,6 +13,7 @@ import ArtistDocumentsPanel from "@/components/catalog/ArtistDocumentsPanel";
 import ArtistFinancialsPanel from "@/components/catalog/ArtistFinancialsPanel";
 import EntityArtwork from "@/components/media/EntityArtwork";
 import RelationshipSelect from "@/components/catalog/RelationshipSelect";
+import { uploadEntityProfileImage } from "@/components/media/EntityProfileImageField";
 import { useAuth } from "@/contexts/AuthContext";
 import { invalidateEntityArtwork } from "@/hooks/useAttachment";
 import { optimizeImage } from "@/lib/media/image-optimization";
@@ -51,6 +52,7 @@ export default function ArtistDetailPage() {
   const [submitting, setSubmitting] = useState(false);
   const [relationModal, setRelationModal] = useState<"label" | "publisher" | "pro" | null>(null);
   const [relationSubmitting, setRelationSubmitting] = useState(false);
+  const [relationProfileImage, setRelationProfileImage] = useState<File | null>(null);
   const [relationForm, setRelationForm] = useState({ name: "", id: "", contact_person: "", contact_email: "", contact_phone: "", website: "", address: "", territory: "" });
 
   const fetchData = useCallback(async () => {
@@ -112,6 +114,7 @@ export default function ArtistDetailPage() {
 
   const openRelationModal = (type: "label" | "publisher" | "pro") => {
     setRelationForm({ name: "", id: "", contact_person: "", contact_email: "", contact_phone: "", website: "", address: "", territory: "" });
+    setRelationProfileImage(null);
     setRelationModal(type);
   };
 
@@ -133,6 +136,7 @@ export default function ArtistDetailPage() {
       };
       if (relationModal === "pro") body.territory = relationForm.territory.trim() || null;
       const { data } = await api.post(endpoint, body);
+      if (relationProfileImage) await uploadEntityProfileImage(relationModal, data.id, relationProfileImage);
       if (relationModal === "label") {
         setLabels((current) => [...current, data].sort((a, b) => String(a.name).localeCompare(String(b.name))));
         setEditData((current: any) => ({ ...current, label_id: String(data.id) }));
@@ -405,7 +409,12 @@ export default function ArtistDetailPage() {
         error={undefined}
       >
         <div className="space-y-6">
-          <section>
+        <div className="mb-6">
+          <label className="mb-1.5 block text-xs font-medium text-text-secondary">Profile Image</label>
+          <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => setRelationProfileImage(e.target.files?.[0] || null)} />
+          <p className="mt-1.5 text-xs text-text-secondary">Optional. Otto optimizes profile images automatically.</p>
+        </div>
+
             <div className="mb-4 border-b border-border pb-2">
               <h3 className="text-xs font-bold uppercase tracking-widest text-text-primary">Identity</h3>
               <p className="mt-1 text-xs text-text-secondary">Create the relationship record and it will be selected on this artist.</p>
