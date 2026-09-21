@@ -7,6 +7,7 @@ import PageHeader from "@/components/ui/PageHeader";
 import Button from "@/components/ui/Button";
 import DataTable from "@/components/DataTable";
 import EntityForm from "@/components/EntityForm";
+import { uploadEntityProfileImage } from "@/components/media/EntityProfileImageField";
 import api from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -22,6 +23,7 @@ export default function ProsPage() {
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [profileImage, setProfileImage] = useState<File | null>(null);
   const emptyForm = () => ({ name: "", pro_id: "", contact_person: "", contact_email: "", contact_phone: "", website: "", address: "", territory: "" });
   const [form, setForm] = useState<any>(emptyForm());
 
@@ -55,8 +57,10 @@ export default function ProsPage() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      await api.post("/pros", { ...form, name: form.name.trim(), pro_id: form.pro_id.trim() || null, contact_person: form.contact_person.trim() || null, contact_email: form.contact_email.trim() || null, contact_phone: form.contact_phone.trim() || null, website: form.website.trim() || null, address: form.address.trim() || null, territory: form.territory.trim() || null });
-      setShowAddModal(false);
+      const { data: created } = await api.post("/pros", { ...form, name: form.name.trim(), pro_id: form.pro_id.trim() || null, contact_person: form.contact_person.trim() || null, contact_email: form.contact_email.trim() || null, contact_phone: form.contact_phone.trim() || null, website: form.website.trim() || null, address: form.address.trim() || null, territory: form.territory.trim() || null });
+      if (profileImage) await uploadEntityProfileImage("pro", created.id, profileImage);
+            setShowAddModal(false);
+      setProfileImage(null);
       setForm(emptyForm());
       fetchData();
     } catch (err: any) {
@@ -88,6 +92,11 @@ export default function ProsPage() {
       />
 
       <EntityForm title="New PRO" isOpen={showAddModal} onClose={() => setShowAddModal(false)} onSubmit={handleCreate} isSubmitting={isSubmitting} error={undefined}>
+        <div className="mb-6">
+          <label className="mb-1.5 block text-xs font-medium text-text-secondary">Profile Image</label>
+          <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => setProfileImage(e.target.files?.[0] || null)} />
+          <p className="mt-1.5 text-xs text-text-secondary">Optional. Otto optimizes profile images automatically.</p>
+        </div>
         <div className="space-y-6">
           <div>
             <label className="text-xs text-text-secondary font-bold">Name *</label>
