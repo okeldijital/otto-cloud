@@ -8,6 +8,7 @@ import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import EntityForm from "@/components/EntityForm";
+import EntityProfileImageField from "@/components/media/EntityProfileImageField";
 import EntityArtwork from "@/components/media/EntityArtwork";
 import api from "@/lib/api";
 
@@ -251,6 +252,7 @@ export default function LabelDetailPage() {
       </Card>
 
       <EntityForm title="Edit Label" isOpen={editOpen} onClose={() => setEditOpen(false)} onSubmit={handleUpdate} isSubmitting={submitting} error={undefined}>
+        <div className="mb-6"><EntityProfileImageField entityType="label" entityId={id} name={label.name || "label" } /></div>
         <div className="grid grid-cols-2 gap-4">
           <div className="col-span-2">
             <label className="text-xs text-text-secondary">Name</label>
