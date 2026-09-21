@@ -20,7 +20,17 @@ export default function PublishersPage() {
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [newPublisher, setNewPublisher] = useState<any>({ name: "", publisher_id: "" });
+  const emptyPublisher = () => ({
+  name: "",
+  publisher_id: "",
+  contact_person: "",
+  contact_email: "",
+  contact_phone: "",
+  website: "",
+  address: "",
+  rights_type: "",
+});
+  const [newPublisher, setNewPublisher] = useState<any>(emptyPublisher());
 
   const fetchData = async () => {
     try {
@@ -52,9 +62,9 @@ export default function PublishersPage() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      await api.post("/publishers", newPublisher);
+      await api.post("/publishers", { ...newPublisher, name: newPublisher.name.trim(), publisher_id: newPublisher.publisher_id.trim() || null, contact_person: newPublisher.contact_person.trim() || null, contact_email: newPublisher.contact_email.trim() || null, contact_phone: newPublisher.contact_phone.trim() || null, website: newPublisher.website.trim() || null, address: newPublisher.address.trim() || null, rights_type: newPublisher.rights_type.trim() || null });
       setShowAddModal(false);
-      setNewPublisher({ name: "", publisher_id: "" });
+      setNewPublisher(emptyPublisher());
       fetchData();
     } catch (err: any) {
       alert(err?.response?.data?.error || "Failed to create publisher");
@@ -85,14 +95,50 @@ export default function PublishersPage() {
       />
 
       <EntityForm title="New Publisher" isOpen={showAddModal} onClose={() => setShowAddModal(false)} onSubmit={handleCreate} isSubmitting={isSubmitting} error={undefined}>
-        <div className="space-y-4">
+        <div className="space-y-6">
           <div>
             <label className="text-xs text-text-secondary font-bold">Name *</label>
-            <input className="input w-full" value={newPublisher.name} onChange={(e) => setNewPublisher({ ...newPublisher, name: e.target.value })} required />
+            <input className="w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30" value={newPublisher.name} onChange={(e) => setNewPublisher({ ...newPublisher, name: e.target.value })} required />
           </div>
           <div>
             <label className="text-xs text-text-secondary font-bold">Publisher ID</label>
-            <input className="input w-full" value={newPublisher.publisher_id} onChange={(e) => setNewPublisher({ ...newPublisher, publisher_id: e.target.value })} />
+            <input className="w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30" value={newPublisher.publisher_id} onChange={(e) => setNewPublisher({ ...newPublisher, publisher_id: e.target.value })} />
+          </div>
+
+          <div>
+            <div className="mb-3 text-xs font-bold uppercase tracking-wide text-text-secondary">Contact</div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <label className="text-xs text-text-secondary font-bold">Contact Person</label>
+                <input className="w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30" value={newPublisher.contact_person} onChange={(e) => setNewPublisher({ ...newPublisher, contact_person: e.target.value })} />
+              </div>
+              <div>
+                <label className="text-xs text-text-secondary font-bold">Email</label>
+                <input type="email" className="w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30" value={newPublisher.contact_email} onChange={(e) => setNewPublisher({ ...newPublisher, contact_email: e.target.value })} />
+              </div>
+              <div>
+                <label className="text-xs text-text-secondary font-bold">Phone</label>
+                <input className="w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30" value={newPublisher.contact_phone} onChange={(e) => setNewPublisher({ ...newPublisher, contact_phone: e.target.value })} />
+              </div>
+              <div>
+                <label className="text-xs text-text-secondary font-bold">Website</label>
+                <input type="url" className="w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30" value={newPublisher.website} onChange={(e) => setNewPublisher({ ...newPublisher, website: e.target.value })} placeholder="https://..." />
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div className="mb-3 text-xs font-bold uppercase tracking-wide text-text-secondary">Publishing Profile</div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <label className="text-xs text-text-secondary font-bold">Rights Type</label>
+                <input className="w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30" value={newPublisher.rights_type} onChange={(e) => setNewPublisher({ ...newPublisher, rights_type: e.target.value })} placeholder="e.g. Publishing Administration" />
+              </div>
+              <div className="md:col-span-2">
+                <label className="text-xs text-text-secondary font-bold">Address</label>
+                <textarea className="min-h-24 w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30" value={newPublisher.address} onChange={(e) => setNewPublisher({ ...newPublisher, address: e.target.value })} placeholder="Registered or operating address" />
+              </div>
+            </div>
           </div>
         </div>
       </EntityForm>
