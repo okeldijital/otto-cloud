@@ -8,6 +8,7 @@ import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import EntityForm from "@/components/EntityForm";
 import EntityProfileImageField from "@/components/media/EntityProfileImageField";
+import EntityArtwork from "@/components/media/EntityArtwork";
 import api from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { ArrowLeft, Building, Edit, Globe, Hash, Mail, MapPin, Music, Phone, Trash2, User } from "lucide-react";
@@ -123,6 +124,9 @@ export default function ProDetailPage() {
         </div>
 
         <div className="space-y-6">
+          <Card title="Profile">
+            <EntityArtwork entityType="pro" entityId={id} alt={pro.name || "PRO"} placeholder="label" size={220} className="w-full rounded-xl" />
+          </Card>
           <Card title="Linked Works">
             {works.length === 0 ? <p className="text-text-secondary text-sm">No works linked to this PRO.</p> : <div className="space-y-2">{works.map((work: any) => <div key={work.id} className="flex items-center justify-between p-2 rounded-lg bg-surface-elevated cursor-pointer hover:bg-surface" onClick={() => router.push(`/catalog/works/${work.id}`)}><span className="text-sm flex items-center gap-2"><Building size={15} />{work.title}</span><Badge variant="neutral">{work.iswc_code || "—"}</Badge></div>)}</div>}
           </Card>
