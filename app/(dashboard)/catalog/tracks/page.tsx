@@ -36,9 +36,17 @@ export default function TracksPage() {
 
   const fetchData = async () => {
     try {
-      const res = await api.get("/tracks");
+      const [res, artistsRes, releasesRes, worksRes] = await Promise.all([
+        api.get("/tracks"),
+        api.get("/artists"),
+        api.get("/releases?limit=100"),
+        api.get("/works?limit=100"),
+      ]);
       const items = Array.isArray(res.data) ? res.data : res.data?.items || [];
-      setData(items);\n      setArtists(Array.isArray(artistsRes.data) ? artistsRes.data : artistsRes.data?.items || []);\n      setReleases(Array.isArray(releasesRes.data) ? releasesRes.data : releasesRes.data?.items || []);\n      setWorks(Array.isArray(worksRes.data) ? worksRes.data : worksRes.data?.items || []);
+      setData(items);
+      setArtists(Array.isArray(artistsRes.data) ? artistsRes.data : artistsRes.data?.items || []);
+      setReleases(Array.isArray(releasesRes.data) ? releasesRes.data : releasesRes.data?.items || []);
+      setWorks(Array.isArray(worksRes.data) ? worksRes.data : worksRes.data?.items || []);
     } catch (err) {
       console.error("Failed to fetch tracks:", err);
     } finally {
@@ -85,6 +93,9 @@ export default function TracksPage() {
         isrc_code: newTrack.isrc_code || undefined,
         genre: newTrack.genre || undefined,
         duration: newTrack.duration || undefined,
+        release_id: newTrack.release_id ? Number(newTrack.release_id) : null,
+        work_id: newTrack.work_id ? Number(newTrack.work_id) : null,
+        artist_ids: newTrack.artist_ids,
       });
       setShowAddModal(false);
       setNewTrack({ title: "", isrc_code: "", genre: "", duration: "", release_id: "", work_id: "", artist_ids: [] });
