@@ -17,6 +17,7 @@ const columns = [
 
 export default function PublishersPage() {
   const router = useRouter();
+  const { isPlatformAuthority } = useAuth();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
