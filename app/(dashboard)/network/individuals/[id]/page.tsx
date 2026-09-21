@@ -17,6 +17,7 @@ export default function IndividualDetailPage() {
   const [loading, setLoading] = useState(true);
   const [editOpen, setEditOpen] = useState(false);
   const [editData, setEditData] = useState<any>({});
+  const [organizations, setOrganizations] = useState<any[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
   const fetchIndividual = async () => {
@@ -32,12 +33,13 @@ export default function IndividualDetailPage() {
         phone: data.phone || "",
         role: data.role || "",
         relationship_strength: data.relationship_strength || "Regular",
+        organization_ids: (data.individual_organizations || []).map((item: any) => item.organization_id),
       });
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchIndividual(); }, [id]);
+  useEffect(() => { fetchIndividual(); api.get("/network/organizations").then((res) => setOrganizations(Array.isArray(res.data) ? res.data : [])).catch(() => setOrganizations([])); }, [id]);
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,7 +69,7 @@ export default function IndividualDetailPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <button onClick={() => router.push("/network/individuals")} className="text-text-secondary hover:text-white transition-colors">
+        <button onClick={() => router.push("/network/individuals")} className="text-text-secondary transition-colors hover:text-text-accent">
           <ChevronLeft size={20} />
         </button>
         <PageHeader title={fullName} subtitle={individual.role || "Professional"} actions={
@@ -82,19 +84,19 @@ export default function IndividualDetailPage() {
         <div className="lg:col-span-2 space-y-6">
           <Card title="Contribution Catalog">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-white/5 rounded-xl p-6 text-center">
+              <div className="bg-surface-elevated rounded-xl p-6 text-center">
                 <Music size={24} className="mx-auto text-text-secondary mb-3 opacity-40" />
-                <div className="text-2xl font-bold text-white">0</div>
+                <div className="text-2xl font-bold text-text-accent">0</div>
                 <div className="text-xs text-text-secondary mt-1">Tracks</div>
               </div>
-              <div className="bg-white/5 rounded-xl p-6 text-center">
+              <div className="bg-surface-elevated rounded-xl p-6 text-center">
                 <Disc size={24} className="mx-auto text-text-secondary mb-3 opacity-40" />
-                <div className="text-2xl font-bold text-white">0</div>
+                <div className="text-2xl font-bold text-text-accent">0</div>
                 <div className="text-xs text-text-secondary mt-1">Releases</div>
               </div>
-              <div className="bg-white/5 rounded-xl p-6 text-center">
+              <div className="bg-surface-elevated rounded-xl p-6 text-center">
                 <Music size={24} className="mx-auto text-text-secondary mb-3 opacity-40" />
-                <div className="text-2xl font-bold text-white">0</div>
+                <div className="text-2xl font-bold text-text-accent">0</div>
                 <div className="text-xs text-text-secondary mt-1">Works</div>
               </div>
             </div>
@@ -104,10 +106,10 @@ export default function IndividualDetailPage() {
             <Card title={`Organizations (${orgs.length})`}>
               <div className="space-y-2">
                 {orgs.map((org: any) => (
-                  <div key={org.id} className="flex items-center justify-between p-3 rounded-lg bg-white/5 hover:bg-white/10 cursor-pointer"
+                  <div key={org.id} className="flex items-center justify-between p-3 rounded-lg bg-surface-elevated hover:bg-surface cursor-pointer"
                     onClick={() => router.push(`/network/organizations/${org.id}`)}>
                     <div className="flex items-center gap-3">
-                      <Building2 size={16} className="text-amber-400" />
+                      <Building2 size={16} className="text-accent" />
                       <span className="text-sm font-medium">{org.name}</span>
                     </div>
                     <Badge variant="neutral" size="sm">{org.org_type || "Organization"}</Badge>
@@ -119,16 +121,16 @@ export default function IndividualDetailPage() {
         </div>
 
         <div className="space-y-6">
-          <div className="bg-premium-glass border border-white/5 rounded-2xl p-6 backdrop-blur-xl text-center">
-            <div className="w-24 h-24 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-4 overflow-hidden">
+          <div className="bg-surface border border-border rounded-2xl p-6 backdrop-blur-xl text-center">
+            <div className="w-24 h-24 rounded-full bg-surface-elevated flex items-center justify-center mx-auto mb-4 overflow-hidden">
               {individual.image_url ? (
                 <img src={individual.image_url} alt={fullName} className="w-full h-full object-cover" />
               ) : (
                 <UserCircle size={48} className="text-text-secondary" />
               )}
             </div>
-            <h2 className="text-xl font-bold text-white mb-1">{fullName}</h2>
-            <div className="text-primary text-sm font-medium mb-3">{individual.role || "Contributor"}</div>
+            <h2 className="text-xl font-bold text-text-accent mb-1">{fullName}</h2>
+            <div className="text-accent text-sm font-medium mb-3">{individual.role || "Contributor"}</div>
             <Badge variant="neutral" size="sm">#{individual.id}</Badge>
           </div>
 
@@ -167,27 +169,34 @@ export default function IndividualDetailPage() {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="text-xs text-text-secondary font-bold">First Name</label>
-            <input className="input w-full" value={editData.first_name} onChange={(e) => setEditData({ ...editData, first_name: e.target.value })} required />
+            <input className="w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30" value={editData.first_name} onChange={(e) => setEditData({ ...editData, first_name: e.target.value })} required />
           </div>
           <div>
             <label className="text-xs text-text-secondary font-bold">Last Name</label>
-            <input className="input w-full" value={editData.last_name} onChange={(e) => setEditData({ ...editData, last_name: e.target.value })} required />
+            <input className="w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30" value={editData.last_name} onChange={(e) => setEditData({ ...editData, last_name: e.target.value })} required />
           </div>
           <div>
             <label className="text-xs text-text-secondary font-bold">Email</label>
-            <input className="input w-full" type="email" value={editData.email} onChange={(e) => setEditData({ ...editData, email: e.target.value })} />
+            <input className="w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30" type="email" value={editData.email} onChange={(e) => setEditData({ ...editData, email: e.target.value })} />
           </div>
           <div>
             <label className="text-xs text-text-secondary font-bold">Phone</label>
-            <input className="input w-full" value={editData.phone} onChange={(e) => setEditData({ ...editData, phone: e.target.value })} />
+            <input className="w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30" value={editData.phone} onChange={(e) => setEditData({ ...editData, phone: e.target.value })} />
           </div>
           <div>
             <label className="text-xs text-text-secondary font-bold">Role / Title</label>
-            <input className="input w-full" value={editData.role} onChange={(e) => setEditData({ ...editData, role: e.target.value })} />
+            <input className="w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30" value={editData.role} onChange={(e) => setEditData({ ...editData, role: e.target.value })} />
+          </div>
+          <div>
+            <label className="text-xs text-text-secondary font-bold">Organization</label>
+            <select className="w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/30" value={editData.organization_ids?.[0] || ""} onChange={(e) => setEditData({ ...editData, organization_ids: e.target.value ? [Number(e.target.value)] : [] })}>
+              <option value="">No organization</option>
+              {organizations.map((org) => <option key={org.id} value={org.id}>{org.name}</option>)}
+            </select>
           </div>
           <div>
             <label className="text-xs text-text-secondary font-bold">Relationship Strength</label>
-            <select className="input w-full" value={editData.relationship_strength} onChange={(e) => setEditData({ ...editData, relationship_strength: e.target.value })}>
+            <select className="w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30" value={editData.relationship_strength} onChange={(e) => setEditData({ ...editData, relationship_strength: e.target.value })}>
               <option value="Core">Core</option>
               <option value="Regular">Regular</option>
               <option value="Ad-hoc">Ad-hoc</option>
