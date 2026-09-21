@@ -311,9 +311,10 @@ export function isGlobalReferenceDataAuthority(ctx: {
   isSuperAdmin?: boolean;
   permissions?: string[];
   roles?: string[];
+  role?: string | null;
 }): boolean {
   if (isPlatformAuthority(ctx)) return true;
-  return (ctx.roles ?? []).includes("owner");
+  return ctx.role === "owner" || (ctx.roles ?? []).includes("owner");
 }
 
 export function assertGlobalReferenceDataAuthority(ctx: {
