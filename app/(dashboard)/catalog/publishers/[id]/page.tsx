@@ -8,6 +8,7 @@ import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import EntityForm from "@/components/EntityForm";
 import EntityProfileImageField from "@/components/media/EntityProfileImageField";
+import EntityArtwork from "@/components/media/EntityArtwork";
 import api from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { ArrowLeft, Building, Edit, Hash, Mail, MapPin, Music, Phone, Trash2, Globe, User } from "lucide-react";
@@ -147,6 +148,9 @@ export default function PublisherDetailPage() {
         </div>
 
         <div className="space-y-6">
+          <Card title="Profile">
+            <EntityArtwork entityType="publisher" entityId={id} alt={publisher.name || "Publisher"} placeholder="label" size={220} className="w-full rounded-xl" />
+          </Card>
           <Card title="Linked Works">
             {works.length === 0 ? (
               <p className="text-text-secondary text-sm">No works linked to this publisher.</p>
