@@ -7,7 +7,7 @@ import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import api from "@/lib/api";
-import { ArrowLeft, Building, Edit, Hash, Music, Trash2 } from "lucide-react";
+import { ArrowLeft, Building, Edit, Hash, Mail, MapPin, Music, Phone, Trash2, Globe, User } from "lucide-react";
 
 export default function PublisherDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -16,6 +16,9 @@ export default function PublisherDetailPage() {
   const [artists, setArtists] = useState<any[]>([]);
   const [works, setWorks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editOpen, setEditOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editData, setEditData] = useState<any>({});
 
   useEffect(() => {
     const fetchData = async () => {
@@ -36,6 +39,43 @@ export default function PublisherDetailPage() {
     };
     fetchData();
   }, [id]);
+
+  const handleEdit = () => {
+    setEditData({
+      name: publisher.name || "",
+      publisher_id: publisher.publisher_id || "",
+      contact_person: publisher.contact_person || "",
+      contact_email: publisher.contact_email || "",
+      contact_phone: publisher.contact_phone || "",
+      website: publisher.website || "",
+      address: publisher.address || "",
+      rights_type: publisher.rights_type || "",
+    });
+    setEditOpen(true);
+  };
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      const { data } = await api.put(`/publishers?id=${id}`, {
+        name: editData.name.trim(),
+        publisher_id: editData.publisher_id.trim() || null,
+        contact_person: editData.contact_person.trim() || null,
+        contact_email: editData.contact_email.trim() || null,
+        contact_phone: editData.contact_phone.trim() || null,
+        website: editData.website.trim() || null,
+        address: editData.address.trim() || null,
+        rights_type: editData.rights_type.trim() || null,
+      });
+      setPublisher(data);
+      setEditOpen(false);
+    } catch (err: any) {
+      alert(err?.response?.data?.error || "Update failed");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleRename = async () => {
     const name = window.prompt("Publisher name:", publisher.name || "");
@@ -66,7 +106,7 @@ export default function PublisherDetailPage() {
       <div className="flex items-center gap-4">
         <button
           onClick={() => router.push("/catalog/publishers")}
-          className="text-text-secondary hover:text-white transition-colors"
+          className="text-text-secondary hover:text-text-primary transition-colors"
           aria-label="Back to publishers"
         >
           <ArrowLeft size={20} />
@@ -76,8 +116,8 @@ export default function PublisherDetailPage() {
           subtitle={`Publisher #${id}`}
           actions={
             <div className="flex gap-2">
-              <Button variant="secondary" size="sm" onClick={handleRename}>
-                <Edit size={14} /> Rename
+              <Button variant="secondary" size="sm" onClick={handleEdit}>
+                <Edit size={14} /> Edit
               </Button>
               <Button variant="danger" size="sm" onClick={handleDelete}>
                 <Trash2 size={14} /> Delete
@@ -110,7 +150,7 @@ export default function PublisherDetailPage() {
                 {artists.map((artist: any) => (
                   <div
                     key={artist.id}
-                    className="flex items-center gap-3 p-2 rounded-lg bg-white/5 cursor-pointer hover:bg-white/10"
+                    className="flex items-center gap-3 p-2 rounded-lg bg-surface-elevated cursor-pointer hover:bg-surface"
                     onClick={() => router.push(`/catalog/artists/${artist.id}`)}
                   >
                     <Music size={16} />
@@ -131,7 +171,7 @@ export default function PublisherDetailPage() {
                 {works.map((work: any) => (
                   <div
                     key={work.id}
-                    className="flex items-center justify-between p-2 rounded-lg bg-white/5 cursor-pointer hover:bg-white/10"
+                    className="flex items-center justify-between p-2 rounded-lg bg-surface-elevated cursor-pointer hover:bg-surface"
                     onClick={() => router.push(`/catalog/works/${work.id}`)}
                   >
                     <span className="text-sm flex items-center gap-2"><Building size={15} />{work.title}</span>
@@ -153,3 +193,6 @@ export default function PublisherDetailPage() {
     </div>
   );
 }
+
+
+// Publisher editor is intentionally colocated with the detail workspace to keep all publisher identity and contact fields editable from one surface.
