@@ -12,6 +12,8 @@ import GroupMembersManager from "@/components/catalog/GroupMembersManager";
 import ArtistDocumentsPanel from "@/components/catalog/ArtistDocumentsPanel";
 import ArtistFinancialsPanel from "@/components/catalog/ArtistFinancialsPanel";
 import EntityArtwork from "@/components/media/EntityArtwork";
+import RelationshipSelect from "@/components/catalog/RelationshipSelect";
+import { useAuth } from "@/contexts/AuthContext";
 import { invalidateEntityArtwork } from "@/hooks/useAttachment";
 import { optimizeImage } from "@/lib/media/image-optimization";
 import api from "@/lib/api";
@@ -34,6 +36,7 @@ function errorMessage(err: any, fallback: string): string {
 export default function ArtistDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const { canManageGlobalReferenceData } = useAuth();
   const [artist, setArtist] = useState<Artist | null>(null);
   const [releases, setReleases] = useState<any[]>([]);
   const [works, setWorks] = useState<any[]>([]);
@@ -46,6 +49,9 @@ export default function ArtistDetailPage() {
   const [editData, setEditData] = useState<any>({});
   const [profileImage, setProfileImage] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [relationModal, setRelationModal] = useState<"label" | "publisher" | "pro" | null>(null);
+  const [relationSubmitting, setRelationSubmitting] = useState(false);
+  const [relationForm, setRelationForm] = useState({ name: "", id: "", contact_person: "", contact_email: "", contact_phone: "", website: "", address: "", territory: "" });
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -102,6 +108,47 @@ export default function ArtistDetailPage() {
       youtube_url: streaming.youtube || "",
     });
     setEditOpen(true);
+  };
+
+  const openRelationModal = (type: "label" | "publisher" | "pro") => {
+    setRelationForm({ name: "", id: "", contact_person: "", contact_email: "", contact_phone: "", website: "", address: "", territory: "" });
+    setRelationModal(type);
+  };
+
+  const handleCreateRelation = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!relationModal || !relationForm.name.trim()) return;
+    setRelationSubmitting(true);
+    try {
+      const endpoint = relationModal === "label" ? "/labels" : relationModal === "publisher" ? "/publishers" : "/pros";
+      const key = relationModal === "label" ? "label_id" : relationModal === "publisher" ? "publisher_id" : "pro_id";
+      const body: any = {
+        name: relationForm.name.trim(),
+        [key]: relationForm.id.trim() || null,
+        contact_person: relationForm.contact_person.trim() || null,
+        contact_email: relationForm.contact_email.trim() || null,
+        contact_phone: relationForm.contact_phone.trim() || null,
+        website: relationForm.website.trim() || null,
+        address: relationForm.address.trim() || null,
+      };
+      if (relationModal === "pro") body.territory = relationForm.territory.trim() || null;
+      const { data } = await api.post(endpoint, body);
+      if (relationModal === "label") {
+        setLabels((current) => [...current, data].sort((a, b) => String(a.name).localeCompare(String(b.name))));
+        setEditData((current: any) => ({ ...current, label_id: String(data.id) }));
+      } else if (relationModal === "publisher") {
+        setPublishers((current) => [...current, data].sort((a, b) => String(a.name).localeCompare(String(b.name))));
+        setEditData((current: any) => ({ ...current, publisher_id: String(data.id) }));
+      } else {
+        setPros((current) => [...current, data].sort((a, b) => String(a.name).localeCompare(String(b.name))));
+        setEditData((current: any) => ({ ...current, pro_id: String(data.id) }));
+      }
+      setRelationModal(null);
+    } catch (err: any) {
+      alert(errorMessage(err, "Failed to create " + relationModal));
+    } finally {
+      setRelationSubmitting(false);
+    }
   };
 
   const handleProfileUpload = async (file: File) => {
@@ -287,18 +334,9 @@ export default function ArtistDetailPage() {
               <p className="mt-1 text-xs text-text-secondary">Related label, publisher and performing rights organisation.</p>
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <div>
-                <label className="mb-1.5 block text-xs font-medium text-text-secondary">Label ID</label>
-                <input className="input w-full" inputMode="numeric" value={editData.label_id || ""} onChange={(e) => setEditData({ ...editData, label_id: e.target.value })} />
-              </div>
-              <div>
-                <label className="mb-1.5 block text-xs font-medium text-text-secondary">Publisher ID</label>
-                <input className="input w-full" inputMode="numeric" value={editData.publisher_id || ""} onChange={(e) => setEditData({ ...editData, publisher_id: e.target.value })} />
-              </div>
-              <div>
-                <label className="mb-1.5 block text-xs font-medium text-text-secondary">PRO ID</label>
-                <input className="input w-full" inputMode="numeric" value={editData.pro_id || ""} onChange={(e) => setEditData({ ...editData, pro_id: e.target.value })} />
-              </div>
+              <RelationshipSelect label="Label" placeholder="Select label..." items={labels} value={editData.label_id || ""} onChange={(value) => setEditData({ ...editData, label_id: value })} onAddNew={() => openRelationModal("label")} addNewLabel="Add new label" />
+              <RelationshipSelect label="Publisher" placeholder="Select publisher..." items={publishers} value={editData.publisher_id || ""} onChange={(value) => setEditData({ ...editData, publisher_id: value })} onAddNew={canManageGlobalReferenceData ? () => openRelationModal("publisher") : undefined} addNewLabel="Add new publisher" />
+              <RelationshipSelect label="PRO" placeholder="Select PRO..." items={pros} value={editData.pro_id || ""} onChange={(value) => setEditData({ ...editData, pro_id: value })} onAddNew={canManageGlobalReferenceData ? () => openRelationModal("pro") : undefined} addNewLabel="Add new PRO" />
             </div>
           </section>
 
@@ -355,6 +393,47 @@ export default function ArtistDetailPage() {
               </div>
             </div>
           </section>
+        </div>
+      </EntityForm>
+      
+      <EntityForm
+        title={relationModal === "label" ? "New Label" : relationModal === "publisher" ? "New Publisher" : "New PRO"}
+        isOpen={relationModal !== null}
+        onClose={() => setRelationModal(null)}
+        onSubmit={handleCreateRelation}
+        isSubmitting={relationSubmitting}
+        error={undefined}
+      >
+        <div className="space-y-6">
+          <section>
+            <div className="mb-4 border-b border-border pb-2">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-text-primary">Identity</h3>
+              <p className="mt-1 text-xs text-text-secondary">Create the relationship record and it will be selected on this artist.</p>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <label className="mb-1.5 block text-xs font-medium text-text-secondary">Name *</label>
+                <input className="input w-full" value={relationForm.name} onChange={(e) => setRelationForm({ ...relationForm, name: e.target.value })} required autoFocus />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-text-secondary">{relationModal === "label" ? "Label ID" : relationModal === "publisher" ? "Publisher ID" : "PRO ID"}</label>
+                <input className="input w-full" value={relationForm.id} onChange={(e) => setRelationForm({ ...relationForm, id: e.target.value })} />
+              </div>
+              {relationModal === "pro" && <div><label className="mb-1.5 block text-xs font-medium text-text-secondary">Territory</label><input className="input w-full" value={relationForm.territory} onChange={(e) => setRelationForm({ ...relationForm, territory: e.target.value })} placeholder="e.g. South Africa" /></div>}
+            </div>
+          </section>
+          {relationModal !== null && relationModal !== "label" && (
+            <section>
+              <div className="mb-4 border-b border-border pb-2"><h3 className="text-xs font-bold uppercase tracking-widest text-text-primary">Contact</h3></div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div><label className="mb-1.5 block text-xs font-medium text-text-secondary">Contact Person</label><input className="input w-full" value={relationForm.contact_person} onChange={(e) => setRelationForm({ ...relationForm, contact_person: e.target.value })} /></div>
+                <div><label className="mb-1.5 block text-xs font-medium text-text-secondary">Email</label><input className="input w-full" type="email" value={relationForm.contact_email} onChange={(e) => setRelationForm({ ...relationForm, contact_email: e.target.value })} /></div>
+                <div><label className="mb-1.5 block text-xs font-medium text-text-secondary">Phone</label><input className="input w-full" value={relationForm.contact_phone} onChange={(e) => setRelationForm({ ...relationForm, contact_phone: e.target.value })} /></div>
+                <div><label className="mb-1.5 block text-xs font-medium text-text-secondary">Website</label><input className="input w-full" type="url" value={relationForm.website} onChange={(e) => setRelationForm({ ...relationForm, website: e.target.value })} placeholder="https://..." /></div>
+                <div className="sm:col-span-2"><label className="mb-1.5 block text-xs font-medium text-text-secondary">Address</label><textarea className="input w-full" value={relationForm.address} onChange={(e) => setRelationForm({ ...relationForm, address: e.target.value })} /></div>
+              </div>
+            </section>
+          )}
         </div>
       </EntityForm>
     </div>
