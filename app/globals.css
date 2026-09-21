@@ -47,6 +47,112 @@ select {
   font: inherit;
 }
 
+/*
+ * Signal compatibility layer
+ *
+ * Some legacy modules still use the pre-Signal utility vocabulary
+ * (.input, primary, ghost-btn, etc.). These are presentation aliases only;
+ * they must resolve to the locked Signal tokens instead of falling back to
+ * browser defaults. This keeps older modules visually consistent while they
+ * are incrementally migrated to the shared UI primitives.
+ */
+@layer base {
+  input,
+  textarea,
+  select {
+    color: var(--color-text-primary);
+    background-color: var(--color-surface-elevated);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: color-mix(in srgb, var(--color-text-secondary) 70%, transparent);
+  }
+
+  input:focus,
+  textarea:focus,
+  select:focus {
+    outline: none;
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 2px rgba(0, 229, 255, 0.14);
+  }
+
+  option {
+    color: var(--color-text-primary);
+    background: var(--color-surface-elevated);
+  }
+}
+
+.input {
+  width: 100%;
+  min-height: 40px;
+  padding: 0.625rem 0.75rem;
+  color: var(--color-text-primary);
+  background-color: var(--color-surface-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition: border-color 140ms ease, box-shadow 140ms ease, background-color 140ms ease;
+}
+
+.input::placeholder {
+  color: color-mix(in srgb, var(--color-text-secondary) 70%, transparent);
+}
+
+.input:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px rgba(0, 229, 255, 0.14);
+}
+
+.text-primary {
+  color: var(--color-accent) !important;
+}
+
+.bg-primary {
+  background-color: var(--color-accent) !important;
+}
+
+.border-primary {
+  border-color: var(--color-accent) !important;
+}
+
+.text-primary:hover,
+.hover\\:text-primary:hover {
+  color: var(--color-accent-soft) !important;
+}
+
+.focus\\:ring-primary:focus {
+  --tw-ring-color: var(--color-accent);
+}
+
+.ghost-btn {
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+
+.ghost-btn:hover {
+  color: var(--color-text-primary);
+  background: var(--color-surface-elevated);
+  border-color: var(--color-border);
+}
+
+.btn-secondary {
+  color: var(--color-text-primary);
+  background: var(--color-surface-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.btn-secondary:hover {
+  background: var(--color-surface);
+  border-color: var(--border-strong);
+}
+
 button,
 a {
   -webkit-tap-highlight-color: transparent;
