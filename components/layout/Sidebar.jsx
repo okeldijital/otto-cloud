@@ -2,7 +2,7 @@
 import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, FolderOpen, FileText, BarChart3, Settings, Music, ListMusic, ShieldCheck, ChevronDown, ChevronRight, UserCircle, Building2, BookOpen, HardDrive, Inbox, Users, X, FileCheck, Scale } from 'lucide-react';
+import { LayoutDashboard, FolderOpen, FileText, Settings, Music, ListMusic, ShieldCheck, ChevronDown, ChevronRight, UserCircle, Building2, BookOpen, Inbox, Users, X, FileCheck, Scale } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSidebar } from '../../contexts/SidebarContext';
 import { useIsMobile } from '../../hooks/useIsMobile';
@@ -19,9 +19,7 @@ const SidebarSection = ({ label, items, onNav }) => {
             </button>
             {isOpen && <div className="mt-xs space-y-1 px-sm">{items.map((item) => {
                 const Icon = item.icon; const active = isActive(item.path);
-                return <Link key={item.path} href={item.path} onClick={onNav} className={`flex items-center gap-md px-md py-2 rounded-md transition-all duration-300 group ${
-                    active ? 'text-text-primary bg-white/10 font-bold shadow-glow border border-border' : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated border border-transparent'
-                }`} title={item.label}>
+                return <Link key={item.path} href={item.path} onClick={onNav} className={`flex items-center gap-md px-md py-2 rounded-md transition-all duration-300 group ${active ? 'text-text-primary bg-white/10 font-bold shadow-glow border border-border' : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated border border-transparent'}`} title={item.label}>
                     <Icon size={18} className={active ? 'text-accent' : 'text-text-secondary group-hover:text-text-primary'} /><span className="text-sm font-medium">{item.label}</span>
                 </Link>;
             })}</div>}
@@ -61,13 +59,13 @@ const Sidebar = () => {
             { icon: UserCircle, label: 'Individuals', path: '/network/individuals', feature: 'network' },
             { icon: Building2, label: 'Organizations', path: '/network/organizations', feature: 'network' },
         ] },
-        { label: 'Administration of Works', items: [
-            { icon: FileText, label: 'Contracts', path: '/admin-of-works/contracts', feature: 'contracts.core' },
-            { icon: Inbox, label: 'Bulk Processing', path: '/contracts/bulk', feature: 'contracts.core' },
+        { label: 'Contracts', items: [
+            { icon: FileText, label: 'Contracts', path: '/contracts', feature: 'contracts.core' },
+            { icon: Inbox, label: 'Import Contracts', path: '/contracts/bulk', feature: 'contracts.core' },
+        ] },
+        { label: 'Rights', items: [
             { icon: Scale, label: 'Rights', path: '/rights', feature: 'rights' },
             { icon: FileCheck, label: 'Rights Review', path: '/rights/review', feature: 'rights' },
-            { icon: ShieldCheck, label: 'Works Administration', path: '/admin-of-works/works', feature: 'contracts.core' },
-            { icon: BarChart3, label: 'Status Quo', path: '/admin-of-works/status-quo', feature: 'contracts.core' },
         ] },
     ], []);
 
@@ -75,9 +73,7 @@ const Sidebar = () => {
         .map((section) => ({ ...section, items: section.items.filter((item) => !item.feature || hasProductFeature(item.feature)) }))
         .filter((section) => section.items.length > 0);
     const simpleLink = (href, label, Icon, active) => (
-        <Link href={href} onClick={handleNav} className={`flex items-center gap-md px-md py-2 rounded-md transition-all duration-300 group ${
-            active ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
-        }`}>
+        <Link href={href} onClick={handleNav} className={`flex items-center gap-md px-md py-2 rounded-md transition-all duration-300 group ${active ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'}`}>
             <Icon size={20} className={active ? 'text-accent' : 'text-text-secondary group-hover:text-text-primary'} />
             <span className="text-sm font-medium">{label}</span>
         </Link>
@@ -85,14 +81,10 @@ const Sidebar = () => {
 
     return <>
         {isMobile && sidebarOpen && <div className="fixed inset-0 bg-black/50 z-sticky" onClick={closeSidebar} />}
-        <div className={`fixed top-0 left-0 h-screen w-[280px] bg-premium-glass border-r border-border flex flex-col z-dropdown shadow-glass backdrop-blur-2xl transition-transform duration-300 ease-in-out ${
-            isMobile ? (sidebarOpen ? 'translate-x-0' : '-translate-x-full') : ''
-        }`}>
+        <div className={`fixed top-0 left-0 h-screen w-[280px] bg-premium-glass border-r border-border flex flex-col z-dropdown shadow-glass backdrop-blur-2xl transition-transform duration-300 ease-in-out ${isMobile ? (sidebarOpen ? 'translate-x-0' : '-translate-x-full') : ''}`}>
             <div className="p-xl flex justify-between items-center"><Logo size="xl" />{isMobile && <button onClick={closeSidebar} className="p-1 text-text-secondary hover:text-white transition-colors"><X size={20} /></button>}</div>
             <nav className="flex-1 overflow-y-auto px-sm pb-xl">
-                <Link href="/dashboard" onClick={handleNav} className={`flex items-center gap-md px-md py-2.5 rounded-md transition-all duration-300 mb-6 group ${
-                    pathname === '/dashboard' ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'
-                }`}>
+                <Link href="/dashboard" onClick={handleNav} className={`flex items-center gap-md px-md py-2.5 rounded-md transition-all duration-300 mb-6 group ${pathname === '/dashboard' ? 'text-white bg-white/10 font-bold shadow-glow border border-white/10' : 'text-text-secondary hover:text-white hover:bg-white/5 border border-transparent'}`}>
                     <LayoutDashboard size={20} className={pathname === '/dashboard' ? 'text-accent' : 'text-text-secondary group-hover:text-text-primary'} />
                     <span className="text-sm font-medium">Dashboard</span>
                 </Link>

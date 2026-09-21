@@ -1,14 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Upload, FileText, CheckCircle, AlertCircle, Loader } from "lucide-react";
+import { Upload, AlertCircle, Loader } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import Card from "@/components/ui/Card";
-import Button from "@/components/ui/Button";
-import Badge from "@/components/ui/Badge";
 import api from "@/lib/api";
 
-export default function BulkProcessingPage() {
+export default function ContractImportPage() {
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [dragActive, setDragActive] = useState(false);
@@ -40,14 +38,12 @@ export default function BulkProcessingPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Bulk Processing" subtitle="Import contracts in bulk via CSV, XLSX, or JSON" />
+      <PageHeader title="Import Contracts" subtitle="Import contract records in bulk via CSV, XLSX, or JSON" />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card title="Import Contracts">
           <div className="space-y-4">
             <div
-              className={`border-2 border-dashed rounded-2xl p-8 text-center transition-colors cursor-pointer ${
-                dragActive ? "border-primary bg-primary/5" : "border-white/10 hover:border-white/20"
-              }`}
+              className={`border-2 border-dashed rounded-2xl p-8 text-center transition-colors cursor-pointer ${dragActive ? "border-accent bg-accent/5" : "border-border hover:border-border"}`}
               onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
               onDragLeave={() => setDragActive(false)}
               onDrop={handleDrop}
