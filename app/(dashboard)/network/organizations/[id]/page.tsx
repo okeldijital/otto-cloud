@@ -30,6 +30,9 @@ export default function OrganizationDetailPage() {
         name: res.data.name,
         org_type: res.data.org_type || "Distributor",
         website: res.data.website || "",
+        contact_person: res.data.contact_person || "",
+        contact_email: res.data.contact_email || "",
+        contact_phone: res.data.contact_phone || "",
         address: res.data.address || "",
       });
     } catch (err) { console.error(err); }
@@ -65,7 +68,7 @@ export default function OrganizationDetailPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <button onClick={() => router.push("/network/organizations")} className="text-text-secondary hover:text-white transition-colors">
+        <button onClick={() => router.push("/network/organizations")} className="text-text-secondary hover:text-text-accent transition-colors">
           <ChevronLeft size={20} />
         </button>
         <PageHeader title={org.name} subtitle={org.org_type || "Organization"} actions={
@@ -79,7 +82,7 @@ export default function OrganizationDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <Card title="Contracts & Catalog">
-            <div className="bg-white/5 rounded-xl p-8 text-center border border-dashed border-white/10">
+            <div className="bg-surface-elevated rounded-xl p-8 text-center border border-dashed border-border">
               <FileText size={32} className="mx-auto text-text-secondary mb-4 opacity-40" />
               <p className="text-text-secondary text-sm mb-4">No active contracts linked to this organization.</p>
               <Button variant="ghost" size="sm" onClick={() => router.push("/contracts")}>+ Initialize Contract</Button>
@@ -87,7 +90,7 @@ export default function OrganizationDetailPage() {
           </Card>
 
           <Card title="Affiliated Catalog">
-            <div className="bg-white/5 rounded-xl p-8 text-center">
+            <div className="bg-surface-elevated rounded-xl p-8 text-center">
               <Building2 size={32} className="mx-auto text-text-secondary mb-4 opacity-40" />
               <p className="text-text-secondary text-sm">Tracks and releases distributed or published by {org.name} will appear here.</p>
             </div>
@@ -97,7 +100,7 @@ export default function OrganizationDetailPage() {
             <Card title={`Individuals (${individuals.length})`}>
               <div className="space-y-2">
                 {individuals.map((ind: any) => (
-                  <div key={ind.id} className="flex items-center justify-between p-3 rounded-lg bg-white/5 hover:bg-white/10 cursor-pointer"
+                  <div key={ind.id} className="flex items-center justify-between p-3 rounded-lg bg-surface-elevated hover:bg-surface cursor-pointer"
                     onClick={() => router.push(`/network/individuals/${ind.id}`)}>
                     <span className="font-medium text-sm">{ind.first_name} {ind.last_name}</span>
                     <span className="text-xs text-text-secondary">{ind.role || "—"}</span>
@@ -109,11 +112,11 @@ export default function OrganizationDetailPage() {
         </div>
 
         <div className="space-y-6">
-          <div className="bg-premium-glass border border-white/5 rounded-2xl p-6 backdrop-blur-xl text-center">
-            <div className="w-20 h-20 rounded-2xl bg-white/5 flex items-center justify-center mx-auto mb-4 text-amber-400">
+          <div className="bg-surface border border-border rounded-2xl p-6 backdrop-blur-xl text-center">
+            <div className="w-20 h-20 rounded-2xl bg-surface-elevated flex items-center justify-center mx-auto mb-4 text-accent">
               <Building2 size={40} />
             </div>
-            <h2 className="text-xl font-bold text-white mb-1">{org.name}</h2>
+            <h2 className="text-xl font-bold text-text-accent mb-1">{org.name}</h2>
             <Badge variant="primary" size="sm">{org.org_type || "Organization"}</Badge>
             {org.address && (
               <div className="flex items-center justify-center gap-2 mt-4 text-text-secondary text-sm">
@@ -130,7 +133,7 @@ export default function OrganizationDetailPage() {
               </div>
               <div className="flex items-center gap-3 text-sm">
                 <Mail size={16} className="text-text-secondary" />
-                <span>No contact email</span>
+                <span>{org.contact_email || "No contact email"}</span>
               </div>
             </div>
           </Card>
@@ -148,21 +151,33 @@ export default function OrganizationDetailPage() {
         <div className="space-y-4">
           <div>
             <label className="text-xs text-text-secondary font-bold">Name</label>
-            <input className="input w-full" value={editData.name} onChange={(e) => setEditData({ ...editData, name: e.target.value })} required />
+            <input className="w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30" value={editData.name} onChange={(e) => setEditData({ ...editData, name: e.target.value })} required />
           </div>
           <div>
             <label className="text-xs text-text-secondary font-bold">Type</label>
-            <select className="input w-full" value={editData.org_type} onChange={(e) => setEditData({ ...editData, org_type: e.target.value })}>
+            <select className="w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30" value={editData.org_type} onChange={(e) => setEditData({ ...editData, org_type: e.target.value })}>
               {ORG_TYPES.map((t) => <option key={t}>{t}</option>)}
             </select>
           </div>
           <div>
+            <label className="text-xs text-text-secondary font-bold">Contact person</label>
+            <input className="w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/30" value={editData.contact_person} onChange={(e) => setEditData({ ...editData, contact_person: e.target.value })} />
+          </div>
+          <div>
+            <label className="text-xs text-text-secondary font-bold">Contact email</label>
+            <input className="w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/30" type="email" value={editData.contact_email} onChange={(e) => setEditData({ ...editData, contact_email: e.target.value })} />
+          </div>
+          <div>
+            <label className="text-xs text-text-secondary font-bold">Contact phone</label>
+            <input className="w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/30" value={editData.contact_phone} onChange={(e) => setEditData({ ...editData, contact_phone: e.target.value })} />
+          </div>
+          <div>
             <label className="text-xs text-text-secondary font-bold">Website</label>
-            <input className="input w-full" value={editData.website} onChange={(e) => setEditData({ ...editData, website: e.target.value })} />
+            <input className="w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30" value={editData.website} onChange={(e) => setEditData({ ...editData, website: e.target.value })} />
           </div>
           <div>
             <label className="text-xs text-text-secondary font-bold">Address</label>
-            <textarea className="input w-full" rows={2} value={editData.address} onChange={(e) => setEditData({ ...editData, address: e.target.value })} />
+            <textarea className="w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30" rows={2} value={editData.address} onChange={(e) => setEditData({ ...editData, address: e.target.value })} />
           </div>
         </div>
       </EntityForm>
