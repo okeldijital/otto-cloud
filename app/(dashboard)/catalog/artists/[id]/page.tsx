@@ -231,26 +231,130 @@ export default function ArtistDetailPage() {
       {activeTab === "financials" && <ArtistFinancialsPanel artistId={String(id)} />}
 
       <EntityForm title="Edit Artist" isOpen={editOpen} onClose={() => setEditOpen(false)} onSubmit={handleUpdate} isSubmitting={submitting} error={undefined}>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="col-span-2"><label className="text-xs text-text-secondary">Legal Name</label><input className="input w-full" value={editData.name || ""} onChange={(e) => setEditData({ ...editData, name: e.target.value })} required /></div>
-          <div className="col-span-2"><label className="text-xs text-text-secondary">Stage Name (AKA)</label><input className="input w-full" value={editData.aka || ""} onChange={(e) => setEditData({ ...editData, aka: e.target.value })} /></div>
-          <div><label className="text-xs text-text-secondary">Nationality</label><input className="input w-full" value={editData.nationality || ""} onChange={(e) => setEditData({ ...editData, nationality: e.target.value })} /></div>
-          <div><label className="text-xs text-text-secondary">IPI Number</label><input className="input w-full" value={editData.ipi_number || ""} onChange={(e) => setEditData({ ...editData, ipi_number: e.target.value })} /></div>
-          <div><label className="text-xs text-text-secondary">Email</label><input className="input w-full" type="email" value={editData.contact_email || ""} onChange={(e) => setEditData({ ...editData, contact_email: e.target.value })} /></div>
-          <div><label className="text-xs text-text-secondary">Phone</label><input className="input w-full" value={editData.contact_phone || ""} onChange={(e) => setEditData({ ...editData, contact_phone: e.target.value })} /></div>
-          <div className="col-span-2"><label className="text-xs text-text-secondary">Address</label><textarea className="input w-full" value={editData.physical_address || ""} onChange={(e) => setEditData({ ...editData, physical_address: e.target.value })} /></div>
-          <div><label className="text-xs text-text-secondary">Label ID</label><input className="input w-full" inputMode="numeric" value={editData.label_id || ""} onChange={(e) => setEditData({ ...editData, label_id: e.target.value })} /></div>
-          <div><label className="text-xs text-text-secondary">Publisher ID</label><input className="input w-full" inputMode="numeric" value={editData.publisher_id || ""} onChange={(e) => setEditData({ ...editData, publisher_id: e.target.value })} /></div>
-          <div><label className="text-xs text-text-secondary">PRO ID</label><input className="input w-full" inputMode="numeric" value={editData.pro_id || ""} onChange={(e) => setEditData({ ...editData, pro_id: e.target.value })} /></div>
-          <div className="col-span-2"><label className="text-xs text-text-secondary">Profile Photo</label><input className="input w-full" type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => setProfileImage(e.target.files?.[0] || null)} /><p className="text-xs text-text-secondary mt-1">Images are automatically resized and compressed before upload. Maximum stored avatar size: 750 KB.</p></div>
-          <div><label className="text-xs text-text-secondary">Instagram</label><input className="input w-full" value={editData.instagram || ""} onChange={(e) => setEditData({ ...editData, instagram: e.target.value })} /></div>
-          <div><label className="text-xs text-text-secondary">Twitter</label><input className="input w-full" value={editData.twitter || ""} onChange={(e) => setEditData({ ...editData, twitter: e.target.value })} /></div>
-          <div><label className="text-xs text-text-secondary">Spotify</label><input className="input w-full" value={editData.spotify_url || ""} onChange={(e) => setEditData({ ...editData, spotify_url: e.target.value })} /></div>
-          <div><label className="text-xs text-text-secondary">Apple Music</label><input className="input w-full" value={editData.apple_music_url || ""} onChange={(e) => setEditData({ ...editData, apple_music_url: e.target.value })} /></div>
-          <div><label className="text-xs text-text-secondary">YouTube</label><input className="input w-full" value={editData.youtube_url || ""} onChange={(e) => setEditData({ ...editData, youtube_url: e.target.value })} /></div>
-          <div><label className="text-xs text-text-secondary">Bank Name</label><input className="input w-full" value={editData.bank_name || ""} onChange={(e) => setEditData({ ...editData, bank_name: e.target.value })} /></div>
-          <div><label className="text-xs text-text-secondary">Account Number</label><input className="input w-full" value={editData.account_number || ""} onChange={(e) => setEditData({ ...editData, account_number: e.target.value })} /></div>
-          <div><label className="text-xs text-text-secondary">Branch Code</label><input className="input w-full" value={editData.branch_code || ""} onChange={(e) => setEditData({ ...editData, branch_code: e.target.value })} /></div>
+        <div className="space-y-8">
+          <section>
+            <div className="mb-4 border-b border-border pb-2">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-text-primary">Identity</h3>
+              <p className="mt-1 text-xs text-text-secondary">Core artist and professional identification.</p>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <label className="mb-1.5 block text-xs font-medium text-text-secondary">Legal Name</label>
+                <input className="input w-full" value={editData.name || ""} onChange={(e) => setEditData({ ...editData, name: e.target.value })} required />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="mb-1.5 block text-xs font-medium text-text-secondary">Stage Name (AKA)</label>
+                <input className="input w-full" value={editData.aka || ""} onChange={(e) => setEditData({ ...editData, aka: e.target.value })} />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-text-secondary">Nationality</label>
+                <input className="input w-full" value={editData.nationality || ""} onChange={(e) => setEditData({ ...editData, nationality: e.target.value })} />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-text-secondary">IPI Number</label>
+                <input className="input w-full" value={editData.ipi_number || ""} onChange={(e) => setEditData({ ...editData, ipi_number: e.target.value })} />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-text-secondary">ID Number</label>
+                <input className="input w-full" value={editData.id_number || ""} onChange={(e) => setEditData({ ...editData, id_number: e.target.value })} />
+              </div>
+            </div>
+          </section>
+
+          <section>
+            <div className="mb-4 border-b border-border pb-2">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-text-primary">Contact</h3>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-text-secondary">Email</label>
+                <input className="input w-full" type="email" value={editData.contact_email || ""} onChange={(e) => setEditData({ ...editData, contact_email: e.target.value })} />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-text-secondary">Phone</label>
+                <input className="input w-full" value={editData.contact_phone || ""} onChange={(e) => setEditData({ ...editData, contact_phone: e.target.value })} />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="mb-1.5 block text-xs font-medium text-text-secondary">Physical Address</label>
+                <textarea className="input w-full" value={editData.physical_address || ""} onChange={(e) => setEditData({ ...editData, physical_address: e.target.value })} />
+              </div>
+            </div>
+          </section>
+
+          <section>
+            <div className="mb-4 border-b border-border pb-2">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-text-primary">Organisation</h3>
+              <p className="mt-1 text-xs text-text-secondary">Related label, publisher and performing rights organisation.</p>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-text-secondary">Label ID</label>
+                <input className="input w-full" inputMode="numeric" value={editData.label_id || ""} onChange={(e) => setEditData({ ...editData, label_id: e.target.value })} />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-text-secondary">Publisher ID</label>
+                <input className="input w-full" inputMode="numeric" value={editData.publisher_id || ""} onChange={(e) => setEditData({ ...editData, publisher_id: e.target.value })} />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-text-secondary">PRO ID</label>
+                <input className="input w-full" inputMode="numeric" value={editData.pro_id || ""} onChange={(e) => setEditData({ ...editData, pro_id: e.target.value })} />
+              </div>
+            </div>
+          </section>
+
+          <section>
+            <div className="mb-4 border-b border-border pb-2">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-text-primary">Profile & Social</h3>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <label className="mb-1.5 block text-xs font-medium text-text-secondary">Profile Photo</label>
+                <input className="input w-full" type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => setProfileImage(e.target.files?.[0] || null)} />
+                <p className="mt-1.5 text-xs text-text-secondary">Images are automatically resized and compressed before upload. Maximum stored avatar size: 750 KB.</p>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-text-secondary">Instagram</label>
+                <input className="input w-full" value={editData.instagram || ""} onChange={(e) => setEditData({ ...editData, instagram: e.target.value })} />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-text-secondary">Twitter</label>
+                <input className="input w-full" value={editData.twitter || ""} onChange={(e) => setEditData({ ...editData, twitter: e.target.value })} />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-text-secondary">Spotify</label>
+                <input className="input w-full" value={editData.spotify_url || ""} onChange={(e) => setEditData({ ...editData, spotify_url: e.target.value })} />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-text-secondary">Apple Music</label>
+                <input className="input w-full" value={editData.apple_music_url || ""} onChange={(e) => setEditData({ ...editData, apple_music_url: e.target.value })} />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="mb-1.5 block text-xs font-medium text-text-secondary">YouTube</label>
+                <input className="input w-full" value={editData.youtube_url || ""} onChange={(e) => setEditData({ ...editData, youtube_url: e.target.value })} />
+              </div>
+            </div>
+          </section>
+
+          <section>
+            <div className="mb-4 border-b border-border pb-2">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-text-primary">Banking</h3>
+              <p className="mt-1 text-xs text-text-secondary">Payment details used for artist financial records.</p>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-text-secondary">Bank Name</label>
+                <input className="input w-full" value={editData.bank_name || ""} onChange={(e) => setEditData({ ...editData, bank_name: e.target.value })} />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-text-secondary">Account Number</label>
+                <input className="input w-full" value={editData.account_number || ""} onChange={(e) => setEditData({ ...editData, account_number: e.target.value })} />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-text-secondary">Branch Code</label>
+                <input className="input w-full" value={editData.branch_code || ""} onChange={(e) => setEditData({ ...editData, branch_code: e.target.value })} />
+              </div>
+            </div>
+          </section>
         </div>
       </EntityForm>
     </div>
