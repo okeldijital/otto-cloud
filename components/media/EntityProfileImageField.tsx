@@ -7,6 +7,28 @@ import { invalidateEntityArtwork } from "@/hooks/useAttachment";
 import { optimizeImage } from "@/lib/media/image-optimization";
 import api from "@/lib/api";
 
+export async function uploadEntityProfileImage(
+  entityType: "label" | "publisher" | "pro",
+  entityId: string | number,
+  file: File
+) {
+  const optimized = await optimizeImage(file, "avatar");
+  const uploadResponse = await api.post("/storage/upload-url", {
+    entityType, entityId: String(entityId), fileName: optimized.name,
+    mimeType: optimized.type, fileSize: optimized.size, folder: entityType, uploadPurpose: "artwork",
+  });
+  const upload = uploadResponse.data;
+  const r2Response = await fetch(upload.uploadUrl, {
+    method: "PUT", headers: { "Content-Type": optimized.type }, body: optimized,
+  });
+  if (!r2Response.ok) throw new Error("Image upload failed (" + r2Response.status + ")");
+  await api.post("/storage/complete", {
+    entityType, entityId: String(entityId), key: upload.key, fileName: upload.fileName,
+    originalName: file.name, mimeType: optimized.type, fileSize: optimized.size, uploadPurpose: "artwork",
+  });
+  invalidateEntityArtwork(entityType, entityId);
+}
+
 type Props = {
   entityType: "label" | "publisher" | "pro";
   entityId: string | number;
@@ -21,34 +43,7 @@ export default function EntityProfileImageField({ entityType, entityId, name, on
     if (!file) return;
     setUploading(true);
     try {
-      const optimized = await optimizeImage(file, "avatar");
-      const uploadResponse = await api.post("/storage/upload-url", {
-        entityType,
-        entityId: String(entityId),
-        fileName: optimized.name,
-        mimeType: optimized.type,
-        fileSize: optimized.size,
-        folder: entityType,
-        uploadPurpose: "artwork",
-      });
-      const upload = uploadResponse.data;
-      const r2Response = await fetch(upload.uploadUrl, {
-        method: "PUT",
-        headers: { "Content-Type": optimized.type },
-        body: optimized,
-      });
-      if (!r2Response.ok) throw new Error(`Image upload failed (${r2Response.status})`);
-      await api.post("/storage/complete", {
-        entityType,
-        entityId: String(entityId),
-        key: upload.key,
-        fileName: upload.fileName,
-        originalName: file.name,
-        mimeType: optimized.type,
-        fileSize: optimized.size,
-        uploadPurpose: "artwork",
-      });
-      invalidateEntityArtwork(entityType, entityId);
+      await uploadEntityProfileImage(entityType, entityId, file);
       onUploaded?.();
     } catch (err: any) {
       alert(err?.response?.data?.error || err?.message || "Failed to upload profile image");
