@@ -7,6 +7,7 @@ import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import EntityForm from "@/components/EntityForm";
+import EntityProfileImageField from "@/components/media/EntityProfileImageField";
 import api from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { ArrowLeft, Building, Edit, Hash, Mail, MapPin, Music, Phone, Trash2, Globe, User } from "lucide-react";
@@ -171,6 +172,7 @@ export default function PublisherDetailPage() {
       </div>
 
       <EntityForm title="Edit Publisher" isOpen={editOpen} onClose={() => setEditOpen(false)} onSubmit={handleUpdate} isSubmitting={isSubmitting} error={undefined}>
+        <div className="mb-6"><EntityProfileImageField entityType="publisher" entityId={id} name={publisher.name || "publisher" } /></div>
         <div className="space-y-8">
           <section>
             <div className="mb-4 border-b border-border pb-2">
