@@ -430,7 +430,6 @@ export default function ArtistDetailPage() {
               </div>
               {relationModal === "pro" && <div><label className="mb-1.5 block text-xs font-medium text-text-secondary">Territory</label><input className="input w-full" value={relationForm.territory} onChange={(e) => setRelationForm({ ...relationForm, territory: e.target.value })} placeholder="e.g. South Africa" /></div>}
             </div>
-          </div>
           {relationModal !== null && relationModal !== "label" && (
             <section>
               <div className="mb-4 border-b border-border pb-2"><h3 className="text-xs font-bold uppercase tracking-widest text-text-primary">Contact</h3></div>
