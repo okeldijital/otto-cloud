@@ -76,8 +76,12 @@ export async function POST(req: Request) {
       },
     });
 
-    const requestedOrgIds = Array.isArray(body.organization_ids)
-      ? [...new Set(body.organization_ids.map((v: any) => parseInt(v)).filter((v: number) => Number.isFinite(v) && v > 0))]
+    const requestedOrgIds: number[] = Array.isArray(body.organization_ids)
+      ? Array.from(new Set(
+          (body.organization_ids as unknown[])
+            .map((value) => Number.parseInt(String(value), 10))
+            .filter((value): value is number => Number.isFinite(value) && value > 0)
+        ))
       : [];
     if (requestedOrgIds.length) {
       const organizations = await prisma.organizations.findMany({
@@ -129,9 +133,11 @@ export async function PUT(req: Request) {
 
     if (body.organization_ids !== undefined) {
       await prisma.individual_organizations.deleteMany({ where: { individual_id: id } });
-      const requestedOrgIds = [...new Set((body.organization_ids as any[])
-        .map((v: any) => parseInt(v))
-        .filter((v: number) => Number.isFinite(v) && v > 0))];
+      const requestedOrgIds: number[] = Array.from(new Set(
+        (body.organization_ids as unknown[])
+          .map((value) => Number.parseInt(String(value), 10))
+          .filter((value): value is number => Number.isFinite(value) && value > 0)
+      ));
       const organizations = await prisma.organizations.findMany({
         where: { id: { in: requestedOrgIds }, organization_id: intOrgId },
         select: { id: true },
