@@ -8,11 +8,12 @@ import Button from "@/components/ui/Button";
 import DataTable from "@/components/DataTable";
 import EntityForm from "@/components/EntityForm";
 import { uploadEntityProfileImage } from "@/components/media/EntityProfileImageField";
+import EntityArtwork from "@/components/media/EntityArtwork";
 import api from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 
 const columns = [
-  { key: "name", label: "Name", sortable: true },
+  { key: "name", label: "Name", sortable: true, render: (row: any) => <div className="flex items-center gap-3"><EntityArtwork entityType="publisher" entityId={row.id} alt={row.name} placeholder="label" size={40} className="shrink-0 rounded-lg" /><span>{row.name}</span></div> },
   { key: "publisher_id", label: "Publisher ID", render: (row: any) => row.publisher_id || "—" },
 ];
 
