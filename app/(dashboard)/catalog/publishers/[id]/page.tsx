@@ -16,6 +16,7 @@ const inputClass = "w-full rounded-lg border border-border bg-surface-elevated p
 export default function PublisherDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const { isPlatformAuthority } = useAuth();
   const [publisher, setPublisher] = useState<any>(null);
   const [artists, setArtists] = useState<any[]>([]);
   const [works, setWorks] = useState<any[]>([]);
