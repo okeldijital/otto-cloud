@@ -3,13 +3,10 @@ import { X, AlertCircle, Loader2 } from 'lucide-react';
 import Button from './ui/Button';
 
 const EntityForm = ({ isOpen, onClose, title, children, onSubmit, isSubmitting, error }) => {
-    // Prevent body scroll when modal is open
     useEffect(() => {
-        if (isOpen) {
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = 'unset';
-        }
+        if (isOpen) document.body.style.overflow = 'hidden';
+        else document.body.style.overflow = 'unset';
+
         return () => {
             document.body.style.overflow = 'unset';
         };
@@ -18,82 +15,24 @@ const EntityForm = ({ isOpen, onClose, title, children, onSubmit, isSubmitting, 
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0f1115]/80 backdrop-blur-md p-4 sm:p-6 overflow-y-auto">
-            <style>{`
-                .entity-form .form-group > label {
-                    display: block;
-                    margin-bottom: 0.5rem;
-                    color: var(--color-text-primary);
-                    font-weight: 500;
-                }
-                .entity-form .form-group > input:not([type="file"]),
-                .entity-form .form-group > select,
-                .entity-form .form-group > textarea {
-                    width: 100%;
-                    border: 1px solid var(--color-border);
-                    border-radius: 0.75rem;
-                    background: var(--color-surface-elevated);
-                    color: var(--color-text-primary);
-                    outline: none;
-                    transition: border-color 140ms ease, box-shadow 140ms ease;
-                    color-scheme: dark;
-                }
-                .entity-form .form-group > input:not([type="file"]),
-                .entity-form .form-group > select {
-                    min-height: 44px;
-                    padding: 0.65rem 0.8rem;
-                }
-                .entity-form .form-group > textarea {
-                    min-height: 100px;
-                    padding: 0.75rem 0.8rem;
-                    resize: vertical;
-                }
-                .entity-form .form-group > input::placeholder,
-                .entity-form .form-group > textarea::placeholder {
-                    color: var(--color-text-secondary);
-                }
-                .entity-form .form-group > input:not([type="file"]):focus,
-                .entity-form .form-group > select:focus,
-                .entity-form .form-group > textarea:focus {
-                    border-color: var(--color-accent);
-                    box-shadow: 0 0 0 2px rgba(0, 229, 255, 0.14);
-                }
-                .entity-form .form-group > input[type="file"] {
-                    width: 100%;
-                    padding: 0.45rem;
-                    border: 1px solid var(--color-border);
-                    border-radius: 0.75rem;
-                    background: var(--color-surface-elevated);
-                    color: var(--color-text-primary);
-                    color-scheme: dark;
-                    cursor: pointer;
-                }
-                .entity-form .form-group > input[type="file"]::file-selector-button {
-                    margin-right: 0.75rem;
-                    padding: 0.5rem 0.8rem;
-                    border: 0;
-                    border-radius: 0.5rem;
-                    background: var(--color-accent);
-                    color: #05080a;
-                    font-weight: 600;
-                    cursor: pointer;
-                }
-                .entity-form .form-group > input[type="file"]::file-selector-button:hover {
-                    filter: brightness(1.08);
-                }
-                .entity-form .form-group > select option {
-                    background: var(--color-surface-elevated);
-                    color: var(--color-text-primary);
-                }
-            `}</style>
+        <div
+            className="fixed inset-0 z-[var(--z-overlay)] flex items-center justify-center bg-black/70 p-4 sm:p-6 backdrop-blur-sm overflow-y-auto"
+            onMouseDown={(e) => {
+                if (e.target === e.currentTarget) onClose();
+            }}
+        >
             <div
-                className="entity-form bg-premium-glass border border-white/10 rounded-3xl shadow-glass w-full max-w-2xl overflow-hidden flex flex-col max-h-full animate-in fade-in zoom-in-95 duration-200"
-                onClick={e => e.stopPropagation()}
+                className="entity-form w-full max-w-3xl max-h-[calc(100vh-2rem)] overflow-hidden flex flex-col bg-surface border border-border rounded-xl shadow-lg"
+                onClick={(e) => e.stopPropagation()}
             >
-                <div className="flex items-center justify-between p-6 border-b border-white/5 bg-white/[0.02]">
-                    <h2 className="text-xl font-black text-white tracking-tight">{title}</h2>
+                <div className="flex items-center justify-between gap-4 px-lg py-4 border-b border-border bg-surface">
+                    <div className="min-w-0">
+                        <p className="text-[11px] font-semibold uppercase tracking-widest text-text-secondary">Edit record</p>
+                        <h2 className="mt-1 text-lg font-semibold tracking-tight text-text-primary truncate">{title}</h2>
+                    </div>
                     <button
-                        className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-text-secondary hover:text-white transition-colors"
+                        type="button"
+                        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-surface-elevated text-text-secondary transition-colors hover:bg-surface hover:text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
                         onClick={onClose}
                         aria-label="Close"
                     >
@@ -101,21 +40,18 @@ const EntityForm = ({ isOpen, onClose, title, children, onSubmit, isSubmitting, 
                     </button>
                 </div>
 
-                <form
-                    onSubmit={onSubmit}
-                    className="flex flex-col flex-1 overflow-hidden"
-                >
-                    <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
+                <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                    <div className="entity-form-body flex-1 overflow-y-auto p-lg custom-scrollbar">
                         {error && (
-                            <div className="mb-6 bg-danger/10 border border-danger/20 rounded-xl p-4 text-danger text-sm flex items-start gap-3">
-                                <AlertCircle size={18} className="shrink-0 mt-0.5" />
+                            <div className="mb-lg flex items-start gap-3 rounded-md border border-danger/30 bg-danger/10 p-3 text-sm text-danger">
+                                <AlertCircle size={18} className="mt-0.5 shrink-0" />
                                 <div>{error}</div>
                             </div>
                         )}
                         {children}
                     </div>
 
-                    <div className="p-6 border-t border-white/5 bg-white/[0.02] flex items-center justify-end gap-3 shrink-0">
+                    <div className="flex shrink-0 items-center justify-end gap-3 border-t border-border bg-surface px-lg py-4">
                         <Button type="button" variant="secondary" onClick={onClose}>
                             Cancel
                         </Button>
@@ -132,6 +68,87 @@ const EntityForm = ({ isOpen, onClose, title, children, onSubmit, isSubmitting, 
                     </div>
                 </form>
             </div>
+
+            <style>{`
+                .entity-form-body input:not([type="file"]),
+                .entity-form-body select,
+                .entity-form-body textarea {
+                    width: 100%;
+                    border: 1px solid var(--color-border);
+                    border-radius: var(--radius-md);
+                    background: var(--color-surface-elevated);
+                    color: var(--color-text-primary);
+                    outline: none;
+                    transition: border-color var(--motion-fast) ease, box-shadow var(--motion-fast) ease, background-color var(--motion-fast) ease;
+                    color-scheme: dark;
+                }
+
+                .entity-form-body input:not([type="file"]),
+                .entity-form-body select {
+                    min-height: 40px;
+                    padding: 0.55rem 0.75rem;
+                }
+
+                .entity-form-body textarea {
+                    min-height: 100px;
+                    padding: 0.7rem 0.75rem;
+                    resize: vertical;
+                }
+
+                .entity-form-body input::placeholder,
+                .entity-form-body textarea::placeholder {
+                    color: var(--color-text-secondary);
+                }
+
+                .entity-form-body input:not([type="file"]):focus,
+                .entity-form-body select:focus,
+                .entity-form-body textarea:focus {
+                    border-color: var(--color-accent);
+                    box-shadow: var(--ring-accent);
+                    background: var(--color-surface);
+                }
+
+                .entity-form-body input[type="file"] {
+                    width: 100%;
+                    padding: 0.35rem;
+                    border: 1px solid var(--color-border);
+                    border-radius: var(--radius-md);
+                    background: var(--color-surface-elevated);
+                    color: var(--color-text-primary);
+                    color-scheme: dark;
+                    cursor: pointer;
+                }
+
+                .entity-form-body input[type="file"]::file-selector-button {
+                    margin-right: 0.75rem;
+                    padding: 0.45rem 0.7rem;
+                    border: 0;
+                    border-radius: var(--radius-sm);
+                    background: var(--color-accent);
+                    color: #05080a;
+                    font-weight: 600;
+                    cursor: pointer;
+                }
+
+                .entity-form-body input[type="file"]::file-selector-button:hover {
+                    filter: brightness(1.08);
+                }
+
+                .entity-form-body select option {
+                    background: var(--color-surface-elevated);
+                    color: var(--color-text-primary);
+                }
+
+                .entity-form-body label {
+                    color: var(--color-text-secondary);
+                }
+
+                .entity-form-body .input {
+                    background: var(--color-surface-elevated);
+                    color: var(--color-text-primary);
+                    border-color: var(--color-border);
+                }
+            `}</style>
         </div>
     );
 };
