@@ -1095,6 +1095,7 @@ model publishers {
   created_at     DateTime? @default(now()) @db.Timestamptz(6)
   updated_at     DateTime? @db.Timestamptz(6)
   contact_person String?   @db.VarChar(255)
+  website        String?   @db.VarChar(500)
   artists        artists[]
   works          works[]
   work_contributors work_contributors[]
