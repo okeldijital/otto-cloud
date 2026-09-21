@@ -60,19 +60,105 @@ export default function ContractRelationshipsSection({ contractId }: Props) {
     return map;
   }, [visibleRelationships]);
 
+  const searchCatalogFallback = async (type: string, q: string) => {
+    const needle = q.trim().toLowerCase();
+    const limit = needle ? 20 : 50;
+
+    const normalize = (items: any[], nameKey: string) =>
+      items
+        .map((item) => ({
+          entityType: type,
+          entityId: String(item.id),
+          entityName: item[nameKey] || item.name || item.title || `#${item.id}`,
+          confidence: 0.99,
+          strategy: "catalog",
+          reason: "Existing catalogue record",
+        }))
+        .filter((item) => !needle || item.entityName.toLowerCase().includes(needle))
+        .slice(0, 10);
+
+    if (type === "artist") {
+      const res = await api.get(`/artists?q=${encodeURIComponent(q)}&limit=${limit}`);
+      const items = Array.isArray(res.data) ? res.data : res.data?.items || [];
+      return normalize(items, "name");
+    }
+
+    if (type === "release") {
+      const res = await api.get(`/releases?limit=${limit}`);
+      const items = Array.isArray(res.data) ? res.data : res.data?.items || [];
+      return normalize(items, "title");
+    }
+
+    if (type === "work") {
+      const res = await api.get(`/works?limit=${limit}`);
+      const items = Array.isArray(res.data) ? res.data : res.data?.items || [];
+      return normalize(items, "title");
+    }
+
+    if (type === "track") {
+      const res = await api.get(`/tracks?q=${encodeURIComponent(q)}&limit=${limit}`);
+      const items = Array.isArray(res.data) ? res.data : res.data?.items || [];
+      return normalize(items, "title");
+    }
+
+    if (type === "label") {
+      const res = await api.get(`/labels?limit=${limit}`);
+      const items = Array.isArray(res.data) ? res.data : res.data?.items || [];
+      return normalize(items, "name");
+    }
+
+    if (type === "publisher") {
+      const res = await api.get(`/publishers?limit=${limit}`);
+      const items = Array.isArray(res.data) ? res.data : res.data?.items || [];
+      return normalize(items, "name");
+    }
+
+    return [];
+  };
+
   const search = async () => {
-    if (query.trim().length < 2) return;
+    const trimmed = query.trim();
+    if (trimmed.length < 2) {
+      setError("Enter at least 2 characters to search.");
+      return;
+    }
+
     try {
       setSearching(true);
       setError("");
       const res = await api.post(`/contracts/${contractId}/relationship-suggestions`, {
         action: "search",
-        q: query.trim(),
+        q: trimmed,
         entityType: searchType,
       });
-      setResults(res.data?.data?.results || []);
+      let nextResults = res.data?.data?.results || [];
+
+      // The contract matcher is authoritative for relationship creation, but
+      // the catalogue APIs are the source of truth for browsing existing
+      // records. Fall back to them when the matcher returns no candidates.
+      if (nextResults.length === 0) {
+        nextResults = await searchCatalogFallback(searchType, trimmed);
+      }
+
+      setResults(nextResults);
+      if (nextResults.length === 0) {
+        setError(`No ${TYPE_LABELS[searchType].toLowerCase()} records matched "${trimmed}".`);
+      }
     } catch (err: any) {
-      setError(err?.response?.data?.message || "Search failed.");
+      try {
+        const fallbackResults = await searchCatalogFallback(searchType, trimmed);
+        setResults(fallbackResults);
+        if (fallbackResults.length === 0) {
+          setError(err?.response?.data?.message || `No ${TYPE_LABELS[searchType].toLowerCase()} records found.`);
+        }
+      } catch (fallbackErr: any) {
+        setResults([]);
+        setError(
+          fallbackErr?.response?.data?.error ||
+          err?.response?.data?.message ||
+          "Search failed."
+        );
+      }
     } finally {
       setSearching(false);
     }
