@@ -15,7 +15,9 @@ import {
   FileCode2,
   FileImage,
   FileSpreadsheet,
+  FileSignature,
   FileText,
+  Music2,
   Folder,
   FolderOpen,
   RefreshCw,
@@ -47,6 +49,7 @@ type DocumentItem = {
 
 type Summary = { total: number; attached: number; unlinked: number; folders: number };
 type ViewMode = "folders" | "list";
+type DocumentTab = "all" | "contracts" | "releases";
 type SortKey = "name" | "createdAt" | "fileSize";
 
 function formatSize(bytes: number | null) {
@@ -96,6 +99,7 @@ export default function OfficeDocumentsPage() {
   const [category, setCategory] = useState("all");
   const [source, setSource] = useState("all");
   const [view, setView] = useState<ViewMode>("folders");
+  const [activeTab, setActiveTab] = useState<DocumentTab>("all");
   const [sortKey, setSortKey] = useState<SortKey>("createdAt");
   const [sortDescending, setSortDescending] = useState(true);
   const [openFolders, setOpenFolders] = useState<Record<string, boolean>>({});
@@ -135,6 +139,8 @@ export default function OfficeDocumentsPage() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const result = documents.filter((document) => {
+      if (activeTab === "contracts" && document.entityType !== "contract") return false;
+      if (activeTab === "releases" && document.entityType !== "release") return false;
       if (entityType !== "all" && document.entityType !== entityType) return false;
       if (category !== "all" && document.category !== category) return false;
       if (source !== "all" && document.source !== source) return false;
@@ -154,7 +160,7 @@ export default function OfficeDocumentsPage() {
       const comparison = compareDocuments(a, b, sortKey);
       return sortDescending ? -comparison : comparison;
     });
-  }, [documents, entityType, category, source, query, sortKey, sortDescending]);
+  }, [documents, activeTab, entityType, category, source, query, sortKey, sortDescending]);
 
   const folders = useMemo(() => {
     const map = new Map<string, DocumentItem[]>();
@@ -278,6 +284,29 @@ export default function OfficeDocumentsPage() {
       </div>
 
       <Card noPadding>
+        <div className="border-b border-border px-4 pt-3">
+          <div className="flex items-center gap-1 overflow-x-auto">
+            {([
+              ["all", "All documents", documents.length, FileText],
+              ["contracts", "Contracts", documents.filter((document) => document.entityType === "contract").length, FileSignature],
+              ["releases", "Releases", documents.filter((document) => document.entityType === "release").length, Music2],
+            ] as const).map(([tab, label, count, Icon]) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => {
+                  setActiveTab(tab);
+                  setEntityType("all");
+                }}
+                className={"inline-flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-colors " + (activeTab === tab ? "border-primary text-text-primary" : "border-transparent text-text-secondary hover:border-border hover:text-text-primary")}
+              >
+                <Icon size={15} />
+                {label}
+                <span className="rounded-full bg-surface-elevated px-1.5 py-0.5 text-[11px]">{count}</span>
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="border-b border-border p-4">
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex min-w-[280px] flex-1 items-center gap-2 rounded-lg border border-border bg-surface-elevated px-3">
