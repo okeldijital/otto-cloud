@@ -113,15 +113,15 @@ export default function LabelsPage() {
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="md:col-span-2">
                 <label className="text-xs text-text-secondary font-bold">Name *</label>
-                <input className="input w-full" value={newLabel.name} onChange={(e) => setNewLabel({ ...newLabel, name: e.target.value })} required />
+                <input className="w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30" value={newLabel.name} onChange={(e) => setNewLabel({ ...newLabel, name: e.target.value })} required />
               </div>
               <div>
                 <label className="text-xs text-text-secondary font-bold">Label ID</label>
-                <input className="input w-full" value={newLabel.label_id} onChange={(e) => setNewLabel({ ...newLabel, label_id: e.target.value })} placeholder="e.g. OTR" />
+                <input className="w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30" value={newLabel.label_id} onChange={(e) => setNewLabel({ ...newLabel, label_id: e.target.value })} placeholder="e.g. OTR" />
               </div>
               <div>
                 <label className="text-xs text-text-secondary font-bold">Logo URL</label>
-                <input className="input w-full" value={newLabel.logo_url} onChange={(e) => setNewLabel({ ...newLabel, logo_url: e.target.value })} placeholder="https://..." />
+                <input className="w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30" value={newLabel.logo_url} onChange={(e) => setNewLabel({ ...newLabel, logo_url: e.target.value })} placeholder="https://..." />
               </div>
             </div>
           </div>
@@ -131,26 +131,26 @@ export default function LabelsPage() {
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
                 <label className="text-xs text-text-secondary font-bold">Contact Person</label>
-                <input className="input w-full" value={newLabel.contact_person} onChange={(e) => setNewLabel({ ...newLabel, contact_person: e.target.value })} />
+                <input className="w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30" value={newLabel.contact_person} onChange={(e) => setNewLabel({ ...newLabel, contact_person: e.target.value })} />
               </div>
               <div>
                 <label className="text-xs text-text-secondary font-bold">Email</label>
-                <input className="input w-full" type="email" value={newLabel.contact_email} onChange={(e) => setNewLabel({ ...newLabel, contact_email: e.target.value })} />
+                <input className="w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30" type="email" value={newLabel.contact_email} onChange={(e) => setNewLabel({ ...newLabel, contact_email: e.target.value })} />
               </div>
               <div>
                 <label className="text-xs text-text-secondary font-bold">Phone</label>
-                <input className="input w-full" value={newLabel.contact_phone} onChange={(e) => setNewLabel({ ...newLabel, contact_phone: e.target.value })} />
+                <input className="w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30" value={newLabel.contact_phone} onChange={(e) => setNewLabel({ ...newLabel, contact_phone: e.target.value })} />
               </div>
               <div>
                 <label className="text-xs text-text-secondary font-bold">Website</label>
-                <input className="input w-full" value={newLabel.website} onChange={(e) => setNewLabel({ ...newLabel, website: e.target.value })} placeholder="https://..." />
+                <input className="w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30" value={newLabel.website} onChange={(e) => setNewLabel({ ...newLabel, website: e.target.value })} placeholder="https://..." />
               </div>
             </div>
           </div>
 
           <div>
             <div className="mb-3 text-xs font-bold uppercase tracking-wide text-text-secondary">Address</div>
-            <textarea className="input min-h-24 w-full" value={newLabel.address} onChange={(e) => setNewLabel({ ...newLabel, address: e.target.value })} placeholder="Registered or operating address" />
+            <textarea className="min-h-24 w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30" value={newLabel.address} onChange={(e) => setNewLabel({ ...newLabel, address: e.target.value })} placeholder="Registered or operating address" />
           </div>
         </div>
       </EntityForm>
