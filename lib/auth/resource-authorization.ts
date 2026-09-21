@@ -204,6 +204,14 @@ export async function requireUploadEntityInOrg(
       if (!row) notFound("PRO");
       break;
     }
+    case "individual":
+    case "individuals":
+      await requireIndividualInOrg(id, ctx);
+      break;
+    case "organization":
+    case "organizations":
+      await requireNetworkOrganizationInOrg(id, ctx);
+      break;
     case "playlist":
     case "playlists":
       await requirePlaylistInOrg(id, ctx);
