@@ -122,7 +122,7 @@ export default function ContractsPage() {
                       <td className="p-4 text-sm text-text-secondary">{formatDate(contract.updated_at)}</td>
                       <td className="p-4">
                         <div className="flex items-center justify-end gap-2">
-                          <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); router.push(`/contracts/${contract.id}`); }}>Open</Button>
+                          <Button variant="ghost" size="sm" onClick={() => router.push(`/contracts/${contract.id}`)}>Open</Button>
                           {deletable && (
                             <button
                               type="button"
