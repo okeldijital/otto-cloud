@@ -105,12 +105,12 @@ export default function PublisherDetailPage() {
         <PageHeader
           title={publisher.name || "Publisher"}
           subtitle={publisher.publisher_id ? `Publisher ID ${publisher.publisher_id}` : `Publisher #${id}`}
-          actions={
+          actions={isPlatformAuthority ? (
             <div className="flex gap-2">
               <Button variant="secondary" size="sm" onClick={handleEdit}><Edit size={14} /> Edit</Button>
               <Button variant="danger" size="sm" onClick={handleDelete}><Trash2 size={14} /> Delete</Button>
             </div>
-          }
+          ) : undefined}
         />
       </div>
 

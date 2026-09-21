@@ -79,12 +79,12 @@ export default function PublishersPage() {
       <PageHeader
         title="Publishers"
         subtitle="Manage publishing relationships"
-        actions={
+        actions={isPlatformAuthority ? (
           <Button variant="primary" size="sm" onClick={() => setShowAddModal(true)}>
             <Plus size={16} />
             Add Publisher
           </Button>
-        }
+        ) : undefined}
       />
       <DataTable
         columns={columns}
