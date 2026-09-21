@@ -7,6 +7,7 @@ import PageHeader from "@/components/ui/PageHeader";
 import Button from "@/components/ui/Button";
 import DataTable from "@/components/DataTable";
 import EntityForm from "@/components/EntityForm";
+import { uploadEntityProfileImage } from "@/components/media/EntityProfileImageField";
 import api from "@/lib/api";
 
 const emptyLabel = () => ({
@@ -31,6 +32,7 @@ export default function LabelsPage() {
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [profileImage, setProfileImage] = useState<File | null>(null);
   const [newLabel, setNewLabel] = useState<any>(emptyLabel());
 
   const fetchData = async () => {
@@ -64,7 +66,7 @@ export default function LabelsPage() {
     if (!newLabel.name.trim()) return;
     setIsSubmitting(true);
     try {
-      await api.post("/labels", {
+      const { data: created } = await api.post("/labels", {
         ...newLabel,
         name: newLabel.name.trim(),
         label_id: newLabel.label_id.trim() || null,
@@ -75,7 +77,9 @@ export default function LabelsPage() {
         address: newLabel.address.trim() || null,
         logo_url: newLabel.logo_url.trim() || null,
       });
-      setShowAddModal(false);
+      if (profileImage) await uploadEntityProfileImage("label", created.id, profileImage);
+            setShowAddModal(false);
+      setProfileImage(null);
       setNewLabel(emptyLabel());
       fetchData();
     } catch (err: any) {
@@ -107,6 +111,11 @@ export default function LabelsPage() {
       />
 
       <EntityForm title="New Label" isOpen={showAddModal} onClose={() => setShowAddModal(false)} onSubmit={handleCreate} isSubmitting={isSubmitting} error={undefined}>
+        <div className="mb-6">
+          <label className="mb-1.5 block text-xs font-medium text-text-secondary">Profile Image</label>
+          <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => setProfileImage(e.target.files?.[0] || null)} />
+          <p className="mt-1.5 text-xs text-text-secondary">Optional. Otto optimizes profile images automatically.</p>
+        </div>
         <div className="space-y-5">
           <div>
             <div className="mb-3 text-xs font-bold uppercase tracking-wide text-text-secondary">Identity</div>
