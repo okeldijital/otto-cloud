@@ -371,7 +371,7 @@ export default function OfficeDocumentsPage() {
             </div>
 
             {folders.map(([name, items]) => {
-              const open = openFolders[name] ?? true;
+              const open = openFolders[name] ?? false;
               const latest = items[0];
               return (
                 <div key={name}>
