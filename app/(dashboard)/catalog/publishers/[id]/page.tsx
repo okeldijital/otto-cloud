@@ -16,7 +16,7 @@ const inputClass = "w-full rounded-lg border border-border bg-surface-elevated p
 export default function PublisherDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { isPlatformAuthority } = useAuth();
+  const { canManageGlobalReferenceData } = useAuth();
   const [publisher, setPublisher] = useState<any>(null);
   const [artists, setArtists] = useState<any[]>([]);
   const [works, setWorks] = useState<any[]>([]);
@@ -106,7 +106,7 @@ export default function PublisherDetailPage() {
         <PageHeader
           title={publisher.name || "Publisher"}
           subtitle={publisher.publisher_id ? `Publisher ID ${publisher.publisher_id}` : `Publisher #${id}`}
-          actions={isPlatformAuthority ? (
+          actions={canManageGlobalReferenceData ? (
             <div className="flex gap-2">
               <Button variant="secondary" size="sm" onClick={handleEdit}><Edit size={14} /> Edit</Button>
               <Button variant="danger" size="sm" onClick={handleDelete}><Trash2 size={14} /> Delete</Button>

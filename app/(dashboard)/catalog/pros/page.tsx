@@ -17,7 +17,7 @@ const columns = [
 
 export default function ProsPage() {
   const router = useRouter();
-  const { isPlatformAuthority } = useAuth();
+  const { canManageGlobalReferenceData } = useAuth();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -71,7 +71,7 @@ export default function ProsPage() {
       <PageHeader
         title="PROs"
         subtitle="Performance Rights Organizations"
-        actions={isPlatformAuthority ? (
+        actions={canManageGlobalReferenceData ? (
           <Button variant="primary" size="sm" onClick={() => { setForm(emptyForm()); setShowAddModal(true); }}>
             <Plus size={16} />
             Add PRO
@@ -83,8 +83,8 @@ export default function ProsPage() {
         data={data}
         isLoading={loading}
         onRowClick={(row: any) => router.push(`/catalog/pros/${row.id}`)}
-        onEdit={isPlatformAuthority ? ((row: any) => router.push(`/catalog/pros/${row.id}`)) : undefined}
-        onDelete={isPlatformAuthority ? handleDelete : undefined}
+        onEdit={canManageGlobalReferenceData ? ((row: any) => router.push(`/catalog/pros/${row.id}`)) : undefined}
+        onDelete={canManageGlobalReferenceData ? handleDelete : undefined}
       />
 
       <EntityForm title="New PRO" isOpen={showAddModal} onClose={() => setShowAddModal(false)} onSubmit={handleCreate} isSubmitting={isSubmitting} error={undefined}>

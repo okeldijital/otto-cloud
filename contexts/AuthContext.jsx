@@ -24,6 +24,7 @@ const AuthContext = createContext({
   productEntitlements: { planKeys: [], features: [], entitlements: [] },
   hasProductFeature: /** @type {(feature: string) => boolean} */ (() => false),
   isPlatformAuthority: false,
+  canManageGlobalReferenceData: false,
   login: /** @type {(email: string, password: string, opts?: { rememberMe?: boolean }) => Promise<any>} */ (() => {}),
   completeMfa: /** @type {(mfaToken: string, code: string, opts?: any) => Promise<any>} */ (() => {}),
   register: /** @type {(data: any) => Promise<any>} */ (() => {}),
@@ -112,6 +113,7 @@ export const AuthProvider = ({ children }) => {
 
   const user = mapIamUser(iamSession);
   const isPlatformAuthority = !!user && (user.role === "platform_admin" || user.role === "super_admin" || user.roles?.includes("platform_admin") || user.roles?.includes("super_admin"));
+  const canManageGlobalReferenceData = !!user && (isPlatformAuthority || user.role === "owner" || user.roles?.includes("owner"));
   const isAuthenticated = !!user;
   const hasProductFeature = (feature) =>
     productEntitlementsAvailable
@@ -182,6 +184,7 @@ export const AuthProvider = ({ children }) => {
       productEntitlements,
       hasProductFeature,
       isPlatformAuthority,
+      canManageGlobalReferenceData,
       login,
       completeMfa,
       register,

@@ -304,9 +304,32 @@ export function rejectClientPrivilegeFields(body: Record<string, unknown>): void
 }
 
 /**
- * Assert caller is platform authority. Use for global reference-data mutations
- * (labels / publishers / pros) and platform diagnostics.
+ * Global reference-data mutations are allowed to platform authority and the
+ * active organization owner. This does not elevate an owner to platform authority.
  */
+export function isGlobalReferenceDataAuthority(ctx: {
+  isSuperAdmin?: boolean;
+  permissions?: string[];
+  roles?: string[];
+}): boolean {
+  if (isPlatformAuthority(ctx)) return true;
+  return (ctx.roles ?? []).includes("owner");
+}
+
+export function assertGlobalReferenceDataAuthority(ctx: {
+  isSuperAdmin?: boolean;
+  permissions?: string[];
+  roles?: string[];
+}): void {
+  if (!isGlobalReferenceDataAuthority(ctx)) {
+    throw new IdentityError(
+      "Global reference-data authority required",
+      403,
+      "GLOBAL_REFERENCE_DATA_AUTHORITY_REQUIRED"
+    );
+  }
+}
+
 export function assertPlatformAuthority(ctx: {
   isSuperAdmin?: boolean;
   permissions?: string[];
@@ -322,6 +345,18 @@ export function assertPlatformAuthority(ctx: {
 }
 
 /** Session-shaped helper for route handlers that already have getServerSession(). */
+export function globalReferenceDataAuthorityFromSession(user: {
+  is_superuser?: boolean | null;
+  permissions?: string[] | null;
+  role?: string | null;
+}): boolean {
+  return isGlobalReferenceDataAuthority({
+    isSuperAdmin: !!user.is_superuser,
+    permissions: user.permissions || [],
+    roles: user.role ? [user.role] : [],
+  });
+}
+
 export function platformAuthorityFromSession(user: {
   is_superuser?: boolean | null;
   permissions?: string[] | null;

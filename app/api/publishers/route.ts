@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth/session";
-import { platformAuthorityFromSession } from "@/lib/auth/privilege-authorization";
+import { globalReferenceDataAuthorityFromSession } from "@/lib/auth/privilege-authorization";
 import { prisma } from "@/lib/prisma";
 import {
   orgContextErrorResponse,
@@ -62,7 +62,7 @@ export async function POST(req: Request) {
 
     if (!platformAuthorityFromSession(session.user)) {
       return NextResponse.json(
-        { error: "Platform authority required", code: "PLATFORM_AUTHORITY_REQUIRED" },
+        { error: "Global reference-data authority required", code: "GLOBAL_REFERENCE_DATA_AUTHORITY_REQUIRED" },
         { status: 403 }
       );
     }
@@ -98,7 +98,7 @@ export async function PUT(req: Request) {
 
     if (!platformAuthorityFromSession(session.user)) {
       return NextResponse.json(
-        { error: "Platform authority required", code: "PLATFORM_AUTHORITY_REQUIRED" },
+        { error: "Global reference-data authority required", code: "GLOBAL_REFERENCE_DATA_AUTHORITY_REQUIRED" },
         { status: 403 }
       );
     }
@@ -144,7 +144,7 @@ export async function DELETE(req: Request) {
 
     if (!platformAuthorityFromSession(session.user)) {
       return NextResponse.json(
-        { error: "Platform authority required", code: "PLATFORM_AUTHORITY_REQUIRED" },
+        { error: "Global reference-data authority required", code: "GLOBAL_REFERENCE_DATA_AUTHORITY_REQUIRED" },
         { status: 403 }
       );
     }

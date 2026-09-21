@@ -17,7 +17,7 @@ const columns = [
 
 export default function PublishersPage() {
   const router = useRouter();
-  const { isPlatformAuthority } = useAuth();
+  const { canManageGlobalReferenceData } = useAuth();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -80,7 +80,7 @@ export default function PublishersPage() {
       <PageHeader
         title="Publishers"
         subtitle="Manage publishing relationships"
-        actions={isPlatformAuthority ? (
+        actions={canManageGlobalReferenceData ? (
           <Button variant="primary" size="sm" onClick={() => setShowAddModal(true)}>
             <Plus size={16} />
             Add Publisher
@@ -92,8 +92,8 @@ export default function PublishersPage() {
         data={data}
         isLoading={loading}
         onRowClick={(row: any) => router.push(`/catalog/publishers/${row.id}`)}
-        onEdit={isPlatformAuthority ? ((row: any) => router.push(`/catalog/publishers/${row.id}`)) : undefined}
-        onDelete={isPlatformAuthority ? handleDelete : undefined}
+        onEdit={canManageGlobalReferenceData ? ((row: any) => router.push(`/catalog/publishers/${row.id}`)) : undefined}
+        onDelete={canManageGlobalReferenceData ? handleDelete : undefined}
       />
 
       <EntityForm title="New Publisher" isOpen={showAddModal} onClose={() => setShowAddModal(false)} onSubmit={handleCreate} isSubmitting={isSubmitting} error={undefined}>
