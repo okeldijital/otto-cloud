@@ -7,6 +7,7 @@ import PageHeader from "@/components/ui/PageHeader";
 import Button from "@/components/ui/Button";
 import DataTable from "@/components/DataTable";
 import EntityForm from "@/components/EntityForm";
+import { uploadEntityProfileImage } from "@/components/media/EntityProfileImageField";
 import api from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -22,6 +23,7 @@ export default function PublishersPage() {
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [profileImage, setProfileImage] = useState<File | null>(null);
   const emptyPublisher = () => ({
   name: "",
   publisher_id: "",
@@ -64,8 +66,10 @@ export default function PublishersPage() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      await api.post("/publishers", { ...newPublisher, name: newPublisher.name.trim(), publisher_id: newPublisher.publisher_id.trim() || null, contact_person: newPublisher.contact_person.trim() || null, contact_email: newPublisher.contact_email.trim() || null, contact_phone: newPublisher.contact_phone.trim() || null, website: newPublisher.website.trim() || null, address: newPublisher.address.trim() || null, rights_type: newPublisher.rights_type.trim() || null });
-      setShowAddModal(false);
+      const { data: created } = await api.post("/publishers", { ...newPublisher, name: newPublisher.name.trim(), publisher_id: newPublisher.publisher_id.trim() || null, contact_person: newPublisher.contact_person.trim() || null, contact_email: newPublisher.contact_email.trim() || null, contact_phone: newPublisher.contact_phone.trim() || null, website: newPublisher.website.trim() || null, address: newPublisher.address.trim() || null, rights_type: newPublisher.rights_type.trim() || null });
+      if (profileImage) await uploadEntityProfileImage("publisher", created.id, profileImage);
+            setShowAddModal(false);
+      setProfileImage(null);
       setNewPublisher(emptyPublisher());
       fetchData();
     } catch (err: any) {
@@ -97,6 +101,11 @@ export default function PublishersPage() {
       />
 
       <EntityForm title="New Publisher" isOpen={showAddModal} onClose={() => setShowAddModal(false)} onSubmit={handleCreate} isSubmitting={isSubmitting} error={undefined}>
+        <div className="mb-6">
+          <label className="mb-1.5 block text-xs font-medium text-text-secondary">Profile Image</label>
+          <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => setProfileImage(e.target.files?.[0] || null)} />
+          <p className="mt-1.5 text-xs text-text-secondary">Optional. Otto optimizes profile images automatically.</p>
+        </div>
         <div className="space-y-6">
           <div>
             <label className="text-xs text-text-secondary font-bold">Name *</label>
