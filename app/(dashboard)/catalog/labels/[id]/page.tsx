@@ -99,7 +99,7 @@ export default function LabelDetailPage() {
   if (!label) {
     return (
       <div className="space-y-6">
-        <button onClick={() => router.push("/catalog/labels")} className="text-text-secondary hover:text-white transition-colors flex items-center gap-1">
+        <button onClick={() => router.push("/catalog/labels")} className="text-text-secondary hover:text-text-primary transition-colors flex items-center gap-1">
           <ChevronLeft size={20} /> Labels
         </button>
         <div className="p-12 text-center text-text-secondary">
@@ -112,7 +112,7 @@ export default function LabelDetailPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <button onClick={() => router.push("/catalog/labels")} className="text-text-secondary hover:text-white transition-colors" aria-label="Back to labels">
+        <button onClick={() => router.push("/catalog/labels")} className="text-text-secondary hover:text-text-primary transition-colors" aria-label="Back to labels">
           <ChevronLeft size={20} />
         </button>
         <PageHeader
@@ -210,7 +210,7 @@ export default function LabelDetailPage() {
             {releases.map((release: any) => (
               <div
                 key={release.id}
-                className="flex items-center justify-between p-3 rounded-lg bg-white/5 hover:bg-white/10 cursor-pointer transition-colors"
+                className="flex items-center justify-between p-3 rounded-lg bg-surface-elevated hover:bg-surface cursor-pointer transition-colors"
                 onClick={() => router.push(`/catalog/releases/${release.id}`)}
               >
                 <div>
@@ -236,7 +236,7 @@ export default function LabelDetailPage() {
             {artists.map((artist: any) => (
               <div
                 key={artist.id}
-                className="flex items-center justify-between p-3 rounded-lg bg-white/5 hover:bg-white/10 cursor-pointer transition-colors"
+                className="flex items-center justify-between p-3 rounded-lg bg-surface-elevated hover:bg-surface cursor-pointer transition-colors"
                 onClick={() => router.push(`/catalog/artists/${artist.id}`)}
               >
                 <div>
@@ -254,31 +254,31 @@ export default function LabelDetailPage() {
         <div className="grid grid-cols-2 gap-4">
           <div className="col-span-2">
             <label className="text-xs text-text-secondary">Name</label>
-            <input className="input w-full" value={editData.name || ""} onChange={(e) => setEditData({ ...editData, name: e.target.value })} required />
+            <input className="w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30" value={editData.name || ""} onChange={(e) => setEditData({ ...editData, name: e.target.value })} required />
           </div>
           <div>
             <label className="text-xs text-text-secondary">Label ID</label>
-            <input className="input w-full" value={editData.label_id || ""} onChange={(e) => setEditData({ ...editData, label_id: e.target.value })} />
+            <input className="w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30" value={editData.label_id || ""} onChange={(e) => setEditData({ ...editData, label_id: e.target.value })} />
           </div>
           <div>
             <label className="text-xs text-text-secondary">Contact person</label>
-            <input className="input w-full" value={editData.contact_person || ""} onChange={(e) => setEditData({ ...editData, contact_person: e.target.value })} />
+            <input className="w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30" value={editData.contact_person || ""} onChange={(e) => setEditData({ ...editData, contact_person: e.target.value })} />
           </div>
           <div>
             <label className="text-xs text-text-secondary">Email</label>
-            <input className="input w-full" value={editData.contact_email || ""} onChange={(e) => setEditData({ ...editData, contact_email: e.target.value })} />
+            <input className="w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30" value={editData.contact_email || ""} onChange={(e) => setEditData({ ...editData, contact_email: e.target.value })} />
           </div>
           <div>
             <label className="text-xs text-text-secondary">Phone</label>
-            <input className="input w-full" value={editData.contact_phone || ""} onChange={(e) => setEditData({ ...editData, contact_phone: e.target.value })} />
+            <input className="w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30" value={editData.contact_phone || ""} onChange={(e) => setEditData({ ...editData, contact_phone: e.target.value })} />
           </div>
           <div className="col-span-2">
             <label className="text-xs text-text-secondary">Website</label>
-            <input className="input w-full" value={editData.website || ""} onChange={(e) => setEditData({ ...editData, website: e.target.value })} />
+            <input className="w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30" value={editData.website || ""} onChange={(e) => setEditData({ ...editData, website: e.target.value })} />
           </div>
           <div className="col-span-2">
             <label className="text-xs text-text-secondary">Address</label>
-            <textarea className="input w-full" value={editData.address || ""} onChange={(e) => setEditData({ ...editData, address: e.target.value })} />
+            <textarea className="w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30" value={editData.address || ""} onChange={(e) => setEditData({ ...editData, address: e.target.value })} />
           </div>
         </div>
       </EntityForm>
