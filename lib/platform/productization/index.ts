@@ -43,6 +43,7 @@ const CORE_FEATURES: ProductFeature[] = [
   "catalog",
   "contracts.core",
   "documents",
+  "network",
 ];
 const PLAN_FEATURES: Record<string, ProductFeature[]> = {
   [PRODUCT_PLAN_KEYS.CORE]: CORE_FEATURES,
