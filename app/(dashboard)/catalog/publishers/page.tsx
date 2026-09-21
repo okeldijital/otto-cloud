@@ -8,6 +8,7 @@ import Button from "@/components/ui/Button";
 import DataTable from "@/components/DataTable";
 import EntityForm from "@/components/EntityForm";
 import api from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 const columns = [
   { key: "name", label: "Name", sortable: true },
@@ -91,7 +92,7 @@ export default function PublishersPage() {
         isLoading={loading}
         onRowClick={(row: any) => router.push(`/catalog/publishers/${row.id}`)}
         onEdit={(row: any) => router.push(`/catalog/publishers/${row.id}`)}
-        onDelete={handleDelete}
+        onDelete={isPlatformAuthority ? handleDelete : undefined}
       />
 
       <EntityForm title="New Publisher" isOpen={showAddModal} onClose={() => setShowAddModal(false)} onSubmit={handleCreate} isSubmitting={isSubmitting} error={undefined}>

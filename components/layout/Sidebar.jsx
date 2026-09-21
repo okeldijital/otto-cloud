@@ -29,14 +29,10 @@ const SidebarSection = ({ label, items, onNav }) => {
 
 const Sidebar = () => {
     const pathname = usePathname();
-    const { user, hasProductFeature } = useAuth();
+    const { user, hasProductFeature, isPlatformAuthority } = useAuth();
     const { sidebarOpen, closeSidebar } = useSidebar();
     const isMobile = useIsMobile();
-    const isPlatformAdmin = user?.is_superuser ||
-        user?.role === 'platform_admin' ||
-        user?.role === 'super_admin' ||
-        (Array.isArray(user?.permissions) && user.permissions.includes('platform.admin')) ||
-        (Array.isArray(user?.roles) && (user.roles.includes('platform_admin') || user.roles.includes('super_admin')));
+    const isPlatformAdmin = isPlatformAuthority;
     const handleNav = () => { if (isMobile) closeSidebar(); };
 
     const sections = useMemo(() => [

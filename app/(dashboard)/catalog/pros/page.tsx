@@ -8,6 +8,7 @@ import Button from "@/components/ui/Button";
 import DataTable from "@/components/DataTable";
 import EntityForm from "@/components/EntityForm";
 import api from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 const columns = [
   { key: "name", label: "Name", sortable: true },
@@ -69,12 +70,12 @@ export default function ProsPage() {
       <PageHeader
         title="PROs"
         subtitle="Performance Rights Organizations"
-        actions={
+        actions={isPlatformAuthority ? (
           <Button variant="primary" size="sm" onClick={() => { setForm(emptyForm()); setShowAddModal(true); }}>
             <Plus size={16} />
             Add PRO
           </Button>
-        }
+        ) : undefined}
       />
       <DataTable
         columns={columns}
@@ -82,7 +83,7 @@ export default function ProsPage() {
         isLoading={loading}
         onRowClick={(row: any) => router.push(`/catalog/pros/${row.id}`)}
         onEdit={(row: any) => router.push(`/catalog/pros/${row.id}`)}
-        onDelete={handleDelete}
+        onDelete={isPlatformAuthority ? handleDelete : undefined}
       />
 
       <EntityForm title="New PRO" isOpen={showAddModal} onClose={() => setShowAddModal(false)} onSubmit={handleCreate} isSubmitting={isSubmitting} error={undefined}>

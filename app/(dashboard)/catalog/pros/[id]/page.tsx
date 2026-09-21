@@ -8,6 +8,7 @@ import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import EntityForm from "@/components/EntityForm";
 import api from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 import { ArrowLeft, Building, Edit, Globe, Hash, Mail, MapPin, Music, Phone, Trash2, User } from "lucide-react";
 
 const inputClass = "w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30";
@@ -96,7 +97,7 @@ export default function ProDetailPage() {
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <button onClick={() => router.push("/catalog/pros")} className="text-text-secondary hover:text-text-primary transition-colors" aria-label="Back to PROs"><ArrowLeft size={20} /></button>
-        <PageHeader title={pro.name || "PRO"} subtitle={pro.pro_id ? `PRO ID ${pro.pro_id}` : "Performance Rights Organization"} actions={<div className="flex gap-2"><Button variant="secondary" size="sm" onClick={handleEdit}><Edit size={14} /> Edit</Button><Button variant="danger" size="sm" onClick={handleDelete}><Trash2 size={14} /> Delete</Button></div>} />
+        <PageHeader title={pro.name || "PRO"} subtitle={pro.pro_id ? `PRO ID ${pro.pro_id}` : "Performance Rights Organization"} actions={isPlatformAuthority ? <div className="flex gap-2"><Button variant="secondary" size="sm" onClick={handleEdit}><Edit size={14} /> Edit</Button><Button variant="danger" size="sm" onClick={handleDelete}><Trash2 size={14} /> Delete</Button></div> : undefined} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

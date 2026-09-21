@@ -8,6 +8,7 @@ import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import EntityForm from "@/components/EntityForm";
 import api from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 import { ArrowLeft, Building, Edit, Hash, Mail, MapPin, Music, Phone, Trash2, Globe, User } from "lucide-react";
 
 const inputClass = "w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30";
