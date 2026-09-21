@@ -30,7 +30,7 @@ export async function uploadEntityProfileImage(
 }
 
 type Props = {
-  entityType: "label" | "publisher" | "pro";
+  entityType: "label" | "publisher" | "pro" | "individual" | "organization";
   entityId: string | number;
   name: string;
   onUploaded?: () => void;
