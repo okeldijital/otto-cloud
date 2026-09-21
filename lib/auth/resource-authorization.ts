@@ -188,6 +188,22 @@ export async function requireUploadEntityInOrg(
     case "royalties":
       await requireRoyaltyInOrg(id, ctx);
       break;
+    case "label":
+    case "labels":
+      await requireLabelInOrg(id, ctx);
+      break;
+    case "publisher":
+    case "publishers": {
+      const row = await prisma.publishers.findUnique({ where: { id }, select: { id: true } });
+      if (!row) notFound("Publisher");
+      break;
+    }
+    case "pro":
+    case "pros": {
+      const row = await prisma.pros.findUnique({ where: { id }, select: { id: true } });
+      if (!row) notFound("PRO");
+      break;
+    }
     case "playlist":
     case "playlists":
       await requirePlaylistInOrg(id, ctx);
@@ -209,6 +225,16 @@ export function notFound(entity = "Resource"): never {
 }
 
 // ── Catalog (UUID organization_id) ─────────────────────────────────────────
+
+export async function requireLabelInOrg(id: number, ctx: OrganizationContext) {
+  const rows = await prisma.$queryRaw<Array<{ id: number }>>`
+    SELECT id FROM labels
+    WHERE id = ${id} AND organization_id = CAST(${ctx.organizationId} AS uuid)
+    LIMIT 1
+  `;
+  if (!rows.length) notFound("Label");
+  return rows[0];
+}
 
 export async function requireArtistInOrg(id: number, ctx: OrganizationContext) {
   const row = await prisma.artists.findFirst({
