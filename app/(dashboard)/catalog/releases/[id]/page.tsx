@@ -73,7 +73,7 @@ export default function ReleaseDetailPage() {
       if (labelsRes.status === "fulfilled") setLabels(listItems(labelsRes.value));
       else console.warn("Unable to load release labels; continuing without label picker data.", labelsRes.reason);
 
-      if (distributorsRes.status === "fulfilled") setDistributors(listItems(distributorsRes.value));
+      if (distributorsRes.status === "fulfilled") setDistributors(listItems(distributorsRes.value).filter((item: any) => String(item.org_type || "").toLowerCase() === "distributor"));
       else console.warn("Unable to load distributor organisations; continuing without Network data.", distributorsRes.reason);
     } catch (err: any) {
       setError(err?.response?.data?.error || "Unable to load release.");
