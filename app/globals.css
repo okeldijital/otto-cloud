@@ -119,11 +119,11 @@ select {
 }
 
 .text-primary:hover,
-.hover\\:text-primary:hover {
+.hover\:text-primary:hover {
   color: var(--color-accent-soft) !important;
 }
 
-.focus\\:ring-primary:focus {
+.focus\:ring-primary:focus {
   --tw-ring-color: var(--color-accent);
 }
 
