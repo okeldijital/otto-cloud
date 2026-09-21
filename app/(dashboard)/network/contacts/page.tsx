@@ -40,7 +40,6 @@ export default function AllContactsPage() {
     switch (type) {
       case "Individual": return <Users size={16} />;
       case "Organization": return <Building2 size={16} />;
-      case "Platform": return <Globe size={16} />;
       default: return null;
     }
   };
@@ -49,7 +48,6 @@ export default function AllContactsPage() {
     switch (type) {
       case "Individual": return "primary";
       case "Organization": return "warn";
-      case "Platform": return "neutral";
       default: return "neutral";
     }
   };
@@ -59,7 +57,6 @@ export default function AllContactsPage() {
     try {
       if (contact.item_type === "Organization") await api.delete(`/network/organizations?id=${contact.id}`);
       else if (contact.item_type === "Individual") await api.delete(`/network/individuals?id=${contact.id}`);
-      else if (contact.item_type === "Platform") await api.delete(`/network/platforms?id=${contact.id}`);
       fetchAll();
     } catch { alert("Failed to delete contact"); }
   };
@@ -73,13 +70,13 @@ export default function AllContactsPage() {
           <div className="flex gap-3 items-center">
             <div className="relative">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
-              <input className="input pl-9" placeholder="Search contacts..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+              <input className="h-10 w-full rounded-lg border border-border bg-surface-elevated pl-9 pr-3 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30" placeholder="Search contacts..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
             </div>
-            <select className="input w-auto" value={activeType} onChange={(e) => setActiveType(e.target.value)}>
+            <select className="h-10 rounded-lg border border-border bg-surface-elevated px-3 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/30" value={activeType} onChange={(e) => setActiveType(e.target.value)}>
               <option value="All">All Types</option>
               <option value="Individual">Individuals</option>
               <option value="Organization">Organizations</option>
-              <option value="Platform">Platforms</option>
+              
             </select>
           </div>
         }
