@@ -1071,6 +1071,7 @@ model pros {
   contact_email String?   @db.VarChar(255)
   contact_phone String?   @db.VarChar(50)
   website       String?   @db.VarChar(255)
+  contact_person String?  @db.VarChar(255)
   territory     String?   @db.VarChar(100)
   created_at    DateTime? @default(now()) @db.Timestamptz(6)
   updated_at    DateTime? @db.Timestamptz(6)
