@@ -5,7 +5,6 @@ import { orgContextErrorResponse } from "@/lib/auth/organization-context";
 import { requireProductOrganization } from "@/lib/platform/productization";
 import {
   requireLegacyIntOrgId,
-  requireActorUserId,
   resourceAuthErrorResponse,
 } from "@/lib/auth/resource-authorization";
 
@@ -69,7 +68,6 @@ export async function POST(req: Request) {
 
     const ctx = await requireProductOrganization("network");
 
-    const orgIdStr = ctx.organizationId;
     const orgId = requireLegacyIntOrgId(ctx);
 
     const org = await prisma.organizations.create({
