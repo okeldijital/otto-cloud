@@ -60,7 +60,7 @@ export async function POST(req: Request) {
     const session = await getServerSession();
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    if (!platformAuthorityFromSession(session.user)) {
+    if (!globalReferenceDataAuthorityFromSession(session.user)) {
       return NextResponse.json(
         { error: "Global reference-data authority required", code: "GLOBAL_REFERENCE_DATA_AUTHORITY_REQUIRED" },
         { status: 403 }
@@ -96,7 +96,7 @@ export async function PUT(req: Request) {
     const session = await getServerSession();
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    if (!platformAuthorityFromSession(session.user)) {
+    if (!globalReferenceDataAuthorityFromSession(session.user)) {
       return NextResponse.json(
         { error: "Global reference-data authority required", code: "GLOBAL_REFERENCE_DATA_AUTHORITY_REQUIRED" },
         { status: 403 }
@@ -142,7 +142,7 @@ export async function DELETE(req: Request) {
     const session = await getServerSession();
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    if (!platformAuthorityFromSession(session.user)) {
+    if (!globalReferenceDataAuthorityFromSession(session.user)) {
       return NextResponse.json(
         { error: "Global reference-data authority required", code: "GLOBAL_REFERENCE_DATA_AUTHORITY_REQUIRED" },
         { status: 403 }
