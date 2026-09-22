@@ -45,7 +45,7 @@ export async function seedIamPermissions(): Promise<{ upserted: number }> {
 export async function seedOrgSystemRoles(organizationId: string): Promise<void> {
   // Permissions are global reference data. Do not re-upsert the entire catalog
   // every time a new organization is created; only repair an incomplete catalog.
-  const requiredKeys = new Set(PERMISSION_CATALOG.map((permission) => permission.key));
+  const requiredKeys = new Set<string>(PERMISSION_CATALOG.map((permission) => permission.key));
   const existing = await prisma.iamPermission.findMany({ select: { key: true } });
   const complete = existing.every((permission) => requiredKeys.has(permission.key))
     && existing.length >= requiredKeys.size;
