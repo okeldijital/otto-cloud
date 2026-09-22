@@ -55,7 +55,6 @@ export default function SettingsPage() {
       <Card title="Profile" subtitle="Manage your personal account details">
         <form onSubmit={handleSave} className="grid max-w-3xl gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
-          <div>
             <label className="text-xs text-text-secondary font-bold block mb-1">Name</label>
             <input
               className="input w-full"
@@ -84,7 +83,7 @@ export default function SettingsPage() {
 
           <div className="sm:col-span-2 pt-1">
             <Button variant="primary" size="sm" type="submit" disabled={saving}>
-            <Save size={16} />
+              <Save size={16} />
               {saving ? "Saving..." : "Save Changes"}
             </Button>
           </div>
