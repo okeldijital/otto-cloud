@@ -155,6 +155,25 @@ export async function GET(req: Request) {
       };
     }
 
+    if (view === "connected_release" || view === "unlinked_release") {
+      const releaseRelationships = await prisma.contractRelationship.findMany({
+        where: {
+          organizationId: ctx.organizationId,
+          targetEntityType: "release",
+          status: "active",
+        },
+        select: { contractId: true },
+        distinct: ["contractId"],
+      });
+      const releaseLinkedContractIds = releaseRelationships.map((row) => row.contractId);
+
+      if (view === "connected_release") {
+        where.id = { in: releaseLinkedContractIds };
+      } else if (releaseLinkedContractIds.length > 0) {
+        where.id = { notIn: releaseLinkedContractIds };
+      }
+    }
+
     const orderBy = view === "recent_updated"
       ? { updated_at: "desc" as const }
       : { created_at: "desc" as const };
