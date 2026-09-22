@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Folder, FolderPlus, FileText, Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import { Folder, FolderPlus, FileText, Link2, Pencil, Plus, Search, Trash2, Unlink2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import PageHeader from "@/components/ui/PageHeader";
 import Button from "@/components/ui/Button";
@@ -26,11 +26,13 @@ type ContractRow = {
   folders?: ContractFolder[];
 };
 
-type ViewKey = "all" | "unfiled" | "recent_added" | "recent_updated";
+type ViewKey = "all" | "unfiled" | "connected_release" | "unlinked_release" | "recent_added" | "recent_updated";
 
 const VIEWS: Array<{ key: ViewKey; label: string; description: string }> = [
   { key: "all", label: "All Contracts", description: "Every stored contract" },
   { key: "unfiled", label: "Unfiled", description: "Contracts without a folder" },
+  { key: "connected_release", label: "Connected to Release", description: "Contracts linked to a release" },
+  { key: "unlinked_release", label: "Not Connected to Release", description: "Contracts with no release connection" },
   { key: "recent_added", label: "Recently Added", description: "Newest contracts first" },
   { key: "recent_updated", label: "Recently Updated", description: "Recently changed contracts first" },
 ];
@@ -211,6 +213,25 @@ export default function ContractsPage() {
               >
                 <div className="text-sm font-medium">{item.label}</div>
                 <div className="text-2xs text-text-secondary/70 mt-0.5">{item.description}</div>
+              </button>
+            ))}
+
+            <div className="px-3 pt-4 pb-2 flex items-center justify-between">
+              <span className="text-2xs font-bold uppercase tracking-wider text-text-secondary">Release Connections</span>
+            </div>
+
+            {VIEWS.filter((item) => item.key === "connected_release" || item.key === "unlinked_release").map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                className={`w-full rounded-md px-3 py-2 text-left transition-colors ${!selectedFolderId && view === item.key ? "bg-surface-elevated text-text-primary" : "text-text-secondary hover:bg-surface-elevated hover:text-text-primary"}`}
+                onClick={() => { setSelectedFolderId(null); setView(item.key); }}
+              >
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  {item.key === "connected_release" ? <Link2 size={14} /> : <Unlink2 size={14} />}
+                  <span>{item.label}</span>
+                </div>
+                <div className="text-2xs text-text-secondary/70 mt-0.5 pl-5">{item.description}</div>
               </button>
             ))}
 
