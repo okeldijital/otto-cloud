@@ -17,10 +17,11 @@
 The Contracts workspace is intentionally narrow: **upload, organise, retrieve**.
 
 - **All Contracts** shows every stored contract.
+- **Unfiled** shows contracts that are not assigned to any folder.
 - **Recently Added** orders contracts by creation time.
 - **Recently Updated** orders contracts by last update time.
 - User-created folders are optional organisational views. A contract may belong to multiple folders.
 - Removing or deleting a folder never deletes the contract or its source document.
-- There is no "Unfiled" state. A contract does not need to be placed into a folder to be considered stored.
+- "Unfiled" is a retrieval view only. A contract does not need to be placed into a folder to be considered stored.
 - Folder membership is separate from contract relationships. Relationship records remain the authoritative connections to artists, labels, publishers, releases, works, tracks and other entities.
 - Folders are flat in this first implementation to keep retrieval and organisation deliberately simple; nested folder structures are not required.

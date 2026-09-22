@@ -26,10 +26,11 @@ type ContractRow = {
   folders?: ContractFolder[];
 };
 
-type ViewKey = "all" | "recent_added" | "recent_updated";
+type ViewKey = "all" | "unfiled" | "recent_added" | "recent_updated";
 
 const VIEWS: Array<{ key: ViewKey; label: string; description: string }> = [
   { key: "all", label: "All Contracts", description: "Every stored contract" },
+  { key: "unfiled", label: "Unfiled", description: "Contracts without a folder" },
   { key: "recent_added", label: "Recently Added", description: "Newest contracts first" },
   { key: "recent_updated", label: "Recently Updated", description: "Recently changed contracts first" },
 ];

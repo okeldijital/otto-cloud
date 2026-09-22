@@ -147,6 +147,12 @@ export async function GET(req: Request) {
           folderId,
         },
       };
+    } else if (view === "unfiled") {
+      where.folderMemberships = {
+        none: {
+          organizationId: orgId,
+        },
+      };
     }
 
     const orderBy = view === "recent_updated"
