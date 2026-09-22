@@ -346,7 +346,7 @@ const TopBar = () => {
                         />
                         <div className="flex flex-col items-start leading-tight hidden md:flex">
                             <span className="text-sm font-medium text-text-primary">{user?.full_name || 'User'}</span>
-                            <span className="text-2xs font-bold text-accent uppercase tracking-wider">Cloud Edition</span>
+                            <span className="text-2xs font-bold text-accent uppercase tracking-wider">Otto Core</span>
                         </div>
                     </div>
 
