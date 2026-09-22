@@ -367,9 +367,6 @@ const TopBar = () => {
                                     <div className="overflow-hidden">
                                         <div className="text-sm font-semibold text-text-primary truncate">{user?.full_name || 'User'}</div>
                                         <div className="text-xs text-text-secondary truncate">{user?.email}</div>
-                                        <span className="mt-1 inline-flex rounded-full bg-surface-elevated px-2 py-0.5 text-2xs font-semibold text-text-secondary">
-                                            {user?.role || (user?.is_superuser ? 'Admin' : 'User')}
-                                        </span>
                                     </div>
                                 </div>
                                 <div className="p-1 border-t border-border">

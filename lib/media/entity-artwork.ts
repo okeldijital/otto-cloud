@@ -33,7 +33,7 @@ export type EntityArtwork = {
 };
 
 function isLegacyImageCandidate(attachment: { category: string; purpose: string; fileName: string; originalName: string }): boolean {
-  if (attachment.purpose === "artwork") return true;
+  if (attachment.purpose === "avatar" || attachment.purpose === "artwork") return true;
   if (attachment.category !== "image") return false;
   const name = `${attachment.originalName} ${attachment.fileName}`.toLowerCase();
   return !/(^|[\s_\-])screenshot([\s_\-.]|$)/i.test(name);

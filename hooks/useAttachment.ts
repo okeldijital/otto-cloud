@@ -31,17 +31,7 @@ export function invalidateEntityArtwork(
   entityType: string,
   entityId: string | number
 ): void {
-  const detail = {
-    entityType: String(entityType).toLowerCase(),
-    entityId: String(entityId),
-  };
   cache.delete(cacheKey(entityType, entityId));
-
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(
-      new CustomEvent("otto:entity-artwork-invalidated", { detail })
-    );
-  }
 }
 
 function isFresh(entry: CacheEntry): boolean {
@@ -172,21 +162,6 @@ export function useAttachment(
   useEffect(() => {
     refresh();
   }, [refresh]);
-
-  useEffect(() => {
-    const handleInvalidation = (event: Event) => {
-      const detail = (event as CustomEvent<{ entityType?: string; entityId?: string }>).detail;
-      if (
-        detail?.entityType === String(entityType).toLowerCase() &&
-        detail?.entityId === String(entityId)
-      ) {
-        refresh();
-      }
-    };
-
-    window.addEventListener("otto:entity-artwork-invalidated", handleInvalidation);
-    return () => window.removeEventListener("otto:entity-artwork-invalidated", handleInvalidation);
-  }, [entityType, entityId, refresh]);
 
   const url = useMemo(() => artwork?.downloadUrl ?? null, [artwork]);
 
