@@ -61,7 +61,7 @@ export class MembershipRepository {
   async upsert(params: {
     identityId: string;
     organizationId: string;
-    roleId?: string | null;
+    roleId: string;
     status?: string;
     isDefault?: boolean;
     isOwner?: boolean;
@@ -76,14 +76,14 @@ export class MembershipRepository {
       create: {
         identityId: params.identityId,
         organizationId: params.organizationId,
-        roleId: params.roleId ?? null,
+        roleId: params.roleId,
         status: params.status ?? "active",
         isDefault: params.isDefault ?? false,
         isOwner: params.isOwner ?? false,
         joinedAt: new Date(),
       },
       update: {
-        roleId: params.roleId ?? undefined,
+        roleId: params.roleId,
         status: params.status ?? undefined,
         isDefault: params.isDefault ?? undefined,
         isOwner: params.isOwner ?? undefined,
@@ -111,7 +111,7 @@ export class MembershipRepository {
     });
   }
 
-  async setRole(id: string, roleId: string | null) {
+  async setRole(id: string, roleId: string) {
     return prisma.iamOrganizationMembership.update({
       where: { id },
       data: {
