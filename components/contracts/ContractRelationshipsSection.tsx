@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link2, Loader2, Plus, Search, Trash2, X } from "lucide-react";
+import { FileCheck2, Link2, Loader2, Plus, Search, Trash2, X } from "lucide-react";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import api from "@/lib/api";
@@ -207,7 +207,7 @@ export default function ContractRelationshipsSection({ contractId }: Props) {
   return (
     <Card
       title="Connected Records"
-      subtitle="Connect this contract to the catalogue and network records it governs or references."
+      subtitle="Link the people and catalogue records this agreement applies to."
       headerAction={
         <Button variant="primary" size="sm" onClick={() => setAdding((current) => !current)}>
           {adding ? <X size={14} /> : <Plus size={14} />}
@@ -215,7 +215,7 @@ export default function ContractRelationshipsSection({ contractId }: Props) {
         </Button>
       }
     >
-      <div className="space-y-5">
+      <div className="space-y-4">
         {error && <div className="rounded-xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">{error}</div>}
 
         {adding && (
@@ -275,16 +275,34 @@ export default function ContractRelationshipsSection({ contractId }: Props) {
         )}
 
         {visibleRelationships.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-white/10 px-5 py-10 text-center">
-            <Link2 size={24} className="mx-auto text-text-secondary mb-3" />
-            <p className="text-sm text-text-secondary">No catalogue or network records are connected yet.</p>
-            <p className="text-xs text-text-secondary/70 mt-1">Add the artist, label, publisher, release, works and tracks related to this contract.</p>
+          <div className="rounded-xl border border-accent/20 bg-accent/[0.04] px-5 py-6">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent">
+                <FileCheck2 size={18} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-text-primary">Connect this contract to its records</p>
+                <p className="mt-1 text-sm text-text-secondary">
+                  Start with the artist and release, then add any label, publisher, work or track covered by the agreement.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {TYPES.map((type) => (
+                    <span key={type.key} className="rounded-full border border-border bg-surface-elevated px-2.5 py-1 text-2xs font-semibold text-text-secondary">
+                      {type.label}
+                    </span>
+                  ))}
+                </div>
+                <Button variant="primary" size="sm" className="mt-4" onClick={() => setAdding(true)}>
+                  <Plus size={14} /> Add first connection
+                </Button>
+              </div>
+            </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
             {TYPES.map((type) => (
               <div key={type.key} className="rounded-xl border border-white/10 overflow-hidden">
-                <div className="px-4 py-3 bg-white/[0.02] border-b border-white/5 flex items-center justify-between">
+                <div className="px-3 py-2.5 bg-white/[0.02] border-b border-white/5 flex items-center justify-between">
                   <span className="text-xs font-bold uppercase tracking-wider text-text-secondary">{type.label}</span>
                   <span className="text-xs text-text-secondary">{grouped[type.key].length}</span>
                 </div>
@@ -292,7 +310,7 @@ export default function ContractRelationshipsSection({ contractId }: Props) {
                   {grouped[type.key].length === 0 ? (
                     <div className="px-4 py-4 text-sm text-text-secondary/60">None connected.</div>
                   ) : grouped[type.key].map((item) => (
-                    <div key={item.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                    <div key={item.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
                       <div className="min-w-0">
                         <p className="text-sm text-white truncate">{item.targetEntityName || `#${item.targetEntityId}`}</p>
                       </div>

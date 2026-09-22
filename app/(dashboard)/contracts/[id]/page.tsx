@@ -63,10 +63,10 @@ export default function ContractDetailPage() {
   if (error || !contract) return <div className="p-12 text-center text-danger">{error || "Contract not found"}</div>;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title={contract.title || "Contract"}
-        subtitle={<span className="font-mono">{contract.contract_number || "No contract number"}</span>}
+        subtitle={<span className="font-mono text-xs">{contract.contract_number || "No contract number"}</span>}
         actions={
           <div className="flex items-center gap-2">
             <Button variant="secondary" size="sm" onClick={() => router.push("/contracts")}>
@@ -79,7 +79,9 @@ export default function ContractDetailPage() {
         }
       />
 
-      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.15fr)_minmax(420px,0.85fr)] gap-6">
+      <ContractRelationshipsSection contractId={id} />
+
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)] gap-4">
         <Card title="Source Document" subtitle="The signed PDF is the authoritative contract record.">
           <ContractDocumentsSection contractId={id} />
         </Card>
@@ -92,7 +94,7 @@ export default function ContractDetailPage() {
             </Button>
           }
         >
-          <div className="space-y-5">
+          <div className="space-y-4">
             <div>
               <p className="text-xs uppercase tracking-wider text-text-secondary">Contract</p>
               <p className="text-sm font-medium text-white mt-1">{contract.title || "Untitled contract"}</p>
@@ -112,8 +114,6 @@ export default function ContractDetailPage() {
           </div>
         </Card>
       </div>
-
-      <ContractRelationshipsSection contractId={id} />
 
       <EntityForm
         title="Contract Notes"
