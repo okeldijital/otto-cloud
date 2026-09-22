@@ -31,10 +31,13 @@ type ViewKey = "all" | "unfiled" | "connected_release" | "unlinked_release" | "r
 const VIEWS: Array<{ key: ViewKey; label: string; description: string }> = [
   { key: "all", label: "All Contracts", description: "Every stored contract" },
   { key: "unfiled", label: "Unfiled", description: "Contracts without a folder" },
-  { key: "connected_release", label: "Connected to Release", description: "Contracts linked to a release" },
-  { key: "unlinked_release", label: "Not Connected to Release", description: "Contracts with no release connection" },
   { key: "recent_added", label: "Recently Added", description: "Newest contracts first" },
   { key: "recent_updated", label: "Recently Updated", description: "Recently changed contracts first" },
+];
+
+const RELEASE_VIEWS: Array<{ key: ViewKey; label: string; description: string }> = [
+  { key: "connected_release", label: "Connected to Release", description: "Contracts linked to a release" },
+  { key: "unlinked_release", label: "Not Connected to Release", description: "Contracts with no release connection" },
 ];
 
 function formatDate(value: string | null | undefined) {
@@ -204,7 +207,7 @@ export default function ContractsPage() {
           </div>
 
           <div className="p-2">
-            {VIEWS.filter((item) => item.key !== "connected_release" && item.key !== "unlinked_release").map((item) => (
+            {VIEWS.map((item) => (
               <button
                 key={item.key}
                 type="button"
@@ -220,7 +223,7 @@ export default function ContractsPage() {
               <span className="text-2xs font-bold uppercase tracking-wider text-text-secondary">Release Connections</span>
             </div>
 
-            {VIEWS.filter((item) => item.key === "connected_release" || item.key === "unlinked_release").map((item) => (
+            {RELEASE_VIEWS.map((item) => (
               <button
                 key={item.key}
                 type="button"
