@@ -265,6 +265,14 @@ export async function PUT(req: Request) {
             },
           });
 
+      if (primary && primary.storageKey !== result.key) {
+        try {
+          await deleteFile({ key: primary.storageKey, bucket: primary.bucket });
+        } catch (error) {
+          console.warn("[PUT /api/users] Failed to delete replaced avatar object:", error);
+        }
+      }
+
       const stale = existing.slice(1);
       if (stale.length) {
         await prisma.attachment.deleteMany({
