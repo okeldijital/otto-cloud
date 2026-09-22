@@ -40,12 +40,32 @@ function isLegacyImageCandidate(attachment: { category: string; purpose: string;
 }
 
 /** Prefer explicit artwork attachments; retain a conservative legacy fallback for pre-purpose rows. */
+async function resolveAttachmentEntityId(
+  entityType: string,
+  entityId: string
+): Promise<string> {
+  if (entityType !== "user") return entityId;
+
+  // User artwork is stored against the legacy User.id because the upload
+  // endpoint still writes Attachment.entityId from the legacy user record.
+  // The IAM session exposes the canonical identity UUID, so normalize it
+  // here rather than requiring every UI surface to know about that boundary.
+  const identity = await prisma.iamIdentity.findUnique({
+    where: { id: entityId },
+    select: { legacyUserId: true },
+  });
+
+  return identity?.legacyUserId != null
+    ? String(identity.legacyUserId)
+    : entityId;
+}
+
 export async function getPrimaryAttachment(
   entityType: MediaEntityType | string,
   entityId: string | number
 ) {
-  const id = String(entityId);
   const type = String(entityType).toLowerCase();
+  const id = await resolveAttachmentEntityId(type, String(entityId));
 
   const attachments = await prisma.attachment.findMany({
     where: { entityType: type, entityId: id },
