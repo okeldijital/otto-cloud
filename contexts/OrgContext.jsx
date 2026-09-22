@@ -2,6 +2,28 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 
+/**
+ * @typedef {Object} Organization
+ * @property {string} id
+ * @property {string} name
+ * @property {string|undefined} slug
+ * @property {string|undefined} status
+ * @property {string|undefined} role
+ * @property {boolean|undefined} isDefault
+ * @property {boolean|undefined} isOwner
+ * @property {string|undefined} membershipStatus
+ *
+ * @typedef {Object} OrgContextValue
+ * @property {Organization[]} organizations
+ * @property {Organization|null} currentOrg
+ * @property {boolean} loading
+ * @property {string|null} error
+ * @property {(orgId:string)=>Promise<boolean>} switchOrg
+ * @property {()=>Promise<void>} refreshOrgs
+ * @property {string|null} currentOrgId
+ */
+
+/** @type {import("react").Context<OrgContextValue>} */
 const OrgContext = createContext({
   organizations: [],
   currentOrg: null,
@@ -14,7 +36,9 @@ const OrgContext = createContext({
 
 export function OrgProvider({ children }) {
   const { isAuthenticated, refreshUser } = useAuth();
+  /** @type {[Organization[], import("react").Dispatch<import("react").SetStateAction<Organization[]>>]} */
   const [organizations, setOrganizations] = useState([]);
+  /** @type {[Organization|null, import("react").Dispatch<import("react").SetStateAction<Organization|null>>]} */
   const [currentOrg, setCurrentOrg] = useState(null);
   const [activeOrgId, setActiveOrgId] = useState(null);
   const [loading, setLoading] = useState(true);
