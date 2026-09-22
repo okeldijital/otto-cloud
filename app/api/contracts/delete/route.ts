@@ -61,6 +61,7 @@ export async function DELETE(req: Request) {
       await tx.contractLifecycleEvent.deleteMany({ where: { contractId: id, organizationId: organizationUuid } });
       await tx.contractLifecycle.deleteMany({ where: { contractId: id, organizationId: organizationUuid } });
 
+      await tx.contractFolderMembership.deleteMany({ where: { contractId: id, organizationId } });
       await tx.contract_track_links.deleteMany({ where: { contract_id: id } });
       await tx.contract_parties.deleteMany({ where: { contract_id: id } });
       await tx.contract_assets.deleteMany({ where: { contract_id: id } });

@@ -125,25 +125,55 @@ export async function GET(req: Request) {
       });
     }
 
-    const limit = parseInt(searchParams.get("limit") || "100");
-    const skip = parseInt(searchParams.get("skip") || "0");
+    const limit = Math.min(parseInt(searchParams.get("limit") || "100", 10), 200);
+    const skip = Math.max(parseInt(searchParams.get("skip") || "0", 10), 0);
+    const q = (searchParams.get("q") || "").trim();
+    const view = searchParams.get("view") || "all";
+    const folderId = searchParams.get("folderId");
+
+    const where: any = { organization_id: orgId };
+
+    if (q) {
+      where.OR = [
+        { title: { contains: q, mode: "insensitive" } },
+        { contract_number: { contains: q, mode: "insensitive" } },
+      ];
+    }
+
+    if (folderId) {
+      where.folderMemberships = {
+        some: {
+          organizationId: orgId,
+          folderId,
+        },
+      };
+    }
+
+    const orderBy = view === "recent_updated"
+      ? { updated_at: "desc" as const }
+      : { created_at: "desc" as const };
 
     const [contracts, total] = await Promise.all([
       prisma.contracts.findMany({
-        where: { organization_id: orgId },
+        where,
         skip,
-        take: limit,
-        orderBy: { created_at: "desc" },
+        take: view === "all" ? limit : Math.min(limit, 50),
+        orderBy,
         include: {
           contract_parties: true,
           contract_documents: true,
+          folderMemberships: {
+            where: { organizationId: orgId },
+            include: { folder: { select: { id: true, name: true } } },
+          },
         },
       }),
-      prisma.contracts.count({ where: { organization_id: orgId } }),
+      prisma.contracts.count({ where }),
     ]);
 
     const withCounts = contracts.map((c) => ({
       ...c,
+      folders: c.folderMemberships.map((membership) => membership.folder),
       _count: {
         parties: c.contract_parties?.length ?? 0,
         documents: c.contract_documents?.length ?? 0,
