@@ -2,20 +2,42 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 
+/**
+ * @typedef {Object} Organization
+ * @property {string} id
+ * @property {string} name
+ * @property {string=} slug
+ * @property {string=} status
+ * @property {string=} role
+ * @property {boolean=} isDefault
+ * @property {boolean=} isOwner
+ * @property {string=} membershipStatus
+ *
+ * @typedef {Object} OrgContextValue
+ * @property {Organization[]} organizations
+ * @property {Organization|null} currentOrg
+ * @property {boolean} loading
+ * @property {string|null} error
+ * @property {(orgId: string) => Promise<boolean>} switchOrg
+ * @property {() => Promise<void>} refreshOrgs
+ * @property {string|null} currentOrgId
+ */
+
+/** @type {import("react").Context<OrgContextValue>} */
 const OrgContext = createContext({
-  organizations: [],
-  currentOrg: null,
+  organizations: /** @type {Organization[]} */ ([]),
+  currentOrg: /** @type {Organization|null} */ (null),
   loading: true,
-  error: null,
-  switchOrg: async () => false,
-  refreshOrgs: async () => {},
-  currentOrgId: null,
+  error: /** @type {string|null} */ (null),
+  switchOrg: /** @type {(orgId: string) => Promise<boolean>} */ (async () => false),
+  refreshOrgs: /** @type {() => Promise<void>} */ (async () => {}),
+  currentOrgId: /** @type {string|null} */ (null),
 });
 
 export function OrgProvider({ children }) {
   const { isAuthenticated, refreshUser } = useAuth();
-  const [organizations, setOrganizations] = useState([]);
-  const [currentOrg, setCurrentOrg] = useState(null);
+  const [organizations, setOrganizations] = useState(/** @type {Organization[]} */ ([]));
+  const [currentOrg, setCurrentOrg] = useState(/** @type {Organization|null} */ (null));
   const [activeOrgId, setActiveOrgId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

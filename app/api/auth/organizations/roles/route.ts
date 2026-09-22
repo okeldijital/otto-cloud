@@ -19,7 +19,7 @@ import {
 import { roleRepository } from "@/lib/platform/identity/repositories/RoleRepository";
 import { PERMISSION_CATALOG } from "@/lib/platform/identity/permissions/catalog";
 
-const catalogKeys: Set<string> = new Set(PERMISSION_CATALOG.map((p) => p.key));
+const catalogKeys = new Set(PERMISSION_CATALOG.map((p) => p.key));
 
 function validateRoleInput(body: Record<string, unknown>) {
   const name = typeof body.name === "string" ? body.name.trim() : "";
