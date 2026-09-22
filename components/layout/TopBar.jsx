@@ -3,18 +3,22 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Search, Bell, User, Settings as SettingsIcon, LogOut, Music, Users, FileText, Layout, X, Building2, BookOpen, Globe, File, StickyNote, ListMusic, Sun, Moon, CreditCard, Menu } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSidebar } from '../../contexts/SidebarContext';
+import { useOrg } from '../../contexts/OrgContext';
 import { useRouter } from 'next/navigation';
 import api from '../../lib/api';
 import ThemeToggle from '../ui/ThemeToggle';
 import OrganizationSwitcher from '../org/OrganizationSwitcher';
+import packageJson from '../../package.json';
 import EntityArtwork from '../media/EntityArtwork';
 
 const TopBar = () => {
     const { user, logout } = useAuth();
     const router = useRouter();
     const { toggleSidebar } = useSidebar();
+    const { currentOrg } = useOrg();
     const dropdownRef = useRef(null);
     const [showNotifications, setShowNotifications] = useState(false);
+    const [accountEdition, setAccountEdition] = useState('v' + packageJson.version);
 
     // Notifications State
     const [notifications, setNotifications] = useState([]);
@@ -51,6 +55,32 @@ const TopBar = () => {
         const interval = setInterval(fetchUnreadCount, 30000);
         return () => clearInterval(interval);
     }, []);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        const fetchAccountEdition = async () => {
+            try {
+                const response = await api.get('/subscriptions');
+                const planName = response.data?.plans?.name;
+                const status = response.data?.status;
+                if (!cancelled) {
+                    setAccountEdition(
+                        planName && status !== 'cancelled' && status !== 'expired'
+                            ? planName
+                            : 'v' + packageJson.version
+                    );
+                }
+            } catch {
+                if (!cancelled) setAccountEdition('v' + packageJson.version);
+            }
+        };
+
+        fetchAccountEdition();
+        return () => {
+            cancelled = true;
+        };
+    }, [currentOrg?.id]);
 
     useEffect(() => {
         const timer = setTimeout(async () => {
@@ -346,7 +376,7 @@ const TopBar = () => {
                         />
                         <div className="flex flex-col items-start leading-tight hidden md:flex">
                             <span className="text-sm font-medium text-text-primary">{user?.full_name || 'User'}</span>
-                            <span className="text-2xs font-bold text-accent uppercase tracking-wider">Otto Core</span>
+                            <span className="text-2xs font-bold text-accent uppercase tracking-wider">{accountEdition}</span>
                         </div>
                     </div>
 
