@@ -124,12 +124,13 @@ export function actorMaxRoleRank(ctx: {
 export function assertCanGrantOrgRole(
   ctx: CurrentIdentityContext,
   roleKey: string,
-  opts?: { allowOwner?: boolean }
+  opts?: { allowOwner?: boolean; targetPermissions?: string[] }
 ): void {
   if (!roleKey || typeof roleKey !== "string") {
     throw new IdentityError("roleKey required", 400, "VALIDATION_ERROR");
   }
   const key = roleKey.trim();
+
   if (key === "super_admin" || key === "platform_admin") {
     throw new IdentityError(
       "Cannot assign platform roles through organization IAM",
@@ -137,16 +138,7 @@ export function assertCanGrantOrgRole(
       "ROLE_GRANT_DENIED"
     );
   }
-  if (!ORG_ASSIGNABLE_ROLE_KEYS.has(key) && !SYSTEM_ROLE_TEMPLATES[key]) {
-    throw new IdentityError("Unknown organization role", 400, "UNKNOWN_ROLE");
-  }
-  if (!ORG_ASSIGNABLE_ROLE_KEYS.has(key)) {
-    throw new IdentityError(
-      "Role is not assignable in organizations",
-      403,
-      "ROLE_GRANT_DENIED"
-    );
-  }
+
   if (key === "owner" && !opts?.allowOwner) {
     throw new IdentityError(
       "Owner role cannot be assigned; use ownership transfer",
@@ -154,10 +146,31 @@ export function assertCanGrantOrgRole(
       "ROLE_GRANT_DENIED"
     );
   }
+
+  // Platform authority is allowed to delegate any organization role except
+  // platform authority itself. Custom roles are checked by permission subset.
+  if (isPlatformAuthority(ctx)) return;
+
+  const targetPermissions = opts?.targetPermissions;
+  if (targetPermissions) {
+    const actorPermissions = new Set(ctx.permissions ?? []);
+    const denied = targetPermissions.find((permission) => !actorPermissions.has(permission));
+    if (denied) {
+      throw new IdentityError(
+        "Cannot grant permissions you do not hold",
+        403,
+        "ROLE_GRANT_DENIED"
+      );
+    }
+    return;
+  }
+
+  if (!ORG_ASSIGNABLE_ROLE_KEYS.has(key) && !SYSTEM_ROLE_TEMPLATES[key]) {
+    throw new IdentityError("Unknown organization role", 400, "UNKNOWN_ROLE");
+  }
+
   const targetRank = ROLE_RANK[key] ?? 0;
   const actorRank = actorMaxRoleRank(ctx);
-  // Platform authority may grant any org role including owner when allowOwner
-  if (isPlatformAuthority(ctx)) return;
   if (targetRank >= actorRank) {
     throw new IdentityError(
       "Cannot grant a role equal or higher than your own",

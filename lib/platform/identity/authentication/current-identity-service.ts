@@ -159,6 +159,21 @@ export class CurrentIdentityService {
       : null;
 
     const activeMembership = membership?.status === "active" ? membership : null;
+
+    // Fail closed if persisted IAM data ever points a membership at a role
+    // owned by another tenant. The database migration also adds a composite
+    // tenant-scoped foreign key; this check protects older data during rollout.
+    if (
+      activeMembership?.role &&
+      activeMembership.role.organizationId !== activeMembership.organizationId
+    ) {
+      throw new IdentityError(
+        "Organization role scope is invalid",
+        403,
+        "ORGANIZATION_ROLE_SCOPE_INVALID"
+      );
+    }
+
     const roleKeys = activeMembership?.role ? [activeMembership.role.key] : [];
     const permKeys = activeMembership?.role?.permissions.map((rp) => rp.permission.key) ?? [];
     const isSuperAdmin = roleKeys.includes("super_admin");

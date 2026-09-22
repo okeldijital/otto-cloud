@@ -43,9 +43,20 @@ export async function seedIamPermissions(): Promise<{ upserted: number }> {
  * Idempotent — safe to re-run.
  */
 export async function seedOrgSystemRoles(organizationId: string): Promise<void> {
-  await seedIamPermissions();
+  // Permissions are global reference data. Do not re-upsert the entire catalog
+  // every time a new organization is created; only repair an incomplete catalog.
+  const requiredKeys = new Set(PERMISSION_CATALOG.map((permission) => permission.key));
+  const existing = await prisma.iamPermission.findMany({ select: { key: true } });
+  const complete = existing.every((permission) => requiredKeys.has(permission.key))
+    && existing.length >= requiredKeys.size;
+
+  if (!complete) {
+    await seedIamPermissions();
+  }
+
   const allPerms = await prisma.iamPermission.findMany();
   const byKey = new Map(allPerms.map((p) => [p.key, p.id]));
+  let roleChanged = false;
 
   for (const [key, template] of Object.entries(SYSTEM_ROLE_TEMPLATES)) {
     const role = await prisma.iamRole.upsert({
@@ -64,20 +75,34 @@ export async function seedOrgSystemRoles(organizationId: string): Promise<void> 
       },
     });
 
-    const rows = template.permissions
+    const permissionIds = template.permissions
       .map((permKey) => byKey.get(permKey))
-      .filter((id): id is string => Boolean(id))
-      .map((permissionId) => ({
+      .filter((id): id is string => Boolean(id));
+
+    const removed = await prisma.iamRolePermission.deleteMany({
+      where: {
         roleId: role.id,
-        permissionId,
-      }));
+        ...(permissionIds.length ? { permissionId: { notIn: permissionIds } } : {}),
+      },
+    });
 
-    if (rows.length === 0) continue;
+    const result = permissionIds.length
+      ? await prisma.iamRolePermission.createMany({
+          data: permissionIds.map((permissionId) => ({
+            roleId: role.id,
+            permissionId,
+          })),
+          skipDuplicates: true,
+        })
+      : { count: 0 };
 
-    // createMany + skipDuplicates replaces N sequential upserts (major hang fix)
-    await prisma.iamRolePermission.createMany({
-      data: rows,
-      skipDuplicates: true,
+    if (removed.count > 0 || result.count > 0) roleChanged = true;
+  }
+
+  if (roleChanged) {
+    await prisma.iamOrganization.update({
+      where: { id: organizationId },
+      data: { roleVersion: { increment: 1 } },
     });
   }
 }

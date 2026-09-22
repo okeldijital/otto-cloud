@@ -44,6 +44,22 @@ export class PermissionResolver {
       };
     }
 
+    if (
+      membership.role &&
+      membership.role.organizationId !== membership.organizationId
+    ) {
+      return {
+        permissions: [],
+        roles: [],
+        permissionSet: PermissionSet.empty(),
+        membershipVersion: membership.membershipVersion ?? 0,
+        roleVersion: 0,
+        membershipId: membership.id,
+        isOwner: false,
+        membershipStatus: membership.status,
+      };
+    }
+
     const org = await organizationRepository.findById(organizationId);
     const roleVersion = org?.roleVersion ?? 0;
     const membershipVersion = membership.membershipVersion ?? 0;

@@ -4232,7 +4232,7 @@ model IamOrganizationMembership {
   id             String    @id @default(uuid()) @db.Uuid
   identityId     String    @db.Uuid
   organizationId String    @db.Uuid
-  roleId         String?   @db.Uuid
+  roleId         String    @db.Uuid
   /// active | invited | suspended | removed
   status         String    @default("active") @db.VarChar(32)
   isDefault      Boolean   @default(false)
@@ -4248,7 +4248,7 @@ model IamOrganizationMembership {
 
   identity     IamIdentity     @relation(fields: [identityId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   organization IamOrganization @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  role         IamRole?        @relation(fields: [roleId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  role         IamRole         @relation(fields: [roleId, organizationId], references: [id, organizationId], onDelete: Restrict, onUpdate: NoAction)
 
   @@unique([identityId, organizationId], map: "uq_iam_membership")
   @@index([organizationId], map: "ix_iam_memberships_org")
@@ -4276,8 +4276,8 @@ model IamMembershipAudit {
 
 model IamRole {
   id             String   @id @default(uuid()) @db.Uuid
-  organizationId String?  @db.Uuid
-  /// null org = system/global role template
+  organizationId String   @db.Uuid
+  /// Every role is tenant-scoped. System roles are seeded per organization.
   key            String   @db.VarChar(64)
   name           String   @db.VarChar(128)
   description    String?
@@ -4285,11 +4285,12 @@ model IamRole {
   createdAt      DateTime @default(now()) @db.Timestamptz(6)
   updatedAt      DateTime @updatedAt @db.Timestamptz(6)
 
-  organization IamOrganization? @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  organization IamOrganization @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   permissions  IamRolePermission[]
   memberships  IamOrganizationMembership[]
 
   @@unique([organizationId, key], map: "uq_iam_role_org_key")
+  @@unique([id, organizationId], map: "uq_iam_role_org_id")
   @@index([key], map: "ix_iam_roles_key")
   @@map("iam_roles")
 }
