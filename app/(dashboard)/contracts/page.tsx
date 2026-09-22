@@ -204,7 +204,7 @@ export default function ContractsPage() {
           </div>
 
           <div className="p-2">
-            {VIEWS.map((item) => (
+            {VIEWS.filter((item) => item.key !== "connected_release" && item.key !== "unlinked_release").map((item) => (
               <button
                 key={item.key}
                 type="button"
