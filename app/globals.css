@@ -28,7 +28,7 @@ body {
   min-height: 100vh;
   background: var(--color-background) !important;
   color: var(--color-text-primary);
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 body {
@@ -380,11 +380,11 @@ a {
 .brand-link {
   display: flex;
   align-items: center;
-  flex: 0 0 106px;
+  flex: 0 0 96px;
 }
 
 .brand-link img {
-  width: 106px;
+  width: 96px;
   height: auto;
 }
 
@@ -395,17 +395,43 @@ a {
   margin-left: auto;
 }
 
-.nav-links a,
-.nav-signin {
+.nav-links a {
   color: var(--color-text-secondary);
   font-size: 13px;
   text-decoration: none;
   transition: color var(--motion-fast) ease;
 }
 
-.nav-links a:hover,
-.nav-signin:hover {
+.nav-links a:hover {
   color: var(--color-text-primary);
+}
+
+.nav-signin {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  color: var(--color-background);
+  background: var(--color-accent);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: transform var(--motion-fast) ease, opacity var(--motion-fast) ease;
+}
+
+.nav-signin:hover {
+  color: var(--color-background);
+  opacity: .9;
+  transform: translateY(-1px);
+}
+
+.nav-signin span {
+  font-size: 14px;
+  line-height: 1;
 }
 
 .nav-actions {
@@ -1000,8 +1026,8 @@ a {
 @media (max-width: 640px) {
   .landing-container { width: min(calc(100% - 32px), var(--landing-max)); }
   .landing-nav { height: 68px; }
-  .brand-link { flex-basis: 86px; }
-  .brand-link img { width: 86px; }
+  .brand-link { flex-basis: 82px; }
+  .brand-link img { width: 82px; }
   .hero { min-height: 680px; }
   .hero-copy { padding: 82px 0 90px; }
   .hero h1 { font-size: clamp(44px, 13vw, 68px); }

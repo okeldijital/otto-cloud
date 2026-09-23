@@ -40,7 +40,7 @@ export default function Home() {
           </div>
 
           <div className="nav-actions">
-            <Link href="/auth/login" className="nav-signin">Sign in</Link>
+            <Link href="/auth/login" className="nav-signin">Sign in <span>→</span></Link>
           </div>
         </div>
       </nav>
