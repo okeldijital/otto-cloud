@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import ContactForm from "@/components/marketing/ContactForm";
 
 const domains = [
   ["01", "Contracts", "Agreements, parties, terms and the documents that belong to them."],
@@ -31,29 +32,32 @@ export default function Home() {
           <Link href="/" className="brand-link" aria-label="OTTO home">
             <Image src="/otto-logo.svg" alt="OTTO" width={213} height={80} priority />
           </Link>
+
           <div className="nav-links">
             <a href="#product">Product</a>
             <a href="#how-it-connects">How it connects</a>
             <a href="#who-its-for">Who it&apos;s for</a>
           </div>
+
           <div className="nav-actions">
             <Link href="/auth/login" className="nav-signin">Sign in</Link>
-            <Link href="/auth/login" className="nav-cta">Open OTTO</Link>
           </div>
         </div>
       </nav>
 
       <section className="hero" aria-labelledby="hero-title">
-        <div className="hero-grid" aria-hidden="true" />
-        <div className="hero-signal" aria-hidden="true">
-          <span className="signal-line signal-line-a" />
-          <span className="signal-line signal-line-b" />
-          <span className="signal-line signal-line-c" />
-          <span className="signal-node signal-node-a" />
-          <span className="signal-node signal-node-b" />
-          <span className="signal-node signal-node-c" />
-          <span className="signal-node signal-node-d" />
+        <div className="hero-image" aria-hidden="true">
+          <Image
+            src="/assets/otto-hero-abstract.webp"
+            alt=""
+            fill
+            priority
+            sizes="(max-width: 900px) 100vw, 62vw"
+            style={{ objectFit: "cover", objectPosition: "center center" }}
+          />
         </div>
+        <div className="hero-overlay" aria-hidden="true" />
+
         <div className="landing-container hero-inner">
           <div className="hero-copy">
             <p className="eyebrow"><span /> Music operations infrastructure</p>
@@ -62,8 +66,7 @@ export default function Home() {
               OTTO keeps contracts, releases, people, rights and documents together — and connects them to the organisations and work they belong to.
             </p>
             <div className="hero-actions">
-              <Link href="/auth/login" className="button button-primary">Open OTTO <span>→</span></Link>
-              <a href="#product" className="button button-secondary">See the product <span>↓</span></a>
+              <a href="#product" className="button button-primary">Explore OTTO <span>→</span></a>
             </div>
           </div>
           <div className="hero-foot">
@@ -88,6 +91,7 @@ export default function Home() {
             </p>
           </div>
         </div>
+
         <div className="landing-container domain-grid">
           {domains.map(([number, title, description]) => (
             <article className="domain-card" key={title}>
@@ -112,6 +116,7 @@ export default function Home() {
               OTTO is built around the practical relationships that make music operations work. The result is less hunting across systems and more context where the work happens.
             </p>
           </div>
+
           <div className="reason-grid">
             {reasons.map(([title, text], index) => (
               <article className="reason-card" key={title}>
@@ -139,47 +144,13 @@ export default function Home() {
             <div className="relationship-line line-two" />
             <div className="relationship-line line-three" />
             <div className="relationship-line line-four" />
+            <div className="relationship-line line-five" />
             <div className="relationship-node node-contract"><small>CONTRACT</small><strong>Agreement</strong></div>
             <div className="relationship-node node-people"><small>PEOPLE</small><strong>Artists &amp; contacts</strong></div>
             <div className="relationship-node node-release"><small>RELEASE</small><strong>Catalogue</strong></div>
             <div className="relationship-node node-rights"><small>RIGHTS</small><strong>Ownership</strong></div>
             <div className="relationship-node node-documents"><small>DOCUMENTS</small><strong>Source files</strong></div>
-            <div className="relationship-center">OTTO</div>
-          </div>
-        </div>
-      </section>
-
-      <section className="section section-showcase">
-        <div className="landing-container">
-          <div className="showcase-heading">
-            <div>
-              <p className="eyebrow">Product</p>
-              <h2>See the system, not a marketing mockup.</h2>
-            </div>
-            <p>
-              The landing page uses the real OTTO interface as product evidence. The same operating surfaces are used by the teams doing the work.
-            </p>
-          </div>
-          <div className="product-frame">
-            <div className="product-frame-bar">
-              <span className="frame-dot" />
-              <span className="frame-dot" />
-              <span className="frame-dot" />
-              <span className="frame-path">OTTO / Dashboard</span>
-            </div>
-            <div className="product-image">
-              <Image
-                src="/assets/dashboard-preview.png"
-                alt="OTTO dashboard showing the current product interface"
-                fill
-                sizes="(max-width: 900px) 100vw, 1200px"
-                style={{ objectFit: "cover", objectPosition: "top center" }}
-              />
-            </div>
-          </div>
-          <div className="showcase-caption">
-            <span>REAL OTTO INTERFACE</span>
-            <span>Dashboard / current product surface</span>
+            <div className="relationship-center"><span>OTTO</span></div>
           </div>
         </div>
       </section>
@@ -193,6 +164,7 @@ export default function Home() {
               OTTO is designed for organisations whose work spans catalogue, contracts, people, rights and documents.
             </p>
           </div>
+
           <div className="audience-grid">
             {audiences.map(([title, text]) => (
               <article className="audience-card" key={title}>
@@ -222,12 +194,16 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="final-cta">
-        <div className="landing-container final-cta-inner">
-          <p className="eyebrow">OTTO CLOUD</p>
-          <h2>See how your music organisation fits together.</h2>
-          <p>Explore the product and its operating model.</p>
-          <Link href="/auth/login" className="button button-primary">Open OTTO <span>→</span></Link>
+      <section className="final-cta" id="contact">
+        <div className="landing-container contact-layout">
+          <div className="contact-copy">
+            <p className="eyebrow">Talk to us</p>
+            <h2>Interested in OTTO?</h2>
+            <p>
+              Tell us a little about yourself and your organisation. We&apos;ll get back to you to talk through what you need.
+            </p>
+          </div>
+          <ContactForm />
         </div>
       </section>
 
@@ -243,7 +219,6 @@ export default function Home() {
           <span>© {new Date().getFullYear()} Okel Dijital</span>
         </div>
       </footer>
-
     </main>
   );
 }
