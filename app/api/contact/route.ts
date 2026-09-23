@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     }
 
     const apiKey = process.env.RESEND_API_KEY;
-    const recipient = process.env.CONTACT_EMAIL || process.env.INITIAL_ADMIN_EMAIL;
+    const recipient = process.env.CONTACT_EMAIL || process.env.INITIAL_ADMIN_EMAIL || "okeldijital@gmail.com";
     const from = process.env.EMAIL_FROM;
 
     if (!apiKey || !recipient || !from) {
