@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Search, SlidersHorizontal } from "lucide-react";
+import { Plus, Search, SlidersHorizontal, Disc, User, Music2 } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import Button from "@/components/ui/Button";
 import DataTable from "@/components/DataTable";
@@ -29,13 +29,24 @@ export default function TracksPage() {
   const [genreFilter, setGenreFilter] = useState("all");
   const [showAddModal, setShowAddModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [newTrack, setNewTrack] = useState<any>({ title: "", isrc_code: "", genre: "", duration: "" });
+  const [newTrack, setNewTrack] = useState<any>({ title: "", isrc_code: "", genre: "", duration: "", release_id: "", work_id: "", artist_ids: [] });
+  const [artists, setArtists] = useState<any[]>([]);
+  const [releases, setReleases] = useState<any[]>([]);
+  const [works, setWorks] = useState<any[]>([]);
 
   const fetchData = async () => {
     try {
-      const res = await api.get("/tracks");
+      const [res, artistsRes, releasesRes, worksRes] = await Promise.all([
+        api.get("/tracks"),
+        api.get("/artists"),
+        api.get("/releases?limit=100"),
+        api.get("/works?limit=100"),
+      ]);
       const items = Array.isArray(res.data) ? res.data : res.data?.items || [];
       setData(items);
+      setArtists(Array.isArray(artistsRes.data) ? artistsRes.data : artistsRes.data?.items || []);
+      setReleases(Array.isArray(releasesRes.data) ? releasesRes.data : releasesRes.data?.items || []);
+      setWorks(Array.isArray(worksRes.data) ? worksRes.data : worksRes.data?.items || []);
     } catch (err) {
       console.error("Failed to fetch tracks:", err);
     } finally {
@@ -82,9 +93,12 @@ export default function TracksPage() {
         isrc_code: newTrack.isrc_code || undefined,
         genre: newTrack.genre || undefined,
         duration: newTrack.duration || undefined,
+        release_id: newTrack.release_id ? Number(newTrack.release_id) : null,
+        work_id: newTrack.work_id ? Number(newTrack.work_id) : null,
+        artist_ids: newTrack.artist_ids,
       });
       setShowAddModal(false);
-      setNewTrack({ title: "", isrc_code: "", genre: "", duration: "" });
+      setNewTrack({ title: "", isrc_code: "", genre: "", duration: "", release_id: "", work_id: "", artist_ids: [] });
       fetchData();
     } catch (err: any) {
       alert(err?.response?.data?.error || "Failed to create track");
@@ -151,23 +165,80 @@ export default function TracksPage() {
       )}
 
       <EntityForm title="New Track" isOpen={showAddModal} onClose={() => setShowAddModal(false)} onSubmit={handleCreate} isSubmitting={isSubmitting} error={undefined}>
-        <div className="space-y-4">
-          <div>
-            <label className="text-xs text-text-secondary font-bold">Title *</label>
-            <input className="input w-full" value={newTrack.title} onChange={(e) => setNewTrack({ ...newTrack, title: e.target.value })} required />
-          </div>
-          <div>
-            <label className="text-xs text-text-secondary font-bold">ISRC</label>
-            <input className="input w-full" value={newTrack.isrc_code} onChange={(e) => setNewTrack({ ...newTrack, isrc_code: e.target.value })} placeholder="e.g. USABC1234567" />
-          </div>
-          <div>
-            <label className="text-xs text-text-secondary font-bold">Genre</label>
-            <input className="input w-full" value={newTrack.genre} onChange={(e) => setNewTrack({ ...newTrack, genre: e.target.value })} />
-          </div>
-          <div>
-            <label className="text-xs text-text-secondary font-bold">Duration</label>
-            <input className="input w-full" value={newTrack.duration} onChange={(e) => setNewTrack({ ...newTrack, duration: e.target.value })} placeholder="e.g. 3:45" />
-          </div>
+        <div className="space-y-8">
+          <section>
+            <div className="mb-4 border-b border-border pb-2">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-text-primary">Track details</h3>
+              <p className="mt-1 text-xs text-text-secondary">Core metadata for the recording.</p>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <label className="mb-1.5 block text-xs font-medium text-text-secondary">Title *</label>
+                <input className="input w-full" value={newTrack.title} onChange={(e) => setNewTrack({ ...newTrack, title: e.target.value })} required />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-text-secondary">ISRC</label>
+                <input className="input w-full" value={newTrack.isrc_code} onChange={(e) => setNewTrack({ ...newTrack, isrc_code: e.target.value })} placeholder="e.g. USABC1234567" />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-text-secondary">Genre</label>
+                <input className="input w-full" value={newTrack.genre} onChange={(e) => setNewTrack({ ...newTrack, genre: e.target.value })} />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-text-secondary">Duration</label>
+                <input className="input w-full" value={newTrack.duration} onChange={(e) => setNewTrack({ ...newTrack, duration: e.target.value })} placeholder="e.g. 3:45" />
+              </div>
+            </div>
+          </section>
+
+          <section>
+            <div className="mb-4 border-b border-border pb-2">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-text-primary">Relationships</h3>
+              <p className="mt-1 text-xs text-text-secondary">A track does not need a release. Link artists and works independently.</p>
+            </div>
+            <div className="space-y-5">
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-text-secondary">Primary release</label>
+                <div className="relative">
+                  <Disc size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
+                  <select className="input w-full pl-9" value={newTrack.release_id} onChange={(e) => setNewTrack({ ...newTrack, release_id: e.target.value })}>
+                    <option value="">No release yet</option>
+                    {releases.map((release) => <option key={release.id} value={release.id}>{release.title}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-text-secondary">Artists</label>
+                <div className="max-h-52 space-y-1 overflow-y-auto rounded-md border border-border bg-surface-elevated p-2">
+                  {artists.length === 0 ? (
+                    <p className="px-2 py-4 text-center text-xs text-text-secondary">No artists available.</p>
+                  ) : artists.map((artist) => {
+                    const selected = newTrack.artist_ids.includes(artist.id);
+                    return (
+                      <button key={artist.id} type="button" onClick={() => setNewTrack({ ...newTrack, artist_ids: selected ? newTrack.artist_ids.filter((id: number) => id !== artist.id) : [...newTrack.artist_ids, artist.id] })} className={`flex w-full items-center justify-between gap-3 rounded-md border px-3 py-2 text-left transition-colors ${selected ? "border-accent/50 bg-accent/10" : "border-transparent hover:border-border hover:bg-surface"}`}>
+                        <span className="flex min-w-0 items-center gap-2"><User size={14} className="shrink-0 text-accent" /><span className="truncate text-sm text-text-primary">{artist.display_name || artist.aka || artist.name || `Artist #${artist.id}`}</span></span>
+                        <span className={`h-4 w-4 shrink-0 rounded border ${selected ? "border-accent bg-accent" : "border-border"}`}>{selected && <span className="block text-center text-[10px] leading-4 text-black">✓</span>}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="mt-1.5 text-xs text-text-secondary">{newTrack.artist_ids.length} artist{newTrack.artist_ids.length === 1 ? "" : "s"} selected</p>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-text-secondary">Musical work</label>
+                <div className="relative">
+                  <Music2 size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
+                  <select className="input w-full pl-9" value={newTrack.work_id} onChange={(e) => setNewTrack({ ...newTrack, work_id: e.target.value })}>
+                    <option value="">No work linked</option>
+                    {works.map((work) => <option key={work.id} value={work.id}>{work.title}</option>)}
+                  </select>
+                </div>
+                <p className="mt-1.5 text-xs text-text-secondary">Works can be linked before they appear on a release.</p>
+              </div>
+            </div>
+          </section>
         </div>
       </EntityForm>
     </div>

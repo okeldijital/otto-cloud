@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Users, Building2, Globe, Search, Trash2 } from "lucide-react";
+import { Users, Building2, Search, Trash2 } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
+import EntityArtwork from "@/components/media/EntityArtwork";
 import api from "@/lib/api";
 
 export default function AllContactsPage() {
@@ -40,7 +41,6 @@ export default function AllContactsPage() {
     switch (type) {
       case "Individual": return <Users size={16} />;
       case "Organization": return <Building2 size={16} />;
-      case "Platform": return <Globe size={16} />;
       default: return null;
     }
   };
@@ -49,7 +49,6 @@ export default function AllContactsPage() {
     switch (type) {
       case "Individual": return "primary";
       case "Organization": return "warn";
-      case "Platform": return "neutral";
       default: return "neutral";
     }
   };
@@ -59,7 +58,6 @@ export default function AllContactsPage() {
     try {
       if (contact.item_type === "Organization") await api.delete(`/network/organizations?id=${contact.id}`);
       else if (contact.item_type === "Individual") await api.delete(`/network/individuals?id=${contact.id}`);
-      else if (contact.item_type === "Platform") await api.delete(`/network/platforms?id=${contact.id}`);
       fetchAll();
     } catch { alert("Failed to delete contact"); }
   };
@@ -73,13 +71,13 @@ export default function AllContactsPage() {
           <div className="flex gap-3 items-center">
             <div className="relative">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
-              <input className="input pl-9" placeholder="Search contacts..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+              <input className="h-10 w-full rounded-lg border border-border bg-surface-elevated pl-9 pr-3 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30" placeholder="Search contacts..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
             </div>
-            <select className="input w-auto" value={activeType} onChange={(e) => setActiveType(e.target.value)}>
+            <select className="h-10 rounded-lg border border-border bg-surface-elevated px-3 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent/30" value={activeType} onChange={(e) => setActiveType(e.target.value)}>
               <option value="All">All Types</option>
               <option value="Individual">Individuals</option>
               <option value="Organization">Organizations</option>
-              <option value="Platform">Platforms</option>
+              
             </select>
           </div>
         }
@@ -95,6 +93,7 @@ export default function AllContactsPage() {
             <table className="w-full" style={{ borderCollapse: "collapse" }}>
               <thead>
                 <tr className="text-left text-xs uppercase tracking-wider text-text-secondary border-b border-border">
+                  <th className="p-4 font-bold"></th>
                   <th className="p-4 font-bold">Name</th>
                   <th className="p-4 font-bold">Type</th>
                   <th className="p-4 font-bold">Role / Category</th>
@@ -113,6 +112,16 @@ export default function AllContactsPage() {
                       className="border-b border-border hover:bg-surface-elevated cursor-pointer transition-colors"
                       onClick={() => router.push(`/network/${contact.item_type.toLowerCase()}s/${contact.id}`)}
                     >
+                      <td className="p-4">
+                        <EntityArtwork
+                          entityType={contact.item_type === "Individual" ? "individual" : "organization"}
+                          entityId={contact.id}
+                          alt={name}
+                          placeholder={contact.item_type === "Individual" ? "user" : "label"}
+                          size={40}
+                          className={contact.item_type === "Individual" ? "w-10 h-10 rounded-full border border-border" : "w-10 h-10 rounded-lg border border-border"}
+                        />
+                      </td>
                       <td className="p-4 font-medium text-text-primary">{name}</td>
                       <td className="p-4">
                         <Badge variant={getTypeBadgeVariant(contact.item_type)} size="sm">

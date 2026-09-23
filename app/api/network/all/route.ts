@@ -15,7 +15,7 @@ export async function GET() {
     const ctx = await requireProductOrganization("network");
     const intOrg = requireLegacyIntOrgId(ctx);
 
-    const [orgs, individuals, platforms] = await Promise.all([
+    const [orgs, individuals] = await Promise.all([
       prisma.organizations.findMany({
         where: { organization_id: intOrg },
         orderBy: { name: "asc" },
@@ -30,7 +30,6 @@ export async function GET() {
           },
         },
       }),
-      prisma.platforms.findMany({ orderBy: { name: "asc" } }),
     ]);
 
     const result: any[] = [];
@@ -48,9 +47,7 @@ export async function GET() {
         organization_names: orgNames,
       });
     }
-    for (const p of platforms) {
-      result.push({ ...p, item_type: "Platform" });
-    }
+
 
     return NextResponse.json(result);
   } catch (err: any) {

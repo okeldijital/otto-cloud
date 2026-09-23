@@ -8,6 +8,7 @@ import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import EntityForm from "@/components/EntityForm";
+import EntityArtwork from "@/components/media/EntityArtwork";
 import api from "@/lib/api";
 
 const STRENGTH_VARIANTS: Record<string, string> = {
@@ -15,15 +16,17 @@ const STRENGTH_VARIANTS: Record<string, string> = {
   Regular: "primary",
   "Ad-hoc": "neutral",
 };
+const inputClass = "h-10 w-full rounded-lg border border-border bg-surface-elevated px-3 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30";
 
 export default function IndividualsPage() {
   const router = useRouter();
   const [individuals, setIndividuals] = useState<any[]>([]);
+  const [organizations, setOrganizations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [newInd, setNewInd] = useState({ first_name: "", last_name: "", email: "", role: "", relationship_strength: "Regular" });
+  const [newInd, setNewInd] = useState({ first_name: "", last_name: "", email: "", role: "", relationship_strength: "Regular", organization_ids: [] as number[] });
 
   const fetchIndividuals = async () => {
     try {
@@ -34,7 +37,7 @@ export default function IndividualsPage() {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchIndividuals(); }, []);
+  useEffect(() => { fetchIndividuals(); api.get("/network/organizations").then((res) => setOrganizations(Array.isArray(res.data) ? res.data : [])).catch(() => setOrganizations([])); }, []);
 
   const filtered = useMemo(() => {
     const q = searchTerm.toLowerCase();
@@ -50,7 +53,7 @@ export default function IndividualsPage() {
     try {
       await api.post("/network/individuals", newInd);
       setShowAddModal(false);
-      setNewInd({ first_name: "", last_name: "", email: "", role: "", relationship_strength: "Regular" });
+      setNewInd({ first_name: "", last_name: "", email: "", role: "", relationship_strength: "Regular", organization_ids: [] });
       fetchIndividuals();
     } catch (err: any) { alert(err?.response?.data?.error || "Failed to create"); }
     finally { setIsSubmitting(false); }
@@ -73,7 +76,7 @@ export default function IndividualsPage() {
           <div className="flex gap-3 items-center">
             <div className="relative">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
-              <input className="input pl-9" placeholder="Search individuals..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+              <input className={`${inputClass} pl-9`} placeholder="Search individuals..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
             </div>
             <Button variant="primary" size="sm" onClick={() => setShowAddModal(true)}>
               <Plus size={14} /> Add Individual
@@ -110,7 +113,7 @@ export default function IndividualsPage() {
                     <tr key={ind.id} className="border-b border-border hover:bg-surface-elevated cursor-pointer transition-colors" onClick={() => router.push(`/network/individuals/${ind.id}`)}>
                       <td className="p-4">
                         <div className="w-10 h-10 rounded-full bg-surface-elevated border border-border flex items-center justify-center overflow-hidden">
-                          {ind.image_url ? <img src={ind.image_url} alt="" className="w-full h-full object-cover" /> : <UserCircle size={24} className="text-text-secondary" />}
+                          <EntityArtwork entityType="individual" entityId={ind.id} alt={ind.first_name + " " + ind.last_name} placeholder="user" size={40} className="w-10 h-10 rounded-full border border-border" />
                         </div>
                       </td>
                       <td className="p-4 font-medium text-text-primary">{ind.first_name} {ind.last_name}</td>
@@ -144,24 +147,31 @@ export default function IndividualsPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-xs text-text-secondary font-bold">First Name</label>
-              <input className="input w-full" value={newInd.first_name} onChange={(e) => setNewInd({ ...newInd, first_name: e.target.value })} required />
+              <input className={inputClass} value={newInd.first_name} onChange={(e) => setNewInd({ ...newInd, first_name: e.target.value })} required />
             </div>
             <div>
               <label className="text-xs text-text-secondary font-bold">Last Name</label>
-              <input className="input w-full" value={newInd.last_name} onChange={(e) => setNewInd({ ...newInd, last_name: e.target.value })} required />
+              <input className={inputClass} value={newInd.last_name} onChange={(e) => setNewInd({ ...newInd, last_name: e.target.value })} required />
             </div>
           </div>
           <div>
             <label className="text-xs text-text-secondary font-bold">Email</label>
-            <input className="input w-full" type="email" value={newInd.email} onChange={(e) => setNewInd({ ...newInd, email: e.target.value })} required />
+            <input className={inputClass} type="email" value={newInd.email} onChange={(e) => setNewInd({ ...newInd, email: e.target.value })} required />
           </div>
           <div>
             <label className="text-xs text-text-secondary font-bold">Role / Title</label>
-            <input className="input w-full" value={newInd.role} onChange={(e) => setNewInd({ ...newInd, role: e.target.value })} placeholder="e.g. Mixing Engineer" />
+            <input className={inputClass} value={newInd.role} onChange={(e) => setNewInd({ ...newInd, role: e.target.value })} placeholder="e.g. Mixing Engineer" />
+          </div>
+          <div>
+            <label className="text-xs text-text-secondary font-bold">Organization</label>
+            <select className={inputClass} value={newInd.organization_ids[0] || ""} onChange={(e) => setNewInd({ ...newInd, organization_ids: e.target.value ? [Number(e.target.value)] : [] })}>
+              <option value="">No organization</option>
+              {organizations.map((org) => <option key={org.id} value={org.id}>{org.name}</option>)}
+            </select>
           </div>
           <div>
             <label className="text-xs text-text-secondary font-bold">Relationship Strength</label>
-            <select className="input w-full" value={newInd.relationship_strength} onChange={(e) => setNewInd({ ...newInd, relationship_strength: e.target.value })}>
+            <select className={inputClass} value={newInd.relationship_strength} onChange={(e) => setNewInd({ ...newInd, relationship_strength: e.target.value })}>
               <option value="Core">Core</option>
               <option value="Regular">Regular</option>
               <option value="Ad-hoc">Ad-hoc</option>

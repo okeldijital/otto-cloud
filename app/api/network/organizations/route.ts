@@ -5,7 +5,6 @@ import { orgContextErrorResponse } from "@/lib/auth/organization-context";
 import { requireProductOrganization } from "@/lib/platform/productization";
 import {
   requireLegacyIntOrgId,
-  requireActorUserId,
   resourceAuthErrorResponse,
 } from "@/lib/auth/resource-authorization";
 
@@ -69,7 +68,6 @@ export async function POST(req: Request) {
 
     const ctx = await requireProductOrganization("network");
 
-    const orgIdStr = ctx.organizationId;
     const orgId = requireLegacyIntOrgId(ctx);
 
     const org = await prisma.organizations.create({
@@ -77,6 +75,9 @@ export async function POST(req: Request) {
         name: body.name,
         org_type: body.org_type || "Other",
         website: body.website || null,
+        contact_person: body.contact_person || null,
+        contact_email: body.contact_email || null,
+        contact_phone: body.contact_phone || null,
         address: body.address || null,
         organization_id: orgId,
       },
@@ -121,6 +122,9 @@ export async function PUT(req: Request) {
         name: body.name !== undefined ? body.name : undefined,
         org_type: body.org_type !== undefined ? body.org_type : undefined,
         website: body.website !== undefined ? body.website : undefined,
+        contact_person: body.contact_person !== undefined ? body.contact_person : undefined,
+        contact_email: body.contact_email !== undefined ? body.contact_email : undefined,
+        contact_phone: body.contact_phone !== undefined ? body.contact_phone : undefined,
         address: body.address !== undefined ? body.address : undefined,
       },
     });

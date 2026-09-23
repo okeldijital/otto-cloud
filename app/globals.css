@@ -47,6 +47,112 @@ select {
   font: inherit;
 }
 
+/*
+ * Signal compatibility layer
+ *
+ * Some legacy modules still use the pre-Signal utility vocabulary
+ * (.input, primary, ghost-btn, etc.). These are presentation aliases only;
+ * they must resolve to the locked Signal tokens instead of falling back to
+ * browser defaults. This keeps older modules visually consistent while they
+ * are incrementally migrated to the shared UI primitives.
+ */
+@layer base {
+  input,
+  textarea,
+  select {
+    color: var(--color-text-primary);
+    background-color: var(--color-surface-elevated);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: color-mix(in srgb, var(--color-text-secondary) 70%, transparent);
+  }
+
+  input:focus,
+  textarea:focus,
+  select:focus {
+    outline: none;
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 2px rgba(0, 229, 255, 0.14);
+  }
+
+  option {
+    color: var(--color-text-primary);
+    background: var(--color-surface-elevated);
+  }
+}
+
+.input {
+  width: 100%;
+  min-height: 40px;
+  padding: 0.625rem 0.75rem;
+  color: var(--color-text-primary);
+  background-color: var(--color-surface-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition: border-color 140ms ease, box-shadow 140ms ease, background-color 140ms ease;
+}
+
+.input::placeholder {
+  color: color-mix(in srgb, var(--color-text-secondary) 70%, transparent);
+}
+
+.input:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px rgba(0, 229, 255, 0.14);
+}
+
+.text-primary {
+  color: var(--color-accent) !important;
+}
+
+.bg-primary {
+  background-color: var(--color-accent) !important;
+}
+
+.border-primary {
+  border-color: var(--color-accent) !important;
+}
+
+.text-primary:hover,
+.hover\:text-primary:hover {
+  color: var(--color-accent-soft) !important;
+}
+
+.focus\:ring-primary:focus {
+  --tw-ring-color: var(--color-accent);
+}
+
+.ghost-btn {
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+
+.ghost-btn:hover {
+  color: var(--color-text-primary);
+  background: var(--color-surface-elevated);
+  border-color: var(--color-border);
+}
+
+.btn-secondary {
+  color: var(--color-text-primary);
+  background: var(--color-surface-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.btn-secondary:hover {
+  background: var(--color-surface);
+  border-color: var(--border-strong);
+}
+
 button,
 a {
   -webkit-tap-highlight-color: transparent;
@@ -132,100 +238,31 @@ a {
   background: var(--color-background) !important;
 }
 
-.otto-shell > .fixed.left-0 {
-  width: 280px !important;
+.otto-shell .otto-main {
+  background: var(--color-background) !important;
+}
+
+.otto-shell aside {
   background: var(--color-surface) !important;
-  background-image: none !important;
-  border-right: 1px solid var(--color-border) !important;
+  border: 0 !important;
   box-shadow: none !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
 
-.otto-shell > .fixed.left-0 > div:first-child {
-  min-height: 64px;
-  height: 64px;
-  padding: 0 20px !important;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.otto-shell > .fixed.left-0 .logo-container img {
-  height: 28px !important;
+.otto-shell aside .logo-container img {
+  height: 30px !important;
   width: auto !important;
 }
 
-.otto-shell > .fixed.left-0 nav {
-  padding: 12px 12px 20px !important;
-}
-
-.otto-shell > .fixed.left-0 nav a {
-  position: relative;
-  min-height: 40px;
-  border-radius: 6px !important;
-  border-color: transparent !important;
-  box-shadow: none !important;
-  transition: background-color 140ms ease, color 140ms ease !important;
-}
-
-.otto-shell > .fixed.left-0 nav a:hover {
-  background: var(--color-surface-elevated) !important;
-}
-
-.otto-shell > .fixed.left-0 nav a[class*="bg-white\\/10"] {
-  background: rgba(0, 229, 255, 0.08) !important;
-  border-color: transparent !important;
-  box-shadow: none !important;
-  font-weight: 600 !important;
-}
-
-.otto-shell > .fixed.left-0 nav a[class*="bg-white\\/10"]::before {
-  content: "";
-  position: absolute;
-  left: -12px;
-  top: 6px;
-  bottom: 6px;
-  width: 2px;
-  border-radius: 0 2px 2px 0;
-  background: var(--color-accent);
-}
-
-.otto-shell > .fixed.left-0 nav button {
-  color: var(--color-text-secondary) !important;
-  padding: 8px 12px !important;
-  letter-spacing: 0.08em !important;
-}
-
-.otto-main {
+.otto-shell .otto-main > header {
   background: var(--color-background) !important;
-}
-
-.otto-main > main {
-  background: var(--color-background) !important;
-  padding: 24px 32px !important;
-}
-
-.otto-main > div:first-child {
-  height: 56px !important;
-  min-height: 56px !important;
-  background: var(--color-surface) !important;
-  border-bottom: 1px solid var(--color-border) !important;
+  border: 0 !important;
   box-shadow: none !important;
 }
 
-.otto-main > div:first-child form {
-  height: 40px !important;
-  border-radius: 8px !important;
-  background: var(--color-surface-elevated) !important;
-  border-color: var(--color-border) !important;
-}
-
-.otto-main > div:first-child form:focus-within {
-  border-color: var(--color-accent) !important;
-  box-shadow: 0 0 0 2px rgba(0, 229, 255, 0.14) !important;
-}
-
-.otto-main > div:first-child button {
-  transition: color 140ms ease, background-color 140ms ease !important;
+.otto-shell .otto-main > main {
+  background: var(--color-background) !important;
 }
 
 .otto-shell .shadow-glow,
@@ -248,9 +285,8 @@ a {
 }
 
 @media (max-width: 767px) {
-  .otto-main > div:first-child {
-    padding-left: 12px !important;
-    padding-right: 12px !important;
+  .otto-main > main {
+    padding: 16px !important;
   }
 }
 

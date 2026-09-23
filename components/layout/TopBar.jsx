@@ -1,410 +1,383 @@
+"use client";
 
-import React, { useState, useEffect, useRef } from 'react';
-import { Search, Bell, User, Settings as SettingsIcon, LogOut, Music, Users, FileText, Layout, X, Building2, BookOpen, Globe, File, StickyNote, ListMusic, Sun, Moon, CreditCard, Menu } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
-import { useSidebar } from '../../contexts/SidebarContext';
-import { useRouter } from 'next/navigation';
-import api from '../../lib/api';
-import ThemeToggle from '../ui/ThemeToggle';
-import OrganizationSwitcher from '../org/OrganizationSwitcher';
-import EntityArtwork from '../media/EntityArtwork';
+import React, { useEffect, useRef, useState } from "react";
+import {
+    Search,
+    Bell,
+    Music,
+    Users,
+    FileText,
+    Layout,
+    X,
+    Globe,
+    Menu,
+} from "lucide-react";
+import { useAuth } from "../../contexts/AuthContext";
+import { useSidebar } from "../../contexts/SidebarContext";
+import { useRouter } from "next/navigation";
+import api from "../../lib/api";
+import OrganizationSwitcher from "../org/OrganizationSwitcher";
+import EntityArtwork from "../media/EntityArtwork";
 
 const TopBar = () => {
-    const { user, logout } = useAuth();
-    const router = useRouter();
+    const { user } = useAuth();
     const { toggleSidebar } = useSidebar();
-    const dropdownRef = useRef(null);
-    const [showNotifications, setShowNotifications] = useState(false);
+    const router = useRouter();
+    const searchRef = useRef(null);
+    const inputRef = useRef(null);
 
-    // Notifications State
+    const [searchOpen, setSearchOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [searchResults, setSearchResults] = useState(null);
+    const [isSearching, setIsSearching] = useState(false);
+
+    const [showNotifications, setShowNotifications] = useState(false);
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
 
-    const [showUserMenu, setShowUserMenu] = useState(false);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [searchResults, setSearchResults] = useState(null);
-    const [isSearching, setIsSearching] = useState(false);
-    const [showSearchResults, setShowSearchResults] = useState(false);
-
-    const handleLogout = () => {
-        logout();
-        router.push('/login');
-    };
-
-    const fetchNotifications = async () => {
-        try {
-            const { data } = await api.get('/notifications');
-            setNotifications(data.notifications || []);
-            setUnreadCount(data.unreadCount || 0);
-        } catch { /* */ }
-    };
-
-    const fetchUnreadCount = async () => {
-        try {
-            const { data } = await api.get('/notifications?scope=unread-count');
-            setUnreadCount(data.count || 0);
-        } catch { /* */ }
-    };
-
     useEffect(() => {
-        fetchNotifications();
+        const fetchUnreadCount = async () => {
+            try {
+                const { data } = await api.get("/notifications?scope=unread-count");
+                setUnreadCount(data.count || 0);
+            } catch {
+                // Notifications are non-critical shell data.
+            }
+        };
+
+        fetchUnreadCount();
         const interval = setInterval(fetchUnreadCount, 30000);
         return () => clearInterval(interval);
     }, []);
 
     useEffect(() => {
-        const timer = setTimeout(async () => {
-            if (searchQuery.trim().length >= 2) {
-                setIsSearching(true);
-                try {
-                    const response = await api.get(`/search?q=${searchQuery}`);
-                    setSearchResults(response.data);
-                    setShowSearchResults(true);
-                } catch (error) {
-                    console.error('Search failed:', error);
-                } finally {
-                    setIsSearching(false);
-                }
-            } else {
-                setSearchResults(null);
-                setShowSearchResults(false);
+        const handleKeyDown = (event) => {
+            if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+                event.preventDefault();
+                setSearchOpen(true);
+                requestAnimationFrame(() => inputRef.current?.focus());
             }
-        }, 300);
 
-        return () => clearTimeout(timer);
-    }, [searchQuery]);
-
-    // Close search on click outside
-    useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-                setShowSearchResults(false);
+            if (event.key === "Escape") {
+                setSearchOpen(false);
+                setShowNotifications(false);
             }
         };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
+
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
     }, []);
 
+    useEffect(() => {
+        if (!searchOpen) return undefined;
+
+        const handleClickOutside = (event) => {
+            if (searchRef.current && !searchRef.current.contains(event.target)) {
+                setSearchOpen(false);
+            }
+        };
+
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [searchOpen]);
+
+    useEffect(() => {
+        if (!searchOpen) return undefined;
+
+        const timer = setTimeout(async () => {
+            const query = searchQuery.trim();
+
+            if (query.length < 2) {
+                setSearchResults(null);
+                setIsSearching(false);
+                return;
+            }
+
+            setIsSearching(true);
+            try {
+                const response = await api.get(`/search?q=${encodeURIComponent(query)}`);
+                setSearchResults(response.data);
+            } catch {
+                setSearchResults(null);
+            } finally {
+                setIsSearching(false);
+            }
+        }, 250);
+
+        return () => clearTimeout(timer);
+    }, [searchOpen, searchQuery]);
+
+    const openSearch = () => {
+        setSearchOpen(true);
+        requestAnimationFrame(() => inputRef.current?.focus());
+    };
+
     const handleResultClick = (result) => {
-        setShowSearchResults(false);
-        setSearchQuery('');
+        setSearchOpen(false);
+        setSearchQuery("");
 
         switch (result.type) {
-            case 'artist':
+            case "artist":
                 router.push(`/catalog/artists/${result.id}`);
                 break;
-            case 'release':
+            case "release":
                 router.push(`/catalog/releases/${result.id}`);
                 break;
-            case 'track':
-                if (result.release_id) {
-                    router.push(`/catalog/releases/${result.release_id}`);
-                } else {
-                    router.push(`/catalog/tracks/${result.id}`);
-                }
+            case "track":
+                router.push(result.release_id ? `/catalog/releases/${result.release_id}` : `/catalog/tracks/${result.id}`);
                 break;
-            case 'work':
+            case "work":
                 router.push(`/catalog/works/${result.id}`);
                 break;
-            case 'contract':
-                router.push(`/admin-of-works/contracts/${result.id}`);
+            case "contract":
+                router.push(`/contracts/${result.id}`);
                 break;
-            case 'label':
+            case "label":
                 router.push(`/catalog/labels/${result.id}`);
                 break;
-            case 'publisher':
+            case "publisher":
                 router.push(`/catalog/publishers/${result.id}`);
                 break;
-            case 'pro':
-                router.push(`/catalog/pros`); // PROs don't have a detail page yet, keeping as list
+            case "pro":
+                router.push("/catalog/pros");
                 break;
-            case 'individual':
+            case "individual":
                 router.push(`/network/individuals/${result.id}`);
                 break;
-            case 'organization':
+            case "organization":
                 router.push(`/network/organizations/${result.id}`);
                 break;
-            case 'platform':
-                router.push(`/network/platforms/${result.id}`);
-                break;
-            case 'document':
-                router.push(`/documents`);
-                break;
-            case 'note':
-                router.push(`/notes`);
-                break;
-            case 'playlist':
-                router.push(`/playlists`);
+            case "document":
+                router.push("/documents");
                 break;
             default:
                 break;
         }
     };
 
-    const handleMarkAllRead = async () => {
+    const fetchNotifications = async () => {
         try {
-            await api.put('/notifications', { action: 'mark_all_read' });
-            setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
-            setUnreadCount(0);
-        } catch { /* */ }
+            const { data } = await api.get("/notifications");
+            setNotifications(data.notifications || []);
+            setUnreadCount(data.unreadCount || 0);
+        } catch {
+            // Non-critical.
+        }
     };
 
-    const handleClearNotifications = async () => {
+    const handleMarkAllRead = async () => {
         try {
-            await api.put('/notifications', { action: 'clear_all' });
-            setNotifications([]);
+            await api.put("/notifications", { action: "mark_all_read" });
+            setNotifications((prev) => prev.map((item) => ({ ...item, is_read: true })));
             setUnreadCount(0);
-        } catch { /* */ }
+        } catch {
+            // Non-critical.
+        }
     };
 
     const handleNotificationClick = async (notification) => {
         try {
-            await api.put('/notifications', { action: 'mark_read', notification_id: notification.id });
-            setNotifications(prev => prev.map(n => n.id === notification.id ? { ...n, is_read: true } : n));
-            setUnreadCount(prev => Math.max(0, prev - 1));
-        } catch { /* */ }
-        if (notification.link) {
-            router.push(notification.link);
+            await api.put("/notifications", {
+                action: "mark_read",
+                notification_id: notification.id,
+            });
+            setNotifications((prev) =>
+                prev.map((item) => item.id === notification.id ? { ...item, is_read: true } : item)
+            );
+            setUnreadCount((count) => Math.max(0, count - 1));
+        } catch {
+            // Non-critical.
         }
+
+        if (notification.link) router.push(notification.link);
         setShowNotifications(false);
     };
 
-    const hasResults = searchResults && Object.values(searchResults).some(arr => arr.length > 0);
+    const resultGroups = [
+        { key: "artists", label: "Artists", icon: Users },
+        { key: "releases", label: "Releases", icon: Layout },
+        { key: "tracks", label: "Tracks", icon: Music },
+        { key: "works", label: "Works", icon: FileText },
+        { key: "contracts", label: "Contracts", icon: FileText },
+        { key: "network", label: "Network", icon: Globe },
+    ];
+
+    const hasResults = searchResults && resultGroups.some((group) => searchResults[group.key]?.length);
 
     return (
-        <div className="h-16 bg-surface border-b border-border flex items-center justify-between px-lg sticky top-0 z-sticky">
-            <div className="flex items-center gap-2">
-                <button 
-                    className="lg:hidden p-2 text-text-secondary hover:text-white transition-colors" 
+        <header className="h-14 shrink-0 bg-background sticky top-0 z-sticky flex items-center justify-between px-4 lg:px-6">
+            <div className="flex items-center min-w-0">
+                <button
+                    type="button"
+                    className="lg:hidden w-9 h-9 rounded-lg flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors"
                     onClick={toggleSidebar}
-                    title="Toggle menu"
+                    title="Open navigation"
+                    aria-label="Open navigation"
                 >
-                    <Menu size={20} />
+                    <Menu size={19} />
                 </button>
-                <div className="hidden md:block">
-          <OrganizationSwitcher />
-        </div>
-        <div className="relative flex-1 max-w-[600px]" ref={dropdownRef}>
-                <form className="flex items-center bg-surface-elevated border border-transparent rounded-xl px-2 h-11 transition-all focus-within:border-accent focus-within:ring-accent" onSubmit={(e) => e.preventDefault()}>
-                    <div className="flex items-center justify-center pr-3 mr-2 border-r border-border h-3/5 text-text-secondary pl-2">
-                        <Search size={20} />
-                    </div>
-                    <input
-                        type="text"
-                        placeholder="Start searching here..."
-                        className="bg-transparent border-none flex-1 p-2 text-sm text-text-primary outline-none placeholder:text-text-secondary"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        onFocus={() => searchQuery.length >= 2 && setShowSearchResults(true)}
-                    />
-                    {searchQuery && (
-                        <button
-                            type="button"
-                            className="bg-border hover:bg-border-strong text-text-secondary hover:text-text-primary rounded-full w-5 h-5 flex items-center justify-center transition-all mr-2"
-                            onClick={() => setSearchQuery('')}
-                        >
-                            <X size={14} />
-                        </button>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+                <div className="relative" ref={searchRef}>
+                    <button
+                        type="button"
+                        onClick={openSearch}
+                        className={[
+                            "w-9 h-9 rounded-lg flex items-center justify-center transition-colors",
+                            searchOpen
+                                ? "bg-surface-elevated text-text-primary"
+                                : "text-text-secondary hover:text-text-primary hover:bg-surface-elevated",
+                        ].join(" ")}
+                        title="Search (⌘K)"
+                        aria-label="Search"
+                    >
+                        <Search size={19} />
+                    </button>
+
+                    {searchOpen && (
+                        <div className="absolute right-0 top-11 w-[min(420px,calc(100vw-32px))] rounded-xl bg-surface-elevated shadow-lg p-2 z-dropdown">
+                            <div className="flex items-center gap-2 px-3 h-10 rounded-lg bg-surface">
+                                <Search size={17} className="text-text-secondary shrink-0" />
+                                <input
+                                    ref={inputRef}
+                                    value={searchQuery}
+                                    onChange={(event) => setSearchQuery(event.target.value)}
+                                    placeholder="Search Otto..."
+                                    className="flex-1 bg-transparent border-0 outline-none text-sm text-text-primary placeholder:text-text-secondary"
+                                    autoComplete="off"
+                                />
+                                {isSearching && (
+                                    <span className="w-4 h-4 rounded-full border-2 border-border border-t-accent animate-spin" />
+                                )}
+                                {searchQuery && !isSearching && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setSearchQuery("")}
+                                        className="text-text-secondary hover:text-text-primary"
+                                        aria-label="Clear search"
+                                    >
+                                        <X size={15} />
+                                    </button>
+                                )}
+                                <kbd className="hidden sm:inline-flex text-[10px] text-text-secondary bg-surface-elevated rounded px-1.5 py-0.5">ESC</kbd>
+                            </div>
+
+                            {searchQuery.trim().length < 2 ? (
+                                <div className="px-3 py-5 text-xs text-text-secondary">
+                                    Search artists, releases, tracks, works, contracts and contacts.
+                                </div>
+                            ) : !isSearching && !hasResults ? (
+                                <div className="px-3 py-5 text-sm text-text-secondary">
+                                    No matches found for "{searchQuery}".
+                                </div>
+                            ) : (
+                                <div className="mt-2 max-h-[420px] overflow-y-auto">
+                                    {resultGroups.map((group) => {
+                                        const Icon = group.icon;
+                                        const results = searchResults?.[group.key] || [];
+                                        if (!results.length) return null;
+
+                                        return (
+                                            <div key={group.key} className="mb-2">
+                                                <div className="px-3 py-1.5 flex items-center gap-2 text-[10px] font-bold text-text-secondary uppercase tracking-widest">
+                                                    <Icon size={12} />
+                                                    {group.label}
+                                                </div>
+                                                {results.slice(0, 6).map((result) => (
+                                                    <button
+                                                        key={`${group.key}-${result.id}`}
+                                                        type="button"
+                                                        onClick={() => handleResultClick(result)}
+                                                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-sm text-text-primary hover:bg-surface transition-colors"
+                                                    >
+                                                        {group.key === "artists" ? (
+                                                            <EntityArtwork
+                                                                entityType="artist"
+                                                                entityId={result.id}
+                                                                alt={result.name}
+                                                                size={28}
+                                                                placeholder="artist"
+                                                                className="rounded-full shrink-0"
+                                                                style={{ borderRadius: 999 }}
+                                                            />
+                                                        ) : (
+                                                            <span className="w-7 h-7 rounded-lg bg-surface flex items-center justify-center text-text-secondary shrink-0">
+                                                                <Icon size={14} />
+                                                            </span>
+                                                        )}
+                                                        <span className="truncate">{result.name || result.title}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
                     )}
-                    {isSearching && <div className="w-4 h-4 border-2 border-border border-t-accent rounded-full animate-spin mr-2" />}
-                </form>
+                </div>
 
-                {showSearchResults && (
-                    <div className="absolute top-[calc(100%+0.75rem)] left-0 right-0 bg-surface rounded-md shadow-lg border border-border z-dropdown max-h-[400px] overflow-y-auto">
-                        {hasResults ? (
-                            <div className="py-2">
-                                {searchResults.artists?.length > 0 && (
-                                    <div className="mb-2">
-                                        <h4 className="px-4 py-2 text-2xs font-bold text-text-secondary uppercase tracking-widest bg-surface-elevated flex items-center gap-2"><Users size={12} /> Artists</h4>
-                                        {searchResults.artists.map(a => (
-                                            <div key={a.id} className="px-4 py-3 cursor-pointer text-sm text-text-primary hover:bg-surface-elevated hover:text-accent transition-all flex items-center gap-3" onClick={() => handleResultClick(a)}>
-                                                <EntityArtwork entityType="artist" entityId={a.id} alt={a.name} size={28} placeholder="artist" className="rounded-full flex-shrink-0" style={{ borderRadius: 999 }} />
-                                                <span className="truncate">{a.name}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                                {searchResults.releases?.length > 0 && (
-                                    <div className="mb-2">
-                                        <h4 className="px-4 py-2 text-2xs font-bold text-text-secondary uppercase tracking-widest bg-surface-elevated flex items-center gap-2"><Layout size={12} /> Releases</h4>
-                                        {searchResults.releases.map(r => (
-                                            <div key={r.id} className="px-4 py-3 cursor-pointer text-sm text-text-primary hover:bg-surface-elevated hover:text-accent transition-all flex items-center gap-3" onClick={() => handleResultClick(r)}>
-                                                <EntityArtwork entityType="release" entityId={r.id} alt={r.title} size={28} placeholder="release" className="rounded flex-shrink-0" style={{ borderRadius: 6 }} />
-                                                <span className="truncate">{r.title}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                                {searchResults.tracks?.length > 0 && (
-                                    <div className="mb-2">
-                                        <h4 className="px-4 py-2 text-2xs font-bold text-text-secondary uppercase tracking-widest bg-surface-elevated flex items-center gap-2"><Music size={12} /> Tracks</h4>
-                                        {searchResults.tracks.map(t => (
-                                            <div key={t.id} className="px-4 py-3 cursor-pointer text-sm text-text-primary hover:bg-surface-elevated hover:text-accent transition-all" onClick={() => handleResultClick(t)}>
-                                                {t.title}
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                                {searchResults.works?.length > 0 && (
-                                    <div className="mb-2">
-                                        <h4 className="px-4 py-2 text-2xs font-bold text-text-secondary uppercase tracking-widest bg-surface-elevated flex items-center gap-2"><FileText size={12} /> Works</h4>
-                                        {searchResults.works.map(w => (
-                                            <div key={w.id} className="px-4 py-3 cursor-pointer text-sm text-text-primary hover:bg-surface-elevated hover:text-accent transition-all" onClick={() => handleResultClick(w)}>
-                                                {w.title}
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                                {searchResults.contracts?.length > 0 && (
-                                    <div className="mb-2">
-                                        <h4 className="px-4 py-2 text-2xs font-bold text-text-secondary uppercase tracking-widest bg-surface-elevated flex items-center gap-2"><FileText size={12} /> Contracts</h4>
-                                        {searchResults.contracts.map(c => (
-                                            <div key={c.id} className="px-4 py-3 cursor-pointer text-sm text-text-primary hover:bg-surface-elevated hover:text-accent transition-all" onClick={() => handleResultClick(c)}>
-                                                {c.title}
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                                {searchResults.network?.length > 0 && (
-                                    <div className="mb-2">
-                                        <h4 className="px-4 py-2 text-2xs font-bold text-text-secondary uppercase tracking-widest bg-surface-elevated flex items-center gap-2"><Globe size={12} /> Network</h4>
-                                        {searchResults.network.map(n => (
-                                            <div key={`${n.type}-${n.id}`} className="px-4 py-3 cursor-pointer text-sm text-text-primary hover:bg-surface-elevated hover:text-accent transition-all" onClick={() => handleResultClick(n)}>
-                                                <span className="opacity-50 mr-2 text-2xs uppercase">{n.type}</span> {n.name}
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        ) : (
-                            <div className="p-8 text-center text-text-secondary text-sm">
-                                No matches found for "{searchQuery}"
-                            </div>
-                        )}
-                    </div>
-                )}
-            </div>
-            </div>
-
-            <div className="flex items-center gap-md">
-                <ThemeToggle />
                 <div className="relative">
                     <button
-                        className="relative p-2 text-text-secondary hover:text-text-primary transition-colors focus:outline-none"
+                        type="button"
+                        onClick={() => {
+                            const next = !showNotifications;
+                            setShowNotifications(next);
+                            if (next) fetchNotifications();
+                        }}
+                        className="relative w-9 h-9 rounded-lg flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors"
                         title="Notifications"
-                        onClick={() => setShowNotifications(!showNotifications)}
+                        aria-label="Notifications"
                     >
-                        <Bell size={20} />
+                        <Bell size={19} />
                         {unreadCount > 0 && (
-                            <span className="absolute top-1 right-1 w-4 h-4 bg-danger text-white text-2xs font-bold flex items-center justify-center rounded-full border border-surface">{unreadCount}</span>
+                            <span className="absolute top-1 right-1 min-w-3.5 h-3.5 px-0.5 rounded-full bg-danger text-white text-[9px] font-bold flex items-center justify-center">
+                                {unreadCount > 9 ? "9+" : unreadCount}
+                            </span>
                         )}
                     </button>
 
                     {showNotifications && (
-                        <>
-                            <div className="fixed inset-0 z-[-1]" onClick={() => setShowNotifications(false)} />
-                            <div className="absolute top-full right-0 mt-2 w-80 bg-surface border border-border rounded-lg shadow-lg overflow-hidden">
-                                <div className="px-4 py-3 border-b border-border bg-surface-elevated flex items-center justify-between">
-                                    <h3 className="text-sm font-semibold text-text-primary">Notifications</h3>
-                                    <div className="flex gap-2">
-                                        <button className="text-2xs text-accent font-bold uppercase hover:underline" onClick={handleMarkAllRead}>Read</button>
-                                        <button className="text-2xs text-danger font-bold uppercase hover:underline" onClick={handleClearNotifications}>Clear</button>
-                                    </div>
-                                </div>
-                                <div className="max-h-96 overflow-y-auto">
-                                    {notifications.length === 0 ? (
-                                        <div className="p-4 text-center text-text-secondary text-sm">No notifications</div>
-                                    ) : (
-                                        notifications.map(notification => (
-                                            <div
-                                                key={notification.id}
-                                                className={`p-4 border-b border-border last:border-0 cursor-pointer hover:bg-surface-elevated transition-all ${!notification.is_read ? 'bg-accent/5' : ''}`}
-                                                onClick={() => handleNotificationClick(notification)}
-                                            >
-                                                <div className="text-sm font-semibold text-text-primary mb-1">{notification.title}</div>
-                                                {notification.message && <div className="text-xs text-text-secondary mb-1">{notification.message}</div>}
-                                                <div className="text-2xs text-text-secondary">{notification.created_at ? new Date(notification.created_at).toLocaleString() : ''}</div>
+                        <div className="absolute right-0 top-11 w-80 max-w-[calc(100vw-24px)] rounded-xl bg-surface-elevated shadow-lg p-2 z-dropdown">
+                            <div className="flex items-center justify-between px-3 py-2">
+                                <h3 className="text-sm font-semibold text-text-primary">Notifications</h3>
+                                {notifications.length > 0 && (
+                                    <button type="button" onClick={handleMarkAllRead} className="text-[10px] font-bold text-accent uppercase tracking-wider">
+                                        Mark read
+                                    </button>
+                                )}
+                            </div>
+                            <div className="max-h-80 overflow-y-auto">
+                                {notifications.length === 0 ? (
+                                    <div className="px-3 py-6 text-center text-sm text-text-secondary">No notifications</div>
+                                ) : (
+                                    notifications.map((notification) => (
+                                        <button
+                                            key={notification.id}
+                                            type="button"
+                                            onClick={() => handleNotificationClick(notification)}
+                                            className={[
+                                                "w-full text-left px-3 py-2.5 rounded-lg transition-colors",
+                                                notification.is_read ? "hover:bg-surface" : "bg-accent/5 hover:bg-accent/10",
+                                            ].join(" ")}
+                                        >
+                                            <div className="text-sm font-semibold text-text-primary">{notification.title}</div>
+                                            {notification.message && <div className="text-xs text-text-secondary mt-0.5">{notification.message}</div>}
+                                            <div className="text-[10px] text-text-secondary mt-1">
+                                                {notification.created_at ? new Date(notification.created_at).toLocaleString() : ""}
                                             </div>
-                                        ))
-                                    )}
-                                </div>
+                                        </button>
+                                    ))
+                                )}
                             </div>
-                        </>
-                    )}
-                </div>
-
-                <div className="relative">
-                    <div className="flex items-center gap-sm cursor-pointer p-1 rounded-full hover:bg-surface-elevated transition-all" onClick={() => setShowUserMenu(!showUserMenu)}>
-                        <EntityArtwork
-                            entityType="user"
-                            entityId={user?.id}
-                            alt="Profile"
-                            size={32}
-                            placeholder="user"
-                            className="rounded-full border border-border"
-                            style={{ borderRadius: 999 }}
-                        />
-                        <div className="flex flex-col items-start leading-tight hidden md:flex">
-                            <span className="text-sm font-medium text-text-primary">{user?.full_name || 'User'}</span>
-                            <span className="text-2xs font-bold text-accent uppercase tracking-wider">Cloud Edition</span>
                         </div>
-                    </div>
-
-                    {showUserMenu && (
-                        <>
-                            <div className="fixed inset-0 z-[-1]" onClick={() => setShowUserMenu(false)} />
-                            <div className="absolute top-full right-0 mt-2 w-64 bg-surface border border-border rounded-lg shadow-lg overflow-hidden">
-                                <div className="p-4 bg-surface-elevated flex items-center gap-3">
-                                    <EntityArtwork
-                                        entityType="user"
-                                        entityId={user?.id}
-                                        alt="User"
-                                        size={40}
-                                        placeholder="user"
-                                        className="rounded-full border border-border"
-                                        style={{ borderRadius: 999 }}
-                                    />
-                                    <div className="overflow-hidden">
-                                        <div className="text-sm font-semibold text-text-primary truncate">{user?.full_name || 'User'}</div>
-                                        <div className="text-xs text-text-secondary truncate">{user?.email}</div>
-                                    </div>
-                                </div>
-                                <div className="p-1 border-t border-border">
-                                    <button
-                                        className="w-full flex items-center gap-3 px-3 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-surface-elevated rounded-md transition-all"
-                                        onClick={() => {
-                                            setShowUserMenu(false);
-                                            router.push('/settings');
-                                        }}
-                                    >
-                                        <SettingsIcon size={16} />
-                                        Settings
-                                    </button>
-                                    <button
-                                        className="w-full flex items-center gap-3 px-3 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-surface-elevated rounded-md transition-all"
-                                        onClick={() => {
-                                            setShowUserMenu(false);
-                                            router.push('/billing');
-                                        }}
-                                    >
-                                        <CreditCard size={16} />
-                                        Billing
-                                    </button>
-                                    <div className="h-px bg-border my-1" />
-                                    <button 
-                                        className="w-full flex items-center gap-3 px-3 py-2 text-sm text-danger hover:bg-danger/10 rounded-md transition-all" 
-                                        onClick={handleLogout}
-                                    >
-                                        <LogOut size={16} />
-                                        Logout
-                                    </button>
-                                </div>
-                            </div>
-                        </>
                     )}
                 </div>
+
+                <OrganizationSwitcher />
             </div>
-        </div>
+        </header>
     );
 };
 

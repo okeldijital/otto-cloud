@@ -188,6 +188,30 @@ export async function requireUploadEntityInOrg(
     case "royalties":
       await requireRoyaltyInOrg(id, ctx);
       break;
+    case "label":
+    case "labels":
+      await requireLabelInOrg(id, ctx);
+      break;
+    case "publisher":
+    case "publishers": {
+      const row = await prisma.publishers.findUnique({ where: { id }, select: { id: true } });
+      if (!row) notFound("Publisher");
+      break;
+    }
+    case "pro":
+    case "pros": {
+      const row = await prisma.pros.findUnique({ where: { id }, select: { id: true } });
+      if (!row) notFound("PRO");
+      break;
+    }
+    case "individual":
+    case "individuals":
+      await requireIndividualInOrg(id, ctx);
+      break;
+    case "organization":
+    case "organizations":
+      await requireNetworkOrganizationInOrg(id, ctx);
+      break;
     case "playlist":
     case "playlists":
       await requirePlaylistInOrg(id, ctx);
@@ -209,6 +233,28 @@ export function notFound(entity = "Resource"): never {
 }
 
 // ── Catalog (UUID organization_id) ─────────────────────────────────────────
+
+export async function requireIndividualInOrg(id: number, ctx: OrganizationContext) {
+  const row = await prisma.individuals.findFirst({ where: { id, organization_id: ctx.legacyIntOrgId }, select: { id: true } });
+  if (!row) notFound("Individual");
+  return row;
+}
+
+export async function requireNetworkOrganizationInOrg(id: number, ctx: OrganizationContext) {
+  const row = await prisma.organizations.findFirst({ where: { id, organization_id: ctx.legacyIntOrgId }, select: { id: true } });
+  if (!row) notFound("Organization");
+  return row;
+}
+
+export async function requireLabelInOrg(id: number, ctx: OrganizationContext) {
+  const rows = await prisma.$queryRaw<Array<{ id: number }>>`
+    SELECT id FROM labels
+    WHERE id = ${id} AND organization_id = CAST(${ctx.organizationId} AS uuid)
+    LIMIT 1
+  `;
+  if (!rows.length) notFound("Label");
+  return rows[0];
+}
 
 export async function requireArtistInOrg(id: number, ctx: OrganizationContext) {
   const row = await prisma.artists.findFirst({
@@ -234,40 +280,24 @@ export async function requireWorkInOrg(id: number, ctx: OrganizationContext) {
   return row;
 }
 
-/** Contracts use INT organization_id (+ optional tenant_id UUID). */
+/** Contracts are owned by the IAM organization UUID in tenant_id. */
 export async function requireContractInOrg(id: number, ctx: OrganizationContext) {
-  const intOrg = requireLegacyIntOrgId(ctx);
   const row = await prisma.contracts.findFirst({
-    where: {
-      id,
-      OR: [
-        { organization_id: intOrg },
-        ...(ctx.organizationId
-          ? [{ tenant_id: ctx.organizationId }]
-          : []),
-      ],
-    },
+    where: { id, tenant_id: ctx.organizationId },
   });
   if (!row) notFound("Contract");
   return row;
 }
 
 /**
- * R5 — Organization-scoped predicate for contracts list/count queries.
- * Contracts use INT organization_id (+ optional tenant_id UUID); mirrors the
- * ownership test in requireContractInOrg. Fail closed (403) when the legacy
- * INT org scope is unavailable; never derives scope from client input.
+ * Organization-scoped predicate for contracts list/count queries.
+ * tenant_id is the authoritative ownership boundary; legacy organization_id
+ * remains only as historical compatibility data.
  */
 export function contractOrgScopeWhere(
   ctx: OrganizationContext
 ): Record<string, unknown> {
-  const intOrg = requireLegacyIntOrgId(ctx);
-  return {
-    OR: [
-      { organization_id: intOrg },
-      ...(ctx.organizationId ? [{ tenant_id: ctx.organizationId }] : []),
-    ],
-  };
+  return { tenant_id: ctx.organizationId };
 }
 
 /**

@@ -10,6 +10,7 @@
 import assert from "node:assert/strict";
 import {
   ResourceAuthError,
+  contractOrgScopeWhere,
   playlistOrgScopeWhere,
   requireLegacyIntOrgId,
   resourceAuthErrorResponse,
@@ -153,6 +154,22 @@ async function main() {
     const orphanTheirs = { id: 4, tenant_id: null, created_by: 99 };
     assert.equal(matchesScope(orphanMine, playlistOrgScopeWhere(ctxA)), true);
     assert.equal(matchesScope(orphanTheirs, playlistOrgScopeWhere(ctxA)), false);
+  });
+
+  console.log("\n-- contract tenant scope (two orgs) --");
+  await test("contract scope uses tenant_id only and ignores legacy integer scope", () => {
+    const contracts = [
+      { id: 1, organization_id: 1, tenant_id: ORG_A },
+      { id: 2, organization_id: 1, tenant_id: ORG_B },
+      { id: 3, organization_id: 999, tenant_id: ORG_A },
+    ];
+    const scopeA = contractOrgScopeWhere(ctxA);
+    const scopeB = contractOrgScopeWhere(ctxB);
+    assert.equal(matchesScope(contracts[0], scopeA), true);
+    assert.equal(matchesScope(contracts[1], scopeA), false);
+    assert.equal(matchesScope(contracts[2], scopeA), true);
+    assert.equal(matchesScope(contracts[1], scopeB), true);
+    assert.equal(matchesScope(contracts[0], scopeB), false);
   });
 
   console.log("\n-- simulated catalog ownership (UUID org_id) --");

@@ -691,7 +691,8 @@ model contracts {
   id                    Int                     @id(map: "contracts_v1_pkey") @default(autoincrement())
   contract_number       String                  @db.VarChar(50)
   organization_id       Int
-  tenant_id String? @db.Uuid
+  /// Authoritative IAM organization ownership for contracts.
+  tenant_id             String                  @db.Uuid
   title                 String                  @db.VarChar(255)
   status                String                  @db.VarChar(50)
   type                  String?                 @db.VarChar(50)
@@ -714,9 +715,11 @@ model contracts {
   contract_parties      contract_parties[]
   contract_split_groups contract_split_groups[]
   contract_track_links  contract_track_links[]
+  folderMemberships     ContractFolderMembership[]
 
   @@unique([organization_id, contract_number], map: "ix_contracts_org_number")
   @@index([organization_id], map: "ix_contracts_organization_id")
+  @@index([tenant_id], map: "ix_contracts_tenant_id")
 }
 
 model documents {
@@ -974,6 +977,9 @@ model organizations {
   display_name             String?                    @db.VarChar(255)
   org_type                 String?                    @db.VarChar(100)
   website                  String?                    @db.VarChar(255)
+  contact_person            String?                    @db.VarChar(255)
+  contact_email             String?                    @db.VarChar(255)
+  contact_phone             String?                    @db.VarChar(50)
   address                  String?
   logo_url                 String?                    @db.VarChar(500)
   brand_color              String?                    @default("#6366f1") @db.VarChar(7)
@@ -1071,6 +1077,7 @@ model pros {
   contact_email String?   @db.VarChar(255)
   contact_phone String?   @db.VarChar(50)
   website       String?   @db.VarChar(255)
+  contact_person String?  @db.VarChar(255)
   territory     String?   @db.VarChar(100)
   created_at    DateTime? @default(now()) @db.Timestamptz(6)
   updated_at    DateTime? @db.Timestamptz(6)
@@ -1095,6 +1102,7 @@ model publishers {
   created_at     DateTime? @default(now()) @db.Timestamptz(6)
   updated_at     DateTime? @db.Timestamptz(6)
   contact_person String?   @db.VarChar(255)
+  website        String?   @db.VarChar(500)
   artists        artists[]
   works          works[]
   work_contributors work_contributors[]
@@ -4227,7 +4235,7 @@ model IamOrganizationMembership {
   id             String    @id @default(uuid()) @db.Uuid
   identityId     String    @db.Uuid
   organizationId String    @db.Uuid
-  roleId         String?   @db.Uuid
+  roleId         String    @db.Uuid
   /// active | invited | suspended | removed
   status         String    @default("active") @db.VarChar(32)
   isDefault      Boolean   @default(false)
@@ -4243,7 +4251,7 @@ model IamOrganizationMembership {
 
   identity     IamIdentity     @relation(fields: [identityId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   organization IamOrganization @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  role         IamRole?        @relation(fields: [roleId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  role         IamRole         @relation(fields: [roleId, organizationId], references: [id, organizationId], onDelete: Restrict, onUpdate: NoAction)
 
   @@unique([identityId, organizationId], map: "uq_iam_membership")
   @@index([organizationId], map: "ix_iam_memberships_org")
@@ -4271,8 +4279,8 @@ model IamMembershipAudit {
 
 model IamRole {
   id             String   @id @default(uuid()) @db.Uuid
-  organizationId String?  @db.Uuid
-  /// null org = system/global role template
+  organizationId String   @db.Uuid
+  /// Every role is tenant-scoped. System roles are seeded per organization.
   key            String   @db.VarChar(64)
   name           String   @db.VarChar(128)
   description    String?
@@ -4280,11 +4288,12 @@ model IamRole {
   createdAt      DateTime @default(now()) @db.Timestamptz(6)
   updatedAt      DateTime @updatedAt @db.Timestamptz(6)
 
-  organization IamOrganization? @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  organization IamOrganization @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   permissions  IamRolePermission[]
   memberships  IamOrganizationMembership[]
 
   @@unique([organizationId, key], map: "uq_iam_role_org_key")
+  @@unique([id, organizationId], map: "uq_iam_role_org_id")
   @@index([key], map: "ix_iam_roles_key")
   @@map("iam_roles")
 }
@@ -4420,4 +4429,42 @@ model IamEmailVerificationToken {
 
   @@index([identityId], map: "ix_iam_email_verification_tokens_identity")
   @@map("iam_email_verification_tokens")
+}
+
+
+model ContractFolder {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId Int      @map("organization_id")
+  tenantId       String   @map("tenant_id") @db.Uuid
+  name           String   @db.VarChar(100)
+  createdBy      Int?     @map("created_by")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  memberships ContractFolderMembership[]
+
+  @@unique([tenantId, name], map: "uq_contract_folders_tenant_name")
+  @@index([organizationId], map: "ix_contract_folders_org")
+  @@index([tenantId], map: "ix_contract_folders_tenant")
+  @@map("contract_folders")
+}
+
+model ContractFolderMembership {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId Int      @map("organization_id")
+  tenantId       String   @map("tenant_id") @db.Uuid
+  folderId       String   @db.Uuid @map("folder_id")
+  contractId     Int      @map("contract_id")
+  addedBy        Int?     @map("added_by")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  folder   ContractFolder @relation(fields: [folderId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  contract contracts      @relation(fields: [contractId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([folderId, contractId], map: "uq_contract_folder_membership")
+  @@index([organizationId, folderId], map: "ix_contract_folder_memberships_org_folder")
+  @@index([organizationId, contractId], map: "ix_contract_folder_memberships_org_contract")
+  @@index([tenantId, folderId], map: "ix_contract_folder_memberships_tenant_folder")
+  @@index([tenantId, contractId], map: "ix_contract_folder_memberships_tenant_contract")
+  @@map("contract_folder_memberships")
 }

@@ -2,6 +2,7 @@
  * A.5 Organization membership & RBAC unit tests
  */
 import assert from "node:assert/strict";
+import { assertCanGrantOrgRole } from "@/lib/auth/privilege-authorization";
 import {
   PERMISSION_CATALOG,
   SYSTEM_ROLE_TEMPLATES,
@@ -106,6 +107,46 @@ async function main() {
     ]);
     assert.ok(p.has("contracts.view"));
     assert.ok(p.has("contracts.review"));
+  });
+
+  await test("custom role grants cannot exceed actor permissions", () => {
+    const ctx: any = {
+      identityId: "i",
+      organizationId: "o",
+      permissions: ["contracts.view", "contracts.edit"],
+      roles: ["editor"],
+      isSuperAdmin: false,
+    };
+
+    assertCanGrantOrgRole(ctx, "custom_release_role", {
+      targetPermissions: ["contracts.view", "contracts.edit"],
+    });
+
+    assert.throws(
+      () =>
+        assertCanGrantOrgRole(ctx, "custom_release_role", {
+          targetPermissions: ["contracts.view", "users.manage"],
+        }),
+      (e: any) => e.code === "ROLE_GRANT_DENIED"
+    );
+  });
+
+  await test("platform administration is never grantable through org IAM", () => {
+    assert.throws(
+      () =>
+        assertCanGrantOrgRole(
+          {
+            identityId: "i",
+            organizationId: "o",
+            permissions: ["platform.admin"],
+            roles: ["administrator"],
+            isSuperAdmin: false,
+          } as any,
+          "platform_admin",
+          { targetPermissions: ["platform.admin"] }
+        ),
+      (e: any) => e.code === "ROLE_GRANT_DENIED"
+    );
   });
 
   await test("permission cache key includes versions", () => {

@@ -7,9 +7,11 @@ import PageHeader from "@/components/ui/PageHeader";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import EntityForm from "@/components/EntityForm";
+import EntityArtwork from "@/components/media/EntityArtwork";
 import api from "@/lib/api";
 
 const ORG_TYPES = ["Distributor", "Publisher", "Label", "PRO", "Legal", "Studio", "Accounting", "Other"];
+const inputClass = "h-10 w-full rounded-lg border border-border bg-surface-elevated px-3 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30";
 
 export default function OrganizationsPage() {
   const router = useRouter();
@@ -17,7 +19,7 @@ export default function OrganizationsPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
-  const [newOrg, setNewOrg] = useState({ name: "", org_type: "Distributor", website: "", address: "" });
+  const [newOrg, setNewOrg] = useState({ name: "", org_type: "Distributor", contact_person: "", contact_email: "", contact_phone: "", website: "", address: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchOrgs = async () => {
@@ -45,7 +47,7 @@ export default function OrganizationsPage() {
     try {
       await api.post("/network/organizations", newOrg);
       setShowAddModal(false);
-      setNewOrg({ name: "", org_type: "Distributor", website: "", address: "" });
+      setNewOrg({ name: "", org_type: "Distributor", contact_person: "", contact_email: "", contact_phone: "", website: "", address: "" });
       fetchOrgs();
     } catch (err: any) { alert(err?.response?.data?.error || "Failed to create"); }
     finally { setIsSubmitting(false); }
@@ -68,7 +70,7 @@ export default function OrganizationsPage() {
           <div className="flex gap-3 items-center">
             <div className="relative">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
-              <input className="input pl-9" placeholder="Search organizations..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+              <input className={`${inputClass} pl-9`} placeholder="Search organizations..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
             </div>
             <Button variant="primary" size="sm" onClick={() => setShowAddModal(true)}>
               <Plus size={14} /> Add Organization
@@ -91,6 +93,7 @@ export default function OrganizationsPage() {
                 <tr className="text-left text-xs uppercase tracking-wider text-text-secondary border-b border-border">
                   <th className="p-4 font-bold">Name</th>
                   <th className="p-4 font-bold">Type</th>
+                  <th className="p-4 font-bold">Contact</th>
                   <th className="p-4 font-bold">Website</th>
                   <th className="p-4 font-bold"></th>
                 </tr>
@@ -100,13 +103,14 @@ export default function OrganizationsPage() {
                   <tr key={org.id} className="border-b border-border hover:bg-surface-elevated cursor-pointer transition-colors" onClick={() => router.push(`/network/organizations/${org.id}`)}>
                     <td className="p-4">
                       <div className="flex items-center gap-3">
-                        <div className="p-2 bg-surface-elevated rounded-lg text-accent border border-border"><Building2 size={18} /></div>
+                        <EntityArtwork entityType="organization" entityId={org.id} alt={org.name} placeholder="label" size={40} className="w-10 h-10 rounded-lg border border-border" />
                         <div className="font-medium text-text-primary">{org.name}</div>
                       </div>
                     </td>
                     <td className="p-4">
                       <span className="text-xs font-bold uppercase text-text-secondary bg-surface-elevated border border-border px-2 py-1 rounded">{org.org_type || "Other"}</span>
                     </td>
+                    <td className="p-4 text-sm text-text-secondary">{org.contact_person || org.contact_email || org.contact_phone || "—"}</td>
                     <td className="p-4 text-sm text-text-secondary">{org.website ? org.website.replace(/^https?:\/\//, "") : "—"}</td>
                     <td className="p-4">
                       <button className="ghost-btn p-1.5 hover:bg-danger/20 rounded-md text-danger" onClick={(e) => { e.stopPropagation(); handleDelete(org); }}>
@@ -125,21 +129,33 @@ export default function OrganizationsPage() {
         <div className="space-y-4">
           <div>
             <label className="text-xs text-text-secondary font-bold">Organization Name</label>
-            <input className="input w-full" value={newOrg.name} onChange={(e) => setNewOrg({ ...newOrg, name: e.target.value })} required placeholder="e.g. Universal Music Group" />
+            <input className={inputClass} value={newOrg.name} onChange={(e) => setNewOrg({ ...newOrg, name: e.target.value })} required placeholder="e.g. Universal Music Group" />
           </div>
           <div>
             <label className="text-xs text-text-secondary font-bold">Type</label>
-            <select className="input w-full" value={newOrg.org_type} onChange={(e) => setNewOrg({ ...newOrg, org_type: e.target.value })}>
+            <select className={inputClass} value={newOrg.org_type} onChange={(e) => setNewOrg({ ...newOrg, org_type: e.target.value })}>
               {ORG_TYPES.map((t) => <option key={t}>{t}</option>)}
             </select>
           </div>
           <div>
+            <label className="text-xs text-text-secondary font-bold">Contact person</label>
+            <input className={inputClass} value={newOrg.contact_person} onChange={(e) => setNewOrg({ ...newOrg, contact_person: e.target.value })} placeholder="Primary industry contact" />
+          </div>
+          <div>
+            <label className="text-xs text-text-secondary font-bold">Contact email</label>
+            <input className={inputClass} type="email" value={newOrg.contact_email} onChange={(e) => setNewOrg({ ...newOrg, contact_email: e.target.value })} placeholder="contact@example.com" />
+          </div>
+          <div>
+            <label className="text-xs text-text-secondary font-bold">Contact phone</label>
+            <input className={inputClass} value={newOrg.contact_phone} onChange={(e) => setNewOrg({ ...newOrg, contact_phone: e.target.value })} placeholder="+27 ..." />
+          </div>
+          <div>
             <label className="text-xs text-text-secondary font-bold">Website</label>
-            <input className="input w-full" value={newOrg.website} onChange={(e) => setNewOrg({ ...newOrg, website: e.target.value })} placeholder="https://example.com" />
+            <input className={inputClass} value={newOrg.website} onChange={(e) => setNewOrg({ ...newOrg, website: e.target.value })} placeholder="https://example.com" />
           </div>
           <div>
             <label className="text-xs text-text-secondary font-bold">Address</label>
-            <textarea className="input w-full" rows={2} value={newOrg.address} onChange={(e) => setNewOrg({ ...newOrg, address: e.target.value })} />
+            <textarea className={inputClass} rows={2} value={newOrg.address} onChange={(e) => setNewOrg({ ...newOrg, address: e.target.value })} />
           </div>
         </div>
       </EntityForm>

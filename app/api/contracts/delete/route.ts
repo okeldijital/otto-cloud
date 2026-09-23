@@ -22,7 +22,7 @@ export async function DELETE(req: Request) {
     const organizationUuid = ctx.organizationId;
 
     const [contract, lifecycle, verifiedContract, relationshipCount, rightReferenceCount, rightCount, royaltyEntitlementCount, documentRelations] = await Promise.all([
-      prisma.contracts.findFirst({ where: { id, organization_id: organizationId } }),
+      prisma.contracts.findFirst({ where: { id, tenant_id: organizationUuid } }),
       prisma.contractLifecycle.findFirst({ where: { contractId: id, organizationId: organizationUuid } }),
       prisma.verifiedContract.findFirst({ where: { contractId: id, organizationId: organizationUuid }, select: { id: true } }),
       prisma.contractRelationship.count({ where: { contractId: id, organizationId: organizationUuid } }),
@@ -61,6 +61,7 @@ export async function DELETE(req: Request) {
       await tx.contractLifecycleEvent.deleteMany({ where: { contractId: id, organizationId: organizationUuid } });
       await tx.contractLifecycle.deleteMany({ where: { contractId: id, organizationId: organizationUuid } });
 
+      await tx.contractFolderMembership.deleteMany({ where: { contractId: id, tenantId: organizationUuid } });
       await tx.contract_track_links.deleteMany({ where: { contract_id: id } });
       await tx.contract_parties.deleteMany({ where: { contract_id: id } });
       await tx.contract_assets.deleteMany({ where: { contract_id: id } });

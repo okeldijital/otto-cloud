@@ -7,6 +7,8 @@ import PageHeader from "@/components/ui/PageHeader";
 import Button from "@/components/ui/Button";
 import DataTable from "@/components/DataTable";
 import EntityForm from "@/components/EntityForm";
+import { uploadEntityProfileImage } from "@/components/media/EntityProfileImageField";
+import EntityArtwork from "@/components/media/EntityArtwork";
 import api from "@/lib/api";
 
 const emptyLabel = () => ({
@@ -21,7 +23,7 @@ const emptyLabel = () => ({
 });
 
 const columns = [
-  { key: "name", label: "Name", sortable: true },
+  { key: "name", label: "Name", sortable: true, render: (row: any) => <div className="flex items-center gap-3"><EntityArtwork entityType="label" entityId={row.id} alt={row.name} placeholder="label" size={40} className="shrink-0 rounded-lg" /><span>{row.name}</span></div> },
   { key: "label_id", label: "Label ID", render: (row: any) => row.label_id || "—" },
 ];
 
@@ -31,6 +33,7 @@ export default function LabelsPage() {
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [profileImage, setProfileImage] = useState<File | null>(null);
   const [newLabel, setNewLabel] = useState<any>(emptyLabel());
 
   const fetchData = async () => {
@@ -64,7 +67,7 @@ export default function LabelsPage() {
     if (!newLabel.name.trim()) return;
     setIsSubmitting(true);
     try {
-      await api.post("/labels", {
+      const { data: created } = await api.post("/labels", {
         ...newLabel,
         name: newLabel.name.trim(),
         label_id: newLabel.label_id.trim() || null,
@@ -75,7 +78,9 @@ export default function LabelsPage() {
         address: newLabel.address.trim() || null,
         logo_url: newLabel.logo_url.trim() || null,
       });
-      setShowAddModal(false);
+      if (profileImage) await uploadEntityProfileImage("label", created.id, profileImage);
+            setShowAddModal(false);
+      setProfileImage(null);
       setNewLabel(emptyLabel());
       fetchData();
     } catch (err: any) {
@@ -107,21 +112,26 @@ export default function LabelsPage() {
       />
 
       <EntityForm title="New Label" isOpen={showAddModal} onClose={() => setShowAddModal(false)} onSubmit={handleCreate} isSubmitting={isSubmitting} error={undefined}>
+        <div className="mb-6">
+          <label className="mb-1.5 block text-xs font-medium text-text-secondary">Profile Image</label>
+          <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => setProfileImage(e.target.files?.[0] || null)} />
+          <p className="mt-1.5 text-xs text-text-secondary">Optional. Otto optimizes profile images automatically.</p>
+        </div>
         <div className="space-y-5">
           <div>
             <div className="mb-3 text-xs font-bold uppercase tracking-wide text-text-secondary">Identity</div>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="md:col-span-2">
                 <label className="text-xs text-text-secondary font-bold">Name *</label>
-                <input className="input w-full" value={newLabel.name} onChange={(e) => setNewLabel({ ...newLabel, name: e.target.value })} required />
+                <input className="w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30" value={newLabel.name} onChange={(e) => setNewLabel({ ...newLabel, name: e.target.value })} required />
               </div>
               <div>
                 <label className="text-xs text-text-secondary font-bold">Label ID</label>
-                <input className="input w-full" value={newLabel.label_id} onChange={(e) => setNewLabel({ ...newLabel, label_id: e.target.value })} placeholder="e.g. OTR" />
+                <input className="w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30" value={newLabel.label_id} onChange={(e) => setNewLabel({ ...newLabel, label_id: e.target.value })} placeholder="e.g. OTR" />
               </div>
               <div>
                 <label className="text-xs text-text-secondary font-bold">Logo URL</label>
-                <input className="input w-full" value={newLabel.logo_url} onChange={(e) => setNewLabel({ ...newLabel, logo_url: e.target.value })} placeholder="https://..." />
+                <input className="w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30" value={newLabel.logo_url} onChange={(e) => setNewLabel({ ...newLabel, logo_url: e.target.value })} placeholder="https://..." />
               </div>
             </div>
           </div>
@@ -131,26 +141,26 @@ export default function LabelsPage() {
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
                 <label className="text-xs text-text-secondary font-bold">Contact Person</label>
-                <input className="input w-full" value={newLabel.contact_person} onChange={(e) => setNewLabel({ ...newLabel, contact_person: e.target.value })} />
+                <input className="w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30" value={newLabel.contact_person} onChange={(e) => setNewLabel({ ...newLabel, contact_person: e.target.value })} />
               </div>
               <div>
                 <label className="text-xs text-text-secondary font-bold">Email</label>
-                <input className="input w-full" type="email" value={newLabel.contact_email} onChange={(e) => setNewLabel({ ...newLabel, contact_email: e.target.value })} />
+                <input className="w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30" type="email" value={newLabel.contact_email} onChange={(e) => setNewLabel({ ...newLabel, contact_email: e.target.value })} />
               </div>
               <div>
                 <label className="text-xs text-text-secondary font-bold">Phone</label>
-                <input className="input w-full" value={newLabel.contact_phone} onChange={(e) => setNewLabel({ ...newLabel, contact_phone: e.target.value })} />
+                <input className="w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30" value={newLabel.contact_phone} onChange={(e) => setNewLabel({ ...newLabel, contact_phone: e.target.value })} />
               </div>
               <div>
                 <label className="text-xs text-text-secondary font-bold">Website</label>
-                <input className="input w-full" value={newLabel.website} onChange={(e) => setNewLabel({ ...newLabel, website: e.target.value })} placeholder="https://..." />
+                <input className="w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30" value={newLabel.website} onChange={(e) => setNewLabel({ ...newLabel, website: e.target.value })} placeholder="https://..." />
               </div>
             </div>
           </div>
 
           <div>
             <div className="mb-3 text-xs font-bold uppercase tracking-wide text-text-secondary">Address</div>
-            <textarea className="input min-h-24 w-full" value={newLabel.address} onChange={(e) => setNewLabel({ ...newLabel, address: e.target.value })} placeholder="Registered or operating address" />
+            <textarea className="min-h-24 w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30" value={newLabel.address} onChange={(e) => setNewLabel({ ...newLabel, address: e.target.value })} placeholder="Registered or operating address" />
           </div>
         </div>
       </EntityForm>

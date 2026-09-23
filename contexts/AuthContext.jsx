@@ -8,6 +8,38 @@ import {
 } from "react";
 
 /**
+ * @typedef {Object} AuthUser
+ * @property {string} id
+ * @property {string} email
+ * @property {string} full_name
+ * @property {string} role
+ * @property {boolean} emailVerified
+ * @property {any} organization
+ * @property {string[]} permissions
+ * @property {string[]} roles
+ * @property {string|undefined} sessionExpiresAt
+ * @property {string|undefined} emailVerificationStatus
+ * @property {"iam"} source
+ *
+ * @typedef {Object} AuthContextValue
+ * @property {AuthUser|null} user
+ * @property {boolean} loading
+ * @property {string} statusMessage
+ * @property {"iam"|null} authSource
+ * @property {any} session
+ * @property {{planKeys:string[],features:string[],entitlements:any[]}} productEntitlements
+ * @property {(feature:string)=>boolean} hasProductFeature
+ * @property {boolean} isPlatformAuthority
+ * @property {boolean} canManageGlobalReferenceData
+ * @property {(email:string,password:string,opts?:any)=>Promise<any>} login
+ * @property {(mfaToken:string,code:string,opts?:any)=>Promise<any>} completeMfa
+ * @property {(data:any)=>Promise<any>} register
+ * @property {()=>Promise<void>} logout
+ * @property {()=>Promise<AuthUser|null>} refreshUser
+ * @property {boolean} isAuthenticated
+ */
+
+/**
  * AuthContext — IAM + organization-scoped commercial entitlements.
  * Session state from GET /api/auth/session; product access from
  * GET /api/auth/product-entitlements.
@@ -15,6 +47,7 @@ import {
  * Commercial entitlements fail closed: if the entitlement service is
  * unavailable, no licensed product feature is exposed by the client.
  */
+/** @type {import("react").Context<AuthContextValue>} */
 const AuthContext = createContext({
   user: null,
   loading: true,
@@ -23,6 +56,8 @@ const AuthContext = createContext({
   session: null,
   productEntitlements: { planKeys: [], features: [], entitlements: [] },
   hasProductFeature: /** @type {(feature: string) => boolean} */ (() => false),
+  isPlatformAuthority: false,
+  canManageGlobalReferenceData: false,
   login: /** @type {(email: string, password: string, opts?: { rememberMe?: boolean }) => Promise<any>} */ (() => {}),
   completeMfa: /** @type {(mfaToken: string, code: string, opts?: any) => Promise<any>} */ (() => {}),
   register: /** @type {(data: any) => Promise<any>} */ (() => {}),
@@ -110,6 +145,8 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => { loadIamSession(); }, [loadIamSession]);
 
   const user = mapIamUser(iamSession);
+  const isPlatformAuthority = !!user && (user.role === "platform_admin" || user.role === "super_admin" || user.roles?.includes("platform_admin") || user.roles?.includes("super_admin"));
+  const canManageGlobalReferenceData = !!user && (isPlatformAuthority || user.role === "owner" || user.roles?.includes("owner"));
   const isAuthenticated = !!user;
   const hasProductFeature = (feature) =>
     productEntitlementsAvailable
@@ -179,6 +216,8 @@ export const AuthProvider = ({ children }) => {
       session: iamSession,
       productEntitlements,
       hasProductFeature,
+      isPlatformAuthority,
+      canManageGlobalReferenceData,
       login,
       completeMfa,
       register,

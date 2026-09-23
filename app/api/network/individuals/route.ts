@@ -76,13 +76,21 @@ export async function POST(req: Request) {
       },
     });
 
-    const allowedOrgIds = (body.organization_ids || [])
-      .map((v: any) => parseInt(v))
-      .filter((v: number) => Number.isFinite(v) && v > 0 && v === intOrgId);
-    if (allowedOrgIds.length) {
-      for (const orgId2 of allowedOrgIds) {
+    const requestedOrgIds: number[] = Array.isArray(body.organization_ids)
+      ? Array.from(new Set(
+          (body.organization_ids as unknown[])
+            .map((value) => Number.parseInt(String(value), 10))
+            .filter((value): value is number => Number.isFinite(value) && value > 0)
+        ))
+      : [];
+    if (requestedOrgIds.length) {
+      const organizations = await prisma.organizations.findMany({
+        where: { id: { in: requestedOrgIds }, organization_id: intOrgId },
+        select: { id: true },
+      });
+      for (const org of organizations) {
         await prisma.individual_organizations.create({
-          data: { individual_id: individual.id, organization_id: parseInt(orgId2) },
+          data: { individual_id: individual.id, organization_id: org.id },
         });
       }
     }
@@ -125,12 +133,18 @@ export async function PUT(req: Request) {
 
     if (body.organization_ids !== undefined) {
       await prisma.individual_organizations.deleteMany({ where: { individual_id: id } });
-      const allowedOrgIds = (body.organization_ids as any[])
-        .map((v: any) => parseInt(v))
-        .filter((v: number) => Number.isFinite(v) && v > 0 && v === intOrgId);
-      for (const orgId2 of allowedOrgIds) {
+      const requestedOrgIds: number[] = Array.from(new Set(
+        (body.organization_ids as unknown[])
+          .map((value) => Number.parseInt(String(value), 10))
+          .filter((value): value is number => Number.isFinite(value) && value > 0)
+      ));
+      const organizations = await prisma.organizations.findMany({
+        where: { id: { in: requestedOrgIds }, organization_id: intOrgId },
+        select: { id: true },
+      });
+      for (const org of organizations) {
         await prisma.individual_organizations.create({
-          data: { individual_id: id, organization_id: orgId2 },
+          data: { individual_id: id, organization_id: org.id },
         });
       }
     }

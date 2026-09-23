@@ -3,6 +3,8 @@ import { getServerSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
+import { requireActorUserId } from "@/lib/auth/resource-authorization";
+import { deleteFile, uploadFile, validateUpload } from "@/lib/storage";
 
 export async function GET(req: Request) {
   try {
@@ -158,6 +160,140 @@ export async function PUT(req: Request) {
     const session = await getServerSession();
     if (!session || !session.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const contentType = req.headers.get("content-type") || "";
+    if (contentType.includes("multipart/form-data")) {
+      const ctx = await requireOrganization();
+      const actorUserId = requireActorUserId(ctx);
+      const currentUser = await prisma.user.findUnique({
+        where: { email: session.user.email as string },
+      });
+
+      if (!currentUser || currentUser.id !== actorUserId) {
+        return NextResponse.json({ error: "User not found" }, { status: 404 });
+      }
+
+      const formData = await req.formData();
+      const file = formData.get("avatar") as File | null;
+      const allowedAvatarTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+      const maxAvatarBytes = 750 * 1024;
+
+      if (!file) {
+        return NextResponse.json({ error: "Avatar image is required" }, { status: 400 });
+      }
+      if (!allowedAvatarTypes.has(file.type)) {
+        return NextResponse.json(
+          { error: "Avatar must be a JPEG, PNG, or WebP image" },
+          { status: 400 }
+        );
+      }
+
+      const buffer = Buffer.from(await file.arrayBuffer());
+      const validation = validateUpload({
+        fileName: file.name,
+        mimeType: file.type,
+        fileSize: buffer.byteLength,
+        maxSizeBytes: maxAvatarBytes,
+      });
+      if (!validation.valid) {
+        return NextResponse.json(
+          { error: "Avatar validation failed", details: validation.errors },
+          { status: 400 }
+        );
+      }
+
+      const existing = await prisma.attachment.findMany({
+        where: {
+          organizationId: ctx.organizationId,
+          entityType: "user",
+          entityId: String(currentUser.id),
+          purpose: "avatar",
+        },
+        orderBy: { createdAt: "desc" },
+      });
+      const primary = existing[0] ?? null;
+      const storageKey = `organizations/${ctx.organizationId}/avatars/users/${currentUser.id}/profile`;
+      const result = await uploadFile({
+        body: buffer,
+        organizationId: ctx.organizationId,
+        folder: "avatars",
+        fileName: validation.sanitizedFileName,
+        mimeType: file.type,
+        key: storageKey,
+        metadata: {
+          entityType: "user",
+          entityId: String(currentUser.id),
+          purpose: "avatar",
+          uploadedBy: String(actorUserId),
+        },
+        maxSizeBytes: maxAvatarBytes,
+      });
+
+      const attachment = primary
+        ? await prisma.attachment.update({
+            where: { id: primary.id },
+            data: {
+              fileName: result.fileName,
+              originalName: file.name,
+              mimeType: result.mimeType,
+              category: result.category,
+              fileSize: result.fileSize,
+              bucket: result.bucket,
+              storageKey: result.key,
+              checksum: result.etag ?? null,
+              version: { increment: 1 },
+              uploadedBy: String(actorUserId),
+            },
+          })
+        : await prisma.attachment.create({
+            data: {
+              organizationId: ctx.organizationId,
+              entityType: "user",
+              entityId: String(currentUser.id),
+              fileName: result.fileName,
+              originalName: file.name,
+              mimeType: result.mimeType,
+              category: result.category,
+              purpose: "avatar",
+              fileSize: result.fileSize,
+              bucket: result.bucket,
+              storageKey: result.key,
+              checksum: result.etag ?? null,
+              version: 1,
+              uploadedBy: String(actorUserId),
+            },
+          });
+
+      if (primary && primary.storageKey !== result.key) {
+        try {
+          await deleteFile({ key: primary.storageKey, bucket: primary.bucket });
+        } catch (error) {
+          console.warn("[PUT /api/users] Failed to delete replaced avatar object:", error);
+        }
+      }
+
+      const stale = existing.slice(1);
+      if (stale.length) {
+        await prisma.attachment.deleteMany({
+          where: { id: { in: stale.map((item) => item.id) } },
+        });
+        await Promise.all(
+          stale.map(async (item) => {
+            try {
+              await deleteFile({ key: item.storageKey, bucket: item.bucket });
+            } catch (error) {
+              console.warn("[PUT /api/users] Failed to delete stale avatar object:", error);
+            }
+          })
+        );
+      }
+
+      const { hashed_password, ...userWithoutPassword } = currentUser;
+      return NextResponse.json({
+        ...userWithoutPassword,
+        avatarAttachmentId: attachment.id,
+      });
     }
 
     const body = await req.json();
