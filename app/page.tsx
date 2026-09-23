@@ -40,7 +40,7 @@ export default function Home() {
           </div>
 
           <div className="nav-actions">
-            <Link href="/auth/login" className="nav-signin">Sign in <span>→</span></Link>
+            <Link href="/auth/login" className="nav-signin">Sign in</Link>
           </div>
         </div>
       </nav>
@@ -66,7 +66,7 @@ export default function Home() {
               OTTO keeps contracts, releases, people, rights and documents together — and connects them to the organisations and work they belong to.
             </p>
             <div className="hero-actions">
-              <a href="#product" className="button button-primary">Explore OTTO <span>→</span></a>
+              <a href="#product" className="button button-primary">Explore OTTO</a>
             </div>
           </div>
           <div className="hero-foot">

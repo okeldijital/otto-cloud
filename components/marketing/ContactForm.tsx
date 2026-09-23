@@ -80,7 +80,7 @@ export default function ContactForm() {
       {status === "error" && <p className="form-status form-status-error" role="alert">We couldn&apos;t send your message. Please try again.</p>}
 
       <button type="submit" className="button button-primary" disabled={status === "sending"}>
-        {status === "sending" ? "Sending…" : "Send enquiry"} <span>→</span>
+        {status === "sending" ? "Sending…" : "Send enquiry"}
       </button>
     </form>
   );
