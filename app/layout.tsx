@@ -9,6 +9,12 @@ export const metadata: Metadata = {
   title: "OTTO Cloud",
   description: "Record Label Operating System",
   manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/otto-mark.svg", sizes: "any", type: "image/svg+xml" },
+    ],
+    apple: [{ url: "/otto-mark.svg", sizes: "any", type: "image/svg+xml" }],
+  },
   appleWebApp: { capable: true, title: "OTTO Cloud", statusBarStyle: "black-translucent" },
 };
 
