@@ -1,6 +1,6 @@
 import React from "react";
 
-const Logo = ({ size = "md", className = "" }) => {
+const Logo = ({ size = "md", className = "", markOnly = false }) => {
     const sizes = { sm: 28, md: 40, lg: 56, xl: 80 };
     const height = sizes[size] || sizes.md;
 
@@ -10,9 +10,9 @@ const Logo = ({ size = "md", className = "" }) => {
             style={{ display: "flex", alignItems: "center", height }}
         >
             <img
-                src="/otto-logo.svg"
+                src={markOnly ? "/otto-mark.svg" : "/otto-logo.svg"}
                 alt="Otto"
-                width={Math.round(height * 2.67)}
+                width={markOnly ? height : Math.round(height * 2.67)}
                 height={height}
                 style={{
                     display: "block",

@@ -238,7 +238,7 @@ const Sidebar = () => {
             >
                 <div className={["flex items-center h-16 shrink-0", expanded ? "px-4 justify-between" : "justify-center"].join(" ")}>
                     <Link href="/dashboard" onClick={handleNav} className="flex items-center min-w-0" aria-label="OTTO">
-                        <Logo size="sm" className="shrink-0" />
+                        <Logo size="sm" markOnly={!expanded} className="shrink-0" />
                     </Link>
 
                     {isMobile ? (
