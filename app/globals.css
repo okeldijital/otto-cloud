@@ -1062,3 +1062,141 @@ a {
   .contact-form { padding: 20px; }
 }
 
+
+
+/* OTTO authentication */
+.auth-page {
+  position: relative;
+  min-height: 100svh;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  isolation: isolate;
+  background: var(--color-background);
+  color: var(--color-text-primary);
+}
+
+.auth-background,
+.auth-overlay {
+  position: absolute;
+  inset: 0;
+}
+
+.auth-background {
+  z-index: -2;
+}
+
+.auth-background img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  filter: saturate(.9) contrast(1.04);
+}
+
+.auth-overlay {
+  z-index: -1;
+  background:
+    linear-gradient(90deg, rgba(10,10,15,.92), rgba(10,10,15,.66) 50%, rgba(10,10,15,.88)),
+    linear-gradient(0deg, rgba(10,10,15,.78), rgba(10,10,15,.38) 50%, rgba(10,10,15,.8));
+}
+
+.auth-shell {
+  width: min(calc(100% - 32px), 440px);
+  padding: 48px 0;
+}
+
+.auth-card {
+  padding: 34px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: var(--radius-sm);
+  background: rgba(10,10,15,.78);
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.auth-brand {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 22px;
+}
+
+.auth-brand img {
+  width: 126px;
+  height: auto;
+}
+
+.auth-title {
+  margin: 0 0 28px;
+  text-align: center;
+  color: var(--color-text-primary);
+  font-size: 22px;
+  line-height: 1.1;
+  font-weight: 600;
+  letter-spacing: -.025em;
+}
+
+.auth-form label {
+  color: var(--color-text-secondary);
+}
+
+.auth-form input {
+  min-height: 44px;
+  padding: 0 13px;
+  border-radius: var(--radius-sm);
+}
+
+.auth-submit {
+  width: 100%;
+  min-height: 46px;
+  margin-top: 4px;
+  padding: 0 17px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: var(--color-background);
+  background: var(--color-accent);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform var(--motion-fast) ease, opacity var(--motion-fast) ease;
+}
+
+.auth-submit:hover:not(:disabled) {
+  opacity: .92;
+  transform: translateY(-1px);
+}
+
+.auth-submit:disabled {
+  cursor: wait;
+  opacity: .6;
+}
+
+.auth-links a {
+  color: var(--color-text-secondary);
+  transition: color var(--motion-fast) ease;
+}
+
+.auth-links a:hover {
+  color: var(--color-text-primary);
+}
+
+@media (max-width: 640px) {
+  .auth-shell {
+    width: min(calc(100% - 24px), 440px);
+    padding: 24px 0;
+  }
+
+  .auth-card {
+    padding: 26px 20px;
+  }
+
+  .auth-brand img {
+    width: 112px;
+  }
+
+  .auth-title {
+    font-size: 20px;
+    margin-bottom: 24px;
+  }
+}
