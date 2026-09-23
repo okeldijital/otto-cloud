@@ -5,7 +5,9 @@ import { prisma } from "@/lib/prisma";
 import { documentService } from "@/lib/documents";
 import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organization-context";
 import {
+  requireActorUserId,
   requireContractInOrg,
+  requirePositiveIntId,
   resourceAuthErrorResponse,
 } from "@/lib/auth/resource-authorization";
 
@@ -71,7 +73,7 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const ctx = await requireProductOrganization("contracts.core");
-    const orgId = ctx.legacyIntOrgId;
+    const orgId = ctx.organizationId;
 
     const action = searchParams.get("action");
 
@@ -80,7 +82,7 @@ export async function GET(req: Request) {
       if (!idStr) return NextResponse.json({ error: "Missing id" }, { status: 400 });
       const id = parseInt(idStr);
       const contract = await prisma.contracts.findFirst({
-        where: { id, organization_id: orgId },
+        where: { id, tenant_id: orgId },
         include: {
           contract_parties: true,
           contract_documents: true,
@@ -115,7 +117,7 @@ export async function GET(req: Request) {
     if (idStr) {
       const id = parseInt(idStr);
       const contract = await prisma.contracts.findFirst({
-        where: { id, organization_id: orgId },
+        where: { id, tenant_id: orgId },
         include: contractIncludes,
       });
       if (!contract) return NextResponse.json({ error: "Contract not found" }, { status: 404 });
@@ -131,7 +133,7 @@ export async function GET(req: Request) {
     const view = searchParams.get("view") || "all";
     const folderId = searchParams.get("folderId");
 
-    const where: any = { organization_id: orgId };
+    const where: any = { tenant_id: orgId };
 
     if (q) {
       where.OR = [
@@ -143,14 +145,14 @@ export async function GET(req: Request) {
     if (folderId) {
       where.folderMemberships = {
         some: {
-          organizationId: orgId,
+          tenantId: orgId,
           folderId,
         },
       };
     } else if (view === "unfiled") {
       where.folderMemberships = {
         none: {
-          organizationId: orgId,
+          tenantId: orgId,
         },
       };
     }
@@ -188,7 +190,7 @@ export async function GET(req: Request) {
           contract_parties: true,
           contract_documents: true,
           folderMemberships: {
-            where: { organizationId: orgId },
+            where: { tenantId: orgId },
             include: { folder: { select: { id: true, name: true } } },
           },
         },
@@ -225,22 +227,23 @@ export async function POST(req: Request) {
     const { searchParams } = new URL(req.url);
     const action = searchParams.get("action");
     const ctx = await requireProductOrganization("contracts.core");
-    const orgId = ctx.legacyIntOrgId;
+    const legacyOrgId = ctx.legacyIntOrgId;
     const orgUuid = ctx.organizationId;
-    const userId = parseInt((session.user as any).id) || 1;
+    const userId = requireActorUserId(ctx);
 
     if (action === "link_track") {
       const body = await req.json();
       const { id, track_id } = body;
+      await requireContractInOrg(requirePositiveIntId(id, "contract id"), ctx);
       const existing = await prisma.contract_track_links.findFirst({
-        where: { contract_id: parseInt(id), track_id: parseInt(track_id), organization_id: String(orgId) },
+        where: { contract_id: parseInt(id), track_id: parseInt(track_id), organization_id: String(legacyOrgId) },
       });
       if (existing) return NextResponse.json({ error: "Track already linked" }, { status: 409 });
       const link = await prisma.contract_track_links.create({
         data: {
           contract_id: parseInt(id),
           track_id: parseInt(track_id),
-          organization_id: String(orgId),
+          organization_id: String(legacyOrgId),
         },
         include: { tracks: true },
       });
@@ -250,10 +253,11 @@ export async function POST(req: Request) {
     if (action === "add_party") {
       const body = await req.json();
       const { id } = body;
+      await requireContractInOrg(requirePositiveIntId(id, "contract id"), ctx);
       const party = await prisma.contract_parties.create({
         data: {
           contract_id: parseInt(id),
-          organization_id: orgId,
+          organization_id: legacyOrgId,
           entity_type: body.entity_type,
           entity_id: body.entity_id ? parseInt(body.entity_id) : null,
           external_name: body.external_name || null,
@@ -268,6 +272,7 @@ export async function POST(req: Request) {
     if (action === "update_party") {
       const body = await req.json();
       const { id, party_id } = body;
+      await requireContractInOrg(requirePositiveIntId(id, "contract id"), ctx);
       const updated = await prisma.contract_parties.updateMany({
         where: { contract_id: parseInt(id), id: parseInt(party_id) },
         data: {
@@ -285,10 +290,11 @@ export async function POST(req: Request) {
     if (action === "add_asset") {
       const body = await req.json();
       const { id } = body;
+      await requireContractInOrg(requirePositiveIntId(id, "contract id"), ctx);
       const asset = await prisma.contract_assets.create({
         data: {
           contract_id: parseInt(id),
-          organization_id: orgId,
+          organization_id: legacyOrgId,
           asset_type: body.asset_type,
           asset_id: parseInt(body.asset_id),
           scope_type: body.scope_type || null,
@@ -301,10 +307,11 @@ export async function POST(req: Request) {
     if (action === "add_split_group") {
       const body = await req.json();
       const { id } = body;
+      await requireContractInOrg(requirePositiveIntId(id, "contract id"), ctx);
       const group = await prisma.contract_split_groups.create({
         data: {
           contract_id: parseInt(id),
-          organization_id: orgId,
+          organization_id: legacyOrgId,
           group_name: body.group_name || "Primary Splits",
           group_type: body.group_type || "Mechanical",
           notes: body.notes || "",
@@ -316,10 +323,16 @@ export async function POST(req: Request) {
     if (action === "add_split") {
       const body = await req.json();
       const { group_id } = body;
+      const group = await prisma.contract_split_groups.findFirst({
+        where: { id: parseInt(group_id), organization_id: legacyOrgId },
+        select: { contract_id: true },
+      });
+      if (!group) return NextResponse.json({ error: "Split group not found" }, { status: 404 });
+      await requireContractInOrg(group.contract_id, ctx);
       const split = await prisma.contract_splits.create({
         data: {
           group_id: parseInt(group_id),
-          organization_id: orgId,
+          organization_id: legacyOrgId,
           party_id: body.party_id ? parseInt(body.party_id) : null,
           external_party_name: body.external_party_name || null,
           percent: body.percent || 0.0,
@@ -383,7 +396,7 @@ export async function POST(req: Request) {
       const doc = await prisma.contract_documents.create({
         data: {
           contract_id: id,
-          organization_id: orgId,
+          organization_id: legacyOrgId,
           file_path: `document:${platformUpload.document.id}`,
           file_name: file.name,
           version: nextVersion,
@@ -408,7 +421,8 @@ export async function POST(req: Request) {
     const contract = await prisma.contracts.create({
       data: {
         contract_number: body.contract_number || `CON-${Date.now()}`,
-        organization_id: orgId,
+        organization_id: legacyOrgId,
+        tenant_id: orgUuid,
         title: body.title,
         status: body.status || "Draft",
         type: body.type || "ArtistAgreement",

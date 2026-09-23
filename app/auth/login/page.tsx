@@ -79,7 +79,7 @@ export default function AuthLoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-app-default">
       <div className="p-8 bg-black/50 backdrop-blur-md rounded-xl border border-white/10 w-full max-w-md">
         <div className="text-center mb-8">
-          <img src="/otto-logo.png" alt="OTTO" className="h-16 mx-auto mb-4" />
+          <img src="/otto-logo.svg" alt="OTTO" className="h-12 w-auto mx-auto mb-5" />
           <h1 className="text-2xl font-bold text-white">
             {mfaToken ? "Two-factor authentication" : "Sign in to OTTO"}
           </h1>

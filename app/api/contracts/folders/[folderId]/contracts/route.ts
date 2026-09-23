@@ -4,8 +4,8 @@ import { assertCanManageRelationships } from "@/lib/contract-relationships/permi
 import { requireContractInOrg } from "@/lib/auth/resource-authorization";
 import { prisma } from "@/lib/prisma";
 
-async function getFolder(folderId: string, organizationId: number) {
-  return prisma.contractFolder.findFirst({ where: { id: folderId, organizationId } });
+async function getFolder(folderId: string, tenantId: string) {
+  return prisma.contractFolder.findFirst({ where: { id: folderId, tenantId } });
 }
 
 export async function POST(
@@ -16,7 +16,7 @@ export async function POST(
     const ctx = await requireProductOrganization("contracts.core");
     assertCanManageRelationships(ctx);
     const { folderId } = await params;
-    const folder = await getFolder(folderId, ctx.legacyIntOrgId);
+    const folder = await getFolder(folderId, ctx.organizationId);
     if (!folder) return NextResponse.json({ error: "Folder not found" }, { status: 404 });
 
     const body = await req.json();
@@ -34,6 +34,7 @@ export async function POST(
     const membership = await prisma.contractFolderMembership.create({
       data: {
         organizationId: ctx.legacyIntOrgId,
+        tenantId: ctx.organizationId,
         folderId: folder.id,
         contractId,
         addedBy: ctx.userId,

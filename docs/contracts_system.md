@@ -28,3 +28,10 @@ The Contracts workspace is intentionally narrow: **upload, organise, retrieve**.
 - "Unfiled" is a retrieval view only. A contract does not need to be placed into a folder to be considered stored.
 - Folder membership is separate from contract relationships. Relationship records remain the authoritative connections to artists, labels, publishers, releases, works, tracks and other entities.
 - Folders are flat in this first implementation to keep retrieval and organisation deliberately simple; nested folder structures are not required.
+
+
+## Organization isolation
+
+Contracts are tenant-owned by the IAM organization UUID stored in `contracts.tenant_id`. The legacy integer `organization_id` is retained only for compatibility and is not an authorization boundary.
+
+Contract folders and folder memberships likewise carry `tenant_id` and are filtered by the active IAM organization. Existing imported contracts and folders were backfilled to the M2KR MELT2000 REVISITED organization during the tenant-isolation migration.

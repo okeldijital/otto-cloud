@@ -11,7 +11,7 @@ export async function GET() {
   try {
     const ctx = await requireProductOrganization("contracts.core");
     const folders = await prisma.contractFolder.findMany({
-      where: { organizationId: ctx.legacyIntOrgId },
+      where: { tenantId: ctx.organizationId },
       orderBy: [{ name: "asc" }, { createdAt: "asc" }],
       include: { _count: { select: { memberships: true } } },
     });
@@ -42,7 +42,7 @@ export async function POST(req: Request) {
     if (name.length > 100) return NextResponse.json({ error: "Folder name must be 100 characters or fewer" }, { status: 400 });
 
     const existing = await prisma.contractFolder.findFirst({
-      where: { organizationId: ctx.legacyIntOrgId, name: { equals: name, mode: "insensitive" } },
+      where: { tenantId: ctx.organizationId, name: { equals: name, mode: "insensitive" } },
       select: { id: true },
     });
     if (existing) return NextResponse.json({ error: "A folder with that name already exists" }, { status: 409 });
@@ -50,6 +50,7 @@ export async function POST(req: Request) {
     const folder = await prisma.contractFolder.create({
       data: {
         organizationId: ctx.legacyIntOrgId,
+        tenantId: ctx.organizationId,
         name,
         createdBy: ctx.userId,
       },

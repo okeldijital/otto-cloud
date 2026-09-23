@@ -7,9 +7,9 @@ function normalizeName(value: unknown): string {
   return String(value ?? "").trim().replace(/\s+/g, " ");
 }
 
-async function getFolder(id: string, organizationId: number) {
+async function getFolder(id: string, tenantId: string) {
   return prisma.contractFolder.findFirst({
-    where: { id, organizationId },
+    where: { id, tenantId },
   });
 }
 
@@ -21,7 +21,7 @@ export async function PUT(
     const ctx = await requireProductOrganization("contracts.core");
     assertCanManageRelationships(ctx);
     const { folderId } = await params;
-    const folder = await getFolder(folderId, ctx.legacyIntOrgId);
+    const folder = await getFolder(folderId, ctx.organizationId);
     if (!folder) return NextResponse.json({ error: "Folder not found" }, { status: 404 });
 
     const body = await req.json();
@@ -31,7 +31,7 @@ export async function PUT(
 
     const duplicate = await prisma.contractFolder.findFirst({
       where: {
-        organizationId: ctx.legacyIntOrgId,
+        tenantId: ctx.organizationId,
         name: { equals: name, mode: "insensitive" },
         id: { not: folder.id },
       },
@@ -59,7 +59,7 @@ export async function DELETE(
     const ctx = await requireProductOrganization("contracts.core");
     assertCanManageRelationships(ctx);
     const { folderId } = await params;
-    const folder = await getFolder(folderId, ctx.legacyIntOrgId);
+    const folder = await getFolder(folderId, ctx.organizationId);
     if (!folder) return NextResponse.json({ error: "Folder not found" }, { status: 404 });
 
     await prisma.contractFolder.delete({ where: { id: folder.id } });
