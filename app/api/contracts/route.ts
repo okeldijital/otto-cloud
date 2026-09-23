@@ -71,7 +71,7 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const ctx = await requireProductOrganization("contracts.core");
-    const orgId = ctx.legacyIntOrgId;
+    const orgId = ctx.organizationId;
 
     const action = searchParams.get("action");
 
@@ -80,7 +80,7 @@ export async function GET(req: Request) {
       if (!idStr) return NextResponse.json({ error: "Missing id" }, { status: 400 });
       const id = parseInt(idStr);
       const contract = await prisma.contracts.findFirst({
-        where: { id, organization_id: orgId },
+        where: { id, tenant_id: orgId },
         include: {
           contract_parties: true,
           contract_documents: true,
@@ -115,7 +115,7 @@ export async function GET(req: Request) {
     if (idStr) {
       const id = parseInt(idStr);
       const contract = await prisma.contracts.findFirst({
-        where: { id, organization_id: orgId },
+        where: { id, organization_id: legacyOrgId },
         include: contractIncludes,
       });
       if (!contract) return NextResponse.json({ error: "Contract not found" }, { status: 404 });
@@ -131,7 +131,7 @@ export async function GET(req: Request) {
     const view = searchParams.get("view") || "all";
     const folderId = searchParams.get("folderId");
 
-    const where: any = { organization_id: orgId };
+    const where: any = { tenant_id: orgId };
 
     if (q) {
       where.OR = [
@@ -143,7 +143,7 @@ export async function GET(req: Request) {
     if (folderId) {
       where.folderMemberships = {
         some: {
-          organizationId: orgId,
+          organizationId: legacyOrgId,
           folderId,
         },
       };
@@ -188,7 +188,7 @@ export async function GET(req: Request) {
           contract_parties: true,
           contract_documents: true,
           folderMemberships: {
-            where: { organizationId: orgId },
+            where: { tenantId: orgId },
             include: { folder: { select: { id: true, name: true } } },
           },
         },
@@ -225,7 +225,7 @@ export async function POST(req: Request) {
     const { searchParams } = new URL(req.url);
     const action = searchParams.get("action");
     const ctx = await requireProductOrganization("contracts.core");
-    const orgId = ctx.legacyIntOrgId;
+    const legacyOrgId = ctx.legacyIntOrgId;
     const orgUuid = ctx.organizationId;
     const userId = parseInt((session.user as any).id) || 1;
 
@@ -408,7 +408,8 @@ export async function POST(req: Request) {
     const contract = await prisma.contracts.create({
       data: {
         contract_number: body.contract_number || `CON-${Date.now()}`,
-        organization_id: orgId,
+        organization_id: legacyOrgId,
+        tenant_id: orgUuid,
         title: body.title,
         status: body.status || "Draft",
         type: body.type || "ArtistAgreement",
