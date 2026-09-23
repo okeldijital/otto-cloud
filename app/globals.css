@@ -1006,6 +1006,7 @@ a {
 
 @media (max-width: 900px) {
   .nav-links { display: none; }
+  .nav-actions { margin-left: auto; }
   .hero { min-height: 720px; }
   .hero-image { inset: 0; opacity: .72; }
   .hero-overlay {
@@ -1032,8 +1033,14 @@ a {
   .hero-copy { padding: 82px 0 90px; }
   .hero h1 { font-size: clamp(44px, 13vw, 68px); }
   .hero-lede { font-size: 17px; }
-  .hero-actions { flex-direction: column; align-items: stretch; }
-  .button { justify-content: space-between; }
+  .hero-actions { flex-direction: column; align-items: flex-start; }
+  .hero-actions .button {
+    min-height: 42px;
+    padding: 0 14px;
+    font-size: 12px;
+    width: auto;
+  }
+  .button { justify-content: center; }
   .hero-foot { display: none; }
   .section { padding: 92px 0; }
   .split-intro h2,
