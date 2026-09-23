@@ -236,8 +236,13 @@ const Sidebar = () => {
                         : "translate-x-0",
                 ].join(" ")}
             >
-                <div className={["flex items-center h-16 shrink-0", expanded ? "px-4 justify-between" : "justify-center"].join(" ")}>
-                    <Link href="/dashboard" onClick={handleNav} className="flex items-center min-w-0" aria-label="OTTO">
+                <div className={["relative flex items-center h-16 shrink-0", expanded ? "px-4 justify-between" : "justify-center"].join(" ")}>
+                    <Link
+                        href="/dashboard"
+                        onClick={handleNav}
+                        className={expanded ? "flex items-center min-w-0" : "absolute left-1/2 -translate-x-1/2 flex items-center"}
+                        aria-label="OTTO"
+                    >
                         <Logo size={expanded ? "sm" : "md"} markOnly={!expanded} className="shrink-0" />
                     </Link>
 
@@ -254,7 +259,10 @@ const Sidebar = () => {
                         <button
                             type="button"
                             onClick={toggleSidebarCollapsed}
-                            className="w-9 h-9 rounded-lg flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors"
+                            className={[
+                                "w-8 h-8 rounded-lg flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors",
+                                sidebarCollapsed ? "absolute right-1 top-1/2 -translate-y-1/2" : "",
+                            ].join(" ")}
                             aria-label={sidebarCollapsed ? "Expand navigation" : "Collapse navigation"}
                             title={sidebarCollapsed ? "Expand navigation" : "Collapse navigation"}
                         >
