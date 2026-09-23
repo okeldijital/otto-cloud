@@ -16,7 +16,7 @@ export async function DELETE(
     if (!Number.isFinite(contractId)) return NextResponse.json({ error: "Invalid contract ID" }, { status: 400 });
 
     const folder = await prisma.contractFolder.findFirst({
-      where: { id: folderId, organizationId: ctx.legacyIntOrgId },
+      where: { id: folderId, tenantId: ctx.organizationId },
       select: { id: true },
     });
     if (!folder) return NextResponse.json({ error: "Folder not found" }, { status: 404 });
@@ -26,6 +26,7 @@ export async function DELETE(
     const deleted = await prisma.contractFolderMembership.deleteMany({
       where: {
         organizationId: ctx.legacyIntOrgId,
+        tenantId: ctx.organizationId,
         folderId: folder.id,
         contractId,
       },
