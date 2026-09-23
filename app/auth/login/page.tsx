@@ -89,7 +89,6 @@ export default function AuthLoginPage() {
           <h1 className="auth-title">
             {mfaToken ? "Two-factor authentication" : "Sign in"}
           </h1>
-        </div>
 
         <form onSubmit={handleSubmit} className="auth-form space-y-4">
           {!mfaToken ? (
@@ -190,6 +189,7 @@ export default function AuthLoginPage() {
           </Link>
         </div>
       </div>
+    </div>
     </main>
   );
 }
