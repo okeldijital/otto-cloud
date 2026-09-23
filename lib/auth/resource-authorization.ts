@@ -280,40 +280,24 @@ export async function requireWorkInOrg(id: number, ctx: OrganizationContext) {
   return row;
 }
 
-/** Contracts use INT organization_id (+ optional tenant_id UUID). */
+/** Contracts are owned by the IAM organization UUID in tenant_id. */
 export async function requireContractInOrg(id: number, ctx: OrganizationContext) {
-  const intOrg = requireLegacyIntOrgId(ctx);
   const row = await prisma.contracts.findFirst({
-    where: {
-      id,
-      OR: [
-        { organization_id: intOrg },
-        ...(ctx.organizationId
-          ? [{ tenant_id: ctx.organizationId }]
-          : []),
-      ],
-    },
+    where: { id, tenant_id: ctx.organizationId },
   });
   if (!row) notFound("Contract");
   return row;
 }
 
 /**
- * R5 — Organization-scoped predicate for contracts list/count queries.
- * Contracts use INT organization_id (+ optional tenant_id UUID); mirrors the
- * ownership test in requireContractInOrg. Fail closed (403) when the legacy
- * INT org scope is unavailable; never derives scope from client input.
+ * Organization-scoped predicate for contracts list/count queries.
+ * tenant_id is the authoritative ownership boundary; legacy organization_id
+ * remains only as historical compatibility data.
  */
 export function contractOrgScopeWhere(
   ctx: OrganizationContext
 ): Record<string, unknown> {
-  const intOrg = requireLegacyIntOrgId(ctx);
-  return {
-    OR: [
-      { organization_id: intOrg },
-      ...(ctx.organizationId ? [{ tenant_id: ctx.organizationId }] : []),
-    ],
-  };
+  return { tenant_id: ctx.organizationId };
 }
 
 /**
