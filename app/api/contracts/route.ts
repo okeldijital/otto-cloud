@@ -7,6 +7,7 @@ import { orgContextErrorResponse, requireOrganization } from "@/lib/auth/organiz
 import {
   requireActorUserId,
   requireContractInOrg,
+  requirePositiveIntId,
   resourceAuthErrorResponse,
 } from "@/lib/auth/resource-authorization";
 
