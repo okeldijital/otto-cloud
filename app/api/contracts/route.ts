@@ -236,14 +236,14 @@ export async function POST(req: Request) {
       const { id, track_id } = body;
       await requireContractInOrg(requirePositiveIntId(id, "contract id"), ctx);
       const existing = await prisma.contract_track_links.findFirst({
-        where: { contract_id: parseInt(id), track_id: parseInt(track_id), organization_id: String(orgId) },
+        where: { contract_id: parseInt(id), track_id: parseInt(track_id), organization_id: String(legacyOrgId) },
       });
       if (existing) return NextResponse.json({ error: "Track already linked" }, { status: 409 });
       const link = await prisma.contract_track_links.create({
         data: {
           contract_id: parseInt(id),
           track_id: parseInt(track_id),
-          organization_id: String(orgId),
+          organization_id: String(legacyOrgId),
         },
         include: { tracks: true },
       });
@@ -257,7 +257,7 @@ export async function POST(req: Request) {
       const party = await prisma.contract_parties.create({
         data: {
           contract_id: parseInt(id),
-          organization_id: orgId,
+          organization_id: legacyOrgId,
           entity_type: body.entity_type,
           entity_id: body.entity_id ? parseInt(body.entity_id) : null,
           external_name: body.external_name || null,
@@ -294,7 +294,7 @@ export async function POST(req: Request) {
       const asset = await prisma.contract_assets.create({
         data: {
           contract_id: parseInt(id),
-          organization_id: orgId,
+          organization_id: legacyOrgId,
           asset_type: body.asset_type,
           asset_id: parseInt(body.asset_id),
           scope_type: body.scope_type || null,
@@ -311,7 +311,7 @@ export async function POST(req: Request) {
       const group = await prisma.contract_split_groups.create({
         data: {
           contract_id: parseInt(id),
-          organization_id: orgId,
+          organization_id: legacyOrgId,
           group_name: body.group_name || "Primary Splits",
           group_type: body.group_type || "Mechanical",
           notes: body.notes || "",
@@ -332,7 +332,7 @@ export async function POST(req: Request) {
       const split = await prisma.contract_splits.create({
         data: {
           group_id: parseInt(group_id),
-          organization_id: orgId,
+          organization_id: legacyOrgId,
           party_id: body.party_id ? parseInt(body.party_id) : null,
           external_party_name: body.external_party_name || null,
           percent: body.percent || 0.0,
@@ -396,7 +396,7 @@ export async function POST(req: Request) {
       const doc = await prisma.contract_documents.create({
         data: {
           contract_id: id,
-          organization_id: orgId,
+          organization_id: legacyOrgId,
           file_path: `document:${platformUpload.document.id}`,
           file_name: file.name,
           version: nextVersion,
