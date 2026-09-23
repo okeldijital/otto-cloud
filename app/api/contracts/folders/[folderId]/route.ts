@@ -59,7 +59,7 @@ export async function DELETE(
     const ctx = await requireProductOrganization("contracts.core");
     assertCanManageRelationships(ctx);
     const { folderId } = await params;
-    const folder = await getFolder(folderId, ctx.legacyIntOrgId);
+    const folder = await getFolder(folderId, ctx.organizationId);
     if (!folder) return NextResponse.json({ error: "Folder not found" }, { status: 404 });
 
     await prisma.contractFolder.delete({ where: { id: folder.id } });
