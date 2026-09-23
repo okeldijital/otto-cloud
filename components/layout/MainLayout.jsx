@@ -1,18 +1,25 @@
 import React from 'react';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
-import { SidebarProvider } from '../../contexts/SidebarContext';
+import { SidebarProvider, useSidebar } from '../../contexts/SidebarContext';
 import { useBackendHealth } from '../../hooks/useBackendHealth';
 import { WifiOff } from 'lucide-react';
 
 const MainContent = ({ children }) => {
     const { isHealthy, isChecking } = useBackendHealth(30000);
+    const { sidebarCollapsed } = useSidebar();
 
     return (
-        <div className="otto-main flex-1 flex flex-col min-w-0 overflow-hidden lg:ml-[280px] bg-background">
+        <div
+            className={[
+                'otto-main flex-1 flex flex-col min-w-0 overflow-hidden bg-background transition-[margin] duration-200 ease-out',
+                'lg:ml-[252px]',
+                sidebarCollapsed ? 'lg:ml-[76px]' : '',
+            ].join(' ')}
+        >
             <TopBar />
             {isHealthy === false && !isChecking && (
-                <div className="bg-danger/10 border-b border-danger px-xl py-3 flex items-center gap-md">
+                <div className="bg-danger/10 px-xl py-3 flex items-center gap-md">
                     <WifiOff size={18} className="text-danger shrink-0" />
                     <div className="flex-1">
                         <p className="text-sm font-semibold text-danger">Backend Connection Lost</p>
