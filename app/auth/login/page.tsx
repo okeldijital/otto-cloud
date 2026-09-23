@@ -76,16 +76,21 @@ export default function AuthLoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-app-default">
-      <div className="p-8 bg-black/50 backdrop-blur-md rounded-xl border border-white/10 w-full max-w-md">
-        <div className="text-center mb-8">
-          <img src="/otto-logo.svg" alt="OTTO" className="h-12 w-auto mx-auto mb-5" />
-          <h1 className="text-2xl font-bold text-white">
-            {mfaToken ? "Two-factor authentication" : "Sign in to OTTO"}
+    <main className="auth-page">
+      <div className="auth-background" aria-hidden="true">
+        <img src="/assets/otto-hero-abstract.webp" alt="" />
+      </div>
+      <div className="auth-overlay" aria-hidden="true" />
+      <div className="auth-shell">
+        <div className="auth-card">
+          <div className="auth-brand">
+            <img src="/otto-logo.svg" alt="OTTO" />
+          </div>
+          <h1 className="auth-title">
+            {mfaToken ? "Two-factor authentication" : "Sign in"}
           </h1>
-        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="auth-form space-y-4">
           {!mfaToken ? (
             <>
               <div>
@@ -164,7 +169,7 @@ export default function AuthLoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2.5 bg-accent text-white font-semibold rounded-xl hover:bg-accent/90 transition-colors disabled:opacity-50"
+            className="auth-submit"
           >
             {loading
               ? "Please wait…"
@@ -174,7 +179,7 @@ export default function AuthLoginPage() {
           </button>
         </form>
 
-        <div className="flex items-center justify-center gap-3 text-sm text-white/50 mt-6">
+        <div className="auth-links flex items-center justify-center gap-3 text-sm text-white/50 mt-6">
           <Link href="/auth/forgot-password" className="underline">
             Forgot password?
           </Link>
@@ -185,5 +190,6 @@ export default function AuthLoginPage() {
         </div>
       </div>
     </div>
+    </main>
   );
 }
