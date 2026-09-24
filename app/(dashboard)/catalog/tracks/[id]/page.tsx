@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Clock, Disc, ExternalLink, Hash, Loader2, Music, Save, Trash2, User, X } from "lucide-react";
+import { Clock, Disc, ExternalLink, Hash, Loader2, Music, Plus, Save, Trash2, User, X } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
