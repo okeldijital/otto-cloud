@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { ChevronLeft, Image as ImageIcon, Loader2, Plus, Save, Search, Trash2, UserRound, X } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import PageHeader from "@/components/ui/PageHeader";
@@ -36,6 +37,8 @@ export default function ReleaseDetailPage() {
   const [form, setForm] = useState<any>(null);
   const [selectedArtistIds, setSelectedArtistIds] = useState<number[]>([]);
   const [selectedTrackIds, setSelectedTrackIds] = useState<number[]>([]);
+  const artistSearchRef = useRef<HTMLInputElement>(null);
+  const [artistMenuRect, setArtistMenuRect] = useState<{ top: number; left: number; width: number } | null>(null);
 
   const load = async () => {
     if (!id) return;
@@ -94,6 +97,25 @@ export default function ReleaseDetailPage() {
   }, [artists, artistQuery]);
 
   const selectedArtists = useMemo(() => artists.filter((artist) => selectedArtistIds.includes(artist.id)), [artists, selectedArtistIds]);
+
+  useEffect(() => {
+    if (!artistQuery.trim()) {
+      setArtistMenuRect(null);
+      return;
+    }
+    const updateArtistMenu = () => {
+      const rect = artistSearchRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      setArtistMenuRect({ top: rect.bottom + 8, left: rect.left, width: rect.width });
+    };
+    updateArtistMenu();
+    window.addEventListener("resize", updateArtistMenu);
+    window.addEventListener("scroll", updateArtistMenu, true);
+    return () => {
+      window.removeEventListener("resize", updateArtistMenu);
+      window.removeEventListener("scroll", updateArtistMenu, true);
+    };
+  }, [artistQuery]);
 
   const toggleArtist = (artistId: number) => {
     setSelectedArtistIds((current) => current.includes(artistId) ? current.filter((value) => value !== artistId) : [...current, artistId]);
@@ -252,13 +274,16 @@ export default function ReleaseDetailPage() {
           </div>
         </div>
 
-        <Card title="Release artists" subtitle="Release-level artist associations. Track-level roles and credits are managed inside each track." className="relative z-50 !overflow-visible">
+        <Card title="Release artists" subtitle="Release-level artist associations. Track-level roles and credits are managed inside each track.">
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
-            <div className="relative z-30">
+            <div className="relative">
               <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
-              <input className={`${fieldClass} pl-9`} value={artistQuery} onChange={(e) => setArtistQuery(e.target.value)} placeholder="Search artists..." />
-              {artistQuery.trim() && (
-                <div className="absolute left-0 top-full z-[80] mt-2 max-h-64 w-full overflow-y-auto rounded-lg border border-border bg-surface p-1 shadow-xl">
+              <input ref={artistSearchRef} className={`${fieldClass} pl-9`} value={artistQuery} onChange={(e) => setArtistQuery(e.target.value)} placeholder="Search artists..." />
+              {artistQuery.trim() && artistMenuRect && typeof document !== "undefined" && createPortal(
+                <div
+                  className="fixed z-[200] max-h-64 overflow-y-auto rounded-lg border border-border bg-surface p-1 shadow-xl"
+                  style={{ top: artistMenuRect.top, left: artistMenuRect.left, width: artistMenuRect.width }}
+                >
                   {visibleArtists.length ? visibleArtists.map((artist: any) => {
                     const selected = selectedArtistIds.includes(artist.id);
                     return (
@@ -271,7 +296,8 @@ export default function ReleaseDetailPage() {
                       </button>
                     );
                   }) : <p className="px-3 py-3 text-xs text-text-secondary">No artists found.</p>}
-                </div>
+                </div>,
+                document.body
               )}
             </div>
             <div className="flex flex-wrap gap-2">
