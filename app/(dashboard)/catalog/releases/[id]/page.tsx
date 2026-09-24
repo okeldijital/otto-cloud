@@ -254,11 +254,11 @@ export default function ReleaseDetailPage() {
 
         <Card title="Release artists" subtitle="Release-level artist associations. Track-level roles and credits are managed inside each track.">
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
-            <div className="relative">
+            <div className="relative z-30">
               <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
               <input className={`${fieldClass} pl-9`} value={artistQuery} onChange={(e) => setArtistQuery(e.target.value)} placeholder="Search artists..." />
               {artistQuery.trim() && (
-                <div className="absolute z-20 mt-2 max-h-64 w-full overflow-y-auto rounded-lg border border-border bg-surface p-1 shadow-xl">
+                <div className="absolute left-0 top-full z-[80] mt-2 max-h-64 w-full overflow-y-auto rounded-lg border border-border bg-surface p-1 shadow-xl">
                   {visibleArtists.length ? visibleArtists.map((artist: any) => {
                     const selected = selectedArtistIds.includes(artist.id);
                     return (
