@@ -13,6 +13,40 @@ import api from "@/lib/api";
 const fieldClass = "mt-1 h-10 w-full rounded-lg border border-border bg-surface px-3 text-sm text-text-primary placeholder:text-text-secondary/60 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20";
 const labelClass = "text-xs font-medium text-text-secondary";
 
+type CreditRow = {
+  name: string;
+  role: string;
+  share_percent: string;
+  source?: Record<string, any>;
+};
+
+function normalizeCreditRows(value: any): CreditRow[] {
+  return (Array.isArray(value) ? value : []).map((item: any) => ({
+    name: item?.name || item?.artist_name || item?.display_name || item?.member || item?.party_name || "",
+    role: item?.role || item?.type || item?.credit_type || "",
+    share_percent: item?.share_percent ?? item?.share ?? item?.percentage ?? item?.percent ?? "",
+    source: item,
+  }));
+}
+
+function creditRowsToPayload(rows: CreditRow[]) {
+  return rows
+    .filter((row) => row.name.trim() || row.role.trim() || row.share_percent !== "")
+    .map((row) => ({
+      ...(row.source || {}),
+      name: row.name.trim(),
+      role: row.role.trim() || "Credit",
+      share_percent: row.share_percent === "" ? null : Number(row.share_percent),
+    }));
+}
+
+function creditShareTotal(rows: CreditRow[]) {
+  return rows.reduce((total, row) => {
+    const share = Number(row.share_percent);
+    return Number.isFinite(share) ? total + share : total;
+  }, 0);
+}
+
 function formatDuration(value: string | null): string {
   if (!value) return "";
   if (value.includes("T")) return value.replace(/^.*T/, "").replace(/\.\d+Z$/, "");
@@ -77,6 +111,7 @@ export default function TrackDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
+  const [creditRows, setCreditRows] = useState<CreditRow[]>([]);
   const [form, setForm] = useState<any>({ title: "", isrc_code: "", genre: "", duration: "", release_date: "", streaming_link: "", release_id: "", work_id: "", artist_ids: [], secondary_release_ids: [], credits: "" });
 
   const loadTrack = async () => {
@@ -101,6 +136,7 @@ export default function TrackDetailPage() {
     setReleases(allReleases);
     setWorks(allWorks);
     setSecondaryReleases(allReleases.filter((item: any) => secondaryIds.includes(item.id)));
+    setCreditRows(normalizeCreditRows(trackData.credits));
     setForm({
       title: trackData.title || "",
       isrc_code: trackData.isrc_code || "",
@@ -133,17 +169,13 @@ export default function TrackDetailPage() {
     if (!form.title.trim()) { setError("Track title is required."); return; }
     setIsSaving(true); setError("");
     try {
-      let credits: any = undefined;
-      if (form.credits.trim()) {
-        credits = JSON.parse(form.credits);
-        if (!Array.isArray(credits)) throw new Error("Credits must be a JSON array.");
-      }
+
       await api.put(`/tracks?id=${id}`, {
         title: form.title.trim(), isrc_code: form.isrc_code.trim() || null, genre: form.genre.trim() || null, duration: form.duration.trim() || null,
         release_date: form.release_date || null, streaming_link: form.streaming_link.trim() || null, release_id: form.release_id ? Number(form.release_id) : null,
         work_id: form.work_id ? Number(form.work_id) : null, artist_ids: form.artist_ids,
         secondary_release_ids: form.secondary_release_ids.filter((releaseId: number) => releaseId !== Number(form.release_id)),
-        ...(credits !== undefined ? { credits } : { credits: null }),
+        credits: creditRowsToPayload(creditRows),
       });
       await loadTrack();
       setIsEditing(false);
@@ -199,8 +231,46 @@ export default function TrackDetailPage() {
             {isEditing ? <SelectionList title="Linked artists" items={artists} selectedIds={form.artist_ids} onToggle={toggleArtist} getTitle={(artist: any) => artist.display_name || artist.stage_name || artist.name || `Artist #${artist.id}`} getSubtitle={(artist: any) => artist.aka || artist.kind || ""} icon={User} empty="No artists found." /> : linkedArtists.length ? <div className="flex flex-wrap gap-2">{linkedArtists.map((artist: any) => <button key={artist.id} type="button" onClick={() => router.push(`/catalog/artists/${artist.id}`)} className="inline-flex items-center gap-2 rounded-md border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary transition hover:border-primary/40 hover:bg-primary/5"><User size={14} className="text-primary" />{artist.display_name || artist.stage_name || artist.name}</button>)}</div> : <p className="text-sm text-text-secondary">No artists linked.</p>}
           </Card>
 
-          <Card title="Credits" subtitle="Contributor information">
-            {isEditing ? <Field label="Credits JSON"><textarea className="mt-1 min-h-36 w-full rounded-lg border border-border bg-surface px-3 py-3 font-mono text-xs text-text-primary placeholder:text-text-secondary/60 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20" value={form.credits} onChange={(e) => setForm({ ...form, credits: e.target.value })} placeholder='[{"name":"Artist","role":"Producer"}]' /></Field> : Array.isArray(track.credits) && track.credits.length ? <div className="space-y-2">{track.credits.map((credit: any, index: number) => <div key={index} className="flex items-center justify-between gap-3 rounded-md border border-border bg-surface-elevated px-3 py-2 text-sm"><span className="font-medium text-text-primary">{credit.name || credit.contact_name || "Contributor"}</span><span className="text-text-secondary">{credit.role || "Contributor"}</span></div>)}</div> : <p className="text-sm text-text-secondary">No credits recorded.</p>}
+          <Card title="Credits & splits" subtitle="Contributors, roles and royalty/split percentages">
+            {isEditing ? (
+              <div className="space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-text-primary">Track credits</p>
+                    <p className="mt-1 text-xs text-text-secondary">Manage the same structured credits and split allocation available from the Release Single workspace.</p>
+                  </div>
+                  <Button type="button" variant="secondary" size="sm" onClick={() => setCreditRows((rows) => [...rows, { name: "", role: "", share_percent: "" }])}><Plus size={14} />Add credit</Button>
+                </div>
+                <div className="overflow-x-auto rounded-lg border border-border">
+                  <table className="w-full min-w-[640px] text-left text-xs">
+                    <thead className="bg-surface-elevated text-text-secondary">
+                      <tr><th className="px-3 py-2 font-medium">Contributor</th><th className="px-3 py-2 font-medium">Role</th><th className="w-32 px-3 py-2 font-medium">Split %</th><th className="w-12 px-2 py-2" /></tr>
+                    </thead>
+                    <tbody>
+                      {creditRows.map((row, index) => (
+                        <tr key={index} className="border-t border-border">
+                          <td className="px-3 py-2"><input className={fieldClass} value={row.name} onChange={(e) => setCreditRows((rows) => rows.map((item, rowIndex) => rowIndex === index ? { ...item, name: e.target.value } : item))} placeholder="Artist, producer, licensor..." /></td>
+                          <td className="px-3 py-2"><input className={fieldClass} value={row.role} onChange={(e) => setCreditRows((rows) => rows.map((item, rowIndex) => rowIndex === index ? { ...item, role: e.target.value } : item))} placeholder="Original Artist, Producer, ..." /></td>
+                          <td className="px-3 py-2"><input className={fieldClass} type="number" min="0" max="100" step="0.01" value={row.share_percent} onChange={(e) => setCreditRows((rows) => rows.map((item, rowIndex) => rowIndex === index ? { ...item, share_percent: e.target.value } : item))} placeholder="0" /></td>
+                          <td className="px-2 py-2 text-center"><button type="button" onClick={() => setCreditRows((rows) => rows.filter((_, rowIndex) => rowIndex !== index))} className="rounded-md p-2 text-text-secondary hover:bg-surface-elevated hover:text-danger" aria-label="Remove credit"><Trash2 size={14} /></button></td>
+                        </tr>
+                      ))}
+                      {!creditRows.length && <tr><td colSpan={4} className="px-3 py-8 text-center text-xs text-text-secondary">No credits or splits added yet.</td></tr>}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <span className="text-text-secondary">Total allocated: <strong className="text-text-primary">{creditShareTotal(creditRows).toFixed(2)}%</strong></span>
+                  <span className={Math.abs(creditShareTotal(creditRows) - 100) < 0.001 ? "text-primary" : "text-text-secondary"}>{Math.abs(creditShareTotal(creditRows) - 100) < 0.001 ? "Fully allocated" : "Allocation can be completed when the split is final"}</span>
+                </div>
+                <div className="flex justify-end"><Button type="button" variant="primary" size="sm" onClick={handleSave} disabled={isSaving}>{isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} {isSaving ? "Saving..." : "Save credits & splits"}</Button></div>
+              </div>
+            ) : creditRows.length ? (
+              <div className="space-y-2">
+                {creditRows.map((credit, index) => <div key={index} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-surface-elevated px-3 py-2 text-sm"><span className="font-medium text-text-primary">{credit.name || "Contributor"}</span><span className="text-text-secondary">{credit.role || "Credit"}{credit.share_percent === "" || credit.share_percent == null ? "" : ` · ${Number(credit.share_percent)}%`}</span></div>)}
+                <div className="pt-1 text-xs text-text-secondary">Total allocated: <span className="font-medium text-text-primary">{creditShareTotal(creditRows).toFixed(2)}%</span></div>
+              </div>
+            ) : <p className="text-sm text-text-secondary">No credits or splits recorded.</p>}
           </Card>
 
           <Card title="Secondary releases" subtitle="Other releases containing this track">
