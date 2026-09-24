@@ -8,11 +8,13 @@ import { NextResponse } from "next/server";
 import {
   credentialLifecycleService,
   requirePermission,
+  requireOrganization,
   identityErrorResponse,
   clientIp,
   clientUserAgent,
   IdentityError,
 } from "@/lib/platform/identity";
+import { membershipRepository } from "@/lib/platform/identity/repositories/MembershipRepository";
 
 export async function POST(req: Request) {
   try {
@@ -20,6 +22,7 @@ export async function POST(req: Request) {
       "security.manage",
       "users.manage",
     ]);
+    const orgCtx = await requireOrganization(req);
     const body = await req.json().catch(() => ({}));
     const identityId =
       typeof body.identityId === "string" ? body.identityId : "";
@@ -29,10 +32,23 @@ export async function POST(req: Request) {
       throw new IdentityError("identityId required", 400, "VALIDATION_ERROR");
     }
 
+    const membership = await membershipRepository.find(
+      identityId,
+      orgCtx.organizationId
+    );
+    if (!membership || membership.status !== "active") {
+      throw new IdentityError(
+        "Target user is not an active member of this organization",
+        404,
+        "MEMBERSHIP_NOT_FOUND"
+      );
+    }
+
     await credentialLifecycleService.forcePasswordReset({
       identityId,
       reason,
       actorIdentityId: ctx.identityId,
+      organizationId: orgCtx.organizationId,
       ipAddress: clientIp(req),
       userAgent: clientUserAgent(req),
     });

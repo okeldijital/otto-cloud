@@ -154,6 +154,7 @@ export class CredentialLifecycleService {
     identityId: string;
     reason?: string;
     actorIdentityId?: string | null;
+    organizationId?: string | null;
     ipAddress?: string | null;
     userAgent?: string | null;
   }): Promise<void> {
@@ -174,6 +175,7 @@ export class CredentialLifecycleService {
     await emitIdentityEvent({
       eventType: IDENTITY_EVENTS.PasswordForceReset,
       identityId: params.identityId,
+      organizationId: params.organizationId,
       payload: {
         reason: params.reason ?? "admin_force_reset",
         actorIdentityId: params.actorIdentityId,
