@@ -75,7 +75,7 @@ function Field({ label, children, className = "" }: { label: string; children: R
   return <label className={`block min-w-0 ${className}`}><span className={labelClass}>{label}</span>{children}</label>;
 }
 
-function SelectionList({ title, items, selectedIds, onToggle, getTitle, getSubtitle, icon: Icon, empty, searchPlaceholder }: any) {
+function SelectionList({ title, items, selectedIds, onToggle, getTitle, getSubtitle, icon: Icon, empty, searchPlaceholder, action }: any) {
   const [query, setQuery] = useState("");
   const normalizedQuery = query.trim().toLowerCase();
   const filteredItems = normalizedQuery
@@ -86,7 +86,7 @@ function SelectionList({ title, items, selectedIds, onToggle, getTitle, getSubti
     <div className="rounded-lg border border-border bg-surface p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2"><Icon size={16} className="text-primary" /><h3 className="text-sm font-semibold text-text-primary">{title}</h3></div>
-        <span className="text-xs text-text-secondary">{selectedIds.length} selected</span>
+        <div className="flex items-center gap-2">{action}{<span className="text-xs text-text-secondary">{selectedIds.length} selected</span>}</div>
       </div>
       {searchPlaceholder && (
         <div className="relative mb-3">
@@ -133,6 +133,9 @@ export default function TrackDetailPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
   const [creditRows, setCreditRows] = useState<CreditRow[]>([]);
+  const [showNewArtistModal, setShowNewArtistModal] = useState(false);
+  const [isCreatingArtist, setIsCreatingArtist] = useState(false);
+  const [newArtist, setNewArtist] = useState({ name: "", aka: "", contact_email: "", ipi_number: "" });
   const [form, setForm] = useState<any>({ title: "", isrc_code: "", genre: "", duration: "", release_date: "", streaming_link: "", release_id: "", work_id: "", artist_ids: [], secondary_release_ids: [], credits: "" });
 
   const loadTrack = async () => {
@@ -184,6 +187,34 @@ export default function TrackDetailPage() {
   const selectedArtists = useMemo(() => artists.filter((artist) => form.artist_ids.includes(artist.id)), [artists, form.artist_ids]);
   const selectedSecondary = useMemo(() => releases.filter((item) => form.secondary_release_ids.includes(item.id)), [releases, form.secondary_release_ids]);
   const toggleArtist = (artistId: number) => setForm((current: any) => ({ ...current, artist_ids: current.artist_ids.includes(artistId) ? current.artist_ids.filter((value: number) => value !== artistId) : [...current.artist_ids, artistId] }));
+
+  const handleCreateArtist = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!newArtist.name.trim()) return;
+    setIsCreatingArtist(true);
+    setError("");
+    try {
+      const { data: createdArtist } = await api.post("/artists", {
+        name: newArtist.name.trim(),
+        aka: newArtist.aka.trim() || null,
+        contact_email: newArtist.contact_email.trim() || null,
+        ipi_number: newArtist.ipi_number.trim() || null,
+      });
+      setArtists((current) => [...current, createdArtist]);
+      setForm((current: any) => ({
+        ...current,
+        artist_ids: current.artist_ids.includes(createdArtist.id)
+          ? current.artist_ids
+          : [...current.artist_ids, createdArtist.id],
+      }));
+      setNewArtist({ name: "", aka: "", contact_email: "", ipi_number: "" });
+      setShowNewArtistModal(false);
+    } catch (err: any) {
+      setError(err?.response?.data?.error || err?.message || "Failed to create artist.");
+    } finally {
+      setIsCreatingArtist(false);
+    }
+  };
   const toggleSecondaryRelease = (releaseId: number) => setForm((current: any) => ({ ...current, secondary_release_ids: current.secondary_release_ids.includes(releaseId) ? current.secondary_release_ids.filter((value: number) => value !== releaseId) : [...current.secondary_release_ids, releaseId] }));
 
   const handleSave = async () => {
@@ -249,8 +280,36 @@ export default function TrackDetailPage() {
           </Card>
 
           <Card title="Artists" subtitle="Artists credited on this track">
-            {isEditing ? <SelectionList title="Linked artists" items={artists} selectedIds={form.artist_ids} onToggle={toggleArtist} getTitle={(artist: any) => artist.display_name || artist.stage_name || artist.name || `Artist #${artist.id}`} getSubtitle={(artist: any) => artist.aka || artist.kind || ""} icon={User} empty="No artists found." searchPlaceholder="Search artists..." /> : linkedArtists.length ? <div className="flex flex-wrap gap-2">{linkedArtists.map((artist: any) => <button key={artist.id} type="button" onClick={() => router.push(`/catalog/artists/${artist.id}`)} className="inline-flex items-center gap-2 rounded-md border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary transition hover:border-primary/40 hover:bg-primary/5"><User size={14} className="text-primary" />{artist.display_name || artist.stage_name || artist.name}</button>)}</div> : <p className="text-sm text-text-secondary">No artists linked.</p>}
+            {isEditing ? <SelectionList title="Linked artists" items={artists} selectedIds={form.artist_ids} onToggle={toggleArtist} getTitle={(artist: any) => artist.display_name || artist.stage_name || artist.name || `Artist #${artist.id}`} getSubtitle={(artist: any) => artist.aka || artist.kind || ""} icon={User} empty="No artists found." searchPlaceholder="Search artists..." action={<Button type="button" variant="secondary" size="sm" onClick={() => setShowNewArtistModal(true)}><Plus size={13} />Add artist</Button>} /> : linkedArtists.length ? <div className="flex flex-wrap gap-2">{linkedArtists.map((artist: any) => <button key={artist.id} type="button" onClick={() => router.push(`/catalog/artists/${artist.id}`)} className="inline-flex items-center gap-2 rounded-md border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary transition hover:border-primary/40 hover:bg-primary/5"><User size={14} className="text-primary" />{artist.display_name || artist.stage_name || artist.name}</button>)}</div> : <p className="text-sm text-text-secondary">No artists linked.</p>}
           </Card>
+
+          <EntityForm
+            title="New Artist"
+            isOpen={showNewArtistModal}
+            onClose={() => setShowNewArtistModal(false)}
+            onSubmit={handleCreateArtist}
+            isSubmitting={isCreatingArtist}
+            error={undefined}
+          >
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-text-secondary">Legal Name *</label>
+                <input className="input w-full" value={newArtist.name} onChange={(event) => setNewArtist({ ...newArtist, name: event.target.value })} required />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-text-secondary">Stage Name (AKA)</label>
+                <input className="input w-full" value={newArtist.aka} onChange={(event) => setNewArtist({ ...newArtist, aka: event.target.value })} />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-text-secondary">Email</label>
+                <input className="input w-full" type="email" value={newArtist.contact_email} onChange={(event) => setNewArtist({ ...newArtist, contact_email: event.target.value })} />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-text-secondary">IPI Number</label>
+                <input className="input w-full" value={newArtist.ipi_number} onChange={(event) => setNewArtist({ ...newArtist, ipi_number: event.target.value })} />
+              </div>
+            </div>
+          </EntityForm>
 
           <Card title="Credits & splits" subtitle="Contributors, roles and royalty/split percentages">
             {isEditing ? (
