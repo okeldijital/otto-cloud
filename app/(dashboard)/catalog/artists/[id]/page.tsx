@@ -83,13 +83,6 @@ function ArtistContractsPanel({ contracts, expandedContractId, contractDetails, 
                     <p className="text-sm text-text-secondary">Loading contract...</p>
                   ) : detail ? (
                     <>
-                      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                        <Info label="Type" value={detail.type} />
-                        <Info label="Status" value={detail.status} />
-                        <Info label="Start date" value={detail.start_date ? String(detail.start_date).slice(0, 10) : "—"} />
-                        <Info label="End date" value={detail.end_date ? String(detail.end_date).slice(0, 10) : "—"} />
-                      </div>
-
                       <ArtistContractDocumentPreview contractId={detail.id} />
 
                     </>
