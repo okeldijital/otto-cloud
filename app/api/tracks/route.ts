@@ -65,16 +65,23 @@ export async function GET(req: Request) {
       return NextResponse.json({ ...track, artist_ids, secondary_release_ids: getSecondaryReleaseIds(track) });
     }
     const q = searchParams.get("q") || searchParams.get("query") || "";
-    if (q || searchParams.get("search")) {
-      const limit = parseInt(searchParams.get("limit") || "20");
-      const offset = parseInt(searchParams.get("offset") || "0");
-      const where: any = { AND: [scope, q ? { OR: [{ title: { contains: q, mode: "insensitive" } }, { isrc_code: { contains: q, mode: "insensitive" } }] } : {}] };
+    const genre = searchParams.get("genre") || "";
+    if (q || genre || searchParams.get("search")) {
+      const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "50"), 1), 200);
+      const offset = Math.max(parseInt(searchParams.get("offset") || searchParams.get("skip") || "0"), 0);
+      const where: any = {
+        AND: [
+          scope,
+          q ? { OR: [{ title: { contains: q, mode: "insensitive" } }, { isrc_code: { contains: q, mode: "insensitive" } }] } : {},
+          genre ? { genre: { equals: genre, mode: "insensitive" } } : {},
+        ],
+      };
       const [items, total] = await Promise.all([
-        prisma.tracks.findMany({ where, take: limit, skip: offset, include: { track_releases: true } }),
+        prisma.tracks.findMany({ where, take: limit, skip: offset, orderBy: [{ created_at: "desc" }, { id: "desc" }], include: { track_releases: true } }),
         prisma.tracks.count({ where }),
       ]);
       const enriched = await Promise.all(items.map(async (t) => ({ ...t, artist_ids: await getTrackArtistIdsCompat(t.id, t.artist_ids), secondary_release_ids: getSecondaryReleaseIds(t) })));
-      return NextResponse.json({ items: enriched, total });
+      return NextResponse.json({ items: enriched, total, limit, offset });
     }
     const idsStr = searchParams.get("ids");
     if (idsStr) {
@@ -83,14 +90,15 @@ export async function GET(req: Request) {
       const enriched = await Promise.all(items.map(async (t) => ({ ...t, artist_ids: await getTrackArtistIdsCompat(t.id, t.artist_ids), secondary_release_ids: getSecondaryReleaseIds(t) })));
       return NextResponse.json({ items: enriched });
     }
-    const skip = parseInt(searchParams.get("skip") || "0");
-    const limit = parseInt(searchParams.get("limit") || "100");
+    const skip = Math.max(parseInt(searchParams.get("skip") || "0"), 0);
+    const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "50"), 1), 200);
+    const where = scope as object;
     const [tracks, total] = await Promise.all([
-      prisma.tracks.findMany({ where: scope as object, skip, take: limit, include: { track_releases: true } }),
-      prisma.tracks.count({ where: scope as object }),
+      prisma.tracks.findMany({ where, skip, take: limit, orderBy: [{ created_at: "desc" }, { id: "desc" }], include: { track_releases: true } }),
+      prisma.tracks.count({ where }),
     ]);
     const enriched = await Promise.all(tracks.map(async (t) => ({ ...t, artist_ids: await getTrackArtistIdsCompat(t.id, t.artist_ids), secondary_release_ids: getSecondaryReleaseIds(t) })));
-    return NextResponse.json({ total, items: enriched });
+    return NextResponse.json({ total, items: enriched, limit, offset: skip });
   } catch (err: any) {
     const mapped = orgContextErrorResponse(err);
     if (mapped.status === 401 || mapped.status === 403) return NextResponse.json(mapped.body, { status: mapped.status });
