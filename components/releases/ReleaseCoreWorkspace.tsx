@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CalendarDays, Check, ExternalLink, Eye, FileText, Link2, Loader2, Plus, Trash2, Upload, Wallet, X } from "lucide-react";
+import { CalendarDays, Check, ChevronDown, ChevronRight, ExternalLink, Eye, FileText, Folder, FolderOpen, Link2, Loader2, Plus, Trash2, Upload, Wallet, X } from "lucide-react";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import api from "@/lib/api";
@@ -24,7 +24,7 @@ export default function ReleaseCoreWorkspace({ releaseId }: Props) {
   const [documentDescription, setDocumentDescription] = useState("");
   const [documentProgress, setDocumentProgress] = useState("");
   const [isMobileFilePicker, setIsMobileFilePicker] = useState(false);
-  const [previewDocument, setPreviewDocument] = useState<any>(null);
+  const [previewDocument, setPreviewDocument] = useState<any>(null);\n  const [openDocumentFolders, setOpenDocumentFolders] = useState<Record<string, boolean>>({});
 
   const refresh = async () => {
     const [coreResult, contractsResult] = await Promise.allSettled([
@@ -63,6 +63,19 @@ export default function ReleaseCoreWorkspace({ releaseId }: Props) {
     try { await api.delete(`/releases/core?id=${releaseId}`, { data: { action, id } }); await refresh(); }
     catch (err: any) { setError(err?.response?.data?.error || "Unable to remove release data."); }
     finally { setBusy(""); }
+  };
+
+  const documentFolders = (() => {
+    const groups = new Map<string, any[]>();
+    for (const document of data.documents) {
+      const folderName = String(document.description || document.category || "General").trim() || "General";
+      groups.set(folderName, [...(groups.get(folderName) || []), document]);
+    }
+    return Array.from(groups.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+  })();
+
+  const toggleDocumentFolder = (folderName: string) => {
+    setOpenDocumentFolders((current) => ({ ...current, [folderName]: !(current[folderName] ?? false) }));
   };
 
   const uploadDocument = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -158,9 +171,48 @@ export default function ReleaseCoreWorkspace({ releaseId }: Props) {
       </div>
       {isMobileFilePicker && <p className="mt-2 text-xs text-text-secondary">On mobile, attach one file at a time to reduce pressure on the Android file picker.</p>}
       {documentProgress && <p className="mt-2 text-xs text-text-secondary">{documentProgress}</p>}
-      <div className="mt-4 divide-y divide-border rounded-lg border border-border">{data.documents.length ? data.documents.map((doc: any) => <div key={doc.id} className="flex items-center justify-between gap-3 px-3 py-3"><div className="flex min-w-0 items-center gap-3"><FileText size={16} className="shrink-0 text-accent" /><div className="min-w-0"><p className="truncate text-sm text-text-accent">{doc.original_name}</p><p className="text-xs text-text-secondary">{doc.category}{doc.description ? ` · ${doc.description}` : ""} · {doc.mime_type || "document"}</p></div></div><div className="flex shrink-0 items-center gap-2">{doc.attachment_id && <Button variant="secondary" size="sm" onClick={() => setPreviewDocument(doc)}><Eye size={14} />View</Button>}<Button variant="secondary" size="sm" onClick={() => remove("document", doc.id)} disabled={busy === `document:${doc.id}`}><Trash2 size={14} /></Button></div></div>) : <p className="px-3 py-5 text-sm text-text-secondary">No documents attached.</p>}</div>
+      <div className="mt-4 overflow-hidden rounded-lg border border-border">
+        {data.documents.length ? (
+          <div className="divide-y divide-border">
+            {documentFolders.map(([folderName, items]) => {
+              const open = openDocumentFolders[folderName] ?? false;
+              return (
+                <div key={folderName}>
+                  <button type="button" onClick={() => toggleDocumentFolder(folderName)} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface-elevated">
+                    {open ? <ChevronDown size={16} className="shrink-0 text-text-secondary" /> : <ChevronRight size={16} className="shrink-0 text-text-secondary" />}
+                    {open ? <FolderOpen size={18} className="shrink-0 text-accent" /> : <Folder size={18} className="shrink-0 text-accent" />}
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-semibold text-text-accent">{folderName}</span>
+                      <span className="mt-0.5 block text-xs text-text-secondary">{items.length} file{items.length === 1 ? "" : "s"}</span>
+                    </span>
+                  </button>
+                  {open ? (
+                    <div className="border-t border-border bg-surface/40">
+                      {items.map((doc: any) => (
+                        <div key={doc.id} className="flex items-center justify-between gap-3 border-b border-border px-3 py-3 last:border-b-0">
+                          <div className="flex min-w-0 items-center gap-3">
+                            <FileText size={16} className="shrink-0 text-accent" />
+                            <div className="min-w-0">
+                              <p className="truncate text-sm text-text-accent">{doc.original_name}</p>
+                              <p className="text-xs text-text-secondary">{doc.category} · {doc.mime_type || "document"}</p>
+                            </div>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-2">
+                            {doc.attachment_id && <Button variant="secondary" size="sm" onClick={() => setPreviewDocument(doc)}><Eye size={14} />View</Button>}
+                            <Button variant="secondary" size="sm" onClick={() => remove("document", doc.id)} disabled={busy === `document:${doc.id}`}><Trash2 size={14} /></Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        ) : <p className="px-3 py-5 text-sm text-text-secondary">No documents attached.</p>}
+      </div>
     </Card>
-    <Card title="Financial" subtitle="Release-level financial records, following the deterministic financial pattern used elsewhere in OTTO.">
+    <Card title="Advances & Expenses" subtitle="Release-level advances and expense records, following the deterministic financial pattern used elsewhere in OTTO.">
       <div className="grid grid-cols-1 gap-3 md:grid-cols-6"><select className={fieldClass} value={financial.entry_type} onChange={(e) => setFinancial({ ...financial, entry_type: e.target.value })}>{financialTypes.map((item) => <option key={item}>{item}</option>)}</select><input className={fieldClass} placeholder="Description" value={financial.description} onChange={(e) => setFinancial({ ...financial, description: e.target.value })} /><input className={fieldClass} type="number" step="0.01" placeholder="Amount" value={financial.amount} onChange={(e) => setFinancial({ ...financial, amount: e.target.value })} /><input className={fieldClass} placeholder="Currency" value={financial.currency} onChange={(e) => setFinancial({ ...financial, currency: e.target.value.toUpperCase() })} /><input className={fieldClass} type="date" value={financial.entry_date} onChange={(e) => setFinancial({ ...financial, entry_date: e.target.value })} /><Button variant="primary" size="sm" onClick={() => { saveAction("financial", financial); setFinancial({ ...financial, description: "", amount: "", notes: "" }); }} disabled={busy === "financial"}><Plus size={14} />Add</Button></div>
       <div className="mt-4 divide-y divide-border rounded-lg border border-border">{data.financials.length ? data.financials.map((item: any) => <div key={item.id} className="flex items-center justify-between gap-3 px-3 py-3"><div className="flex min-w-0 items-center gap-3"><Wallet size={16} className="shrink-0 text-accent" /><div><p className="text-sm text-text-accent">{item.description}</p><p className="text-xs text-text-secondary">{item.entry_type} · {item.entry_date ? String(item.entry_date).slice(0, 10) : "No date"}</p></div></div><div className="flex items-center gap-3"><span className="text-sm font-medium text-text-accent">{item.currency} {Number(item.amount).toFixed(2)}</span><Button variant="secondary" size="sm" onClick={() => remove("financial", item.id)}><Trash2 size={14} /></Button></div></div>) : <p className="px-3 py-5 text-sm text-text-secondary">No financial entries recorded.</p>}</div>
     </Card>
