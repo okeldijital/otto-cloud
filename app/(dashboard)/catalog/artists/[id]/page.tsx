@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ChevronLeft, ChevronDown, ChevronUp, Disc, Edit, ExternalLink, FileText, Instagram, Mail, MapPin, Music, Phone, Trash2, Twitter, User } from "lucide-react";
+import { ChevronLeft, ChevronDown, ChevronUp, Disc, Edit, FileText, Instagram, Mail, MapPin, Music, Phone, Trash2, Twitter, User } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
@@ -11,7 +11,7 @@ import Badge from "@/components/ui/Badge";
 import GroupMembersManager from "@/components/catalog/GroupMembersManager";
 import ArtistDocumentsPanel from "@/components/catalog/ArtistDocumentsPanel";
 import ArtistFinancialsPanel from "@/components/catalog/ArtistFinancialsPanel";
-import ContractDocumentsSection from "@/components/contracts/ContractDocumentsSection";
+import ArtistContractDocumentPreview from "@/components/catalog/ArtistContractDocumentPreview";
 import EntityArtwork from "@/components/media/EntityArtwork";
 import RelationshipSelect from "@/components/catalog/RelationshipSelect";
 import { uploadEntityProfileImage } from "@/components/media/EntityProfileImageField";
@@ -39,37 +39,72 @@ function listItems(value: any): any[] {
 
 function ArtistContractsPanel({ contracts, expandedContractId, contractDetails, loadingContracts, onToggle }: any) {
   const router = useRouter();
-  if (!contracts.length) return <Card title="Contracts" subtitle="Contracts linked to this artist."><p className="py-8 text-center text-text-secondary">No contracts linked to this artist.</p></Card>;
-  return <Card title="Contracts" subtitle="Contracts linked to this artist. Expand a contract to view its details without leaving the artist.">
-    <div className="space-y-2">
-      {contracts.map((contract: any) => {
-        const open = expandedContractId === contract.id;
-        const detail = contractDetails[contract.id];
-        return <div key={contract.id} className="overflow-hidden rounded-lg border border-border bg-surface">
-          <button type="button" onClick={() => onToggle(contract.id)} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface-elevated">
-            <FileText size={16} className="shrink-0 text-accent" />
-            <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-text-accent">{contract.title || "Untitled contract"}</span><span className="mt-0.5 block text-xs text-text-secondary">{contract.contract_number || "No contract number"} · {contract.status || "—"}</span></span>
-            {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-          </button>
-          {open && <div className="border-t border-border p-4">
-            {loadingContracts && !detail ? <p className="text-sm text-text-secondary">Loading contract...</p> : detail ? <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                <Info label="Type" value={detail.type} /><Info label="Status" value={detail.status} /><Info label="Start date" value={detail.start_date ? String(detail.start_date).slice(0,10) : "—"} /><Info label="End date" value={detail.end_date ? String(detail.end_date).slice(0,10) : "—"} />
-              </div>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div><p className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-secondary">Parties</p>{detail.contract_parties?.length ? detail.contract_parties.map((party: any) => <div key={party.id} className="mb-2 rounded-lg border border-border px-3 py-2 text-sm"><span className="text-text-accent">{party.external_name || `${party.entity_type || "Party"} #${party.entity_id || ""}`}</span><span className="ml-2 text-xs text-text-secondary">{party.role || ""}{party.split_percent != null ? ` · ${party.split_percent}%` : ""}</span></div>) : <p className="text-xs text-text-secondary">No parties recorded.</p>}</div>
-                <div><p className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-secondary">Documents</p>{detail.contract_documents?.length ? detail.contract_documents.map((doc: any) => <div key={doc.id} className="mb-2 flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm"><FileText size={14} className="text-accent" /><span className="truncate text-text-accent">{doc.file_name || doc.name || `Document #${doc.id}`}</span></div>) : <p className="text-xs text-text-secondary">No contract documents attached.</p>}</div>
-              </div>
-              <ContractDocumentsSection contractId={detail.id} />
-              <div className="flex justify-end"><button type="button" onClick={() => router.push(`/contracts/${detail.id}`)} className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-xs font-medium text-text-accent hover:bg-surface-elevated">Open full contract <ExternalLink size={13} /></button></div>
-            </div> : <p className="text-sm text-text-secondary">Unable to load contract details.</p>}
-          </div>}
-        </div>;
-      })}
-    </div>
-  </Card>;
-}
 
+  if (!contracts.length) {
+    return (
+      <Card title="Contracts" subtitle="Contracts linked to this artist.">
+        <p className="py-8 text-center text-text-secondary">No contracts linked to this artist.</p>
+      </Card>
+    );
+  }
+
+  return (
+    <Card
+      title="Contracts"
+      subtitle="Contracts linked to this artist. Preview the agreement here or open the full contract workflow."
+    >
+      <div className="space-y-2">
+        {contracts.map((contract: any) => {
+          const open = expandedContractId === contract.id;
+          const detail = contractDetails[contract.id];
+
+          return (
+            <div key={contract.id} className="overflow-hidden rounded-lg border border-border bg-surface">
+              <button
+                type="button"
+                onClick={() => onToggle(contract.id)}
+                className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface-elevated"
+              >
+                <FileText size={16} className="shrink-0 text-accent" />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold text-text-accent">
+                    {contract.title || "Untitled contract"}
+                  </span>
+                  <span className="mt-0.5 block text-xs text-text-secondary">
+                    {contract.contract_number || "No contract number"} · {contract.status || "—"}
+                  </span>
+                </span>
+                {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              </button>
+
+              {open && (
+                <div className="space-y-4 border-t border-border p-4">
+                  {loadingContracts && !detail ? (
+                    <p className="text-sm text-text-secondary">Loading contract...</p>
+                  ) : detail ? (
+                    <>
+                      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                        <Info label="Type" value={detail.type} />
+                        <Info label="Status" value={detail.status} />
+                        <Info label="Start date" value={detail.start_date ? String(detail.start_date).slice(0, 10) : "—"} />
+                        <Info label="End date" value={detail.end_date ? String(detail.end_date).slice(0, 10) : "—"} />
+                      </div>
+
+                      <ArtistContractDocumentPreview contractId={detail.id} />
+
+                    </>
+                  ) : (
+                    <p className="text-sm text-text-secondary">Unable to load contract details.</p>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
 function errorMessage(err: any, fallback: string): string {
   const value = err?.response?.data?.error ?? err?.message;
   if (typeof value === "string" && value.trim()) return value;
