@@ -138,6 +138,7 @@ export default function TrackDetailPage() {
   const [artistSearch, setArtistSearch] = useState("");
   const [showNewArtistModal, setShowNewArtistModal] = useState(false);
   const [isCreatingArtist, setIsCreatingArtist] = useState(false);
+  const [newArtistError, setNewArtistError] = useState("");
   const [newArtist, setNewArtist] = useState({ name: "", aka: "", contact_email: "", ipi_number: "" });
   const [form, setForm] = useState<any>({ title: "", isrc_code: "", genre: "", duration: "", release_date: "", streaming_link: "", release_id: "", work_id: "", artist_ids: [], secondary_release_ids: [], credits: "" });
 
@@ -210,6 +211,7 @@ export default function TrackDetailPage() {
     if (!newArtist.name.trim()) return;
     setIsCreatingArtist(true);
     setError("");
+    setNewArtistError("");
     try {
       const { data: createdArtist } = await api.post("/artists", {
         name: newArtist.name.trim(),
@@ -229,7 +231,7 @@ export default function TrackDetailPage() {
       setShowArtistPicker(false);
       setArtistSearch("");
     } catch (err: any) {
-      setError(err?.response?.data?.error || err?.message || "Failed to create artist.");
+      setNewArtistError(err?.response?.data?.error || err?.message || "Failed to create artist.");
     } finally {
       setIsCreatingArtist(false);
     }
@@ -390,7 +392,7 @@ export default function TrackDetailPage() {
                   </div>
                   <div className="flex items-center justify-between border-t border-border pt-4">
                     <p className="text-xs text-text-secondary">Can’t find the artist?</p>
-                    <Button type="button" variant="secondary" size="sm" onClick={() => setShowNewArtistModal(true)}>
+                    <Button type="button" variant="secondary" size="sm" onClick={() => { setNewArtistError(""); setShowNewArtistModal(true); }}>
                       <Plus size={13} />Create new artist
                     </Button>
                   </div>
@@ -402,10 +404,10 @@ export default function TrackDetailPage() {
           <EntityForm
             title="New Artist"
             isOpen={showNewArtistModal}
-            onClose={() => setShowNewArtistModal(false)}
+            onClose={() => { setNewArtistError(""); setShowNewArtistModal(false); }}
             onSubmit={handleCreateArtist}
             isSubmitting={isCreatingArtist}
-            error={undefined}
+            error={newArtistError}
           >
             <div className="space-y-4">
               <div>
