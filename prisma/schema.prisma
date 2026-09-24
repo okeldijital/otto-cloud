@@ -1505,10 +1505,12 @@ model tasks {
 model track_releases {
   track_id   Int
   release_id Int
+  position   Int?      @default(0)
   releases   releases @relation(fields: [release_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   tracks     tracks   @relation(fields: [track_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@id([track_id, release_id])
+  @@index([release_id, position], map: "ix_track_releases_release_position")
 }
 
 model tracks {

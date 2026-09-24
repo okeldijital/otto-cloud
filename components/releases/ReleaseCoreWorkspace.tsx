@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, Check, ExternalLink, FileText, Link2, Loader2, Plus, Trash2, Upload, UserRound, Wallet } from "lucide-react";
+import { CalendarDays, Check, ExternalLink, Eye, FileText, Link2, Loader2, Plus, Trash2, Upload, UserRound, Wallet, X } from "lucide-react";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import api from "@/lib/api";
@@ -25,6 +25,7 @@ export default function ReleaseCoreWorkspace({ releaseId, artistIds, artists }: 
   const [documentDescription, setDocumentDescription] = useState("");
   const [documentProgress, setDocumentProgress] = useState("");
   const [isMobileFilePicker, setIsMobileFilePicker] = useState(false);
+  const [previewDocument, setPreviewDocument] = useState<any>(null);
 
   const refresh = async () => {
     const [core, contractRes] = await Promise.all([api.get(`/releases/core?id=${releaseId}`), api.get(`/contracts?limit=100`)]);
@@ -152,7 +153,7 @@ export default function ReleaseCoreWorkspace({ releaseId, artistIds, artists }: 
       </div>
       {isMobileFilePicker && <p className="mt-2 text-xs text-text-secondary">On mobile, attach one file at a time to reduce pressure on the Android file picker.</p>}
       {documentProgress && <p className="mt-2 text-xs text-text-secondary">{documentProgress}</p>}
-      <div className="mt-4 divide-y divide-border rounded-lg border border-border">{data.documents.length ? data.documents.map((doc: any) => <div key={doc.id} className="flex items-center justify-between gap-3 px-3 py-3"><div className="flex min-w-0 items-center gap-3"><FileText size={16} className="shrink-0 text-accent" /><div className="min-w-0"><p className="truncate text-sm text-text-accent">{doc.original_name}</p><p className="text-xs text-text-secondary">{doc.category}{doc.description ? ` · ${doc.description}` : ""} · {doc.mime_type || "document"}</p></div></div><Button variant="secondary" size="sm" onClick={() => remove("document", doc.id)} disabled={busy === `document:${doc.id}`}><Trash2 size={14} /></Button></div>) : <p className="px-3 py-5 text-sm text-text-secondary">No documents attached.</p>}</div>
+      <div className="mt-4 divide-y divide-border rounded-lg border border-border">{data.documents.length ? data.documents.map((doc: any) => <div key={doc.id} className="flex items-center justify-between gap-3 px-3 py-3"><div className="flex min-w-0 items-center gap-3"><FileText size={16} className="shrink-0 text-accent" /><div className="min-w-0"><p className="truncate text-sm text-text-accent">{doc.original_name}</p><p className="text-xs text-text-secondary">{doc.category}{doc.description ? ` · ${doc.description}` : ""} · {doc.mime_type || "document"}</p></div></div><div className="flex shrink-0 items-center gap-2">{doc.attachment_id && <Button variant="secondary" size="sm" onClick={() => setPreviewDocument(doc)}><Eye size={14} />View</Button>}<Button variant="secondary" size="sm" onClick={() => remove("document", doc.id)} disabled={busy === `document:${doc.id}`}><Trash2 size={14} /></Button></div></div>) : <p className="px-3 py-5 text-sm text-text-secondary">No documents attached.</p>}</div>
     </Card>
     <Card title="Financial" subtitle="Release-level financial records, following the deterministic financial pattern used elsewhere in OTTO.">
       <div className="grid grid-cols-1 gap-3 md:grid-cols-6"><select className={fieldClass} value={financial.entry_type} onChange={(e) => setFinancial({ ...financial, entry_type: e.target.value })}>{financialTypes.map((item) => <option key={item}>{item}</option>)}</select><input className={fieldClass} placeholder="Description" value={financial.description} onChange={(e) => setFinancial({ ...financial, description: e.target.value })} /><input className={fieldClass} type="number" step="0.01" placeholder="Amount" value={financial.amount} onChange={(e) => setFinancial({ ...financial, amount: e.target.value })} /><input className={fieldClass} placeholder="Currency" value={financial.currency} onChange={(e) => setFinancial({ ...financial, currency: e.target.value.toUpperCase() })} /><input className={fieldClass} type="date" value={financial.entry_date} onChange={(e) => setFinancial({ ...financial, entry_date: e.target.value })} /><Button variant="primary" size="sm" onClick={() => { saveAction("financial", financial); setFinancial({ ...financial, description: "", amount: "", notes: "" }); }} disabled={busy === "financial"}><Plus size={14} />Add</Button></div>
@@ -163,5 +164,31 @@ export default function ReleaseCoreWorkspace({ releaseId, artistIds, artists }: 
       <Card title="Artists" subtitle="Assign the role each linked artist has on this release."><div className="space-y-2">{releaseArtists.length ? releaseArtists.map((artist: any) => <div key={artist.id} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface px-3 py-2"><div className="flex min-w-0 items-center gap-2"><UserRound size={15} className="shrink-0 text-accent" /><span className="truncate text-sm text-text-accent">{artist.display_name || artist.stage_name || artist.name}</span></div><select className="h-9 rounded-lg border border-border bg-surface px-2 text-xs text-text-accent" value={roleByArtist[artist.id] || "Main Artist"} onChange={(e) => saveAction("artist-role", { artist_id: artist.id, role: e.target.value })}>{roles.map((role) => <option key={role}>{role}</option>)}</select></div>) : <p className="text-sm text-text-secondary">Add artists to the release first.</p>}</div></Card>
     </div>
     <Card title="Contract" subtitle="Record the contract signature date and keep the authoritative contract one click away."><div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_180px_auto] items-end"><label><span className={labelClass}>Related contract</span><select className={fieldClass} value={contract.contract_id} onChange={(e) => setContract({ ...contract, contract_id: e.target.value })}><option value="">Select contract</option>{contracts.map((item: any) => <option key={item.id} value={item.id}>{item.title || item.name || `Contract #${item.id}`}</option>)}</select></label><label><span className={labelClass}>Date of contract signature</span><input className={fieldClass} type="date" value={contract.signed_at} onChange={(e) => setContract({ ...contract, signed_at: e.target.value })} /></label><Button variant="primary" size="sm" onClick={() => saveAction("contract", contract)} disabled={!contract.contract_id || busy === "contract"}><Check size={14} />Save contract</Button></div>{data.contract?.contract_id && <div className="mt-4 flex items-center justify-between rounded-lg border border-border bg-surface px-3 py-3"><div className="flex items-center gap-3"><CalendarDays size={16} className="text-accent" /><div><p className="text-xs text-text-secondary">Date of contract signature</p><button type="button" className="text-sm font-medium text-accent hover:underline" onClick={() => window.location.assign(`/contracts/${data.contract.contract_id}`)}>{data.contract.signed_at ? String(data.contract.signed_at).slice(0, 10) : "Add signature date"}</button></div></div><Button variant="secondary" size="sm" onClick={() => remove("contract")}><Trash2 size={14} /></Button></div>}</Card>
+    {previewDocument?.attachment_id && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" role="dialog" aria-modal="true">
+        <div className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-2xl">
+          <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+            <div className="min-w-0"><p className="truncate text-sm font-semibold text-text-accent">{previewDocument.original_name}</p><p className="text-xs text-text-secondary">{previewDocument.mime_type || "document"}</p></div>
+            <div className="flex items-center gap-2">
+              <a href={`/api/storage/download/${previewDocument.attachment_id}?redirect=true`} target="_blank" rel="noreferrer" className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-surface px-3 text-xs font-medium text-text-accent hover:bg-surface-elevated"><ExternalLink size={14} /> Open</a>
+              <button type="button" onClick={() => setPreviewDocument(null)} className="rounded-md p-2 text-text-secondary hover:bg-surface-elevated hover:text-text-accent" aria-label="Close preview"><X size={18} /></button>
+            </div>
+          </div>
+          <div className="min-h-0 flex-1 overflow-auto bg-background p-3">
+            {String(previewDocument.mime_type || "").startsWith("image/") ? (
+              <img src={`/api/storage/download/${previewDocument.attachment_id}?redirect=true`} alt={previewDocument.original_name} className="mx-auto max-h-[78vh] max-w-full rounded-lg object-contain" />
+            ) : String(previewDocument.mime_type || "") === "application/pdf" ? (
+              <iframe title={previewDocument.original_name} src={`/api/storage/download/${previewDocument.attachment_id}?redirect=true`} className="h-[78vh] w-full rounded-lg border border-border bg-white" />
+            ) : String(previewDocument.mime_type || "").startsWith("video/") ? (
+              <video controls className="mx-auto max-h-[78vh] max-w-full rounded-lg" src={`/api/storage/download/${previewDocument.attachment_id}?redirect=true`} />
+            ) : String(previewDocument.mime_type || "").startsWith("audio/") ? (
+              <div className="flex min-h-64 items-center justify-center"><audio controls src={`/api/storage/download/${previewDocument.attachment_id}?redirect=true`} /></div>
+            ) : (
+              <div className="flex min-h-64 items-center justify-center text-center"><div><FileText size={32} className="mx-auto text-accent" /><p className="mt-3 text-sm font-medium text-text-accent">This file cannot be previewed in the browser.</p><p className="mt-1 text-xs text-text-secondary">Use Open to view or download it from the storage service.</p></div></div>
+            )}
+          </div>
+        </div>
+      </div>
+    )}
   </div>;
 }

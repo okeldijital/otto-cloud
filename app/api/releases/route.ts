@@ -17,6 +17,19 @@ const RELEASE_TRANSITIONS: Record<ReleaseStatus, readonly ReleaseStatus[]> = {
   released: ["released"],
 };
 
+
+async function orderReleaseTracks<T extends { id: number }>(tracks: T[], releaseId: number): Promise<T[]> {
+  const relations = await prisma.track_releases.findMany({
+    where: { release_id: releaseId },
+    select: { track_id: true, position: true },
+  });
+  const positions = new Map(relations.map((item) => [item.track_id, item.position ?? Number.MAX_SAFE_INTEGER]));
+  return [...tracks].sort((a, b) => {
+    const positionDiff = (positions.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (positions.get(b.id) ?? Number.MAX_SAFE_INTEGER);
+    return positionDiff || a.id - b.id;
+  });
+}
+
 function isReleaseStatus(value: unknown): value is ReleaseStatus {
   return typeof value === "string" && (RELEASE_STATUSES as readonly string[]).includes(value);
 }
@@ -50,12 +63,21 @@ export async function GET(req: Request) {
       if (relation === "tracks") {
         const release = await prisma.releases.findFirst({ where: { id, organization_id: orgId, is_deleted: false }, select: { id: true } });
         if (!release) return NextResponse.json({ error: "Release not found" }, { status: 404 });
-        const tracks = await prisma.tracks.findMany({ where: { release_id: id, ...(trackOrgScopeWhere(ctx) as object) }, include: { track_releases: true } });
+        const tracks = await orderReleaseTracks(
+          await prisma.tracks.findMany({
+            where: { release_id: id, ...(trackOrgScopeWhere(ctx) as object) },
+            include: { track_releases: true },
+          }),
+          id
+        );
         return NextResponse.json(tracks.map((t) => ({ ...t, secondary_release_ids: t.track_releases.map((tr) => tr.release_id) })));
       }
       const release = await prisma.releases.findFirst({ where: { id, organization_id: orgId, is_deleted: false } });
       if (!release) return NextResponse.json({ error: "Release not found" }, { status: 404 });
-      const tracks = await prisma.tracks.findMany({ where: { release_id: id, ...(trackOrgScopeWhere(ctx) as object) } });
+      const tracks = await orderReleaseTracks(
+        await prisma.tracks.findMany({ where: { release_id: id, ...(trackOrgScopeWhere(ctx) as object) } }),
+        id
+      );
       const trackIds = tracks.map((t) => t.id);
       let hasContract = !!(await prisma.contract_assets.findFirst({ where: { asset_type: "Release", asset_id: id } }));
       if (!hasContract && trackIds.length) hasContract = !!(await prisma.contract_assets.findFirst({ where: { asset_type: "Track", asset_id: { in: trackIds } } }));
@@ -146,8 +168,28 @@ export async function POST(req: Request) {
       for (let i = 0; i < channels.length; i++) await prisma.workspace_discussion_channels.create({ data: { workspace_id: workspace.id, organization_id: newRelease.organization_id, name: channels[i], slug: channels[i].toLowerCase(), sort_order: i, created_by: userId } });
     } catch (wsErr) { console.error("[Release Workspace auto-create failed]", wsErr); }
     if (uniqueTrackIds.length) {
-      const tracksToAssign = await prisma.tracks.findMany({ where: { id: { in: uniqueTrackIds }, ...(trackOrgScopeWhere(ctx) as object) } });
-      await Promise.all(tracksToAssign.filter((t) => t.release_id !== newRelease.id).map((t) => prisma.tracks.update({ where: { id: t.id }, data: { release_id: newRelease.id, tenant_id: ctx.organizationId, credits: !t.credits && newRelease.credits ? (newRelease.credits as any) : ((t.credits as any) ?? undefined) } })));
+      const tracksToAssign = await prisma.tracks.findMany({
+        where: { id: { in: uniqueTrackIds }, ...(trackOrgScopeWhere(ctx) as object) },
+      });
+      await Promise.all(
+        tracksToAssign
+          .filter((t) => t.release_id !== newRelease.id)
+          .map((t) =>
+            prisma.tracks.update({
+              where: { id: t.id },
+              data: {
+                release_id: newRelease.id,
+                tenant_id: ctx.organizationId,
+                credits: !t.credits && newRelease.credits ? (newRelease.credits as any) : ((t.credits as any) ?? undefined),
+              },
+            })
+          )
+      );
+      await prisma.track_releases.deleteMany({ where: { release_id: newRelease.id, track_id: { in: uniqueTrackIds } } });
+      await prisma.track_releases.createMany({
+        data: uniqueTrackIds.map((trackId, position) => ({ track_id: trackId, release_id: newRelease.id, position })),
+        skipDuplicates: true,
+      });
     }
     return NextResponse.json(newRelease, { status: 201 });
   } catch (err: any) {
@@ -210,14 +252,47 @@ export async function PUT(req: Request) {
     if (requestedStatus !== undefined) await setReleaseStatus(id, requestedStatus);
     const responseRelease = { ...updated, ...(artist_ids !== undefined ? { artist_id: artist_ids[0] ?? null, artist_ids: [...new Set<number>(artist_ids)] } : {}), status: requestedStatus !== undefined ? requestedStatus : await getReleaseStatus(id) };
     if (track_ids !== undefined) {
-      const currentTracks = await prisma.tracks.findMany({ where: { release_id: id, ...(trackOrgScopeWhere(ctx) as object) } });
+      const currentTracks = await prisma.tracks.findMany({
+        where: { release_id: id, ...(trackOrgScopeWhere(ctx) as object) },
+      });
       const currentIds = new Set(currentTracks.map((t) => t.id));
       const newIds = new Set<number>(uniqueTrackIds);
       const toUnassign = Array.from(currentIds).filter((tid) => !newIds.has(tid));
-      if (toUnassign.length) await prisma.tracks.updateMany({ where: { id: { in: toUnassign }, release_id: id, ...(trackOrgScopeWhere(ctx) as object) }, data: { release_id: null } });
+
+      if (toUnassign.length) {
+        await prisma.tracks.updateMany({
+          where: { id: { in: toUnassign }, release_id: id, ...(trackOrgScopeWhere(ctx) as object) },
+          data: { release_id: null },
+        });
+      }
+
       const toAssign = Array.from(newIds).filter((tid) => !currentIds.has(tid));
       if (toAssign.length) {
-        await Promise.all(tracksForAssignment.filter((t) => toAssign.includes(t.id)).map((t) => prisma.tracks.update({ where: { id: t.id }, data: { release_id: id, tenant_id: ctx.organizationId, credits: !t.credits && responseRelease.credits ? (responseRelease.credits as any) : ((t.credits as any) ?? undefined) } })));
+        await Promise.all(
+          tracksForAssignment
+            .filter((t) => toAssign.includes(t.id))
+            .map((t) =>
+              prisma.tracks.update({
+                where: { id: t.id },
+                data: {
+                  release_id: id,
+                  tenant_id: ctx.organizationId,
+                  credits: !t.credits && responseRelease.credits ? (responseRelease.credits as any) : ((t.credits as any) ?? undefined),
+                },
+              })
+            )
+        );
+      }
+
+      const relationTrackIds = [...new Set([...currentIds, ...newIds])];
+      if (relationTrackIds.length) {
+        await prisma.track_releases.deleteMany({ where: { release_id: id, track_id: { in: relationTrackIds } } });
+      }
+      if (uniqueTrackIds.length) {
+        await prisma.track_releases.createMany({
+          data: uniqueTrackIds.map((trackId, position) => ({ track_id: trackId, release_id: id, position })),
+          skipDuplicates: true,
+        });
       }
     }
     return NextResponse.json(responseRelease);

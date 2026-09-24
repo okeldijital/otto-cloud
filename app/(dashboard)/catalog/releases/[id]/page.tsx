@@ -1,45 +1,49 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Check, ChevronLeft, Image as ImageIcon, Link2, Loader2, Plus, Search, Save, Trash2, UserRound, X } from "lucide-react";
+import { ChevronLeft, Image as ImageIcon, Loader2, Plus, Save, Search, Trash2, UserRound, X } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import PageHeader from "@/components/ui/PageHeader";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import EntityArtwork from "@/components/media/EntityArtwork";
 import ReleaseCoreWorkspace from "@/components/releases/ReleaseCoreWorkspace";
+import ReleaseTrackList from "@/components/releases/ReleaseTrackList";
 import api from "@/lib/api";
 import { invalidateEntityArtwork } from "@/hooks/useAttachment";
 import { optimizeImage } from "@/lib/media/image-optimization";
 
 const fieldClass = "mt-1 h-10 w-full rounded-lg border border-border bg-surface px-3 text-sm text-text-accent placeholder:text-text-secondary/60 outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20";
 const labelClass = "text-xs font-medium text-text-secondary";
-const listItems = (response: any) => Array.isArray(response?.data) ? response.data : Array.isArray(response?.data?.items) ? response.data.items : [];
-
-function Field({ label, children, className = "" }: any) { return <label className={`block min-w-0 ${className}`}><span className={labelClass}>{label}</span>{children}</label>; }
-
-function Picker({ title, icon: Icon, query, setQuery, items, selectedIds, onToggle, getTitle, getSubtitle }: any) {
-  const visible = useMemo(() => { const q = query.trim().toLowerCase(); return (q ? items.filter((item: any) => `${getTitle(item)} ${getSubtitle(item)}`.toLowerCase().includes(q)) : items); }, [items, query, getTitle, getSubtitle]);
-  return <div className="rounded-lg border border-border bg-surface p-4"><div className="mb-3 flex items-center justify-between gap-3"><div className="flex items-center gap-2"><Icon size={16} className="text-accent" /><h4 className="text-sm font-semibold text-text-accent">{title}</h4></div><span className="text-xs text-text-secondary">{selectedIds.length} selected</span></div><div className="relative mb-3"><Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" /><input className={`${fieldClass} pl-9`} value={query} onChange={(e) => setQuery(e.target.value)} placeholder={`Search ${title.toLowerCase()}...`} /></div><div className="max-h-56 space-y-1 overflow-y-auto pr-1">{visible.length === 0 ? <p className="py-5 text-center text-xs text-text-secondary">No {title.toLowerCase()} found.</p> : visible.map((item: any) => { const selected = selectedIds.includes(item.id); return <button key={item.id} type="button" onClick={() => onToggle(item.id)} className={`flex w-full items-center justify-between gap-3 rounded-md border px-3 py-2 text-left transition ${selected ? "border-accent/50 bg-accent/10" : "border-transparent hover:border-border hover:bg-surface-elevated"}`}><span className="min-w-0"><span className="block truncate text-sm font-medium text-text-accent">{getTitle(item)}</span><span className="block truncate text-xs text-text-secondary">{getSubtitle(item)}</span></span>{selected ? <Check size={15} className="shrink-0 text-accent" /> : <Plus size={15} className="shrink-0 text-text-secondary" />}</button>; })}</div></div>;
-}
+const listItems = (response: any) =>
+  Array.isArray(response?.data) ? response.data : Array.isArray(response?.data?.items) ? response.data.items : [];
 
 export default function ReleaseDetailPage() {
-  const { id } = useParams<{ id: string }>(); const router = useRouter();
-  const [release, setRelease] = useState<any>(null); const [artists, setArtists] = useState<any[]>([]); const [tracks, setTracks] = useState<any[]>([]); const [labels, setLabels] = useState<any[]>([]); const [distributors, setDistributors] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false); const [uploading, setUploading] = useState(false); const [error, setError] = useState(""); const [saved, setSaved] = useState(false); const [artistQuery, setArtistQuery] = useState(""); const [trackQuery, setTrackQuery] = useState(""); const [artworkKey, setArtworkKey] = useState(0); const [form, setForm] = useState<any>(null); const [selectedArtistIds, setSelectedArtistIds] = useState<number[]>([]); const [selectedTrackIds, setSelectedTrackIds] = useState<number[]>([]);
+  const { id } = useParams<{ id: string }>();
+  const router = useRouter();
+  const [release, setRelease] = useState<any>(null);
+  const [artists, setArtists] = useState<any[]>([]);
+  const [tracks, setTracks] = useState<any[]>([]);
+  const [labels, setLabels] = useState<any[]>([]);
+  const [distributors, setDistributors] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
+  const [saved, setSaved] = useState(false);
+  const [artistQuery, setArtistQuery] = useState("");
+  const [artworkKey, setArtworkKey] = useState(0);
+  const [form, setForm] = useState<any>(null);
+  const [selectedArtistIds, setSelectedArtistIds] = useState<number[]>([]);
+  const [selectedTrackIds, setSelectedTrackIds] = useState<number[]>([]);
 
   const load = async () => {
     if (!id) return;
     setLoading(true);
     setError("");
-
     try {
-      // The release record is the critical path. Render it as soon as it is available;
-      // large picker/catalog datasets must not be allowed to keep the whole page in
-      // the loading state.
       const releaseRes = await api.get(`/releases?id=${id}`);
       const data = releaseRes.data;
-
       setRelease(data);
       setForm({
         title: data.title || "",
@@ -51,30 +55,22 @@ export default function ReleaseDetailPage() {
         label_id: data.label_id ? String(data.label_id) : "",
         distributor_id: data.distributor_id ? String(data.distributor_id) : "",
       });
-      setSelectedArtistIds(Array.isArray(data.artist_ids) ? data.artist_ids : data.artist_id ? [data.artist_id] : []);
       setSelectedTrackIds(Array.isArray(data._tracks) ? data._tracks.map((track: any) => track.id) : []);
+      setSelectedArtistIds(Array.isArray(data.artist_ids) ? data.artist_ids : data.artist_id ? [data.artist_id] : []);
       setLoading(false);
 
-      // Supporting catalog data is non-critical. Load it after the release so a
-      // slow/failed picker request cannot leave the release page on "Loading release...".
       const [artistsRes, tracksRes, labelsRes, distributorsRes] = await Promise.allSettled([
-        api.get(`/artists?limit=1000`),
-        api.get(`/tracks?limit=1000`),
-        api.get(`/labels`),
-        api.get(`/network/organizations`),
+        api.get("/artists?limit=1000"),
+        api.get("/tracks?limit=1000"),
+        api.get("/labels"),
+        api.get("/network/organizations"),
       ]);
-
       if (artistsRes.status === "fulfilled") setArtists(listItems(artistsRes.value));
-      else console.warn("Unable to load release artists; continuing without artist picker data.", artistsRes.reason);
-
       if (tracksRes.status === "fulfilled") setTracks(listItems(tracksRes.value));
-      else console.warn("Unable to load release tracks; continuing without track picker data.", tracksRes.reason);
-
       if (labelsRes.status === "fulfilled") setLabels(listItems(labelsRes.value));
-      else console.warn("Unable to load release labels; continuing without label picker data.", labelsRes.reason);
-
-      if (distributorsRes.status === "fulfilled") setDistributors(listItems(distributorsRes.value).filter((item: any) => String(item.org_type || "").toLowerCase() === "distributor"));
-      else console.warn("Unable to load distributor organisations; continuing without Network data.", distributorsRes.reason);
+      if (distributorsRes.status === "fulfilled") {
+        setDistributors(listItems(distributorsRes.value).filter((item: any) => String(item.org_type || "").toLowerCase() === "distributor"));
+      }
     } catch (err: any) {
       setError(err?.response?.data?.error || "Unable to load release.");
       setRelease(null);
@@ -82,29 +78,234 @@ export default function ReleaseDetailPage() {
       setLoading(false);
     }
   };
-  useEffect(() => { load(); }, [id]);
-  const toggle = (setter: any) => (value: number) => setter((ids: number[]) => ids.includes(value) ? ids.filter((current) => current !== value) : [...ids, value]);
-  const selectedArtists = useMemo(() => artists.filter((artist) => selectedArtistIds.includes(artist.id)), [artists, selectedArtistIds]); const selectedTracks = useMemo(() => tracks.filter((track) => selectedTrackIds.includes(track.id)), [tracks, selectedTrackIds]);
 
-  const save = async (event?: React.FormEvent) => { event?.preventDefault(); if (!form?.title?.trim()) { setError("Release title is required."); return; } setSaving(true); setSaved(false); setError(""); try { await api.put(`/releases?id=${id}`, { title: form.title.trim(), release_type: form.release_type, release_date: form.release_date || null, catalog_number: form.catalog_number.trim() || null, upc_code: form.upc_code.trim() || null, streaming_link: form.streaming_link.trim() || null, label_id: form.label_id ? Number(form.label_id) : null, distributor_id: form.distributor_id ? Number(form.distributor_id) : null, artist_ids: selectedArtistIds, track_ids: selectedTrackIds }); setSaved(true); await load(); } catch (err: any) { setError(err?.response?.data?.error || "Unable to save release."); } finally { setSaving(false); } };
-  const uploadArtwork = async (event: React.ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; if (!file) return; setUploading(true); setError(""); try { const optimized = await optimizeImage(file, "artwork"); const response = await api.post("/storage/upload-url", { entityType: "release", entityId: String(id), fileName: optimized.name, mimeType: optimized.type, fileSize: optimized.size, folder: "release", uploadPurpose: "artwork" }); const upload = response.data; const result = await fetch(upload.uploadUrl, { method: "PUT", headers: { "Content-Type": optimized.type }, body: optimized }); if (!result.ok) throw new Error(`Artwork upload failed (${result.status})`); await api.post("/storage/complete", { entityType: "release", entityId: String(id), key: upload.key, fileName: upload.fileName, originalName: file.name, mimeType: optimized.type, fileSize: optimized.size, uploadPurpose: "artwork" }); invalidateEntityArtwork("release", id); setArtworkKey((value) => value + 1); setSaved(true); } catch (err: any) { setError(err?.response?.data?.error || err?.message || "Unable to update artwork."); } finally { setUploading(false); event.target.value = ""; } };
-  const deleteRelease = async () => { if (!window.confirm(`Delete release \"${release?.title}\"? This cannot be undone.`)) return; try { await api.delete(`/releases?id=${id}`); router.push("/catalog/releases"); } catch (err: any) { setError(err?.response?.data?.error || "Unable to delete release."); } };
+  useEffect(() => { load(); }, [id]);
+
+  const orderedTracks = useMemo(() => {
+    const byId = new Map(tracks.map((track) => [track.id, track]));
+    return selectedTrackIds.map((trackId) => byId.get(trackId)).filter(Boolean);
+  }, [tracks, selectedTrackIds]);
+
+  const visibleArtists = useMemo(() => {
+    const q = artistQuery.trim().toLowerCase();
+    return q
+      ? artists.filter((artist) => `${artist.display_name || artist.stage_name || artist.name || ""} ${artist.aka || ""}`.toLowerCase().includes(q))
+      : artists;
+  }, [artists, artistQuery]);
+
+  const selectedArtists = useMemo(() => artists.filter((artist) => selectedArtistIds.includes(artist.id)), [artists, selectedArtistIds]);
+
+  const toggleArtist = (artistId: number) => {
+    setSelectedArtistIds((current) => current.includes(artistId) ? current.filter((value) => value !== artistId) : [...current, artistId]);
+  };
+
+  const save = async (event?: React.FormEvent) => {
+    event?.preventDefault();
+    if (!form?.title?.trim()) { setError("Release title is required."); return; }
+    setSaving(true);
+    setSaved(false);
+    setError("");
+    try {
+      await api.put(`/releases?id=${id}`, {
+        title: form.title.trim(),
+        release_type: form.release_type,
+        release_date: form.release_date || null,
+        catalog_number: form.catalog_number.trim() || null,
+        upc_code: form.upc_code.trim() || null,
+        streaming_link: form.streaming_link.trim() || null,
+        label_id: form.label_id ? Number(form.label_id) : null,
+        distributor_id: form.distributor_id ? Number(form.distributor_id) : null,
+        artist_ids: selectedArtistIds,
+        track_ids: selectedTrackIds,
+      });
+      setSaved(true);
+      await load();
+    } catch (err: any) {
+      setError(err?.response?.data?.error || "Unable to save release.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const uploadArtwork = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setError("");
+    try {
+      const optimized = await optimizeImage(file, "artwork");
+      const response = await api.post("/storage/upload-url", {
+        entityType: "release", entityId: String(id), fileName: optimized.name, mimeType: optimized.type,
+        fileSize: optimized.size, folder: "release", uploadPurpose: "artwork",
+      });
+      const upload = response.data;
+      const result = await fetch(upload.uploadUrl, { method: "PUT", headers: { "Content-Type": optimized.type }, body: optimized });
+      if (!result.ok) throw new Error(`Artwork upload failed (${result.status})`);
+      await api.post("/storage/complete", {
+        entityType: "release", entityId: String(id), key: upload.key, fileName: upload.fileName,
+        originalName: file.name, mimeType: optimized.type, fileSize: optimized.size, uploadPurpose: "artwork",
+      });
+      invalidateEntityArtwork("release", id);
+      setArtworkKey((value) => value + 1);
+      setSaved(true);
+    } catch (err: any) {
+      setError(err?.response?.data?.error || err?.message || "Unable to update artwork.");
+    } finally {
+      setUploading(false);
+      event.target.value = "";
+    }
+  };
+
+  const deleteRelease = async () => {
+    if (!window.confirm(`Delete release "${release?.title}"? This cannot be undone.`)) return;
+    try {
+      await api.delete(`/releases?id=${id}`);
+      router.push("/catalog/releases");
+    } catch (err: any) {
+      setError(err?.response?.data?.error || "Unable to delete release.");
+    }
+  };
 
   if (loading) return <div className="p-12 text-center text-text-secondary">Loading release...</div>;
   if (error && !release) return <div className="p-12 text-center text-text-secondary">{error}</div>;
   if (!release || !form) return <div className="p-12 text-center text-text-secondary">Release not found</div>;
 
-  return <div className="space-y-6"><div className="flex items-center gap-3"><button onClick={() => router.push("/catalog/releases")} className="text-text-secondary transition hover:text-text-accent"><ChevronLeft size={20} /></button><PageHeader title={release.title} subtitle="Release" actions={<div className="flex items-center gap-2">{saved && <span className="text-xs text-accent">Saved</span>}<Button variant="primary" size="sm" onClick={() => save()} disabled={saving}>{saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}Save changes</Button><Button variant="danger" size="sm" onClick={deleteRelease}><Trash2 size={14} />Delete</Button></div>} /></div>
-    {error && <div className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{error}</div>}
-    <form onSubmit={save} className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-      <div className="space-y-6"><Card title="Metadata" subtitle="Core release information"><div className="grid grid-cols-1 gap-4 md:grid-cols-2"><Field label="Release title" className="md:col-span-2"><input className={fieldClass} required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></Field><Field label="Release type"><select className={fieldClass} value={form.release_type} onChange={(e) => setForm({ ...form, release_type: e.target.value })}><option>Single</option><option>EP</option><option>Album</option><option>Compilation</option></select></Field><Field label="Release date"><input className={fieldClass} type="date" value={form.release_date} onChange={(e) => setForm({ ...form, release_date: e.target.value })} /></Field><Field label="Catalog number"><input className={fieldClass} value={form.catalog_number} onChange={(e) => setForm({ ...form, catalog_number: e.target.value })} placeholder="e.g. MZA0082" /></Field><Field label="UPC"><input className={fieldClass} value={form.upc_code} onChange={(e) => setForm({ ...form, upc_code: e.target.value })} placeholder="UPC / barcode" /></Field><Field label="Streaming link" className="md:col-span-2"><div className="relative"><Link2 size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" /><input className={`${fieldClass} pl-9`} type="url" value={form.streaming_link} onChange={(e) => setForm({ ...form, streaming_link: e.target.value })} placeholder="https://..." /></div></Field><Field label="Label"><select className={fieldClass} value={form.label_id} onChange={(e) => setForm({ ...form, label_id: e.target.value })}><option value="">No label</option>{labels.map((label: any) => <option key={label.id} value={label.id}>{label.name}</option>)}</select></Field><Field label="Distributor"><select className={fieldClass} value={form.distributor_id} onChange={(e) => setForm({ ...form, distributor_id: e.target.value })}><option value="">No distributor</option>{distributors.map((item: any) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field></div></Card>
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2"><Picker title="Artists" icon={UserRound} query={artistQuery} setQuery={setArtistQuery} items={artists} selectedIds={selectedArtistIds} onToggle={toggle(setSelectedArtistIds)} getTitle={(artist: any) => artist.display_name || artist.stage_name || artist.name || `Artist #${artist.id}`} getSubtitle={(artist: any) => artist.aka || artist.kind || ""} /><Picker title="Tracks" icon={MusicIcon} query={trackQuery} setQuery={setTrackQuery} items={tracks} selectedIds={selectedTrackIds} onToggle={toggle(setSelectedTrackIds)} getTitle={(track: any) => track.title || `Track #${track.id}`} getSubtitle={(track: any) => track.isrc_code || ""} /></div>
-        <Card title="Linked items" subtitle="Associations saved with this release"><div className="grid grid-cols-1 gap-4 md:grid-cols-2"><div><p className={labelClass}>Artists</p><div className="mt-2 flex flex-wrap gap-2">{selectedArtists.length ? selectedArtists.map((artist: any) => <span key={artist.id} className="inline-flex items-center gap-1 rounded-md border border-border bg-surface-elevated px-2 py-1 text-xs text-text-accent">{artist.name || artist.display_name}<button type="button" onClick={() => toggle(setSelectedArtistIds)(artist.id)} className="text-text-secondary hover:text-danger"><X size={12} /></button></span>) : <span className="text-xs text-text-secondary">No artists linked.</span>}</div></div><div><p className={labelClass}>Tracks</p><div className="mt-2 flex flex-wrap gap-2">{selectedTracks.length ? selectedTracks.map((track: any) => <span key={track.id} className="inline-flex items-center gap-1 rounded-md border border-border bg-surface-elevated px-2 py-1 text-xs text-text-accent">{track.title}<button type="button" onClick={() => toggle(setSelectedTrackIds)(track.id)} className="text-text-secondary hover:text-danger"><X size={12} /></button></span>) : <span className="text-xs text-text-secondary">No tracks linked.</span>}</div></div></div></Card>
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <button type="button" onClick={() => router.push("/catalog/releases")} className="text-text-secondary transition hover:text-text-accent" aria-label="Back to releases">
+          <ChevronLeft size={20} />
+        </button>
+        <PageHeader
+          title={release.title}
+          subtitle="Release workspace"
+          actions={
+            <div className="flex items-center gap-2">
+              {saved && <span className="text-xs text-accent">Saved</span>}
+              <Button variant="primary" size="sm" onClick={() => save()} disabled={saving}>
+                {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Save changes
+              </Button>
+              <Button variant="danger" size="sm" onClick={deleteRelease}><Trash2 size={14} /> Delete</Button>
+            </div>
+          }
+        />
       </div>
-      <div className="space-y-6"><Card title="Artwork" subtitle="Replace artwork without leaving the release"><div className="overflow-hidden rounded-lg border border-border bg-surface-elevated"><EntityArtwork key={artworkKey} entityType="release" entityId={release.id} alt={release.title} size={320} placeholder="release" className="aspect-square w-full object-cover" style={{ width: "100%", height: "auto", aspectRatio: "1 / 1" }} /></div><label className="mt-3 flex h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border border-border bg-surface px-3 text-sm font-medium text-text-accent transition hover:border-accent/50 hover:bg-surface-elevated">{uploading ? <Loader2 size={15} className="animate-spin" /> : <ImageIcon size={15} />}{uploading ? "Uploading..." : "Change artwork"}<input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={uploadArtwork} disabled={uploading} /></label></Card><Card title="Publishing & PRO" subtitle="Current catalog relationship boundary"><p className="text-sm leading-6 text-text-secondary">Publisher and PRO relationships are authoritative at Work level in the current catalog model. They are not duplicated onto Releases without a canonical Release ↔ Publisher/PRO relationship.</p><Button type="button" variant="secondary" size="sm" className="mt-3" onClick={() => router.push("/catalog/works")}><Link2 size={14} />Open Works</Button></Card><Card title="Status"><div className="flex items-center justify-between"><span className="text-sm text-text-secondary">Current status</span><span className="rounded-md border border-accent/30 bg-accent/10 px-2 py-1 text-xs font-semibold capitalize text-accent">{release.status || "draft"}</span></div></Card></div>
-    </form>
-    <ReleaseCoreWorkspace releaseId={Number(id)} artistIds={selectedArtistIds} artists={artists} />
-  </div>;
+
+      {error && <div className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{error}</div>}
+
+      <form onSubmit={save} className="space-y-6">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+          <Card title="Release overview" subtitle="Core release metadata and delivery information.">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <Field label="Release title" className="md:col-span-2">
+                <input className={fieldClass} required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+              </Field>
+              <Field label="Release type">
+                <select className={fieldClass} value={form.release_type} onChange={(e) => setForm({ ...form, release_type: e.target.value })}>
+                  <option>Single</option><option>EP</option><option>Album</option><option>Compilation</option>
+                </select>
+              </Field>
+              <Field label="Release date">
+                <input className={fieldClass} type="date" value={form.release_date} onChange={(e) => setForm({ ...form, release_date: e.target.value })} />
+              </Field>
+              <Field label="Catalog number">
+                <input className={fieldClass} value={form.catalog_number} onChange={(e) => setForm({ ...form, catalog_number: e.target.value })} placeholder="e.g. M2KR0072" />
+              </Field>
+              <Field label="UPC">
+                <input className={fieldClass} value={form.upc_code} onChange={(e) => setForm({ ...form, upc_code: e.target.value })} placeholder="UPC / barcode" />
+              </Field>
+              <Field label="Label">
+                <select className={fieldClass} value={form.label_id} onChange={(e) => setForm({ ...form, label_id: e.target.value })}>
+                  <option value="">No label</option>
+                  {labels.map((label: any) => <option key={label.id} value={label.id}>{label.name}</option>)}
+                </select>
+              </Field>
+              <Field label="Distributor">
+                <select className={fieldClass} value={form.distributor_id} onChange={(e) => setForm({ ...form, distributor_id: e.target.value })}>
+                  <option value="">No distributor</option>
+                  {distributors.map((item: any) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                </select>
+              </Field>
+              <Field label="Streaming link" className="md:col-span-2">
+                <input className={fieldClass} type="url" value={form.streaming_link} onChange={(e) => setForm({ ...form, streaming_link: e.target.value })} placeholder="https://..." />
+              </Field>
+            </div>
+          </Card>
+
+          <div className="space-y-6">
+            <Card title="Artwork" subtitle="Release artwork used across the catalog.">
+              <div className="overflow-hidden rounded-lg border border-border bg-surface-elevated">
+                <EntityArtwork key={artworkKey} entityType="release" entityId={release.id} alt={release.title} size={320} placeholder="release" className="aspect-square w-full object-cover" style={{ width: "100%", height: "auto", aspectRatio: "1 / 1" }} />
+              </div>
+              <label className="mt-3 flex h-10 cursor-pointer items-center justify-center gap-2 rounded-lg border border-border bg-surface px-3 text-sm font-medium text-text-accent transition hover:border-accent/50 hover:bg-surface-elevated">
+                {uploading ? <Loader2 size={15} className="animate-spin" /> : <ImageIcon size={15} />}
+                {uploading ? "Uploading..." : "Change artwork"}
+                <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={uploadArtwork} disabled={uploading} />
+              </label>
+            </Card>
+            <Card title="Release status">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-text-secondary">Current status</span>
+                <span className="rounded-md border border-accent/30 bg-accent/10 px-2 py-1 text-xs font-semibold capitalize text-accent">{release.status || "draft"}</span>
+              </div>
+            </Card>
+          </div>
+        </div>
+
+        <Card title="Release artists" subtitle="Release-level artist associations. Track-level roles and credits are managed inside each track.">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+            <div className="relative">
+              <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
+              <input className={`${fieldClass} pl-9`} value={artistQuery} onChange={(e) => setArtistQuery(e.target.value)} placeholder="Search artists..." />
+              {artistQuery.trim() && (
+                <div className="absolute z-20 mt-2 max-h-64 w-full overflow-y-auto rounded-lg border border-border bg-surface p-1 shadow-xl">
+                  {visibleArtists.length ? visibleArtists.map((artist: any) => {
+                    const selected = selectedArtistIds.includes(artist.id);
+                    return (
+                      <button key={artist.id} type="button" onClick={() => toggleArtist(artist.id)} className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left hover:bg-surface-elevated">
+                        <span>
+                          <span className="block text-sm text-text-accent">{artist.display_name || artist.stage_name || artist.name}</span>
+                          <span className="block text-xs text-text-secondary">{artist.aka || artist.kind || ""}</span>
+                        </span>
+                        {selected ? <X size={15} className="text-accent" /> : <Plus size={15} className="text-text-secondary" />}
+                      </button>
+                    );
+                  }) : <p className="px-3 py-3 text-xs text-text-secondary">No artists found.</p>}
+                </div>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {selectedArtists.length ? selectedArtists.map((artist: any) => (
+                <span key={artist.id} className="inline-flex items-center gap-2 rounded-md border border-border bg-surface-elevated px-3 py-2 text-sm text-text-accent">
+                  <UserRound size={14} className="text-accent" />
+                  {artist.display_name || artist.stage_name || artist.name}
+                  <button type="button" onClick={() => toggleArtist(artist.id)} className="text-text-secondary hover:text-danger" aria-label={`Remove ${artist.name}`}><X size={13} /></button>
+                </span>
+              )) : <span className="text-sm text-text-secondary">No release artists linked.</span>}
+            </div>
+          </div>
+        </Card>
+
+        <ReleaseTrackList
+          releaseId={Number(id)}
+          tracks={orderedTracks}
+          availableTracks={tracks}
+          artists={artists}
+          onTrackOrderChange={setSelectedTrackIds}
+          onError={setError}
+        />
+
+        <div className="pt-2">
+          <h2 className="text-base font-semibold text-text-accent">Release resources</h2>
+          <p className="mt-1 text-sm text-text-secondary">Supporting documents, financial records, media links, artist roles and contract references live here so they do not compete with the tracklist.</p>
+        </div>
+
+        <ReleaseCoreWorkspace releaseId={Number(id)} artistIds={selectedArtistIds} artists={artists} />
+      </form>
+    </div>
+  );
 }
 
-function MusicIcon(props: any) { return <span className="inline-flex text-base leading-none" {...props}>♪</span>; }
+function Field({ label, children, className = "" }: any) {
+  return <label className={`block min-w-0 ${className}`}><span className={labelClass}>{label}</span>{children}</label>;
+}
