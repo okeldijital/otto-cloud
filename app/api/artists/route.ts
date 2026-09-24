@@ -120,6 +120,17 @@ export async function GET(req: Request) {
       return NextResponse.json(serializeArtist(artist));
     }
 
+    const idsStr = searchParams.get("ids");
+    if (idsStr) {
+      const ids = idsStr.split(",").map((s) => parseInt(s.trim())).filter((n) => Number.isInteger(n) && n > 0);
+      if (!ids.length) return NextResponse.json({ items: [] });
+      const artists = await prisma.artists.findMany({
+        where: { ...orgWhere(ctx, { is_deleted: false }), id: { in: ids } },
+        include: includeMemberships,
+      });
+      return NextResponse.json({ items: artists.map(serializeArtist) });
+    }
+
     const q = (searchParams.get("q") || searchParams.get("search") || "").trim();
     if (q) {
       const types = searchParams.get("types") || "solo,group";
