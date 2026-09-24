@@ -148,8 +148,10 @@ export default function TrackDetailPage() {
   const loadTrack = async () => {
     const { data: trackData } = await api.get(`/tracks?id=${id}`);
     setTrack(trackData);
+    const artistIds = Array.isArray(trackData.artist_ids) ? trackData.artist_ids : [];
+    const artistQuery = artistIds.length ? `/artists?ids=${artistIds.join(",")}` : `/artists?limit=1`;
     const [artistRes, releaseRes, workRes, releaseListRes, workListRes] = await Promise.all([
-      api.get(`/artists`),
+      api.get(artistQuery),
       trackData.release_id ? api.get(`/releases?id=${trackData.release_id}`) : Promise.resolve({ data: null }),
       trackData.work_id ? api.get(`/works?id=${trackData.work_id}`) : Promise.resolve({ data: null }),
       api.get(`/releases?limit=100`),
