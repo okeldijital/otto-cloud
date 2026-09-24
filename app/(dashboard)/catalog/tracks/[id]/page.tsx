@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Clock, Disc, ExternalLink, Hash, Loader2, Music, Plus, Save, Trash2, User, X } from "lucide-react";
+import { Clock, Disc, ExternalLink, Hash, Loader2, Music, Plus, Save, Search, Trash2, User, X } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
@@ -75,15 +75,36 @@ function Field({ label, children, className = "" }: { label: string; children: R
   return <label className={`block min-w-0 ${className}`}><span className={labelClass}>{label}</span>{children}</label>;
 }
 
-function SelectionList({ title, items, selectedIds, onToggle, getTitle, getSubtitle, icon: Icon, empty }: any) {
+function SelectionList({ title, items, selectedIds, onToggle, getTitle, getSubtitle, icon: Icon, empty, searchPlaceholder }: any) {
+  const [query, setQuery] = useState("");
+  const normalizedQuery = query.trim().toLowerCase();
+  const filteredItems = normalizedQuery
+    ? items.filter((item: any) => [getTitle(item), getSubtitle(item)].filter(Boolean).some((value) => String(value).toLowerCase().includes(normalizedQuery)))
+    : items;
+
   return (
     <div className="rounded-lg border border-border bg-surface p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2"><Icon size={16} className="text-primary" /><h3 className="text-sm font-semibold text-text-primary">{title}</h3></div>
         <span className="text-xs text-text-secondary">{selectedIds.length} selected</span>
       </div>
+      {searchPlaceholder && (
+        <div className="relative mb-3">
+          <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
+          <input
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder={searchPlaceholder}
+            aria-label={searchPlaceholder}
+            className="h-9 w-full rounded-md border border-border bg-surface-elevated pl-8 pr-3 text-sm text-text-primary placeholder:text-text-secondary/70 outline-none transition focus:border-primary focus:ring-1 focus:ring-primary/30"
+          />
+        </div>
+      )}
       <div className="max-h-64 space-y-1 overflow-y-auto pr-1">
-        {items.length === 0 ? <p className="py-5 text-center text-xs text-text-secondary">{empty}</p> : items.map((item: any) => {
+        {filteredItems.length === 0 ? (
+          <p className="py-5 text-center text-xs text-text-secondary">{normalizedQuery ? "No matches found." : empty}</p>
+        ) : filteredItems.map((item: any) => {
           const selected = selectedIds.includes(item.id);
           return (
             <button key={item.id} type="button" onClick={() => onToggle(item.id)} className={`flex w-full items-center justify-between gap-3 rounded-md border px-3 py-2 text-left transition ${selected ? "border-primary/50 bg-primary/10" : "border-transparent hover:border-border hover:bg-surface-elevated"}`}>
@@ -228,7 +249,7 @@ export default function TrackDetailPage() {
           </Card>
 
           <Card title="Artists" subtitle="Artists credited on this track">
-            {isEditing ? <SelectionList title="Linked artists" items={artists} selectedIds={form.artist_ids} onToggle={toggleArtist} getTitle={(artist: any) => artist.display_name || artist.stage_name || artist.name || `Artist #${artist.id}`} getSubtitle={(artist: any) => artist.aka || artist.kind || ""} icon={User} empty="No artists found." /> : linkedArtists.length ? <div className="flex flex-wrap gap-2">{linkedArtists.map((artist: any) => <button key={artist.id} type="button" onClick={() => router.push(`/catalog/artists/${artist.id}`)} className="inline-flex items-center gap-2 rounded-md border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary transition hover:border-primary/40 hover:bg-primary/5"><User size={14} className="text-primary" />{artist.display_name || artist.stage_name || artist.name}</button>)}</div> : <p className="text-sm text-text-secondary">No artists linked.</p>}
+            {isEditing ? <SelectionList title="Linked artists" items={artists} selectedIds={form.artist_ids} onToggle={toggleArtist} getTitle={(artist: any) => artist.display_name || artist.stage_name || artist.name || `Artist #${artist.id}`} getSubtitle={(artist: any) => artist.aka || artist.kind || ""} icon={User} empty="No artists found." searchPlaceholder="Search artists..." /> : linkedArtists.length ? <div className="flex flex-wrap gap-2">{linkedArtists.map((artist: any) => <button key={artist.id} type="button" onClick={() => router.push(`/catalog/artists/${artist.id}`)} className="inline-flex items-center gap-2 rounded-md border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary transition hover:border-primary/40 hover:bg-primary/5"><User size={14} className="text-primary" />{artist.display_name || artist.stage_name || artist.name}</button>)}</div> : <p className="text-sm text-text-secondary">No artists linked.</p>}
           </Card>
 
           <Card title="Credits & splits" subtitle="Contributors, roles and royalty/split percentages">
@@ -274,7 +295,7 @@ export default function TrackDetailPage() {
           </Card>
 
           <Card title="Secondary releases" subtitle="Other releases containing this track">
-            {isEditing ? <SelectionList title="Secondary releases" items={secondaryOptions} selectedIds={form.secondary_release_ids} onToggle={toggleSecondaryRelease} getTitle={(item: any) => item.title} getSubtitle={(item: any) => item.release_type || ""} icon={Disc} empty="No releases found." /> : linkedSecondary.length ? <div className="space-y-2">{linkedSecondary.map((item: any) => <button key={item.id} type="button" onClick={() => router.push(`/catalog/releases/${item.id}`)} className="flex w-full items-center gap-3 rounded-md border border-border bg-surface-elevated px-3 py-2 text-left transition hover:border-primary/40 hover:bg-primary/5"><Disc size={16} className="text-primary" /><span className="text-sm font-medium text-text-primary">{item.title}</span><span className="ml-auto text-xs text-text-secondary">{item.release_type || ""}</span></button>)}</div> : <p className="text-sm text-text-secondary">No secondary releases linked.</p>}
+            {isEditing ? <SelectionList title="Secondary releases" items={secondaryOptions} selectedIds={form.secondary_release_ids} onToggle={toggleSecondaryRelease} getTitle={(item: any) => item.title} getSubtitle={(item: any) => item.release_type || ""} icon={Disc} empty="No releases found." searchPlaceholder="Search releases..." /> : linkedSecondary.length ? <div className="space-y-2">{linkedSecondary.map((item: any) => <button key={item.id} type="button" onClick={() => router.push(`/catalog/releases/${item.id}`)} className="flex w-full items-center gap-3 rounded-md border border-border bg-surface-elevated px-3 py-2 text-left transition hover:border-primary/40 hover:bg-primary/5"><Disc size={16} className="text-primary" /><span className="text-sm font-medium text-text-primary">{item.title}</span><span className="ml-auto text-xs text-text-secondary">{item.release_type || ""}</span></button>)}</div> : <p className="text-sm text-text-secondary">No secondary releases linked.</p>}
           </Card>
 
           <AttachmentsSection entityType="track" entityId={id} entityTitle={track.title} />
