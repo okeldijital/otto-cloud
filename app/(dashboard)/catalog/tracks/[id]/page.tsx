@@ -138,6 +138,7 @@ export default function TrackDetailPage() {
   const [artistSearch, setArtistSearch] = useState("");
   const [artistSearchResults, setArtistSearchResults] = useState<any[]>([]);
   const [isSearchingArtists, setIsSearchingArtists] = useState(false);
+  const [artistSearchError, setArtistSearchError] = useState("");
   const [showNewArtistModal, setShowNewArtistModal] = useState(false);
   const [isCreatingArtist, setIsCreatingArtist] = useState(false);
   const [newArtistError, setNewArtistError] = useState("");
@@ -192,21 +193,41 @@ export default function TrackDetailPage() {
 
   useEffect(() => {
     if (!showArtistPicker) return;
-    const query = artistSearch.trim();
+    const query = artistSearch.trim().toLowerCase();
+
+    // Start with the catalogue already loaded for the track. This keeps the
+    // picker responsive and guarantees that artists already known to this
+    // organization can be selected even if the remote search is unavailable.
+    const localResults = artists.filter((artist: any) => {
+      if (!query) return true;
+      return [artist.display_name, artist.stage_name, artist.name, artist.aka, artist.legal_name]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query));
+    });
+    setArtistSearchResults(localResults);
+    setArtistSearchError("");
+
     const timer = window.setTimeout(async () => {
       setIsSearchingArtists(true);
       try {
-        const { data } = await api.get(`/artists?q=${encodeURIComponent(query)}&limit=20`);
-        setArtistSearchResults(unwrapMany(data));
-      } catch (err) {
-        console.error(err);
-        setArtistSearchResults([]);
+        const { data } = await api.get(`/artists?q=${encodeURIComponent(artistSearch.trim())}&limit=50`);
+        const remoteResults = unwrapMany(data);
+        setArtistSearchResults((current) => {
+          const merged = [...current, ...remoteResults];
+          return merged.filter((artist: any, index: number, list: any[]) =>
+            list.findIndex((item: any) => item.id === artist.id) === index
+          );
+        });
+      } catch (err: any) {
+        console.error("[Track artists search]", err);
+        setArtistSearchError(err?.response?.data?.error || err?.message || "Artist search failed.");
       } finally {
         setIsSearchingArtists(false);
       }
     }, query ? 250 : 0);
+
     return () => window.clearTimeout(timer);
-  }, [showArtistPicker, artistSearch]);
+  }, [showArtistPicker, artistSearch, artists]);
 
   const selectedArtists = useMemo(() => artists.filter((artist) => form.artist_ids.includes(artist.id)), [artists, form.artist_ids]);
   const selectedSecondary = useMemo(() => releases.filter((item) => form.secondary_release_ids.includes(item.id)), [releases, form.secondary_release_ids]);
@@ -396,7 +417,9 @@ export default function TrackDetailPage() {
                     />
                   </div>
                   <div className="max-h-72 space-y-1 overflow-y-auto">
-                    {isSearchingArtists ? (
+                    {artistSearchError ? (
+                      <p className="py-6 text-center text-xs text-red-400">{artistSearchError}</p>
+                    ) : isSearchingArtists && !artistSearchResults.length ? (
                       <p className="py-6 text-center text-xs text-text-secondary">Searching artists...</p>
                     ) : artistSearchResults.filter((artist: any) => !form.artist_ids.includes(artist.id)).length ? (
                       artistSearchResults
