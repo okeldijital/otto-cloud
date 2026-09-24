@@ -24,7 +24,8 @@ export default function ReleaseCoreWorkspace({ releaseId }: Props) {
   const [documentDescription, setDocumentDescription] = useState("");
   const [documentProgress, setDocumentProgress] = useState("");
   const [isMobileFilePicker, setIsMobileFilePicker] = useState(false);
-  const [previewDocument, setPreviewDocument] = useState<any>(null);\n  const [openDocumentFolders, setOpenDocumentFolders] = useState<Record<string, boolean>>({});
+  const [previewDocument, setPreviewDocument] = useState<any>(null);
+  const [openDocumentFolders, setOpenDocumentFolders] = useState<Record<string, boolean>>({});
 
   const refresh = async () => {
     const [coreResult, contractsResult] = await Promise.allSettled([
