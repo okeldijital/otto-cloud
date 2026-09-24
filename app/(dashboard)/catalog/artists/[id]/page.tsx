@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ChevronLeft, ChevronDown, ChevronUp, Disc, Edit, FileText, Instagram, Mail, MapPin, Music, Phone, Trash2, Twitter, User } from "lucide-react";
+import { ChevronLeft, ChevronDown, ChevronUp, Disc, Edit, ExternalLink, FileText, Instagram, Mail, MapPin, Music, Phone, Trash2, Twitter, User } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
@@ -73,6 +73,26 @@ function ArtistContractsPanel({ contracts, expandedContractId, contractDetails, 
                   <span className="mt-0.5 block text-xs text-text-secondary">
                     {contract.contract_number || "No contract number"} · {contract.status || "—"}
                   </span>
+                </span>
+                <span
+                  role="button"
+                  tabIndex={0}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    router.push(`/contracts/${contract.id}`);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      router.push(`/contracts/${contract.id}`);
+                    }
+                  }}
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-text-secondary transition hover:border-accent hover:text-accent"
+                  aria-label={`Open full contract workflow for ${contract.title || "contract"}`}
+                >
+                  <ExternalLink size={13} />
+                  <span className="hidden sm:inline">Open contract</span>
                 </span>
                 {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
               </button>
