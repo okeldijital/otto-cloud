@@ -132,8 +132,21 @@ export async function GET(req: Request) {
     const q = (searchParams.get("q") || "").trim();
     const view = searchParams.get("view") || "all";
     const folderId = searchParams.get("folderId");
+    const partyEntityType = searchParams.get("party_entity_type");
+    const partyEntityId = searchParams.get("party_entity_id");
 
     const where: any = { tenant_id: orgId };
+
+    if (partyEntityType && partyEntityId) {
+      const entityId = parseInt(partyEntityId, 10);
+      if (!Number.isInteger(entityId) || entityId <= 0) return NextResponse.json({ error: "Invalid party entity ID" }, { status: 400 });
+      where.contract_parties = {
+        some: {
+          entity_type: partyEntityType,
+          entity_id: entityId,
+        },
+      };
+    }
 
     if (q) {
       where.OR = [
