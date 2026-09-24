@@ -93,7 +93,7 @@ export default function ArtistDetailPage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [artistRes, releasesRes, worksRes, labelsRes, publishersRes, prosRes] = await Promise.all([
+      const [artistRes, releasesRes, worksRes, labelsRes, publishersRes, prosRes, contractsRes] = await Promise.all([
         api.get(`/artists?id=${id}`),
         api.get(`/artists?id=${id}&relation=releases`),
         api.get(`/artists?id=${id}&relation=works`),
