@@ -76,6 +76,11 @@ export default function TracksPage() {
     void fetchData();
   }, [page]);
 
+  const genres = useMemo(
+    () => Array.from(new Set(data.map((track) => String(track.genre || "").trim()).filter(Boolean))).sort(),
+    [data]
+  );
+
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
 
   const handleDelete = async (row: any) => {
