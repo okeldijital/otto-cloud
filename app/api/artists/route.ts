@@ -138,6 +138,7 @@ export async function GET(req: Request) {
           OR: [
             { name: { contains: q, mode: "insensitive" } },
             { aka: { contains: q, mode: "insensitive" } },
+            { legal_name: { contains: q, mode: "insensitive" } },
           ],
         },
         take: limit,
