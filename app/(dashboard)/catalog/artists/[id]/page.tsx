@@ -38,6 +38,7 @@ function listItems(value: any): any[] {
 }
 
 function ArtistContractsPanel({ contracts, expandedContractId, contractDetails, loadingContracts, onToggle }: any) {
+  const router = useRouter();
   if (!contracts.length) return <Card title="Contracts" subtitle="Contracts linked to this artist."><p className="py-8 text-center text-text-secondary">No contracts linked to this artist.</p></Card>;
   return <Card title="Contracts" subtitle="Contracts linked to this artist. Expand a contract to view its details without leaving the artist.">
     <div className="space-y-2">
