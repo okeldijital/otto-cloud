@@ -71,6 +71,7 @@ export default function OrganizationSettingsPage() {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("member");
   const [busyMember, setBusyMember] = useState("");
+  const [resettingPasswordMember, setResettingPasswordMember] = useState("");
 
   const canManageRoles = user?.permissions?.includes("roles.manage") ?? false;
   const canManageUsers = user?.permissions?.includes("users.manage") || user?.permissions?.includes("organizations.manage") || false;
@@ -216,6 +217,36 @@ export default function OrganizationSettingsPage() {
     }
   };
 
+  const resetMemberPassword = async (member: Member) => {
+    if (!canManageUsers || busyMember || resettingPasswordMember) return;
+    const name = member.displayName || member.email || "this member";
+    const confirmed = window.confirm(
+      `Reset the password for ${name}? They will be signed out and required to choose a new password at their next sign-in.`
+    );
+    if (!confirmed) return;
+
+    setResettingPasswordMember(member.identityId);
+    setError("");
+    try {
+      const response = await fetch("/api/auth/password/force-reset", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          identityId: member.identityId,
+          reason: "admin_member_reset",
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Unable to reset member password.");
+      window.alert(`Password reset required for ${name}. The member must choose a new password at next sign-in.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to reset member password.");
+    } finally {
+      setResettingPasswordMember("");
+    }
+  };
+
   const addExistingMember = async () => {
     if (!inviteEmail.trim()) return;
     setBusyMember("invite");
@@ -303,7 +334,9 @@ export default function OrganizationSettingsPage() {
                 setInviteRole={setInviteRole}
                 addExistingMember={addExistingMember}
                 busyMember={busyMember}
+                resettingPasswordMember={resettingPasswordMember}
                 changeMemberRole={changeMemberRole}
+                resetMemberPassword={resetMemberPassword}
               />
             ) : section === "roles" ? (
               <Roles
@@ -430,7 +463,9 @@ function Members({
   setInviteRole,
   addExistingMember,
   busyMember,
+  resettingPasswordMember,
   changeMemberRole,
+  resetMemberPassword,
 }: {
   members: Member[];
   roles: Role[];
@@ -441,7 +476,9 @@ function Members({
   setInviteRole: (value: string) => void;
   addExistingMember: () => void;
   busyMember: string;
+  resettingPasswordMember: string;
   changeMemberRole: (member: Member, roleKey: string) => void;
+  resetMemberPassword: (member: Member) => void;
 }) {
   return (
     <div className="space-y-6">
@@ -490,6 +527,7 @@ function Members({
                 <th className="px-5 py-3 font-medium">Role</th>
                 <th className="px-5 py-3 font-medium">Status</th>
                 <th className="px-5 py-3 font-medium">Joined</th>
+                {canManageUsers && <th className="px-5 py-3 font-medium">Password</th>}
               </tr>
             </thead>
             <tbody>
@@ -522,6 +560,20 @@ function Members({
                     <span className="inline-flex items-center gap-1.5 text-xs text-emerald-400"><span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />{member.membershipStatus}</span>
                   </td>
                   <td className="px-5 py-4 text-xs text-zinc-600">{member.joinedAt ? new Date(member.joinedAt).toLocaleDateString() : "—"}</td>
+                  {canManageUsers && (
+                    <td className="px-5 py-4">
+                      <button
+                        type="button"
+                        onClick={() => resetMemberPassword(member)}
+                        disabled={busyMember !== "" || resettingPasswordMember === member.identityId}
+                        className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs font-medium text-zinc-300 hover:border-cyan-500/40 hover:text-white disabled:opacity-50"
+                        title="Force this member to choose a new password"
+                      >
+                        <KeyRound className="h-3.5 w-3.5" />
+                        {resettingPasswordMember === member.identityId ? "Resetting…" : "Reset password"}
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
