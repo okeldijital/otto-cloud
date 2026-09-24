@@ -154,25 +154,25 @@ const Sidebar = () => {
             ],
         },
         {
+            label: "Contracts",
+            items: [
+                { icon: FileText, label: "Contracts", path: "/contracts", feature: "contracts.core" },
+                { icon: Inbox, label: "Import Contracts", path: "/contracts/bulk", feature: "contracts.core" },
+            ],
+        },
+        {
             label: "Documents",
             items: [
                 { icon: FolderOpen, label: "Documents", path: "/documents", feature: "documents" },
             ],
         },
         {
-            label: "Network",
+            label: "Connections",
             items: [
                 { icon: Inbox, label: "Overview", path: "/network", feature: "network" },
                 { icon: Users, label: "All Contacts", path: "/network/contacts", feature: "network" },
                 { icon: UserCircle, label: "Individuals", path: "/network/individuals", feature: "network" },
-                { icon: Building2, label: "Organizations", path: "/network/organizations", feature: "network" },
-            ],
-        },
-        {
-            label: "Contracts",
-            items: [
-                { icon: FileText, label: "Contracts", path: "/contracts", feature: "contracts.core" },
-                { icon: Inbox, label: "Import Contracts", path: "/contracts/bulk", feature: "contracts.core" },
+                { icon: Building2, label: "Companies", path: "/network/organizations", feature: "network" },
             ],
         },
         {
