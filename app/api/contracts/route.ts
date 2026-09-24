@@ -166,12 +166,19 @@ export async function GET(req: Request) {
         },
       };
 
-      where.OR = relationshipContractIds.length
-        ? [
-            legacyPartyFilter,
-            { id: { in: relationshipContractIds } },
-          ]
-        : [legacyPartyFilter];
+      const relationshipFilter = relationshipContractIds.length
+        ? {
+            OR: [
+              legacyPartyFilter,
+              { id: { in: relationshipContractIds } },
+            ],
+          }
+        : legacyPartyFilter;
+
+      where.AND = [
+        ...(Array.isArray(where.AND) ? where.AND : []),
+        relationshipFilter,
+      ];
     }
 
     if (q) {
