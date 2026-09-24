@@ -11,6 +11,7 @@ import Badge from "@/components/ui/Badge";
 import GroupMembersManager from "@/components/catalog/GroupMembersManager";
 import ArtistDocumentsPanel from "@/components/catalog/ArtistDocumentsPanel";
 import ArtistFinancialsPanel from "@/components/catalog/ArtistFinancialsPanel";
+import ContractDocumentsSection from "@/components/contracts/ContractDocumentsSection";
 import EntityArtwork from "@/components/media/EntityArtwork";
 import RelationshipSelect from "@/components/catalog/RelationshipSelect";
 import { uploadEntityProfileImage } from "@/components/media/EntityProfileImageField";
@@ -49,7 +50,8 @@ function ArtistContractsPanel({ contracts, expandedContractId, contractDetails, 
                 <div><p className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-secondary">Parties</p>{detail.contract_parties?.length ? detail.contract_parties.map((party: any) => <div key={party.id} className="mb-2 rounded-lg border border-border px-3 py-2 text-sm"><span className="text-text-accent">{party.external_name || `${party.entity_type || "Party"} #${party.entity_id || ""}`}</span><span className="ml-2 text-xs text-text-secondary">{party.role || ""}{party.split_percent != null ? ` · ${party.split_percent}%` : ""}</span></div>) : <p className="text-xs text-text-secondary">No parties recorded.</p>}</div>
                 <div><p className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-secondary">Documents</p>{detail.contract_documents?.length ? detail.contract_documents.map((doc: any) => <div key={doc.id} className="mb-2 flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm"><FileText size={14} className="text-accent" /><span className="truncate text-text-accent">{doc.file_name || doc.name || `Document #${doc.id}`}</span></div>) : <p className="text-xs text-text-secondary">No contract documents attached.</p>}</div>
               </div>
-              <div className="flex justify-end"><button type="button" onClick={() => router.push(`/catalog/contracts/${detail.id}`)} className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-xs font-medium text-text-accent hover:bg-surface-elevated">Open full contract <ExternalLink size={13} /></button></div>
+              <ContractDocumentsSection contractId={detail.id} />
+              <div className="flex justify-end"><button type="button" onClick={() => router.push(`/contracts/${detail.id}`)} className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-xs font-medium text-text-accent hover:bg-surface-elevated">Open full contract <ExternalLink size={13} /></button></div>
             </div> : <p className="text-sm text-text-secondary">Unable to load contract details.</p>}
           </div>}
         </div>;
