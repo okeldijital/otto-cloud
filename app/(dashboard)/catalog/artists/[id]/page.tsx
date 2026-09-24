@@ -337,7 +337,7 @@ export default function ArtistDetailPage() {
     { key: "releases", label: `Releases (${releases.length})` },
     { key: "works", label: `Works (${works.length})` },
     { key: "documents", label: "Documents" },
-    { key: "financials", label: "Financials" },
+    { key: "financials", label: "Advance and Expenses" },
     { key: "contracts", label: `Contracts (${contracts.length})` },
   ];
 
