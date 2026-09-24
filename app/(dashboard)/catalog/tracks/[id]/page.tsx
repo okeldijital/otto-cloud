@@ -208,13 +208,23 @@ export default function TrackDetailPage() {
 
   const handleCreateArtist = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!newArtist.name.trim()) return;
+    const artistName = newArtist.name.trim();
+    if (!artistName) {
+      setNewArtistError("Legal name is required.");
+      return;
+    }
+    const duplicate = artists.find((artist: any) => String(artist.name || "").trim().toLowerCase() === artistName.toLowerCase());
+    if (duplicate) {
+      setNewArtistError(`An artist named "${artistName}" already exists. Search for and add the existing artist instead.`);
+      return;
+    }
     setIsCreatingArtist(true);
     setError("");
     setNewArtistError("");
     try {
       const { data: createdArtist } = await api.post("/artists", {
-        name: newArtist.name.trim(),
+        name: artistName,
+        legal_name: artistName,
         aka: newArtist.aka.trim() || null,
         contact_email: newArtist.contact_email.trim() || null,
         ipi_number: newArtist.ipi_number.trim() || null,
