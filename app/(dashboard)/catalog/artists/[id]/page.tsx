@@ -22,6 +22,15 @@ import api from "@/lib/api";
 
 type Artist = any;
 
+function Info({ label, value }: { label: string; value: any }) {
+  return (
+    <div className="rounded-lg border border-border bg-surface px-3 py-2">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-text-secondary">{label}</p>
+      <p className="mt-1 truncate text-sm text-text-accent">{value || "—"}</p>
+    </div>
+  );
+}
+
 function listItems(value: any): any[] {
   if (Array.isArray(value)) return value;
   if (Array.isArray(value?.items)) return value.items;
