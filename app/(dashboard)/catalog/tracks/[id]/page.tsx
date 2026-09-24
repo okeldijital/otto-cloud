@@ -134,6 +134,8 @@ export default function TrackDetailPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
   const [creditRows, setCreditRows] = useState<CreditRow[]>([]);
+  const [showArtistPicker, setShowArtistPicker] = useState(false);
+  const [artistSearch, setArtistSearch] = useState("");
   const [showNewArtistModal, setShowNewArtistModal] = useState(false);
   const [isCreatingArtist, setIsCreatingArtist] = useState(false);
   const [newArtist, setNewArtist] = useState({ name: "", aka: "", contact_email: "", ipi_number: "" });
@@ -187,7 +189,21 @@ export default function TrackDetailPage() {
 
   const selectedArtists = useMemo(() => artists.filter((artist) => form.artist_ids.includes(artist.id)), [artists, form.artist_ids]);
   const selectedSecondary = useMemo(() => releases.filter((item) => form.secondary_release_ids.includes(item.id)), [releases, form.secondary_release_ids]);
-  const toggleArtist = (artistId: number) => setForm((current: any) => ({ ...current, artist_ids: current.artist_ids.includes(artistId) ? current.artist_ids.filter((value: number) => value !== artistId) : [...current.artist_ids, artistId] }));
+  const addArtistToTrack = (artistId: number) => {
+    setForm((current: any) => ({
+      ...current,
+      artist_ids: current.artist_ids.includes(artistId) ? current.artist_ids : [...current.artist_ids, artistId],
+    }));
+    setShowArtistPicker(false);
+    setArtistSearch("");
+  };
+
+  const removeArtistFromTrack = (artistId: number) => {
+    setForm((current: any) => ({
+      ...current,
+      artist_ids: current.artist_ids.filter((value: number) => value !== artistId),
+    }));
+  };
 
   const handleCreateArtist = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -210,6 +226,8 @@ export default function TrackDetailPage() {
       }));
       setNewArtist({ name: "", aka: "", contact_email: "", ipi_number: "" });
       setShowNewArtistModal(false);
+      setShowArtistPicker(false);
+      setArtistSearch("");
     } catch (err: any) {
       setError(err?.response?.data?.error || err?.message || "Failed to create artist.");
     } finally {
@@ -281,8 +299,105 @@ export default function TrackDetailPage() {
           </Card>
 
           <Card title="Artists" subtitle="Artists credited on this track">
-            {isEditing ? <SelectionList title="Linked artists" items={artists} selectedIds={form.artist_ids} onToggle={toggleArtist} getTitle={(artist: any) => artist.display_name || artist.stage_name || artist.name || `Artist #${artist.id}`} getSubtitle={(artist: any) => artist.aka || artist.kind || ""} icon={User} empty="No artists found." searchPlaceholder="Search artists..." action={<Button type="button" variant="secondary" size="sm" onClick={() => setShowNewArtistModal(true)}><Plus size={13} />Add artist</Button>} /> : linkedArtists.length ? <div className="flex flex-wrap gap-2">{linkedArtists.map((artist: any) => <button key={artist.id} type="button" onClick={() => router.push(`/catalog/artists/${artist.id}`)} className="inline-flex items-center gap-2 rounded-md border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary transition hover:border-primary/40 hover:bg-primary/5"><User size={14} className="text-primary" />{artist.display_name || artist.stage_name || artist.name}</button>)}</div> : <p className="text-sm text-text-secondary">No artists linked.</p>}
+            {isEditing ? (
+              <div className="rounded-lg border border-border bg-surface p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <User size={16} className="text-primary" />
+                      <h3 className="text-sm font-semibold text-text-primary">Track artists</h3>
+                    </div>
+                    <p className="mt-1 text-xs text-text-secondary">Add the artists credited on this track.</p>
+                  </div>
+                  <Button type="button" variant="secondary" size="sm" onClick={() => setShowArtistPicker(true)}>
+                    <Plus size={13} />Add artist
+                  </Button>
+                </div>
+                {selectedArtists.length ? (
+                  <div className="space-y-2">
+                    {selectedArtists.map((artist: any) => (
+                      <div key={artist.id} className="flex items-center justify-between gap-3 rounded-md border border-border bg-surface-elevated px-3 py-2">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-text-primary">{artist.display_name || artist.stage_name || artist.name || `Artist #${artist.id}`}</p>
+                          {(artist.aka || artist.kind) && <p className="truncate text-xs text-text-secondary">{artist.aka || artist.kind}</p>}
+                        </div>
+                        <button type="button" onClick={() => removeArtistFromTrack(artist.id)} className="shrink-0 rounded-md p-1.5 text-text-secondary transition hover:bg-surface hover:text-text-primary" aria-label={`Remove ${artist.display_name || artist.stage_name || artist.name || "artist"}`}>
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-md border border-dashed border-border px-4 py-6 text-center">
+                    <p className="text-sm text-text-secondary">No artists linked yet.</p>
+                    <p className="mt-1 text-xs text-text-secondary">Use Add artist to link an existing artist or create a new one.</p>
+                  </div>
+                )}
+              </div>
+            ) : linkedArtists.length ? (
+              <div className="flex flex-wrap gap-2">{linkedArtists.map((artist: any) => <button key={artist.id} type="button" onClick={() => router.push(`/catalog/artists/${artist.id}`)} className="inline-flex items-center gap-2 rounded-md border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary transition hover:border-primary/40 hover:bg-primary/5"><User size={14} className="text-primary" />{artist.display_name || artist.stage_name || artist.name}</button>)}</div>
+            ) : <p className="text-sm text-text-secondary">No artists linked.</p>}
           </Card>
+
+          {showArtistPicker && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-labelledby="add-artist-title">
+              <div className="w-full max-w-xl rounded-xl border border-border bg-surface shadow-2xl">
+                <div className="flex items-center justify-between border-b border-border px-5 py-4">
+                  <div>
+                    <h2 id="add-artist-title" className="text-base font-semibold text-text-primary">Add artist</h2>
+                    <p className="mt-1 text-xs text-text-secondary">Search the catalogue or create a new artist.</p>
+                  </div>
+                  <button type="button" onClick={() => { setShowArtistPicker(false); setArtistSearch(""); }} className="rounded-md p-2 text-text-secondary hover:bg-surface-elevated hover:text-text-primary" aria-label="Close">
+                    <X size={16} />
+                  </button>
+                </div>
+                <div className="space-y-4 p-5">
+                  <div className="relative">
+                    <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
+                    <input
+                      autoFocus
+                      type="search"
+                      value={artistSearch}
+                      onChange={(event) => setArtistSearch(event.target.value)}
+                      placeholder="Search artists..."
+                      className="h-10 w-full rounded-lg border border-border bg-surface-elevated pl-9 pr-3 text-sm text-text-primary placeholder:text-text-secondary/70 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    />
+                  </div>
+                  <div className="max-h-72 space-y-1 overflow-y-auto">
+                    {artists
+                      .filter((artist: any) => !form.artist_ids.includes(artist.id))
+                      .filter((artist: any) => {
+                        const query = artistSearch.trim().toLowerCase();
+                        if (!query) return true;
+                        return [artist.display_name, artist.stage_name, artist.name, artist.aka]
+                          .filter(Boolean)
+                          .some((value) => String(value).toLowerCase().includes(query));
+                      })
+                      .map((artist: any) => (
+                        <button key={artist.id} type="button" onClick={() => addArtistToTrack(artist.id)} className="flex w-full items-center justify-between gap-3 rounded-md border border-transparent px-3 py-2.5 text-left hover:border-border hover:bg-surface-elevated">
+                          <span className="min-w-0">
+                            <span className="block truncate text-sm font-medium text-text-primary">{artist.display_name || artist.stage_name || artist.name || `Artist #${artist.id}`}</span>
+                            {(artist.aka || artist.kind) && <span className="block truncate text-xs text-text-secondary">{artist.aka || artist.kind}</span>}
+                          </span>
+                          <span className="text-xs font-medium text-primary">Add</span>
+                        </button>
+                      ))}
+                    {artists.filter((artist: any) => !form.artist_ids.includes(artist.id)).filter((artist: any) => {
+                      const query = artistSearch.trim().toLowerCase();
+                      if (!query) return true;
+                      return [artist.display_name, artist.stage_name, artist.name, artist.aka].filter(Boolean).some((value) => String(value).toLowerCase().includes(query));
+                    }).length === 0 && <p className="py-6 text-center text-xs text-text-secondary">No matching artists.</p>}
+                  </div>
+                  <div className="flex items-center justify-between border-t border-border pt-4">
+                    <p className="text-xs text-text-secondary">Can’t find the artist?</p>
+                    <Button type="button" variant="secondary" size="sm" onClick={() => setShowNewArtistModal(true)}>
+                      <Plus size={13} />Create new artist
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           <EntityForm
             title="New Artist"
