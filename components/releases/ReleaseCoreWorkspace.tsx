@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, Check, ExternalLink, Eye, FileText, Link2, Loader2, Plus, Trash2, Upload, UserRound, Wallet, X } from "lucide-react";
+import { CalendarDays, Check, ExternalLink, Eye, FileText, Link2, Loader2, Plus, Trash2, Upload, Wallet, X } from "lucide-react";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import api from "@/lib/api";
@@ -28,13 +28,21 @@ export default function ReleaseCoreWorkspace({ releaseId, artistIds, artists }: 
   const [previewDocument, setPreviewDocument] = useState<any>(null);
 
   const refresh = async () => {
-    const [core, contractRes] = await Promise.all([api.get(`/releases/core?id=${releaseId}`), api.get(`/contracts?limit=100`)]);
-    const next = core.data || {};
+    const [coreResult, contractsResult] = await Promise.allSettled([
+      api.get(`/releases/core?id=${releaseId}`),
+      api.get(`/contracts?limit=100`),
+    ]);
+    if (coreResult.status === "rejected") throw coreResult.reason;
+    const next = coreResult.value.data || {};
     setData(next);
     if (next.media) setMedia({ provider: next.media.provider || "Other", label: next.media.label || "", url: next.media.url || "" });
     if (next.contract) setContract({ contract_id: String(next.contract.contract_id), signed_at: next.contract.signed_at ? String(next.contract.signed_at).slice(0, 10) : "" });
-    const items = Array.isArray(contractRes.data) ? contractRes.data : Array.isArray(contractRes.data?.items) ? contractRes.data.items : [];
-    setContracts(items);
+    if (contractsResult.status === "fulfilled") {
+      const items = Array.isArray(contractsResult.value.data) ? contractsResult.value.data : Array.isArray(contractsResult.value.data?.items) ? contractsResult.value.data.items : [];
+      setContracts(items);
+    } else {
+      setContracts([]);
+    }
   };
 
   useEffect(() => {
@@ -138,8 +146,6 @@ export default function ReleaseCoreWorkspace({ releaseId, artistIds, artists }: 
     }
   };
 
-  const roleByArtist = useMemo(() => Object.fromEntries((data.artistRoles || []).map((item: any) => [item.artist_id, item.role])), [data.artistRoles]);
-  const releaseArtists = artists.filter((artist) => artistIds.includes(artist.id));
 
   if (loading) return <div className="rounded-lg border border-border bg-surface p-6 text-sm text-text-secondary">Loading release workspace...</div>;
 
@@ -161,7 +167,6 @@ export default function ReleaseCoreWorkspace({ releaseId, artistIds, artists }: 
     </Card>
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
       <Card title="Media" subtitle="Link the external cloud folder containing release media."><div className="space-y-3"><div className="grid grid-cols-2 gap-3"><select className={fieldClass} value={media.provider} onChange={(e) => setMedia({ ...media, provider: e.target.value })}><option>Dropbox</option><option>Google Drive</option><option>OneDrive</option><option>Box</option><option>Other</option></select><input className={fieldClass} placeholder="Folder label" value={media.label} onChange={(e) => setMedia({ ...media, label: e.target.value })} /></div><input className={fieldClass} type="url" placeholder="https://..." value={media.url} onChange={(e) => setMedia({ ...media, url: e.target.value })} /><div className="flex gap-2"><Button variant="primary" size="sm" onClick={() => saveAction("media", media)} disabled={busy === "media"}><Link2 size={14} />Link to Media</Button>{data.media?.url && <Button variant="secondary" size="sm" onClick={() => window.open(data.media.url, "_blank", "noopener,noreferrer")}><ExternalLink size={14} />Open media</Button>}{data.media?.url && <Button variant="secondary" size="sm" onClick={() => remove("media")}><Trash2 size={14} /></Button>}</div></div></Card>
-      <Card title="Artists" subtitle="Assign the role each linked artist has on this release."><div className="space-y-2">{releaseArtists.length ? releaseArtists.map((artist: any) => <div key={artist.id} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface px-3 py-2"><div className="flex min-w-0 items-center gap-2"><UserRound size={15} className="shrink-0 text-accent" /><span className="truncate text-sm text-text-accent">{artist.display_name || artist.stage_name || artist.name}</span></div><select className="h-9 rounded-lg border border-border bg-surface px-2 text-xs text-text-accent" value={roleByArtist[artist.id] || "Main Artist"} onChange={(e) => saveAction("artist-role", { artist_id: artist.id, role: e.target.value })}>{roles.map((role) => <option key={role}>{role}</option>)}</select></div>) : <p className="text-sm text-text-secondary">Add artists to the release first.</p>}</div></Card>
     </div>
     <Card title="Contract" subtitle="Record the contract signature date and keep the authoritative contract one click away."><div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_180px_auto] items-end"><label><span className={labelClass}>Related contract</span><select className={fieldClass} value={contract.contract_id} onChange={(e) => setContract({ ...contract, contract_id: e.target.value })}><option value="">Select contract</option>{contracts.map((item: any) => <option key={item.id} value={item.id}>{item.title || item.name || `Contract #${item.id}`}</option>)}</select></label><label><span className={labelClass}>Date of contract signature</span><input className={fieldClass} type="date" value={contract.signed_at} onChange={(e) => setContract({ ...contract, signed_at: e.target.value })} /></label><Button variant="primary" size="sm" onClick={() => saveAction("contract", contract)} disabled={!contract.contract_id || busy === "contract"}><Check size={14} />Save contract</Button></div>{data.contract?.contract_id && <div className="mt-4 flex items-center justify-between rounded-lg border border-border bg-surface px-3 py-3"><div className="flex items-center gap-3"><CalendarDays size={16} className="text-accent" /><div><p className="text-xs text-text-secondary">Date of contract signature</p><button type="button" className="text-sm font-medium text-accent hover:underline" onClick={() => window.location.assign(`/contracts/${data.contract.contract_id}`)}>{data.contract.signed_at ? String(data.contract.signed_at).slice(0, 10) : "Add signature date"}</button></div></div><Button variant="secondary" size="sm" onClick={() => remove("contract")}><Trash2 size={14} /></Button></div>}</Card>
     {previewDocument?.attachment_id && (
