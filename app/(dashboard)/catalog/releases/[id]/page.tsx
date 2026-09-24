@@ -252,7 +252,7 @@ export default function ReleaseDetailPage() {
           </div>
         </div>
 
-        <Card title="Release artists" subtitle="Release-level artist associations. Track-level roles and credits are managed inside each track.">
+        <Card title="Release artists" subtitle="Release-level artist associations. Track-level roles and credits are managed inside each track." className="relative z-50 !overflow-visible">
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
             <div className="relative z-30">
               <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
