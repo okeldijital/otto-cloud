@@ -350,7 +350,7 @@ export default function ArtistDetailPage() {
           expandedContractId={expandedContractId}
           contractDetails={contractDetails}
           loadingContracts={loadingContracts}
-          onToggle={async (contractId) => {
+          onToggle={async (contractId: number) => {
             if (expandedContractId === contractId) { setExpandedContractId(null); return; }
             setExpandedContractId(contractId);
             if (contractDetails[contractId]) return;
