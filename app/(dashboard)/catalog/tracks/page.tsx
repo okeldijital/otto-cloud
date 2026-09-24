@@ -33,20 +33,33 @@ export default function TracksPage() {
   const [artists, setArtists] = useState<any[]>([]);
   const [releases, setReleases] = useState<any[]>([]);
   const [works, setWorks] = useState<any[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const pageSize = 50;
 
-  const fetchData = async () => {
+  const fetchData = async (options: { resetPage?: boolean } = {}) => {
     try {
+      setLoading(true);
+      const params = new URLSearchParams({
+        limit: String(pageSize),
+        skip: String(((options.resetPage ? 1 : page) - 1) * pageSize),
+      });
+      const query = search.trim();
+      if (query) params.set("q", query);
+      if (genreFilter !== "all") params.set("genre", genreFilter);
       const [res, artistsRes, releasesRes, worksRes] = await Promise.all([
-        api.get("/tracks"),
+        api.get(`/tracks?${params.toString()}`),
         api.get("/artists"),
         api.get("/releases?limit=100"),
         api.get("/works?limit=100"),
       ]);
       const items = Array.isArray(res.data) ? res.data : res.data?.items || [];
       setData(items);
+      setTotal(Number(res.data?.total || items.length));
       setArtists(Array.isArray(artistsRes.data) ? artistsRes.data : artistsRes.data?.items || []);
       setReleases(Array.isArray(releasesRes.data) ? releasesRes.data : releasesRes.data?.items || []);
       setWorks(Array.isArray(worksRes.data) ? worksRes.data : worksRes.data?.items || []);
+      if (options.resetPage) setPage(1);
     } catch (err) {
       console.error("Failed to fetch tracks:", err);
     } finally {
@@ -55,30 +68,21 @@ export default function TracksPage() {
   };
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    const timer = window.setTimeout(() => { void fetchData({ resetPage: true }); }, 200);
+    return () => window.clearTimeout(timer);
+  }, [search, genreFilter]);
 
-  const genres = useMemo(
-    () => Array.from(new Set(data.map((track) => String(track.genre || "").trim()).filter(Boolean))).sort(),
-    [data]
-  );
+  useEffect(() => {
+    void fetchData();
+  }, [page]);
 
-  const filteredData = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    return data.filter((track) => {
-      const matchesGenre = genreFilter === "all" || String(track.genre || "").toLowerCase() === genreFilter;
-      const matchesSearch = !query || [track.title, track.isrc_code, track.genre, track.duration]
-        .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(query));
-      return matchesGenre && matchesSearch;
-    });
-  }, [data, search, genreFilter]);
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
 
   const handleDelete = async (row: any) => {
     if (!window.confirm(`Delete track "${row.title}"? This cannot be undone.`)) return;
     try {
       await api.delete(`/tracks?id=${row.id}`);
-      fetchData();
+      void fetchData();
     } catch (err: any) {
       alert(err?.response?.data?.error || "Failed to delete track");
     }
@@ -99,7 +103,7 @@ export default function TracksPage() {
       });
       setShowAddModal(false);
       setNewTrack({ title: "", isrc_code: "", genre: "", duration: "", release_id: "", work_id: "", artist_ids: [] });
-      fetchData();
+      void fetchData();
     } catch (err: any) {
       alert(err?.response?.data?.error || "Failed to create track");
     } finally {
@@ -153,15 +157,28 @@ export default function TracksPage() {
 
       <DataTable
         columns={columns}
-        data={filteredData}
+        data={data}
         isLoading={loading}
         onRowClick={(row: any) => router.push(`/catalog/tracks/${row.id}`)}
         onEdit={(row: any) => router.push(`/catalog/tracks/${row.id}`)}
         onDelete={handleDelete}
       />
 
-      {!loading && (search || genreFilter !== "all") && filteredData.length === 0 && data.length > 0 && (
+      {!loading && total === 0 && (search || genreFilter !== "all") && (
         <p className="-mt-3 text-xs text-text-secondary">No tracks match the current catalogue filters.</p>
+      )}
+
+      {!loading && total > 0 && (
+        <div className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs text-text-secondary">
+            Showing {((page - 1) * pageSize) + 1}–{Math.min(page * pageSize, total)} of {total} tracks
+          </p>
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" size="sm" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page === 1}>Previous</Button>
+            <span className="min-w-20 text-center text-xs text-text-secondary">Page {page} of {pageCount}</span>
+            <Button variant="secondary" size="sm" onClick={() => setPage((current) => Math.min(pageCount, current + 1))} disabled={page >= pageCount}>Next</Button>
+          </div>
+        </div>
       )}
 
       <EntityForm title="New Track" isOpen={showAddModal} onClose={() => setShowAddModal(false)} onSubmit={handleCreate} isSubmitting={isSubmitting} error={undefined}>
