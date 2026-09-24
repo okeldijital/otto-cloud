@@ -136,6 +136,8 @@ export default function TrackDetailPage() {
   const [creditRows, setCreditRows] = useState<CreditRow[]>([]);
   const [showArtistPicker, setShowArtistPicker] = useState(false);
   const [artistSearch, setArtistSearch] = useState("");
+  const [artistSearchResults, setArtistSearchResults] = useState<any[]>([]);
+  const [isSearchingArtists, setIsSearchingArtists] = useState(false);
   const [showNewArtistModal, setShowNewArtistModal] = useState(false);
   const [isCreatingArtist, setIsCreatingArtist] = useState(false);
   const [newArtistError, setNewArtistError] = useState("");
@@ -187,6 +189,24 @@ export default function TrackDetailPage() {
     };
     fetchData();
   }, [id]);
+
+  useEffect(() => {
+    if (!showArtistPicker) return;
+    const query = artistSearch.trim();
+    const timer = window.setTimeout(async () => {
+      setIsSearchingArtists(true);
+      try {
+        const { data } = await api.get(`/artists?q=${encodeURIComponent(query)}&limit=20`);
+        setArtistSearchResults(unwrapMany(data));
+      } catch (err) {
+        console.error(err);
+        setArtistSearchResults([]);
+      } finally {
+        setIsSearchingArtists(false);
+      }
+    }, query ? 250 : 0);
+    return () => window.clearTimeout(timer);
+  }, [showArtistPicker, artistSearch]);
 
   const selectedArtists = useMemo(() => artists.filter((artist) => form.artist_ids.includes(artist.id)), [artists, form.artist_ids]);
   const selectedSecondary = useMemo(() => releases.filter((item) => form.secondary_release_ids.includes(item.id)), [releases, form.secondary_release_ids]);
@@ -376,29 +396,23 @@ export default function TrackDetailPage() {
                     />
                   </div>
                   <div className="max-h-72 space-y-1 overflow-y-auto">
-                    {artists
-                      .filter((artist: any) => !form.artist_ids.includes(artist.id))
-                      .filter((artist: any) => {
-                        const query = artistSearch.trim().toLowerCase();
-                        if (!query) return true;
-                        return [artist.display_name, artist.stage_name, artist.name, artist.aka]
-                          .filter(Boolean)
-                          .some((value) => String(value).toLowerCase().includes(query));
-                      })
-                      .map((artist: any) => (
-                        <button key={artist.id} type="button" onClick={() => addArtistToTrack(artist.id)} className="flex w-full items-center justify-between gap-3 rounded-md border border-transparent px-3 py-2.5 text-left hover:border-border hover:bg-surface-elevated">
-                          <span className="min-w-0">
-                            <span className="block truncate text-sm font-medium text-text-primary">{artist.display_name || artist.stage_name || artist.name || `Artist #${artist.id}`}</span>
-                            {(artist.aka || artist.kind) && <span className="block truncate text-xs text-text-secondary">{artist.aka || artist.kind}</span>}
-                          </span>
-                          <span className="text-xs font-medium text-primary">Add</span>
-                        </button>
-                      ))}
-                    {artists.filter((artist: any) => !form.artist_ids.includes(artist.id)).filter((artist: any) => {
-                      const query = artistSearch.trim().toLowerCase();
-                      if (!query) return true;
-                      return [artist.display_name, artist.stage_name, artist.name, artist.aka].filter(Boolean).some((value) => String(value).toLowerCase().includes(query));
-                    }).length === 0 && <p className="py-6 text-center text-xs text-text-secondary">No matching artists.</p>}
+                    {isSearchingArtists ? (
+                      <p className="py-6 text-center text-xs text-text-secondary">Searching artists...</p>
+                    ) : artistSearchResults.filter((artist: any) => !form.artist_ids.includes(artist.id)).length ? (
+                      artistSearchResults
+                        .filter((artist: any) => !form.artist_ids.includes(artist.id))
+                        .map((artist: any) => (
+                          <button key={artist.id} type="button" onClick={() => addArtistToTrack(artist.id)} className="flex w-full items-center justify-between gap-3 rounded-md border border-transparent px-3 py-2.5 text-left hover:border-border hover:bg-surface-elevated">
+                            <span className="min-w-0">
+                              <span className="block truncate text-sm font-medium text-text-primary">{artist.display_name || artist.stage_name || artist.name || `Artist #${artist.id}`}</span>
+                              {(artist.legal_name || artist.aka) && <span className="block truncate text-xs text-text-secondary">{artist.legal_name || artist.aka}</span>}
+                            </span>
+                            <span className="text-xs font-medium text-primary">Add</span>
+                          </button>
+                        ))
+                    ) : (
+                      <p className="py-6 text-center text-xs text-text-secondary">No matching artists.</p>
+                    )}
                   </div>
                   <div className="flex items-center justify-between border-t border-border pt-4">
                     <p className="text-xs text-text-secondary">Can’t find the artist?</p>
