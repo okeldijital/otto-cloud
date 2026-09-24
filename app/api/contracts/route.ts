@@ -140,12 +140,38 @@ export async function GET(req: Request) {
     if (partyEntityType && partyEntityId) {
       const entityId = parseInt(partyEntityId, 10);
       if (!Number.isInteger(entityId) || entityId <= 0) return NextResponse.json({ error: "Invalid party entity ID" }, { status: 400 });
-      where.contract_parties = {
-        some: {
-          entity_type: partyEntityType,
-          entity_id: entityId,
+
+      // Contracts can be linked to catalogue entities through either the
+      // legacy contract_parties table or the current polymorphic
+      // contractRelationship model. Read both so entity detail pages remain
+      // compatible while relationships migrate to the newer model.
+      const relationshipType = partyEntityType.trim().toLowerCase();
+      const relationshipRows = await prisma.contractRelationship.findMany({
+        where: {
+          organizationId: orgId,
+          targetEntityType: relationshipType,
+          targetEntityId: String(entityId),
+          status: "active",
+        },
+        select: { contractId: true },
+      });
+      const relationshipContractIds = relationshipRows.map((row) => row.contractId);
+
+      const legacyPartyFilter = {
+        contract_parties: {
+          some: {
+            entity_type: partyEntityType,
+            entity_id: entityId,
+          },
         },
       };
+
+      where.OR = relationshipContractIds.length
+        ? [
+            legacyPartyFilter,
+            { id: { in: relationshipContractIds } },
+          ]
+        : [legacyPartyFilter];
     }
 
     if (q) {
