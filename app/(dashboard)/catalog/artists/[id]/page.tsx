@@ -60,42 +60,33 @@ function ArtistContractsPanel({ contracts, expandedContractId, contractDetails, 
 
           return (
             <div key={contract.id} className="overflow-hidden rounded-lg border border-border bg-surface">
-              <button
-                type="button"
-                onClick={() => onToggle(contract.id)}
-                className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface-elevated"
-              >
-                <FileText size={16} className="shrink-0 text-accent" />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-semibold text-text-accent">
-                    {contract.title || "Untitled contract"}
+              <div className="flex w-full items-center gap-3 px-4 py-3 hover:bg-surface-elevated">
+                <button
+                  type="button"
+                  onClick={() => onToggle(contract.id)}
+                  className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                >
+                  <FileText size={16} className="shrink-0 text-accent" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-semibold text-text-accent">
+                      {contract.title || "Untitled contract"}
+                    </span>
+                    <span className="mt-0.5 block text-xs text-text-secondary">
+                      {contract.contract_number || "No contract number"} · {contract.status || "—"}
+                    </span>
                   </span>
-                  <span className="mt-0.5 block text-xs text-text-secondary">
-                    {contract.contract_number || "No contract number"} · {contract.status || "—"}
-                  </span>
-                </span>
-                <span
-                  role="button"
-                  tabIndex={0}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    router.push(`/contracts/${contract.id}`);
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      router.push(`/contracts/${contract.id}`);
-                    }
-                  }}
+                  {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => router.push(`/contracts/${contract.id}`)}
                   className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-text-secondary transition hover:border-accent hover:text-accent"
                   aria-label={`Open full contract workflow for ${contract.title || "contract"}`}
                 >
                   <ExternalLink size={13} />
                   <span className="hidden sm:inline">Open contract</span>
-                </span>
-                {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-              </button>
+                </button>
+              </div>
 
               {open && (
                 <div className="space-y-4 border-t border-border p-4">
