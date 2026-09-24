@@ -1,19 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { CalendarDays, Check, ExternalLink, Eye, FileText, Link2, Loader2, Plus, Trash2, Upload, Wallet, X } from "lucide-react";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import api from "@/lib/api";
 
-type Props = { releaseId: number; artistIds: number[]; artists: any[] };
+type Props = { releaseId: number };
 const fieldClass = "mt-1 h-10 w-full rounded-lg border border-border bg-surface px-3 text-sm text-text-accent placeholder:text-text-secondary/60 outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20";
 const labelClass = "text-xs font-medium text-text-secondary";
-const roles = ["Main Artist", "Featured Artist", "Remixer", "Composer", "Other"];
 const financialTypes = ["Income", "Expense", "Advance", "Royalty", "Other"];
 
-export default function ReleaseCoreWorkspace({ releaseId, artistIds, artists }: Props) {
-  const [data, setData] = useState<any>({ documents: [], financials: [], media: null, artistRoles: [], contract: null });
+export default function ReleaseCoreWorkspace({ releaseId }: Props) {
+  const [data, setData] = useState<any>({ documents: [], financials: [], media: null, contract: null });
   const [contracts, setContracts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState("");
