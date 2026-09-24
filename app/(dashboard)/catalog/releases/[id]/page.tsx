@@ -300,7 +300,7 @@ export default function ReleaseDetailPage() {
           <p className="mt-1 text-sm text-text-secondary">Supporting documents, financial records, media links, artist roles and contract references live here so they do not compete with the tracklist.</p>
         </div>
 
-        <ReleaseCoreWorkspace releaseId={Number(id)} artistIds={selectedArtistIds} artists={artists} />
+        <ReleaseCoreWorkspace releaseId={Number(id)} />
       </form>
     </div>
   );
