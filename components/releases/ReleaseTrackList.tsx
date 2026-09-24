@@ -24,7 +24,13 @@ type TrackForm = {
   streaming_link: string;
   work_id: string;
   artist_ids: number[];
-  credits: string;
+};
+
+type CreditRow = {
+  name: string;
+  role: string;
+  share_percent: string;
+  source?: Record<string, any>;
 };
 
 const fieldClass = "mt-1 h-10 w-full rounded-lg border border-border bg-surface px-3 text-sm text-text-accent placeholder:text-text-secondary/60 outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20";
@@ -41,18 +47,37 @@ function unwrapMany(value: any) {
 }
 function displayArtist(artist: any) { return artist?.display_name || artist?.stage_name || artist?.name || `Artist #${artist?.id ?? ""}`; }
 function parseCredits(value: any) { return Array.isArray(value) ? value : []; }
-function creditShare(item: any) {
-  const value = item?.share_percent ?? item?.share ?? item?.percentage ?? item?.percent;
-  return value == null ? null : String(value);
+function normalizeCreditRows(value: any): CreditRow[] {
+  return parseCredits(value).map((item: any) => ({
+    name: item?.name || item?.artist_name || item?.display_name || item?.member || item?.party_name || "",
+    role: item?.role || item?.type || item?.credit_type || "",
+    share_percent: item?.share_percent ?? item?.share ?? item?.percentage ?? item?.percent ?? "",
+    source: item,
+  }));
 }
-function creditName(item: any) { return item?.name || item?.artist_name || item?.display_name || item?.member || item?.party_name || "Unnamed credit"; }
-function creditRole(item: any) { return item?.role || item?.type || item?.credit_type || "Credit"; }
+function creditRowsToPayload(rows: CreditRow[]) {
+  return rows
+    .filter((row) => row.name.trim() || row.role.trim() || row.share_percent !== "")
+    .map((row) => ({
+      ...(row.source || {}),
+      name: row.name.trim(),
+      role: row.role.trim() || "Credit",
+      share_percent: row.share_percent === "" ? null : Number(row.share_percent),
+    }));
+}
+function creditShareTotal(rows: CreditRow[]) {
+  return rows.reduce((total, row) => {
+    const share = Number(row.share_percent);
+    return Number.isFinite(share) ? total + share : total;
+  }, 0);
+}
 
 export default function ReleaseTrackList({ releaseId, tracks, availableTracks, artists, onTrackOrderChange, onError }: Props) {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<Record<number, string>>({});
   const [details, setDetails] = useState<Record<number, any>>({});
   const [forms, setForms] = useState<Record<number, TrackForm>>({});
+  const [creditRows, setCreditRows] = useState<Record<number, CreditRow[]>>({});
   const [works, setWorks] = useState<any[]>([]);
   const [worksLoaded, setWorksLoaded] = useState(false);
   const [savingTrackId, setSavingTrackId] = useState<number | null>(null);
@@ -107,9 +132,9 @@ export default function ReleaseTrackList({ releaseId, tracks, availableTracks, a
           streaming_link: track.streaming_link || "",
           work_id: track.work_id ? String(track.work_id) : "",
           artist_ids: Array.isArray(track.artist_ids) ? track.artist_ids : [],
-          credits: Array.isArray(track.credits) ? JSON.stringify(track.credits, null, 2) : "",
         },
       }));
+      setCreditRows((current) => ({ ...current, [trackId]: normalizeCreditRows(track.credits) }));
     } catch (err: any) {
       onError(err?.response?.data?.error || "Unable to load track details.");
     } finally {
@@ -121,17 +146,23 @@ export default function ReleaseTrackList({ releaseId, tracks, availableTracks, a
     setForms((current) => ({ ...current, [trackId]: { ...current[trackId], ...patch } }));
   };
 
+  const updateCreditRow = (trackId: number, index: number, patch: Partial<CreditRow>) => {
+    setCreditRows((current) => ({ ...current, [trackId]: (current[trackId] || []).map((row, rowIndex) => rowIndex === index ? { ...row, ...patch } : row) }));
+  };
+  const addCreditRow = (trackId: number) => {
+    setCreditRows((current) => ({ ...current, [trackId]: [...(current[trackId] || []), { name: "", role: "", share_percent: "" }] }));
+  };
+  const removeCreditRow = (trackId: number, index: number) => {
+    setCreditRows((current) => ({ ...current, [trackId]: (current[trackId] || []).filter((_, rowIndex) => rowIndex !== index) }));
+  };
+
   const saveTrack = async (trackId: number) => {
     const form = forms[trackId];
     if (!form?.title.trim()) { onError("Track title is required."); return; }
     setSavingTrackId(trackId);
     onError("");
     try {
-      let credits: any = null;
-      if (form.credits.trim()) {
-        credits = JSON.parse(form.credits);
-        if (!Array.isArray(credits)) throw new Error("Credits must be a JSON array.");
-      }
+      const credits = creditRowsToPayload(creditRows[trackId] || []);
       await api.put(`/tracks?id=${trackId}`, {
         title: form.title.trim(),
         isrc_code: form.isrc_code.trim() || null,
@@ -160,9 +191,9 @@ export default function ReleaseTrackList({ releaseId, tracks, availableTracks, a
           streaming_link: updated.streaming_link || "",
           work_id: updated.work_id ? String(updated.work_id) : "",
           artist_ids: Array.isArray(updated.artist_ids) ? updated.artist_ids : [],
-          credits: Array.isArray(updated.credits) ? JSON.stringify(updated.credits, null, 2) : "",
         },
       }));
+      setCreditRows((current) => ({ ...current, [trackId]: normalizeCreditRows(updated.credits) }));
     } catch (err: any) {
       onError(err?.response?.data?.error || err?.message || "Unable to save track.");
     } finally {
@@ -231,7 +262,8 @@ export default function ReleaseTrackList({ releaseId, tracks, availableTracks, a
 
           return (
             <div key={track.id} className="overflow-hidden rounded-lg border border-border bg-surface">
-              <div className={`flex items-center gap-3 px-3 py-3 ${open ? "bg-surface-elevated" : ""}`}>
+              <div className={`flex items-center gap-2 px-3 py-3 ${open ? "bg-surface-elevated" : ""}`}>
+                <button type="button" onClick={() => openTrack(track.id)} className="shrink-0 rounded-md p-1.5 text-text-secondary hover:bg-surface hover:text-text-accent" aria-label={open ? "Collapse track" : "Expand track"}>{open ? <ChevronUp size={18} /> : <ChevronDown size={18} />}</button>
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-background text-sm font-semibold text-text-accent">{index + 1}</div>
                 <button type="button" onClick={() => openTrack(track.id)} className="min-w-0 flex-1 text-left">
                   <span className="block truncate text-sm font-semibold text-text-accent">{detail.title || track.title}</span>
@@ -245,7 +277,6 @@ export default function ReleaseTrackList({ releaseId, tracks, availableTracks, a
                   <button type="button" onClick={() => moveTrack(track.id, -1)} disabled={index === 0} className="rounded-md p-1.5 text-text-secondary hover:bg-surface-elevated disabled:opacity-30" aria-label="Move track up"><ChevronUp size={15} /></button>
                   <button type="button" onClick={() => moveTrack(track.id, 1)} disabled={index === tracks.length - 1} className="rounded-md p-1.5 text-text-secondary hover:bg-surface-elevated disabled:opacity-30" aria-label="Move track down"><ChevronDown size={15} /></button>
                 </div>
-                <button type="button" onClick={() => openTrack(track.id)} className="rounded-md p-1.5 text-text-secondary hover:bg-surface-elevated" aria-label={open ? "Collapse track" : "Expand track"}>{open ? <ChevronUp size={18} /> : <ChevronDown size={18} />}</button>
                 <button type="button" onClick={() => removeTrack(track.id)} className="rounded-md p-1.5 text-text-secondary hover:text-danger" aria-label={`Remove ${detail.title || track.title} from release`}><Trash2 size={15} /></button>
               </div>
 
@@ -260,7 +291,6 @@ export default function ReleaseTrackList({ releaseId, tracks, availableTracks, a
                           ["details", "Details"],
                           ["artists", "Artists & Credits"],
                           ["publishing", "Publishing"],
-                          ["technical", "Technical"],
                         ].map(([value, label]) => (
                           <button key={value} type="button" onClick={() => setActiveTab((current) => ({ ...current, [track.id]: value }))} className={`shrink-0 border-b-2 px-4 py-3 text-xs font-semibold transition ${tab === value ? "border-accent text-accent" : "border-transparent text-text-secondary hover:text-text-accent"}`}>
                             {label}
@@ -315,17 +345,33 @@ export default function ReleaseTrackList({ releaseId, tracks, availableTracks, a
                             </div>
 
                             <div>
-                              <p className="mb-2 text-sm font-semibold text-text-accent">Credits / splits</p>
-                              <p className="mb-3 text-xs leading-5 text-text-secondary">Existing structured credits are shown here. Edit the JSON only when you need to change the underlying track credit record.</p>
-                              {parseCredits(detail.credits).length ? (
-                                <div className="mb-4 overflow-x-auto rounded-lg border border-border">
-                                  <table className="w-full text-left text-xs">
-                                    <thead className="bg-surface-elevated text-text-secondary"><tr><th className="px-3 py-2 font-medium">Name</th><th className="px-3 py-2 font-medium">Role</th><th className="px-3 py-2 font-medium">Share</th></tr></thead>
-                                    <tbody>{parseCredits(detail.credits).map((item: any, index: number) => <tr key={index} className="border-t border-border"><td className="px-3 py-2 text-text-accent">{creditName(item)}</td><td className="px-3 py-2 text-text-secondary">{creditRole(item)}</td><td className="px-3 py-2 text-text-secondary">{creditShare(item) ? `${creditShare(item)}%` : "—"}</td></tr>)}</tbody>
-                                  </table>
+                              <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                                <div>
+                                  <p className="text-sm font-semibold text-text-accent">Credits & splits</p>
+                                  <p className="mt-1 text-xs text-text-secondary">Add contributors, roles and royalty/split percentages directly to this track.</p>
                                 </div>
-                              ) : <p className="mb-4 rounded-lg border border-dashed border-border px-3 py-4 text-xs text-text-secondary">No structured track credits or splits have been recorded.</p>}
-                              <textarea className="min-h-40 w-full rounded-lg border border-border bg-surface px-3 py-2 font-mono text-xs text-text-accent outline-none focus:border-accent focus:ring-2 focus:ring-accent/20" value={form.credits} onChange={(e) => updateForm(track.id, { credits: e.target.value })} placeholder='[{"name":"Artist","role":"Producer","share_percent":50}]' />
+                                <Button type="button" variant="secondary" size="sm" onClick={() => addCreditRow(track.id)}><Plus size={14} />Add credit</Button>
+                              </div>
+                              <div className="overflow-x-auto rounded-lg border border-border">
+                                <table className="w-full min-w-[640px] text-left text-xs">
+                                  <thead className="bg-surface-elevated text-text-secondary"><tr><th className="px-3 py-2 font-medium">Contributor</th><th className="px-3 py-2 font-medium">Role</th><th className="w-32 px-3 py-2 font-medium">Split %</th><th className="w-12 px-2 py-2" /></tr></thead>
+                                  <tbody>
+                                    {(creditRows[track.id] || []).map((row, rowIndex) => (
+                                      <tr key={rowIndex} className="border-t border-border">
+                                        <td className="px-3 py-2"><input className={fieldClass} value={row.name} onChange={(e) => updateCreditRow(track.id, rowIndex, { name: e.target.value })} placeholder="Artist, producer, licensor..." /></td>
+                                        <td className="px-3 py-2"><input className={fieldClass} value={row.role} onChange={(e) => updateCreditRow(track.id, rowIndex, { role: e.target.value })} placeholder="Original Artist, Producer, ..." /></td>
+                                        <td className="px-3 py-2"><input className={fieldClass} type="number" min="0" max="100" step="0.01" value={row.share_percent} onChange={(e) => updateCreditRow(track.id, rowIndex, { share_percent: e.target.value })} placeholder="0" /></td>
+                                        <td className="px-2 py-2 text-center"><button type="button" onClick={() => removeCreditRow(track.id, rowIndex)} className="rounded-md p-2 text-text-secondary hover:bg-surface-elevated hover:text-danger" aria-label="Remove credit"><Trash2 size={14} /></button></td>
+                                      </tr>
+                                    ))}
+                                    {!(creditRows[track.id] || []).length && <tr><td colSpan={4} className="px-3 py-8 text-center text-xs text-text-secondary">No credits or splits added yet.</td></tr>}
+                                  </tbody>
+                                </table>
+                              </div>
+                              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs">
+                                <span className="text-text-secondary">Total allocated: <strong className="text-text-accent">{creditShareTotal(creditRows[track.id] || []).toFixed(2)}%</strong></span>
+                                <span className={Math.abs(creditShareTotal(creditRows[track.id] || []) - 100) < 0.001 ? "text-accent" : "text-text-secondary"}>{Math.abs(creditShareTotal(creditRows[track.id] || []) - 100) < 0.001 ? "Fully allocated" : "Allocation can be completed when the split is final"}</span>
+                              </div>
                             </div>
 
                             <div className="flex justify-end"><Button type="button" variant="primary" size="sm" onClick={() => saveTrack(track.id)} disabled={savingTrackId === track.id}>{savingTrackId === track.id ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Save artists & credits</Button></div>
@@ -334,18 +380,6 @@ export default function ReleaseTrackList({ releaseId, tracks, availableTracks, a
 
                         {tab === "publishing" && <PublishingPanel work={detail.work} />}
 
-                        {tab === "technical" && (
-                          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                            <Info label="Track ID" value={detail.track_id || detail.id} />
-                            <Info label="Database ID" value={detail.id} />
-                            <Info label="Primary release ID" value={detail.release_id || releaseId} />
-                            <Info label="Work ID" value={detail.work_id || "Not linked"} />
-                            <Info label="File location" value={detail.file_location || "Not recorded"} />
-                            <Info label="Created" value={detail.created_at ? String(detail.created_at).slice(0, 19).replace("T", " ") : "—"} />
-                            <Info label="Updated" value={detail.updated_at ? String(detail.updated_at).slice(0, 19).replace("T", " ") : "—"} />
-                            <Info label="Secondary releases" value={Array.isArray(detail.secondary_release_ids) && detail.secondary_release_ids.length ? detail.secondary_release_ids.join(", ") : "None"} />
-                          </div>
-                        )}
                       </div>
                     </>
                   ) : null}
