@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronUp, Loader2, Plus, Save, Search, Trash2, Users, X } from "lucide-react";
+import Link from "next/link";
+import { ChevronDown, ChevronUp, ExternalLink, Loader2, Plus, Save, Search, Trash2, Users, X } from "lucide-react";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import api from "@/lib/api";
@@ -273,9 +274,21 @@ export default function ReleaseTrackList({ releaseId, tracks, availableTracks, a
                     {detail.duration ? ` · ${formatDuration(detail.duration)}` : ""}
                   </span>
                 </button>
-                <div className="hidden items-center gap-1 sm:flex">
-                  <button type="button" onClick={() => moveTrack(track.id, -1)} disabled={index === 0} className="rounded-md p-1.5 text-text-secondary hover:bg-surface-elevated disabled:opacity-30" aria-label="Move track up"><ChevronUp size={15} /></button>
-                  <button type="button" onClick={() => moveTrack(track.id, 1)} disabled={index === tracks.length - 1} className="rounded-md p-1.5 text-text-secondary hover:bg-surface-elevated disabled:opacity-30" aria-label="Move track down"><ChevronDown size={15} /></button>
+                <div className="flex items-center gap-1">
+                  <Link
+                    href={`/catalog/tracks/${track.id}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-md p-1.5 text-text-secondary hover:bg-surface-elevated hover:text-text-accent"
+                    aria-label={`Open ${detail.title || track.title} full track page`}
+                    title="Open full track page"
+                  >
+                    <ExternalLink size={15} />
+                  </Link>
+                  <div className="hidden items-center gap-1 sm:flex">
+                    <button type="button" onClick={() => moveTrack(track.id, -1)} disabled={index === 0} className="rounded-md p-1.5 text-text-secondary hover:bg-surface-elevated disabled:opacity-30" aria-label="Move track up"><ChevronUp size={15} /></button>
+                    <button type="button" onClick={() => moveTrack(track.id, 1)} disabled={index === tracks.length - 1} className="rounded-md p-1.5 text-text-secondary hover:bg-surface-elevated disabled:opacity-30" aria-label="Move track down"><ChevronDown size={15} /></button>
+                  </div>
                 </div>
                 <button type="button" onClick={() => removeTrack(track.id)} className="rounded-md p-1.5 text-text-secondary hover:text-danger" aria-label={`Remove ${detail.title || track.title} from release`}><Trash2 size={15} /></button>
               </div>
